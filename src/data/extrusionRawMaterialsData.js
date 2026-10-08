@@ -5,6 +5,7 @@
 
 // 1. 사용연고무 마스터 목록 (EPDM.xlsx + 압출라인별 BOM자료.xls 기준)
 export const EPDM_RUBBERS = [
+  { id: "none", name: "미사용", unit: "Kg", type: "미사용", desc: "사용 안함" },
   { id: "w60712_2", name: "W60712$2", unit: "Kg", type: "솔리드", desc: "솔리드 EPDM 고무" },
   { id: "w60712_2ta", name: "W60712$2TA", unit: "Kg", type: "솔리드", desc: "솔리드 EPDM 고무" },
   { id: "w60712_ta", name: "W60712$TA", unit: "Kg", type: "솔리드", desc: "솔리드 EPDM 고무" },
@@ -32,6 +33,7 @@ export const EPDM_RUBBERS = [
 
 // 2. 컴파운드 마스터 목록 (EPDM.xlsx + 압출라인별 BOM자료.xls 기준)
 export const EPDM_COMPOUNDS = [
+  { id: "none", name: "미사용", unit: "KG", desc: "사용 안함" },
   { id: "ia4_75b_1", name: "IA4-75B_1", unit: "KG", desc: "압출 컴파운드" },
   { id: "b64e", name: "B64E", unit: "KG", desc: "압출 컴파운드" },
   { id: "l2kia7_35b", name: "L2KIA7-35B", unit: "KG", desc: "압출 컴파운드" },
@@ -57,6 +59,7 @@ export const EPDM_COMPOUNDS = [
 
 // 3. 심금 마스터 목록 (EPDM.xlsx + 압출라인별 BOM자료.xls 기준)
 export const EPDM_INSERTS = [
+  { id: "none", name: "미사용", spec: "-", desc: "사용 안함" },
   { id: "sus430_04_51_3", name: "SUS430(0.4*51*3)", spec: "0.4*51*3", desc: "스테인리스 심금" },
   { id: "sts430_04_455", name: "0.4*45.5 (SUS430)", spec: "0.4*45.5", desc: "SUS430 스테인리스 심금" },
   { id: "ins_04_455", name: "0.4*45.5", spec: "0.4*45.5", desc: "스틸 심금" },
@@ -77,6 +80,7 @@ export const EPDM_INSERTS = [
 
 // 4. 코팅액 마스터 목록 (EPDM.xlsx + 압출라인별 BOM자료.xls 기준)
 export const EPDM_COATINGS = [
+  { id: "none", name: "미사용", category: "미사용", desc: "사용 안함" },
   { id: "hsc_2000_b_3", name: "HSC-2000B-3", category: "속건성", desc: "속건성 코팅제 (표준)" },
   { id: "hsw_6000l", name: "HSW-6000L", category: "수성", desc: "수성 코팅제" },
   { id: "flocking_pile", name: "파일 후루킹", category: "후로킹", desc: "PVC 파일 후루킹" },

@@ -16,6 +16,29 @@ const FIRESTORE_DOC_ID = "overtime_2026_09";
 
 export const COMPANIES = ["오륙", "조영", "유성", "한울", "부림텍"];
 
+export const getReportDateSortKey = (report) => {
+  if (!report) return "0000-00-00";
+  const rawDate = report.workDate || "";
+  if (rawDate) {
+    const match = String(rawDate).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (match) {
+      const y = match[1] || "2026";
+      const m = String(parseInt(match[2], 10)).padStart(2, "0");
+      const d = String(parseInt(match[3], 10)).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+  }
+  const raw = String(report.workDateFormatted || report.title || "");
+  const match2 = raw.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (match2) {
+    const y = match2[1] || "2026";
+    const m = String(parseInt(match2[2], 10)).padStart(2, "0");
+    const d = String(parseInt(match2[3], 10)).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return "2026-10-01";
+};
+
 export const cleanCompanyName = (comp) => {
   if (!comp) return "오륙";
   const str = String(comp).trim();
@@ -43,17 +66,33 @@ export const normalizeDept = (dept) => {
   return "생산팀";
 };
 
+export const KOREAN_PUBLIC_HOLIDAYS_2026 = new Set([
+  "2026-01-01", // 신정
+  "2026-02-16", "2026-02-17", "2026-02-18", // 설날 연휴
+  "2026-03-01", "2026-03-02", // 삼일절 및 대체공휴일
+  "2026-05-05", // 어린이날
+  "2026-05-24", "2026-05-25", // 부처님오신날 및 대체공휴일
+  "2026-06-06", // 현충일
+  "2026-08-15", "2026-08-17", // 광복절 및 대체공휴일
+  "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", // 추석 연휴
+  "2026-10-03", "2026-10-05", // 개천절 및 대체공휴일
+  "2026-10-09", // 한글날
+  "2026-12-25"  // 성탄절
+]);
+
 export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
   if (typeof dateStrOrDay === "number") {
     const d = dateStrOrDay;
     const y = Number(year) || 2026;
     const m = Number(month) || 10;
+    const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
     const dt = new Date(y, m - 1, d);
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();
       return dayOfWeek === 0 || dayOfWeek === 6;
     }
-    return d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27;
+    return false;
   }
   if (!dateStrOrDay) return false;
   const rawStr = String(dateStrOrDay).trim();
@@ -62,6 +101,21 @@ export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
     const y = parseInt(p[1], 10);
     const m = parseInt(p[2], 10);
     const d = parseInt(p[3], 10);
+    const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
+  }
+  const mMatch = rawStr.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (mMatch) {
+    const y = mMatch[1] ? parseInt(mMatch[1], 10) : (year || 2026);
+    const m = parseInt(mMatch[2], 10);
+    const d = parseInt(mMatch[3], 10);
+    const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
     const dt = new Date(y, m - 1, d);
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();
@@ -254,34 +308,56 @@ export const getOptionMeta = (code) => {
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
 };
 
+export const cleanWorkerNameOnly = (str) => {
+  if (!str) return "";
+  return String(str)
+    .replace(/\([^)]*\)/g, "")
+    .replace(/(선임|책임|이사|대표|대표이사|사원|반장|조장|직장|주임|대리|과장|차장|부장|팀장|실장|상무|전무)/g, "")
+    .replace(/[\s\t\r\n]+/g, "")
+    .trim();
+};
+
 export const calculateWorkerDailyHours = (code) => {
   if (!code) return { isAttended: false, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 0 };
   const strCode = String(code).trim();
-  if (strCode === "-" || strCode === "휴무" || strCode === "결근" || strCode === "휴가" || strCode === "연차" || strCode === "") {
+  if (
+    strCode === "-" ||
+    strCode === "휴무" ||
+    strCode === "결근" ||
+    strCode.includes("결근") ||
+    strCode === "휴가" ||
+    strCode.includes("휴가") ||
+    strCode === "연차" ||
+    strCode.includes("연차") ||
+    strCode === "" ||
+    strCode === "미입력" ||
+    strCode === "undefined" ||
+    strCode === "null"
+  ) {
     return { isAttended: false, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 0 };
   }
-  if (strCode === "반차") {
+  if (strCode === "반차" || strCode.includes("반차")) {
     return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 4 };
   }
-  if (strCode === "🟢" || strCode === "정시" || strCode === "17") {
+  if (strCode === "🟢" || strCode === "정시" || strCode === "17" || strCode.includes("정시") || strCode.includes("🟢") || strCode === "출근") {
     return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 8 };
   }
-  if (strCode === "19" || strCode === "19시") {
+  if (strCode === "19" || strCode === "19시" || strCode.includes("19")) {
     return { isAttended: true, weekdayOt: 2, weekendOt: 0, nightDay: 0, workHours: 10 };
   }
-  if (strCode === "21" || strCode === "21시") {
+  if (strCode === "21" || strCode === "21시" || strCode.includes("21")) {
     return { isAttended: true, weekdayOt: 4, weekendOt: 0, nightDay: 0, workHours: 12 };
   }
-  if (strCode === "22" || strCode === "22시") {
+  if (strCode === "22" || strCode === "22시" || strCode.includes("22")) {
     return { isAttended: true, weekdayOt: 5, weekendOt: 0, nightDay: 0, workHours: 13 };
   }
-  if (strCode === "특근" || strCode === "주말특근") {
+  if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) {
     return { isAttended: true, weekdayOt: 0, weekendOt: 8, nightDay: 0, workHours: 8 };
   }
-  if (strCode === "야간") {
+  if (strCode === "야간" || strCode.includes("야간")) {
     return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 1, workHours: 8 };
   }
-  if (strCode === "주야") {
+  if (strCode === "주야" || strCode.includes("주야")) {
     return { isAttended: true, weekdayOt: 4, weekendOt: 0, nightDay: 1, workHours: 12 };
   }
   return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 8 };
@@ -300,7 +376,7 @@ export const calculateWorkerMonthlyTotals = (workerRecord, daysCount = 30) => {
 
   const maxDay = typeof daysCount === "number" ? daysCount : 30;
   for (let d = 1; d <= maxDay; d++) {
-    const val = workerRecord.daily[d];
+    const val = workerRecord.daily[d] !== undefined ? workerRecord.daily[d] : workerRecord.daily[String(d)];
     const { isAttended, weekdayOt, weekendOt, nightDay, workHours } = calculateWorkerDailyHours(val);
     if (isAttended) workDays++;
     weekdayOtHours += weekdayOt;
@@ -318,7 +394,7 @@ export const calculateWorkerMonthlyTotals = (workerRecord, daysCount = 30) => {
   };
 };
 
-export const calculateDailySummary = (attendanceList, dayNum = 8) => {
+export const calculateDailySummary = (attendanceList, dayNum = 8, year = 2026, month = 10) => {
   if (!Array.isArray(attendanceList)) {
     return {
       totalWorkers: 0,
@@ -334,6 +410,7 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     };
   }
 
+  const isWeekend = isWeekendByDate(dayNum, year, month);
   const companyBreakdown = {};
   COMPANIES.forEach((comp) => {
     companyBreakdown[comp] = {
@@ -393,23 +470,26 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     }
 
     const str = String(val).trim();
-    if (str === "🟢" || str === "정시" || str === "17" || str === "출근") {
+    if (str === "🟢" || str === "정시" || str === "17" || str === "출근" || str.includes("정시") || str.includes("🟢")) {
       regularCount++;
       companyBreakdown[comp].regular++;
-    } else if (str === "19" || str === "19시") {
+    } else if (str === "19" || str === "19시" || str.includes("19")) {
       ot19Count++;
       companyBreakdown[comp].ot19++;
-    } else if (str === "21" || str === "21시") {
+    } else if (str === "21" || str === "21시" || str.includes("21")) {
       ot21Count++;
       companyBreakdown[comp].ot21++;
-    } else if (str === "22" || str === "22시") {
+    } else if (str === "22" || str === "22시" || str.includes("22")) {
       ot22Count++;
       companyBreakdown[comp].ot22++;
-    } else if (str === "특근" || str === "주말특근" || str === "야간" || str === "주야") {
+    } else if (str === "특근" || str === "주말특근" || str.includes("특근") || str === "야간" || str.includes("야간") || str === "주야" || str.includes("주야")) {
       specialNightCount++;
       companyBreakdown[comp].specialNight++;
     } else if (str === "결근" || str === "무단결근" || str === "병결" || str.includes("결근")) {
-      companyBreakdown[comp].absent = (companyBreakdown[comp].absent || 0) + 1;
+      // 주말 및 법정 휴무일은 전원 필수 출근일이 아니므로 결근으로 집계하지 않음
+      if (!isWeekend) {
+        companyBreakdown[comp].absent = (companyBreakdown[comp].absent || 0) + 1;
+      }
     } else if (str === "연차" || str === "반차" || str === "휴가" || str.includes("휴가") || str.includes("연차")) {
       companyBreakdown[comp].leave = (companyBreakdown[comp].leave || 0) + 1;
     }
@@ -535,9 +615,8 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
     ? masterWorkers 
     : (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []);
 
-  // 1. Initialize base matrix preserving worker's daily records
+  // 1. Initialize base matrix with clean daily records (prevent unrecorded/future dates from leaking dirty state)
   const matrix = workers.map((w, idx) => {
-    const daily = { ...(w.daily || {}) };
     return {
       no: idx + 1,
       company: cleanCompanyName(w.company),
@@ -545,7 +624,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
       position: w.position || "작업원",
-      daily
+      daily: {}
     };
   });
 
@@ -563,12 +642,25 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
 
   // 2. Iterate through reports
   reports.forEach((report) => {
-    if (!report || !report.workDate) return;
-    const parts = String(report.workDate).split("-");
-    if (parts.length < 3) return;
-    const repYear = parseInt(parts[0], 10);
-    const repMonth = parseInt(parts[1], 10);
-    const day = parseInt(parts[2], 10);
+    if (!report) return;
+    // Skip synthesized reports (they are composite views of child reports)
+    if (report.isSynthesized) return;
+
+    let repDateStr = report.workDate || "";
+    if (!repDateStr) {
+      const match2 = String(report.workDateFormatted || report.title || "").match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+      if (match2) {
+        const y = match2[1] || "2026";
+        const m = String(parseInt(match2[2], 10)).padStart(2, "0");
+        const d = String(parseInt(match2[3], 10)).padStart(2, "0");
+        repDateStr = `${y}-${m}-${d}`;
+      }
+    }
+    const p = String(repDateStr).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (!p) return;
+    const repYear = parseInt(p[1], 10);
+    const repMonth = parseInt(p[2], 10);
+    const day = parseInt(p[3], 10);
     if (isNaN(day) || day < 1 || day > 31) return;
     if (targetYear && repYear !== Number(targetYear)) return;
     if (targetMonth && repMonth !== Number(targetMonth)) return;
@@ -576,8 +668,10 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
     const isWeekend = isWeekendByDate(day, repYear, repMonth);
 
     // Identify target companies for this report
+    const rawComp = String(report.company || "").trim();
+    const isAllGroup = !rawComp || rawComp === "전체" || rawComp === "5개사 통합" || rawComp === "전사" || rawComp === "통합" || rawComp === "ALL";
     let targetCompanies = [];
-    if (report.company && report.company !== "전체") {
+    if (!isAllGroup) {
       targetCompanies = [cleanCompanyName(report.company)];
     } else if (report.plant === "삼랑진공장") {
       targetCompanies = ["오륙", "유성"];
@@ -595,71 +689,81 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       report.items.forEach((it) => {
         if (!it) return;
         // Case A: item has individual workerName or name
-        const wName = String(it.workerName || it.name || "").trim();
+        const wName = String(it.workerName || it.name || it.worker || it.empName || it.userName || "").trim();
         if (wName) {
-          const cleanItName = wName.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+          const cleanItName = cleanWorkerNameOnly(wName);
+          const itComp = cleanCompanyName(it.company || it.factory || "");
           const targetW = matrix.find((w) => {
-            const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-            const sameName = w.name === wName || (cleanItName && wClean === cleanItName);
+            const cleanW = cleanWorkerNameOnly(w.name);
+            const sameName = (w.name || "").trim() === wName || (cleanItName && cleanW === cleanItName);
             if (!sameName) return false;
-            if (it.company) return matchCompany(it.company, w.company);
-            return targetCompanies.some(tc => matchCompany(tc, w.company));
+            const wComp = cleanCompanyName(w.company);
+            if (itComp && itComp !== "전체" && itComp !== "5개사 통합") {
+              return matchCompany(itComp, wComp);
+            }
+            return targetCompanies.some(tc => matchCompany(tc, wComp));
           }) || matrix.find((w) => {
-            const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-            return w.name === wName || (cleanItName && wClean === cleanItName);
+            const cleanW = cleanWorkerNameOnly(w.name);
+            return (w.name || "").trim() === wName || (cleanItName && cleanW === cleanItName);
           });
 
           if (targetW) {
             hasAppliedAnyItem = true;
-            let code = it.attendanceCode;
-            const codeStr = String(code || "").trim();
+            let rawCode = it.attendanceCode || it.code || it.attendance || it.status || it.category || "";
+            const codeStr = String(rawCode || "").trim();
             const contentStr = `${it.workContent || ""} ${it.workDetails || ""} ${it.note || ""}`;
+            let code = "";
 
             if (codeStr === "결근" || codeStr.includes("결근") || contentStr.includes("결근")) {
-              code = "결근";
+              code = isWeekend ? "-" : "결근";
             } else if (codeStr === "연차" || codeStr.includes("연차") || contentStr.includes("연차")) {
-              code = "연차";
+              code = isWeekend ? "-" : "연차";
             } else if (codeStr === "휴가" || codeStr.includes("휴가") || contentStr.includes("휴가")) {
-              code = "휴가";
+              code = isWeekend ? "-" : "휴가";
             } else if (codeStr === "반차" || codeStr.includes("반차") || contentStr.includes("반차")) {
-              code = "반차";
+              code = isWeekend ? "-" : "반차";
+            } else if (codeStr === "휴무" || codeStr === "-") {
+              code = "-";
             } else if (codeStr === "야간" || codeStr.includes("야간") || contentStr.includes("야간")) {
               code = "야간";
             } else if (codeStr === "주야" || codeStr.includes("주야") || contentStr.includes("주야")) {
               code = "주야";
-            } else if (codeStr === "19" || codeStr === "19시") {
+            } else if (codeStr === "19" || codeStr === "19시" || codeStr.includes("19") || (it.endTime && it.endTime.includes("19:00")) || it.hours === 10) {
               code = "19";
-            } else if (codeStr === "21" || codeStr === "21시") {
+            } else if (codeStr === "21" || codeStr === "21시" || codeStr.includes("21") || (it.endTime && it.endTime.includes("21:00")) || it.hours === 12) {
               code = "21";
-            } else if (codeStr === "22" || codeStr === "22시") {
+            } else if (codeStr === "22" || codeStr === "22시" || codeStr.includes("22") || (it.endTime && it.endTime.includes("22:00")) || it.hours === 13) {
               code = "22";
-            } else if (codeStr === "정시" || codeStr === "17" || codeStr === "출근") {
-              code = isWeekend ? "특근" : "🟢";
-            } else if (codeStr === "특근" || codeStr === "주말특근") {
-              if (!isWeekend) {
+            } else if (codeStr === "특근" || codeStr.includes("특근") || codeStr === "주말특근") {
+              if (isWeekend) {
+                code = "특근";
+              } else {
                 if (it.hours >= 13) code = "22";
                 else if (it.hours >= 12) code = "21";
                 else if (it.hours >= 10) code = "19";
                 else code = "🟢";
-              } else {
-                code = "특근";
               }
-            } else if (!codeStr || codeStr === "미입력" || codeStr === "-" || codeStr === "08:00") {
-              if (it.hours >= 13 || it.endTime === "22:00") code = "22";
-              else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
-              else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
-              else if (it.hours === 4 || it.startTime?.includes("반차")) code = "반차";
-              else if (it.hours === 0) {
-                // If targetW already had a valid state (e.g. 결근 or 연차) in matrix, preserve it!
-                const existingVal = targetW.daily[day] || targetW.daily[String(day)];
-                if (existingVal && existingVal !== "-" && existingVal !== "미입력" && existingVal !== "undefined" && existingVal !== "null") {
-                  code = existingVal;
-                } else {
-                  code = isWeekend ? "-" : "결근";
-                }
+            } else if (codeStr === "🟢" || codeStr === "정시" || codeStr.includes("정시") || codeStr.includes("🟢") || codeStr === "17" || codeStr === "출근") {
+              code = isWeekend ? "특근" : "🟢";
+            } else if (it.hours === 0 && (it.startTime === "-" || it.endTime === "-" || !it.hours)) {
+              const existingVal = targetW.daily[day] || targetW.daily[String(day)];
+              if (existingVal && existingVal !== "-" && existingVal !== "미입력" && existingVal !== "undefined" && existingVal !== "null") {
+                code = isWeekend && existingVal === "결근" ? "-" : existingVal;
               } else {
-                code = isWeekend ? "특근" : "🟢";
+                code = isWeekend ? "-" : "결근";
               }
+            } else if (it.hours >= 13 || it.endTime === "22:00") {
+              code = "22";
+            } else if (it.hours >= 12 || it.endTime === "21:00") {
+              code = "21";
+            } else if (it.hours >= 10 || it.endTime === "19:00") {
+              code = "19";
+            } else if (it.hours === 4 || it.startTime?.includes("반차")) {
+              code = isWeekend ? "특근" : "반차";
+            } else if (it.hours > 0) {
+              code = isWeekend ? "특근" : "🟢";
+            } else {
+              code = isWeekend ? "-" : "결근";
             }
 
             targetW.daily[day] = code;
@@ -670,16 +774,16 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
         else if (it.names) {
           const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
           namesList.forEach((n) => {
-            const cleanN = n.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+            const cleanN = cleanWorkerNameOnly(n);
             const targetW = matrix.find((w) => {
-              const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-              const sameName = w.name === n || (cleanN && wClean === cleanN);
+              const cleanW = cleanWorkerNameOnly(w.name);
+              const sameName = (w.name || "").trim() === n || (cleanN && cleanW === cleanN);
               if (!sameName) return false;
               if (it.company) return matchCompany(it.company, w.company);
               return targetCompanies.some(tc => matchCompany(tc, w.company));
             }) || matrix.find((w) => {
-              const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-              return w.name === n || (cleanN && wClean === cleanN);
+              const cleanW = cleanWorkerNameOnly(w.name);
+              return (w.name || "").trim() === n || (cleanN && cleanW === cleanN);
             });
 
             if (targetW) {
@@ -697,11 +801,11 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       });
     }
 
-    // Case C: Report was registered for company but had no individual items -> set all workers of that company to attended
-    if (!hasAppliedAnyItem && targetCompanies.length > 0) {
+    // Case C: Report was registered for company but had no individual items -> set all workers of that company to attended ONLY on regular weekdays
+    if (!hasAppliedAnyItem && targetCompanies.length > 0 && !isWeekend) {
       matrix.forEach((w) => {
         if (targetCompanies.some(tc => matchCompany(tc, w.company))) {
-          const defaultCode = isWeekend ? "특근" : "🟢";
+          const defaultCode = "🟢";
           if (!w.daily[day] || w.daily[day] === "미입력" || w.daily[day] === "-") {
             w.daily[day] = defaultCode;
             w.daily[String(day)] = defaultCode;

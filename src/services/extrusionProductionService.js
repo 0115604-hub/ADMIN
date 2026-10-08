@@ -52,7 +52,90 @@ export const EXTRUSION_STANDARD_SPECS = {
   coatingLot: "UF10161726927032700A",
   insertType: "SK5 0.5T",
   insertLot: "LOT-260930A",
-  pcmZones: [211.0, 212.5, 214.0, 210.5, 209.0, 213.0, 212.0, 210.0, 211.5, 215.0, 208.5, 210.0, 212.0]
+  pcmZones: [211.0, 212.5, 214.0, 210.5, 209.0, 213.0, 212.0, 210.0, 211.5, 215.0, 208.5, 210.0, 212.0],
+  // TPE Standard Specs (4개 압출기 속도 & 압출기온도 ±10℃ & 냉각수온도)
+  tpeExtruder100Rpm: "25.0",
+  tpeExtruder80Rpm: "20.0",
+  tpeExtruder65Rpm: "18.0",
+  tpeExtruder35Rpm: "15.0",
+  tpeExtruder45Rpm: "15.0",
+  tpeCoolingWaterTemp: "20",
+  tpeTemps100: {
+    screw: "180",
+    cylinder1: "180",
+    cylinder2: "185",
+    cylinder3: "190",
+    cylinder4: "195",
+    cylinder5: "200",
+    cylinder6: "200",
+    adapter: "205",
+    die: "210",
+    head1: "205",
+    head2: "205",
+    hopperDryer: "80"
+  },
+  tpeTemps80: {
+    cylinder1: "180",
+    cylinder2: "185",
+    cylinder3: "190",
+    cylinder4: "195",
+    adapter: "200",
+    nozzle: "205",
+    hopperDryer: "80"
+  },
+  tpeTemps65: {
+    cylinder1: "180",
+    cylinder2: "185",
+    cylinder3: "190",
+    adapter: "195",
+    nozzle: "200",
+    hopperDryer: "80"
+  },
+  tpeTemps35: {
+    cylinder1: "180",
+    cylinder2: "185",
+    adapter: "190",
+    nozzle: "195",
+    hopperDryer: "80"
+  },
+  tpeTemps45: {
+    cylinder1: "180",
+    cylinder2: "185",
+    adapter: "190",
+    nozzle: "195",
+    hopperDryer: "80"
+  },
+  // PVC Standard Specs (80Ø 압출속도 & 인취속도 & 7구간 압출기온도 ±10℃ & 냉각조/본드도포/후로킹/건조로)
+  pvcExtruder80Rpm: "20.0",
+  pvcHaulOffSpeed: "15.0",
+  pvcTemps: {
+    cylinder1: "170",
+    cylinder2: "175",
+    cylinder3: "180",
+    cylinder4: "185",
+    adapter: "190",
+    nozzle: "195",
+    die: "195"
+  },
+  pvcCoolingTankTemp: "20",
+  // 본드도포 (공급기1, 2 RPM)
+  pvcBondFeeder1Rpm: "15.0",
+  pvcBondFeeder2Rpm: "15.0",
+  pvcBondCoating: "양호",
+  // 후로킹(식모)조건 (전압 kV, 전류 uA, 파일조건)
+  pvcFlockVoltage: "50",
+  pvcFlockCurrent: "120",
+  pvcFlockingCondition: "0.8mm 양호",
+  // 건조로 온도 (1~4존 / 존1~존4) & 구동속도
+  pvcDryerDriveSpeed: "15.0",
+  pvcDryerSpeed: "15.0",
+  pvcDryerTemp: "160",
+  pvcDryerZones: {
+    zone1: "160",
+    zone2: "160",
+    zone3: "165",
+    zone4: "165"
+  }
 };
 
 export const MATERIAL_PRESETS = {
@@ -108,29 +191,32 @@ export const WORKER_PRESETS = [
 ];
 
 export const DOWNTIME_CATEGORIES = [
-  { id: "압개시", label: "압개시", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "초기 압출 승온 및 제품 인취 세팅" },
-  { id: "형교환", label: "형교환", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "금형(다이스) 교체 및 치수 세팅" },
-  { id: "종료", label: "종료", color: "bg-slate-200 text-slate-800 border-slate-300", defaultDetail: "작업 종료 및 라인 클리닝/정리" },
-  { id: "뜯김", label: "뜯김", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "제품 표면 뜯김 발생으로 다이스 청소" },
-  { id: "철심", label: "철심", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "인서트 철심 사행 및 틀어짐 교정" },
-  { id: "재압출", label: "재압출", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "초기 규격 미달로 재압출 진행" },
-  { id: "단면형상", label: "단면형상", color: "bg-indigo-100 text-indigo-900 border-indigo-300", defaultDetail: "립/돌기 부위 단면형상 불량 수정" },
-  { id: "스코치", label: "스코치", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "스크류 과열 고무 탄화(스코치) 제거" },
-  { id: "이물", label: "이물", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "원료 내 이물 혼입 발견으로 스크린 교체" },
-  { id: "미분산", label: "미분산", color: "bg-purple-100 text-purple-900 border-purple-300", defaultDetail: "카본/배합제 미분산 덩어리 발생 조치" },
-  { id: "발포", label: "발포", color: "bg-teal-100 text-teal-900 border-teal-300", defaultDetail: "스폰지 발포 배율 불량 및 온도 조정" },
-  { id: "원인불명", label: "원인불명", color: "bg-gray-200 text-gray-800 border-gray-400", defaultDetail: "원인불명 규격 이상 점검 및 재세팅" },
-  { id: "밴딩", label: "밴딩", color: "bg-blue-100 text-blue-900 border-blue-300", defaultDetail: "제품 휨/밴딩 현상 냉각조 장력 조정" },
-  { id: "심금절단", label: "심금절단", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "인서트 심금 끊어짐/절단 연결 작업" },
-  { id: "심금노출", label: "심금노출", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "심금 노출로 폐기 처리 및 위치 교정" },
-  { id: "천공", label: "천공", color: "bg-emerald-100 text-emerald-900 border-emerald-300", defaultDetail: "홀 천공 위치 편차 및 펀칭기 점검" },
-  { id: "연고무절단", label: "연고무절단", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "연질고무 끊김/절단 발생 조치" },
-  { id: "길이", label: "길이", color: "bg-cyan-100 text-cyan-900 border-cyan-300", defaultDetail: "절단 길이 편차 발생 치수 재세팅" },
-  { id: "코팅", label: "코팅", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "코팅 분사 노즐 막힘 청소 및 압력 조정" },
-  { id: "설비이상", label: "설비이상", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "압출 모터/감속기/인취기 설비 이상 점검" },
-  { id: "다이스수정", label: "다이스수정", color: "bg-violet-100 text-violet-900 border-violet-300", defaultDetail: "다이스 간격/각도 수정 및 샘플 확인" },
-  { id: "기술TRY", label: "기술TRY", color: "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300", defaultDetail: "신규 금형/배합 시생산 기술TRY 진행" },
-  { id: "기타", label: "기타", color: "bg-gray-100 text-gray-800 border-gray-300", defaultDetail: "기타 비가동 및 불량 조치" }
+  { id: "압개시", label: "압개시", type: "비가동", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "초기 압출 승온 및 제품 인취 세팅" },
+  { id: "형교환", label: "형교환", type: "비가동", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "금형(다이스) 교체 및 치수 세팅" },
+  { id: "종료", label: "종료", type: "비가동", color: "bg-slate-200 text-slate-800 border-slate-300", defaultDetail: "작업 종료 및 라인 클리닝/정리" },
+  { id: "포밍", label: "포밍", type: "비가동", color: "bg-teal-100 text-teal-900 border-teal-300", defaultDetail: "포밍 롤러/설비 세팅 및 형상 보정" },
+  { id: "박리", label: "박리", type: "비가동", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "접착/코팅 박리 발생 구간 점검 및 비가동 조치" },
+  { id: "후로킹", label: "후로킹", type: "비가동", color: "bg-purple-100 text-purple-900 border-purple-300", defaultDetail: "후로킹(식모) 챔버/정전기 설비 점검 및 비가동 조치" },
+  { id: "뜯김", label: "뜯김", type: "불량", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "제품 표면 뜯김 발생으로 다이스 청소" },
+  { id: "철심", label: "철심", type: "불량", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "인서트 철심 사행 및 틀어짐 교정" },
+  { id: "재압출", label: "재압출", type: "불량", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "초기 규격 미달로 재압출 진행" },
+  { id: "단면형상", label: "단면형상", type: "불량", color: "bg-indigo-100 text-indigo-900 border-indigo-300", defaultDetail: "립/돌기 부위 단면형상 불량 수정" },
+  { id: "스코치", label: "스코치", type: "불량", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "스크류 과열 고무 탄화(스코치) 제거" },
+  { id: "이물", label: "이물", type: "불량", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "원료 내 이물 혼입 발견으로 스크린 교체" },
+  { id: "미분산", label: "미분산", type: "불량", color: "bg-purple-100 text-purple-900 border-purple-300", defaultDetail: "카본/배합제 미분산 덩어리 발생 조치" },
+  { id: "발포", label: "발포", type: "불량", color: "bg-teal-100 text-teal-900 border-teal-300", defaultDetail: "스폰지 발포 배율 불량 및 온도 조정" },
+  { id: "원인불명", label: "원인불명", type: "불량", color: "bg-gray-200 text-gray-800 border-gray-400", defaultDetail: "원인불명 규격 이상 점검 및 재세팅" },
+  { id: "밴딩", label: "밴딩", type: "불량", color: "bg-blue-100 text-blue-900 border-blue-300", defaultDetail: "제품 휨/밴딩 현상 냉각조 장력 조정" },
+  { id: "심금절단", label: "심금절단", type: "불량", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "인서트 심금 끊어짐/절단 연결 작업" },
+  { id: "심금노출", label: "심금노출", type: "불량", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "심금 노출로 폐기 처리 및 위치 교정" },
+  { id: "천공", label: "천공", type: "불량", color: "bg-emerald-100 text-emerald-900 border-emerald-300", defaultDetail: "홀 천공 위치 편차 및 펀칭기 점검" },
+  { id: "연고무절단", label: "연고무절단", type: "불량", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "연질고무 끊김/절단 발생 조치" },
+  { id: "길이", label: "길이", type: "불량", color: "bg-cyan-100 text-cyan-900 border-cyan-300", defaultDetail: "절단 길이 편차 발생 치수 재세팅" },
+  { id: "코팅", label: "코팅", type: "불량", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "코팅 분사 노즐 막힘 청소 및 압력 조정" },
+  { id: "설비이상", label: "설비이상", type: "비가동", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "압출 모터/감속기/인취기 설비 이상 점검" },
+  { id: "다이스수정", label: "다이스수정", type: "비가동", color: "bg-violet-100 text-violet-900 border-violet-300", defaultDetail: "다이스 간격/각도 수정 및 샘플 확인" },
+  { id: "기술TRY", label: "기술TRY", type: "비가동", color: "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300", defaultDetail: "신규 금형/배합 시생산 기술TRY 진행" },
+  { id: "기타", label: "기타", type: "비가동", color: "bg-gray-100 text-gray-800 border-gray-300", defaultDetail: "기타 비가동 및 불량 조치" }
 ];
 
 export const TPM_CHECK_ITEMS = [
@@ -298,7 +384,87 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       sprayGun1: String(raw.conditions?.sprayGun1 || raw.sprayGun1 || "2.5").trim(),
       sprayGun2: String(raw.conditions?.sprayGun2 || raw.sprayGun2 || "2.6").trim(),
       sprayGun3: String(raw.conditions?.sprayGun3 || raw.sprayGun3 || "2.5").trim(),
-      sprayGun4: String(raw.conditions?.sprayGun4 || raw.sprayGun4 || "2.4").trim()
+      sprayGun4: String(raw.conditions?.sprayGun4 || raw.sprayGun4 || "2.4").trim(),
+      // TPE 속도 & 온도 & 냉각수온도
+      tpeExtruder100Rpm: String(raw.conditions?.tpeExtruder100Rpm || raw.tpeExtruder100Rpm || "25.0").trim(),
+      tpeExtruder80Rpm: String(raw.conditions?.tpeExtruder80Rpm || raw.tpeExtruder80Rpm || "20.0").trim(),
+      tpeExtruder65Rpm: String(raw.conditions?.tpeExtruder65Rpm || raw.tpeExtruder65Rpm || "18.0").trim(),
+      tpeExtruder35Rpm: String(raw.conditions?.tpeExtruder35Rpm || raw.conditions?.tpeExtruder45Rpm || raw.tpeExtruder35Rpm || raw.tpeExtruder45Rpm || "15.0").trim(),
+      tpeExtruder45Rpm: String(raw.conditions?.tpeExtruder35Rpm || raw.conditions?.tpeExtruder45Rpm || raw.tpeExtruder35Rpm || raw.tpeExtruder45Rpm || "15.0").trim(),
+      tpeCoolingWaterTemp: String(raw.conditions?.tpeCoolingWaterTemp || raw.tpeCoolingWaterTemp || raw.conditions?.coolingWaterTemp || "20").trim(),
+      tpeTemps100: {
+        screw: String(raw.conditions?.tpeTemps100?.screw ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder1: String(raw.conditions?.tpeTemps100?.cylinder1 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.tpeTemps100?.cylinder2 ?? "185").replace(/\.0+$/, "").trim(),
+        cylinder3: String(raw.conditions?.tpeTemps100?.cylinder3 ?? "190").replace(/\.0+$/, "").trim(),
+        cylinder4: String(raw.conditions?.tpeTemps100?.cylinder4 ?? "195").replace(/\.0+$/, "").trim(),
+        cylinder5: String(raw.conditions?.tpeTemps100?.cylinder5 ?? "200").replace(/\.0+$/, "").trim(),
+        cylinder6: String(raw.conditions?.tpeTemps100?.cylinder6 ?? "200").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.tpeTemps100?.adapter ?? "205").replace(/\.0+$/, "").trim(),
+        die: String(raw.conditions?.tpeTemps100?.die ?? "210").replace(/\.0+$/, "").trim(),
+        head1: String(raw.conditions?.tpeTemps100?.head1 ?? "205").replace(/\.0+$/, "").trim(),
+        head2: String(raw.conditions?.tpeTemps100?.head2 ?? "205").replace(/\.0+$/, "").trim(),
+        hopperDryer: String(raw.conditions?.tpeTemps100?.hopperDryer ?? "80").replace(/\.0+$/, "").trim()
+      },
+      tpeTemps80: {
+        cylinder1: String(raw.conditions?.tpeTemps80?.cylinder1 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.tpeTemps80?.cylinder2 ?? "185").replace(/\.0+$/, "").trim(),
+        cylinder3: String(raw.conditions?.tpeTemps80?.cylinder3 ?? "190").replace(/\.0+$/, "").trim(),
+        cylinder4: String(raw.conditions?.tpeTemps80?.cylinder4 ?? "195").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.tpeTemps80?.adapter ?? "200").replace(/\.0+$/, "").trim(),
+        nozzle: String(raw.conditions?.tpeTemps80?.nozzle ?? "205").replace(/\.0+$/, "").trim(),
+        hopperDryer: String(raw.conditions?.tpeTemps80?.hopperDryer ?? "80").replace(/\.0+$/, "").trim()
+      },
+      tpeTemps65: {
+        cylinder1: String(raw.conditions?.tpeTemps65?.cylinder1 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.tpeTemps65?.cylinder2 ?? "185").replace(/\.0+$/, "").trim(),
+        cylinder3: String(raw.conditions?.tpeTemps65?.cylinder3 ?? "190").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.tpeTemps65?.adapter ?? "195").replace(/\.0+$/, "").trim(),
+        nozzle: String(raw.conditions?.tpeTemps65?.nozzle ?? "200").replace(/\.0+$/, "").trim(),
+        hopperDryer: String(raw.conditions?.tpeTemps65?.hopperDryer ?? "80").replace(/\.0+$/, "").trim()
+      },
+      tpeTemps35: {
+        cylinder1: String(raw.conditions?.tpeTemps35?.cylinder1 ?? raw.conditions?.tpeTemps45?.cylinder1 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.tpeTemps35?.cylinder2 ?? raw.conditions?.tpeTemps45?.cylinder2 ?? "185").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.tpeTemps35?.adapter ?? raw.conditions?.tpeTemps45?.adapter ?? "190").replace(/\.0+$/, "").trim(),
+        nozzle: String(raw.conditions?.tpeTemps35?.nozzle ?? raw.conditions?.tpeTemps45?.nozzle ?? "195").replace(/\.0+$/, "").trim(),
+        hopperDryer: String(raw.conditions?.tpeTemps35?.hopperDryer ?? raw.conditions?.tpeTemps45?.hopperDryer ?? "80").replace(/\.0+$/, "").trim()
+      },
+      tpeTemps45: {
+        cylinder1: String(raw.conditions?.tpeTemps35?.cylinder1 ?? raw.conditions?.tpeTemps45?.cylinder1 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.tpeTemps35?.cylinder2 ?? raw.conditions?.tpeTemps45?.cylinder2 ?? "185").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.tpeTemps35?.adapter ?? raw.conditions?.tpeTemps45?.adapter ?? "190").replace(/\.0+$/, "").trim(),
+        nozzle: String(raw.conditions?.tpeTemps35?.nozzle ?? raw.conditions?.tpeTemps45?.nozzle ?? "195").replace(/\.0+$/, "").trim(),
+        hopperDryer: String(raw.conditions?.tpeTemps35?.hopperDryer ?? raw.conditions?.tpeTemps45?.hopperDryer ?? "80").replace(/\.0+$/, "").trim()
+      },
+      // PVC 속도 & 7구간 온도 & 냉각조/본드도포/후로킹/건조로
+      pvcExtruder80Rpm: String(raw.conditions?.pvcExtruder80Rpm || raw.pvcExtruder80Rpm || raw.conditions?.extruder80Rpm || "20.0").trim(),
+      pvcHaulOffSpeed: String(raw.conditions?.pvcHaulOffSpeed || raw.pvcHaulOffSpeed || raw.conditions?.haulOffSpeed || "15.0").trim(),
+      pvcCoolingTankTemp: String(raw.conditions?.pvcCoolingTankTemp || raw.pvcCoolingTankTemp || raw.conditions?.coolingTankTemp || "20").replace(/\.0+$/, "").trim(),
+      pvcBondFeeder1Rpm: String(raw.conditions?.pvcBondFeeder1Rpm || raw.pvcBondFeeder1Rpm || "15.0").trim(),
+      pvcBondFeeder2Rpm: String(raw.conditions?.pvcBondFeeder2Rpm || raw.pvcBondFeeder2Rpm || "15.0").trim(),
+      pvcBondCoating: String(raw.conditions?.pvcBondCoating || raw.pvcBondCoating || raw.conditions?.bondCoating || "양호").trim(),
+      pvcFlockVoltage: String(raw.conditions?.pvcFlockVoltage || raw.pvcFlockVoltage || "50").replace(/\.0+$/, "").trim(),
+      pvcFlockCurrent: String(raw.conditions?.pvcFlockCurrent || raw.pvcFlockCurrent || "120").replace(/\.0+$/, "").trim(),
+      pvcFlockingCondition: String(raw.conditions?.pvcFlockingCondition || raw.pvcFlockingCondition || raw.conditions?.flockingCondition || "0.8mm 양호").trim(),
+      pvcDryerDriveSpeed: String(raw.conditions?.pvcDryerDriveSpeed || raw.pvcDryerDriveSpeed || raw.conditions?.pvcDryerSpeed || "15.0").trim(),
+      pvcDryerSpeed: String(raw.conditions?.pvcDryerSpeed || raw.pvcDryerSpeed || raw.conditions?.pvcDryerDriveSpeed || "15.0").trim(),
+      pvcDryerTemp: String(raw.conditions?.pvcDryerTemp || raw.pvcDryerTemp || raw.conditions?.dryerTemp || "160").replace(/\.0+$/, "").trim(),
+      pvcDryerZones: {
+        zone1: String(raw.conditions?.pvcDryerZones?.zone1 ?? (Array.isArray(raw.conditions?.pvcDryerZones) ? raw.conditions.pvcDryerZones[0] : null) ?? raw.conditions?.pvcDryerTemp ?? "160").replace(/\.0+$/, "").trim(),
+        zone2: String(raw.conditions?.pvcDryerZones?.zone2 ?? (Array.isArray(raw.conditions?.pvcDryerZones) ? raw.conditions.pvcDryerZones[1] : null) ?? raw.conditions?.pvcDryerTemp ?? "160").replace(/\.0+$/, "").trim(),
+        zone3: String(raw.conditions?.pvcDryerZones?.zone3 ?? (Array.isArray(raw.conditions?.pvcDryerZones) ? raw.conditions.pvcDryerZones[2] : null) ?? "165").replace(/\.0+$/, "").trim(),
+        zone4: String(raw.conditions?.pvcDryerZones?.zone4 ?? (Array.isArray(raw.conditions?.pvcDryerZones) ? raw.conditions.pvcDryerZones[3] : null) ?? "165").replace(/\.0+$/, "").trim()
+      },
+      pvcTemps: {
+        cylinder1: String(raw.conditions?.pvcTemps?.cylinder1 ?? "170").replace(/\.0+$/, "").trim(),
+        cylinder2: String(raw.conditions?.pvcTemps?.cylinder2 ?? "175").replace(/\.0+$/, "").trim(),
+        cylinder3: String(raw.conditions?.pvcTemps?.cylinder3 ?? "180").replace(/\.0+$/, "").trim(),
+        cylinder4: String(raw.conditions?.pvcTemps?.cylinder4 ?? "185").replace(/\.0+$/, "").trim(),
+        adapter: String(raw.conditions?.pvcTemps?.adapter ?? "190").replace(/\.0+$/, "").trim(),
+        nozzle: String(raw.conditions?.pvcTemps?.nozzle ?? "195").replace(/\.0+$/, "").trim(),
+        die: String(raw.conditions?.pvcTemps?.die ?? "195").replace(/\.0+$/, "").trim()
+      }
     },
     tpmStatus: String(raw.tpmStatus || "완료"),
     tpmChecks: Array.isArray(raw.tpmChecks) && raw.tpmChecks.length > 0

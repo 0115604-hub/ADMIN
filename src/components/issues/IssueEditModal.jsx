@@ -28,6 +28,8 @@ import {
   X
 } from "lucide-react";
 
+import { useModalHistory } from "../../utils/modalHistory";
+
 export const getIssueOpinionCount = (item) => {
   if (!item) return 0;
   const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
@@ -74,7 +76,7 @@ export const IssueEditModal = ({
   onRemoveNewIssueActionImage,
   onToggleResolvedStatus
 }) => {
-  if (!isOpen || typeof document === "undefined") return null;
+  useModalHistory(isOpen, onClose, "issueEditModal");
 
   const [isAttendeeDropdownOpen, setIsAttendeeDropdownOpen] = useState(false);
 
@@ -82,6 +84,8 @@ export const IssueEditModal = ({
   const adminWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "본사"), [allWorkers]);
   const samrangjinWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "삼랑진공장"), [allWorkers]);
   const hanlimWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "한림공장"), [allWorkers]);
+
+  if (!isOpen || typeof document === "undefined") return null;
 
   const currentAttendees = newIssueForm.attendees || [];
 

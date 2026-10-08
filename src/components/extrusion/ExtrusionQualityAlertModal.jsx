@@ -21,12 +21,15 @@ import {
   isExtrusionWorkerProfile
 } from "../../services/extrusionQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import { useModalHistory } from "../../utils/modalHistory";
 
 export const ExtrusionQualityAlertModal = () => {
   const { currentProfile, isAuthenticated } = useAuth();
   const [issues, setIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [isOpen, setIsOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+
+  useModalHistory(isOpen, () => setIsOpen(false), "extrusionQualityAlertModal");
 
   // Subscribe to real-time quality issues
   useEffect(() => {

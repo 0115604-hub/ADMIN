@@ -1309,14 +1309,19 @@ export const syncPlantOvertimeToApprovalBox = async ({
         const comp = cleanCompanyName(rawComp) || (targetPlant === "삼랑진공장" ? "오륙" : "한울");
         participatingCompanies.add(comp);
 
-        let workerCount = Number(compRep.totalWorkers) || Number(compRep.headcount) || (compRep.items ? compRep.items.length : 0);
-        let workerHours = Number(compRep.totalHours) || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
+        const attendedItems = (compRep.items || []).filter(it => {
+          const isOff = Number(it.hours || 0) === 0 || it.attendanceCode === "-" || it.attendanceCode === "휴무" || it.attendanceCode === "결근" || it.attendanceCode === "연차" || it.attendanceCode === "휴가" || it.startTime === "-";
+          return !isOff;
+        });
+
+        let workerCount = Number(compRep.attendedWorkers) || (attendedItems.length > 0 ? attendedItems.length : (Number(compRep.totalWorkers) || 0));
+        let workerHours = Number(compRep.totalHours) || (attendedItems.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0));
         let workerCost = Number(compRep.cost) || (workerHours * 15000);
         let managersList = [];
         let workersList = [];
 
-        if (compRep.items && compRep.items.length > 0) {
-          compRep.items.forEach(it => {
+        if (attendedItems.length > 0) {
+          attendedItems.forEach(it => {
             const isManagerCategory = (it.category || "").includes("관리") || (it.dept || "").includes("관리") || (it.workContent || "").includes("총괄");
             const namesFromItem = [];
             if (it.workerName) {
@@ -1340,7 +1345,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
         const uniqueManagers = Array.from(new Set(managersList));
         const uniqueWorkers = Array.from(new Set(workersList)).filter(w => !uniqueManagers.includes(w));
-        const actualCount = (uniqueManagers.length + uniqueWorkers.length) || workerCount || 1;
+        const actualCount = (uniqueManagers.length + uniqueWorkers.length) || workerCount || 0;
 
         companySummaries.push({
           company: comp,

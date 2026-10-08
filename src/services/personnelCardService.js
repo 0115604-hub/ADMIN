@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   getDocs,
   onSnapshot
 } from "firebase/firestore";
@@ -604,3 +605,30 @@ export const subscribePersonnelCards = (callback) => {
     return () => {};
   }
 };
+
+// 개별 근로자 인사카드 영구 삭제 (Firestore & LocalStorage)
+export const deleteWorkerPersonnelCard = async (companyName, workerName) => {
+  try {
+    const cleanComp = cleanCompanyName(companyName);
+    const rawComp = String(companyName || "").trim();
+    const cardKey = `${cleanComp}_${workerName}`;
+    const map = getLocalPersonnelCardsMap();
+    delete map[cardKey];
+    delete map[`${rawComp}_${workerName}`];
+    saveLocalPersonnelCardsMap(map);
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("oryuk_personnel_card_updated", { detail: { cardKey, deleted: true } }));
+    }
+
+    if (db) {
+      const sanitizedDocId = cardKey.replace(/[^\w가-힣]/g, "_");
+      await deleteDoc(doc(db, "personnel_cards", sanitizedDocId));
+    }
+    return true;
+  } catch (err) {
+    console.warn("deleteWorkerPersonnelCard error:", err);
+    return false;
+  }
+};
+

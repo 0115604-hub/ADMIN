@@ -3,6 +3,7 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  getDocs,
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -199,4 +200,55 @@ export const unregisterFromFourMLedger = async (ledgerOrOriginalId) => {
   }
 
   return updated;
+};
+
+// Purge all MAN / Absence change points from Official Ledger (Firestore & LocalStorage)
+export const purgeManFourMChangePoints = async () => {
+  const current = getLocalFourMChangePoints();
+  const remaining = current.filter(
+    (it) =>
+      it.fourM?.toUpperCase() !== "MAN" &&
+      !String(it.sourceType || "").includes("MAN_ABSENCE") &&
+      !String(it.id || "").includes("man_") &&
+      !String(it.originalId || "").includes("man_")
+  );
+  saveLocalFourMChangePoints(remaining);
+
+  if (db) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      for (const d of snap.docs) {
+        const data = d.data();
+        const isMan =
+          data.fourM?.toUpperCase() === "MAN" ||
+          String(data.sourceType || "").includes("MAN_ABSENCE") ||
+          String(d.id).includes("man_") ||
+          String(data.originalId || "").includes("man_") ||
+          String(data.id || "").includes("man_");
+        if (isMan) {
+          await deleteDoc(doc(db, COLLECTION_NAME, d.id));
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore purgeManFourMChangePoints error:", e);
+    }
+  }
+
+  return remaining;
+};
+
+// Purge ALL change points from Official Ledger
+export const purgeAllFourMChangePoints = async () => {
+  saveLocalFourMChangePoints([]);
+  if (db) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      for (const d of snap.docs) {
+        await deleteDoc(doc(db, COLLECTION_NAME, d.id));
+      }
+    } catch (e) {
+      console.warn("Firestore purgeAllFourMChangePoints error:", e);
+    }
+  }
+  return [];
 };

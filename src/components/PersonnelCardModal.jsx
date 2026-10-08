@@ -48,6 +48,7 @@ import {
 } from "../services/personnelCardService.js";
 import { COMPANY_THEMES, cleanCompanyName } from "../services/overtimeSmartService.js";
 import { LanguageSelectBadge } from "./common/LanguageSelectBadge.jsx";
+import { useModalHistory } from "../utils/modalHistory";
 
 export default function PersonnelCardModal({
   isOpen,
@@ -56,14 +57,14 @@ export default function PersonnelCardModal({
   workerIndex,
   onSave
 }) {
-  if (!isOpen || !worker) return null;
+  useModalHistory(isOpen, onClose, "personnelCardModal");
 
   // Initial Card State
   const initialCard = useMemo(() => {
-    return getWorkerPersonnelCard(worker, workerIndex);
+    return worker ? getWorkerPersonnelCard(worker, workerIndex) : null;
   }, [worker, workerIndex]);
 
-  const [formData, setFormData] = useState(initialCard);
+  const [formData, setFormData] = useState(initialCard || {});
   const [hoverStar, setHoverStar] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [activeMobileView, setActiveMobileView] = useState("form"); // "form" or "preview"
@@ -78,7 +79,9 @@ export default function PersonnelCardModal({
 
   // Sync state if worker changes
   useEffect(() => {
-    setFormData(getWorkerPersonnelCard(worker, workerIndex));
+    if (worker) {
+      setFormData(getWorkerPersonnelCard(worker, workerIndex));
+    }
   }, [worker, workerIndex]);
 
   // Clean up camera stream on unmount or when camera modal closes
@@ -87,6 +90,8 @@ export default function PersonnelCardModal({
       stopCameraStream();
     };
   }, []);
+
+  if (!isOpen || !worker) return null;
 
   // Stop WebCam Stream
   const stopCameraStream = () => {

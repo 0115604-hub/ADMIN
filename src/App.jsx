@@ -68,16 +68,10 @@ export const App = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
-  // Auto version detection and cache synchronization
+  // Auto version detection and cache synchronization (Non-intrusive alert only, never force reload while typing)
   useEffect(() => {
     const unsub = initVersionWatcher((newVer) => {
       setUpdateAvailable(true);
-      // Auto reload after 2.5s if modal is not open
-      setTimeout(() => {
-        if (!modalOpenRef.current && !excelModalOpenRef.current) {
-          forceHardReload();
-        }
-      }, 2500);
     });
     return () => unsub();
   }, []);
@@ -150,8 +144,7 @@ export const App = () => {
     }
   }, [activeTab, isAuthenticated]);
 
-  // 3. 🌟 Global Browser & App Back Button (인터넷창 뒤로가기)
-  // 상세페이지에서 누르면 요약화면(worker_dashboard), 요약화면에서 누르면 메인화면(AuthModal)으로 이동
+  // 3. 🌟 Global Browser & App Back Button (안전한 뒤로가기 제어: 절대 자동 로그아웃되지 않음)
   useEffect(() => {
     const handlePopState = () => {
       // (1) 팝업 / 모달이 열려 있는 경우: 최상단 모달만 닫고 현재 화면 유지
@@ -180,27 +173,36 @@ export const App = () => {
         return;
       }
 
-      // [규칙 1] 상세페이지에서 누르면 요약화면(worker_dashboard)으로 복귀
-      if (currentTab !== "worker_dashboard") {
-        setActiveTab("worker_dashboard");
+      const isExtrusionWorker =
+        currentProfile &&
+        (currentProfile.building === "압출동" ||
+        currentProfile.id?.startsWith("ext_") ||
+        currentProfile.name === "공영국" ||
+        currentProfile.name === "심임대" ||
+        currentProfile.name === "이상은") &&
+        currentProfile.name !== "설유철" &&
+        currentProfile.id !== "sam_yc";
+
+      const homeTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
+
+      // 상세 메뉴에서 뒤로가기 누른 경우 홈 화면으로 이동
+      if (currentTab !== homeTab) {
+        setActiveTab(homeTab);
         try {
-          window.history.replaceState({ screen: "worker_dashboard", isSummary: true }, "");
+          window.history.replaceState({ screen: homeTab, isSummary: true }, "");
         } catch (err) {}
         return;
       }
 
-      // [규칙 2] 요약화면(worker_dashboard)에서 누르면 메인화면(AuthModal / 로그아웃)으로 이동
-      if (currentTab === "worker_dashboard") {
-        logout();
-        try {
-          window.history.replaceState({ screen: "main", isMain: true }, "");
-        } catch (err) {}
-      }
+      // 홈 화면에서는 뒤로가기 시 로그아웃하지 않고 현재 홈 화면 유지 (로그아웃은 헤더/프로필 버튼 전용)
+      try {
+        window.history.replaceState({ screen: homeTab, isSummary: true }, "");
+      } catch (err) {}
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [logout]);
+  }, [currentProfile]);
 
   // Scroll to top on active tab change
   useEffect(() => {

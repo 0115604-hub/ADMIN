@@ -35,6 +35,7 @@ import {
   mergeExtractedExpensesWithState
 } from "../utils/hanulExpenseParser";
 import HanulDocumentImageViewer from "./HanulDocumentImageViewer";
+import { useModalHistory } from "../utils/modalHistory";
 import * as XLSX from "xlsx";
 
 /**
@@ -103,6 +104,7 @@ export const getHanulSettlementMonthOptions = () => {
 };
 
 export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
+  useModalHistory(isOpen, onClose, "hanulSettlementModal");
   const { formatAmount } = useCurrency() || { formatAmount: (v) => `₩${Number(v || 0).toLocaleString()}` };
 
   // 🌟 입력시점의 전월 데이터를 기본으로 표시 (Default: Previous Month)
@@ -129,6 +131,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
   // UI View Modes: "split" (기본: 좌측 항목입력 / 우측 증빙뷰어), "form" (항목만 크게), "imageOnly" (이미지만 크게)
   const [viewMode, setViewMode] = useState("split");
   const [isViewerModalOpen, setIsViewerModalOpen] = useState(false);
+  useModalHistory(isViewerModalOpen, () => setIsViewerModalOpen(false), "hanulDocumentViewerModal");
   const [activeViewerAttId, setActiveViewerAttId] = useState(null);
   const [activeViewerPageIndex, setActiveViewerPageIndex] = useState(0);
 

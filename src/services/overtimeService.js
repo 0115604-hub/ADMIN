@@ -18,6 +18,9 @@ import {
   buildMatrixFromReports
 } from "./overtimeSmartService";
 
+const COLLECTION_NAME = "overtime_reports";
+const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v7_company_reports";
+
 // ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
 // 삼랑진공장: (주)오륙, 유성
 // 한림공장: (주)조영산업, 한울, 부림텍
@@ -107,8 +110,28 @@ export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
 
 export const INITIAL_OVERTIME_REPORTS = [];
 
-const COLLECTION_NAME = "overtime_reports";
-const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v7_company_reports";
+export const getReportDateSortKey = (report) => {
+  if (!report) return "0000-00-00";
+  const rawDate = report.workDate || "";
+  if (rawDate) {
+    const match = String(rawDate).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (match) {
+      const y = match[1] || "2026";
+      const m = String(parseInt(match[2], 10)).padStart(2, "0");
+      const d = String(parseInt(match[3], 10)).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+  }
+  const raw = String(report.workDateFormatted || report.title || "");
+  const match2 = raw.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (match2) {
+    const y = match2[1] || "2026";
+    const m = String(parseInt(match2[2], 10)).padStart(2, "0");
+    const d = String(parseInt(match2[3], 10)).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return "2026-10-01";
+};
 
 export const formatKoreanWorkDate = (dateStr) => {
   if (!dateStr) return "";
@@ -503,3 +526,61 @@ export const getLatestOvertimeSummary = (allReports = null) => {
     totalLatestManHours: samMetrics.manHours + halMetrics.manHours
   };
 };
+
+// ⭐ 근태 및 특근 보고서 + 스마트 대장 데이터 영구 초기화 함수 (All Data & Dummy Purge)
+export const purgeAllOvertimeReportsAndLedger = async () => {
+  // 1. LocalStorage 삭제
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem("official_overtime_reports_store_v7_company_reports");
+      localStorage.removeItem("oryuk_smart_overtime_data_v2_sept");
+      localStorage.removeItem("oryuk_smart_overtime_data_2026_10");
+      localStorage.removeItem("oryuk_smart_overtime_data_2026_09");
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("oryuk_smart_overtime_data_")) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) {
+      console.warn("LocalStorage clear error in purge:", e);
+    }
+  }
+
+  // 2. Firestore overtime_reports 전체 삭제
+  if (db) {
+    try {
+      const repSnap = await getDocs(collection(db, COLLECTION_NAME));
+      for (const d of repSnap.docs) {
+        await deleteDoc(doc(db, COLLECTION_NAME, d.id));
+      }
+    } catch (e) {
+      console.warn("Firestore overtime_reports clear error:", e);
+    }
+
+    // 3. Firestore smart_overtime_ledger 초기화 (143명 빈 템플릿으로 갱신)
+    try {
+      const ledgerSnap = await getDocs(collection(db, "smart_overtime_ledger"));
+      for (const d of ledgerSnap.docs) {
+        await deleteDoc(doc(db, "smart_overtime_ledger", d.id));
+      }
+      const emptyLedger10 = getLocalSmartOvertimeData("2026-10");
+      await saveSmartOvertimeData(emptyLedger10, "2026-10");
+      const emptyLedger09 = getLocalSmartOvertimeData("2026-09");
+      await saveSmartOvertimeData(emptyLedger09, "2026-09");
+    } catch (e) {
+      console.warn("Firestore smart_overtime_ledger reset error:", e);
+    }
+  }
+
+  // 4. Custom Event 브로드캐스트
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", {
+      detail: getLocalSmartOvertimeData("2026-10")
+    }));
+  }
+
+  return true;
+};
+

@@ -33,11 +33,6 @@ export async function checkAppVersion(onUpdateAvailable) {
 
       if (onUpdateAvailable) {
         onUpdateAvailable(data);
-      } else {
-        // Smooth auto-reload to fetch the freshest bundle
-        setTimeout(() => {
-          window.location.reload(true);
-        }, 500);
       }
     }
   } catch (err) {

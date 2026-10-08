@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import PersonnelCardModal from "./PersonnelCardModal.jsx";
 import Absence4MModal from "./Absence4MModal.jsx";
+import { purgeAll4MAbsenceLogs } from "../services/absence4MService.js";
 import {
   getWorkerPersonnelCard,
   saveWorkerPersonnelCard,
@@ -65,7 +66,8 @@ import {
   normalizeStandardDept,
   normalizeStandardPosition,
   getLocalPersonnelCardsMap,
-  subscribePersonnelCards
+  subscribePersonnelCards,
+  deleteWorkerPersonnelCard
 } from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
@@ -73,7 +75,9 @@ import * as XLSX from "xlsx";
 import {
   COMPANIES,
   DEPARTMENTS,
-  COMPANY_THEMES, cleanCompanyName,
+  COMPANY_THEMES,
+  cleanCompanyName,
+  cleanWorkerNameOnly,
   COMPANY_APPROVAL_MANAGERS,
   ATTENDANCE_OPTIONS,
   getOptionMeta,
@@ -100,7 +104,8 @@ import {
   calculateReportMetrics,
   PLANT_COMPANIES,
   getPlantForCompany,
-  isWeekendByDate
+  isWeekendByDate,
+  purgeAllOvertimeReportsAndLedger
 } from "../services/overtimeService";
 import {
   syncPlantOvertimeToApprovalBox,
@@ -809,6 +814,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [workerMgmtSkillFilter, setWorkerMgmtSkillFilter] = useState("ALL");
   const [workerMgmtMultiSkillOnly, setWorkerMgmtMultiSkillOnly] = useState(false);
   const [showAddWorkerDrawer, setShowAddWorkerDrawer] = useState(false);
+  const [workerToDelete, setWorkerToDelete] = useState(null);
+  const [isDeletingWorker, setIsDeletingWorker] = useState(false);
 
   // ⭐ 월간 종합현황 대장 전용 조회 월 (기본값: 지난달 9월 마감 실적)
   const [matrixViewMonth, setMatrixViewMonth] = useState(() => "2026-09");
@@ -893,12 +900,36 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [quickNewWorkerLine, setQuickNewWorkerLine] = useState("");
   const [quickNewWorkerPos, setQuickNewWorkerPos] = useState("사원");
 
-  // Legacy overtime reports state (특근보고서 관리)
   const [legacyReports, setLegacyReports] = useState(() => getLocalOvertimeReports());
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
   const [selectedWeekendDay, setSelectedWeekendDay] = useState(3);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+
+  // ⭐ 근태 데이터 및 더미데이터 전체 영구삭제 핸들러
+  const handleConfirmPurgeAllData = async () => {
+    setIsPurging(true);
+    try {
+      await purgeAllOvertimeReportsAndLedger();
+      await purgeAll4MAbsenceLogs();
+      const fresh10 = getLocalSmartOvertimeData("2026-10");
+      const fresh09 = getLocalSmartOvertimeData("2026-09");
+      setSmartData(fresh10);
+      setPrevMonthData(fresh09);
+      setLegacyReports([]);
+      setSelectedLegacyReport(null);
+      setHasUnsavedChanges(false);
+      setIsPurgeModalOpen(false);
+      triggerToast("✨ 기존 근태 등록, 4M 결근 이력 및 더미데이터가 영구 삭제되고 143명 빈 명단으로 초기화되었습니다.");
+    } catch (err) {
+      console.error("Purge error:", err);
+      triggerToast("⚠️ 초기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsPurging(false);
+    }
+  };
 
   // Show Toast notification
   const triggerToast = (msg) => {
@@ -1012,22 +1043,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
+  // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
   const handleUpdateWorkerDayAttendance = async (targetWorkerOrIndex, newCode) => {
-    const currentMatrix = smartData?.attendanceMatrix || [];
+    const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+      ? [...effectiveMatrix]
+      : (smartData?.attendanceMatrix || []);
     let targetIdx = -1;
 
     if (typeof targetWorkerOrIndex === "object" && targetWorkerOrIndex !== null) {
-      const wName = (targetWorkerOrIndex.name || "").trim();
-      const wClean = wName.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-      const wComp = cleanCompanyName(targetWorkerOrIndex.company);
-      targetIdx = currentMatrix.findIndex(
-        (w) => ((w.name || "").trim() === wName || (wClean && (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === wClean)) && cleanCompanyName(w.company) === wComp
-      );
-      if (targetIdx === -1) {
-        targetIdx = currentMatrix.findIndex((w) => (w.name || "").trim() === wName || (wClean && (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === wClean));
-      }
-      if (targetIdx === -1 && typeof targetWorkerOrIndex.originalMatrixIndex === "number") {
+      if (typeof targetWorkerOrIndex.originalMatrixIndex === "number" && currentMatrix[targetWorkerOrIndex.originalMatrixIndex]) {
         targetIdx = targetWorkerOrIndex.originalMatrixIndex;
+      } else {
+        const wName = (targetWorkerOrIndex.name || "").trim();
+        const wClean = cleanWorkerNameOnly(wName);
+        const wComp = cleanCompanyName(targetWorkerOrIndex.company);
+        targetIdx = currentMatrix.findIndex(
+          (w) => ((w.name || "").trim() === wName || (wClean && cleanWorkerNameOnly(w.name) === wClean)) && cleanCompanyName(w.company) === wComp
+        );
       }
     } else if (typeof targetWorkerOrIndex === "number") {
       targetIdx = targetWorkerOrIndex;
@@ -1035,15 +1067,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     if (targetIdx === -1 || !currentMatrix[targetIdx]) return;
 
-    const updatedMatrix = [...currentMatrix];
-    const worker = updatedMatrix[targetIdx];
-    const prevDaily = worker.daily || {};
-    const updatedDaily = { ...prevDaily, [selectedDay]: newCode, [String(selectedDay)]: newCode };
+    const updatedMatrix = currentMatrix.map((w) => ({
+      ...w,
+      daily: { ...(w.daily || {}) }
+    }));
 
-    updatedMatrix[targetIdx] = {
-      ...worker,
-      daily: updatedDaily
-    };
+    if (newCode) {
+      updatedMatrix[targetIdx].daily[selectedDay] = newCode;
+      updatedMatrix[targetIdx].daily[String(selectedDay)] = newCode;
+    } else {
+      delete updatedMatrix[targetIdx].daily[selectedDay];
+      delete updatedMatrix[targetIdx].daily[String(selectedDay)];
+    }
 
     const newLedger = {
       ...smartData,
@@ -1075,9 +1110,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     // Helper: checks if a day has any worker attendance configured
     const hasDataOnDay = (d) => {
       if (!d || d < 1 || d >= selectedDay) return false;
-      return (smartData.attendanceMatrix || []).some((w) => {
-        const v = w.daily ? String(w.daily[d] || "").trim() : "";
-        return v && v !== "-" && v !== "휴무";
+      return (effectiveMatrix || smartData.attendanceMatrix || []).some((w) => {
+        const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
+        const strV = String(v).trim();
+        return strV && strV !== "-" && strV !== "휴무" && strV !== "미입력" && strV !== "undefined" && strV !== "null";
       });
     };
 
@@ -1108,12 +1144,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
 
     const sourceDayLabel = getDayLabel(targetSourceDay);
-    const updatedMatrix = [...smartData.attendanceMatrix];
+    const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+      ? [...effectiveMatrix]
+      : (smartData?.attendanceMatrix || []);
+    const updatedMatrix = currentMatrix.map((w) => ({
+      ...w,
+      daily: { ...(w.daily || {}) }
+    }));
     let appliedCount = 0;
 
     filteredAttendanceWorkers.forEach((worker) => {
-      const idx = worker.originalMatrixIndex;
-      if (updatedMatrix[idx]) {
+      let idx = -1;
+      if (typeof worker.originalMatrixIndex === "number" && updatedMatrix[worker.originalMatrixIndex]) {
+        idx = worker.originalMatrixIndex;
+      } else {
+        const wClean = cleanWorkerNameOnly(worker.name);
+        const wComp = cleanCompanyName(worker.company);
+        idx = updatedMatrix.findIndex(
+          (mw) => ((mw.name || "").trim() === (worker.name || "").trim() || (wClean && cleanWorkerNameOnly(mw.name) === wClean)) && cleanCompanyName(mw.company) === wComp
+        );
+      }
+
+      if (idx >= 0 && updatedMatrix[idx]) {
         const prevDaily = updatedMatrix[idx].daily || {};
         let sourceVal =
           prevDaily[targetSourceDay] !== undefined
@@ -1130,14 +1182,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         } else if (sourceVal === "특근" || sourceVal === "주말특근") {
           // 평일에는 특근 코드를 일반 정시(🟢)로 변환
           sourceVal = "🟢";
+        } else if (
+          sourceVal === "결근" ||
+          sourceVal === "무단결근" ||
+          sourceVal === "병결" ||
+          sourceVal === "연차" ||
+          sourceVal === "반차" ||
+          sourceVal === "휴가" ||
+          sourceVal === "공가" ||
+          sourceVal === "경조사" ||
+          sourceVal.includes("결근") ||
+          sourceVal.includes("연차") ||
+          sourceVal.includes("휴가") ||
+          sourceVal.includes("반차") ||
+          sourceVal.includes("병결")
+        ) {
+          // ⭐ [결근/휴무 일자별 격리 규칙] 결근/연차/휴가는 당일 단발성 예외 근태이므로 '전일과동일' 적용 시 익일에는 기본 정시(🟢) 정상 출근으로 복귀
+          sourceVal = "🟢";
         }
 
         if (sourceVal) appliedCount++;
 
-        updatedMatrix[idx] = {
-          ...updatedMatrix[idx],
-          daily: { ...prevDaily, [selectedDay]: sourceVal, [String(selectedDay)]: sourceVal }
-        };
+        updatedMatrix[idx].daily[selectedDay] = sourceVal;
+        updatedMatrix[idx].daily[String(selectedDay)] = sourceVal;
       }
     });
 
@@ -1151,7 +1218,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
 
-    const msg = `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
+    const msg = `📋 [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${appliedCount}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
@@ -1160,16 +1227,31 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
   const handleSetAllFilteredWorkersRegular = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
-    const updatedMatrix = [...smartData.attendanceMatrix];
+    const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+      ? [...effectiveMatrix]
+      : (smartData?.attendanceMatrix || []);
+    const updatedMatrix = currentMatrix.map((w) => ({
+      ...w,
+      daily: { ...(w.daily || {}) }
+    }));
 
+    let updatedCount = 0;
     filteredAttendanceWorkers.forEach((worker) => {
-      const idx = worker.originalMatrixIndex;
-      if (updatedMatrix[idx]) {
-        const prevDaily = updatedMatrix[idx].daily || {};
-        updatedMatrix[idx] = {
-          ...updatedMatrix[idx],
-          daily: { ...prevDaily, [selectedDay]: "🟢", [String(selectedDay)]: "🟢" }
-        };
+      let idx = -1;
+      if (typeof worker.originalMatrixIndex === "number" && updatedMatrix[worker.originalMatrixIndex]) {
+        idx = worker.originalMatrixIndex;
+      } else {
+        const wClean = cleanWorkerNameOnly(worker.name);
+        const wComp = cleanCompanyName(worker.company);
+        idx = updatedMatrix.findIndex(
+          (mw) => ((mw.name || "").trim() === (worker.name || "").trim() || (wClean && cleanWorkerNameOnly(mw.name) === wClean)) && cleanCompanyName(mw.company) === wComp
+        );
+      }
+
+      if (idx >= 0 && updatedMatrix[idx]) {
+        updatedMatrix[idx].daily[selectedDay] = "🟢";
+        updatedMatrix[idx].daily[String(selectedDay)] = "🟢";
+        updatedCount++;
       }
     });
 
@@ -1182,7 +1264,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+    triggerToast(`🟢 [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
   };
 
@@ -1193,26 +1275,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const dayLabel = getDayLabel(d);
     const reportType = isWk ? "특근보고서" : "근태보고서";
 
-    // 🚨 1. 누락된 항목(미선택 인원) 검증: 미선택 항목이 있을 경우 등록 차단 및 알림
-    const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
-      const val = w.daily ? w.daily[d] : "";
-      const str = String(val || "").trim();
-      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
-    });
+    // 🚨 1. 누락된 항목(미선택 인원) 검증: 평일인 경우에만 미선택 항목이 있을 때 등록 차단 및 알림 (휴무일/주말/공휴일은 비출근자가 있으므로 미선택자가 있어도 특근자만 등록 가능)
+    if (!isWk) {
+      const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
+        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        const str = String(val || "").trim();
+        return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+      });
 
-    if (missingWorkers.length > 0) {
-      const missingCount = missingWorkers.length;
-      const sampleNames = missingWorkers
-        .slice(0, 10)
-        .map((w, idx) => `• ${w.name} (${w.dept || w.company || "소속"})`)
-        .join("\n");
-      const moreText = missingCount > 10 ? `\n... 외 ${missingCount - 10}명` : "";
+      if (missingWorkers.length > 0) {
+        const missingCount = missingWorkers.length;
+        const sampleNames = missingWorkers
+          .slice(0, 10)
+          .map((w) => `• ${w.name} (${w.dept || w.company || "소속"})`)
+          .join("\n");
+        const moreText = missingCount > 10 ? `\n... 외 ${missingCount - 10}명` : "";
 
-      const alertMessage = `⚠️ [근태 미입력 알림 - 등록 불가]\n\n${currentMonthNum}월 ${d}일(${dayLabel}) 근태 선택 테이블에 아직 근태가 입력(선택)되지 않은 근로자가 총 ${missingCount}명 있습니다.\n\n[미선택 근로자 명단 (${missingCount}명)]\n${sampleNames}${moreText}\n\n모든 근로자의 근태(정시, 19시, 21시, 22시, 야간, 연차, 결근 등)를 빠짐없이 선택하셔야 보고서 등록이 가능합니다.\n\n💡 TIP: 상단의 '🟢 정시전체선택' 또는 '📋 전일과동일' 버튼을 누르시면 전체 인원의 근태를 빠르게 일괄 입력하실 수 있습니다.`;
+        const alertMessage = `⚠️ [근태 미선택 알림 - 등록 불가]\n\n${currentMonthNum}월 ${d}일(${dayLabel}) [${selectedCompanyFilter}] 근태 선택 테이블에 아직 근태가 선택되지 않은 근로자가 총 ${missingCount}명 있습니다.\n\n[미선택 근로자 명단 (${missingCount}명)]\n${sampleNames}${moreText}\n\n평일 근태는 모든 근로자의 근태(정시, 19시, 21시, 22시, 야간, 연차, 결근 등)를 빠짐없이 선택하셔야 보고서 등록이 가능합니다.\n\n💡 TIP: 상단의 '🟢 정시전체선택' 또는 '📋 전일과동일' 버튼을 누르시면 전체 인원의 근태를 빠르게 일괄 입력하실 수 있습니다.`;
 
-      alert(alertMessage);
-      triggerToast(`⚠️ 근태 미입력 인원이 ${missingCount}명 있어 등록할 수 없습니다. 테이블에서 모든 인원의 근태를 선택해주세요.`);
-      return;
+        alert(alertMessage);
+        triggerToast(`⚠️ 근태 미선택 인원이 ${missingCount}명 있어 등록할 수 없습니다. 테이블에서 모든 인원의 근태를 선택해주세요.`);
+        return;
+      }
     }
 
     const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
@@ -1231,13 +1315,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
 
     const attendedCount = (filteredAttendanceWorkers || []).filter(w => {
-      const val = w.daily ? w.daily[d] : "";
+      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const { isAttended, workHours } = calculateWorkerDailyHours(val);
       return isAttended && workHours > 0;
     }).length;
 
     const totalHours = (filteredAttendanceWorkers || []).reduce((sum, w) => {
-      const val = w.daily ? w.daily[d] : "";
+      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const { workHours } = calculateWorkerDailyHours(val);
       return sum + (workHours || 0);
     }, 0);
@@ -1276,53 +1360,61 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const isWk = isWeekendDay(d);
     const dayLabel = getDayLabel(d);
 
-    // 🚨 최종 저장 전 누락 항목 재검증
-    const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
-      const val = w.daily ? w.daily[d] : "";
-      const str = String(val || "").trim();
-      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
-    });
+    // 🚨 최종 저장 전 누락 항목 재검증 (평일인 경우에만 전체 선택 필수)
+    if (!isWk) {
+      const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
+        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        const str = String(val || "").trim();
+        return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+      });
 
-    if (missingWorkers.length > 0) {
-      alert(`⚠️ 근태가 미선택된 근로자(${missingWorkers.length}명)가 있어 저장 및 등록을 진행할 수 없습니다.`);
-      return;
+      if (missingWorkers.length > 0) {
+        alert(`⚠️ 근태가 미선택된 근로자(${missingWorkers.length}명)가 있어 저장 및 등록을 진행할 수 없습니다.\n\n정시, 19시, 21시, 22시, 야간, 연차, 결근 등 모든 근로자의 근태를 선택해주세요.`);
+        return;
+      }
     }
 
     setIsSaving(true);
     try {
       // 1. Save smart overtime ledger to Firestore & LocalStorage (ensure all current daily values are synchronized)
       const allWorkersList = filteredAttendanceWorkers || [];
-      if (smartData && Array.isArray(smartData.attendanceMatrix)) {
-        const currentMatrix = [...smartData.attendanceMatrix];
-        allWorkersList.forEach((w) => {
-          const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
-          const cleanWName = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
-          const targetIdx = currentMatrix.findIndex(
-            (mw) => ((mw.name || "").trim() === (w.name || "").trim() || (cleanWName && (mw.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === cleanWName)) && cleanCompanyName(mw.company) === cleanCompanyName(w.company)
-          );
-          if (targetIdx >= 0) {
-            currentMatrix[targetIdx] = {
-              ...currentMatrix[targetIdx],
-              daily: {
-                ...(currentMatrix[targetIdx].daily || {}),
-                [d]: val,
-                [String(d)]: val
-              }
-            };
-          }
-        });
-        const updatedLedger = {
-          ...smartData,
-          attendanceMatrix: currentMatrix
-        };
-        setSmartData(updatedLedger);
-        await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
-      }
+      const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+        ? [...effectiveMatrix]
+        : (smartData?.attendanceMatrix || []);
+
+      allWorkersList.forEach((w) => {
+        let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        const strVal = String(val || "").trim();
+        const { isAttended, workHours } = calculateWorkerDailyHours(val);
+        // 주말 및 법정 휴무일: 출근하지 않거나 미입력/결근인 인원은 결근이 아닌 정상 '휴무(-)'로 처리
+        if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
+          val = "-";
+        }
+        const cleanWName = cleanWorkerNameOnly(w.name);
+        const targetIdx = currentMatrix.findIndex(
+          (mw) => ((mw.name || "").trim() === (w.name || "").trim() || (cleanWName && cleanWorkerNameOnly(mw.name) === cleanWName)) && cleanCompanyName(mw.company) === cleanCompanyName(w.company)
+        );
+        if (targetIdx >= 0) {
+          currentMatrix[targetIdx] = {
+            ...currentMatrix[targetIdx],
+            daily: {
+              ...(currentMatrix[targetIdx].daily || {}),
+              [d]: val,
+              [String(d)]: val
+            }
+          };
+        }
+      });
+      const updatedLedger = {
+        ...smartData,
+        year: currentYear,
+        month: currentMonthNum,
+        attendanceMatrix: currentMatrix
+      };
+      setSmartData(updatedLedger);
+      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
       
       // 2. Generate and save company-specific report record
-      const d = selectedDay || 1;
-      const isWk = isWeekendDay(d);
-      const dayLabel = getDayLabel(d);
       const reportType = isWk ? "특근보고서" : "근태보고서";
       const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
@@ -1341,9 +1433,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
       const items = allWorkersList.map((w, idx) => {
-        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        const strVal = String(val || "").trim();
         const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무";
+        // 주말/휴무일 특근 시 미출근자는 결근이 아닌 휴무(-)로 강제 보정
+        if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
+          val = "-";
+        }
+        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무" || !val;
         return {
           id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
@@ -1354,14 +1451,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           category: w.line || normalizeDept(w.dept) || "",
           workerName: (w.name || "").trim(),
           position: w.position || "작업원",
-          attendanceCode: val || (isWk ? "특근" : "🟢"),
+          attendanceCode: val || (isWk ? "-" : "🟢"),
           startTime: isOff ? "-" : "08:00",
           endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : (isOff ? "-" : "17:00"),
           hours: workHours || (isAttended ? 8 : 0),
           otHours: (weekdayOt + weekendOt) || 0,
           count: 1,
-          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : "작업 수행"}`,
-          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : "생산 및 납품 대응"}`
+          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "휴무" : "특근 투입") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행")}`,
+          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "휴무" : "생산 및 납품 대응") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응")}`
         };
       });
 
@@ -1412,7 +1509,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             plant: selectedCompanyFilter === "전체" ? null : compMeta.plant,
             company: selectedCompanyFilter,
             workDate: `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-            matrix: smartData.attendanceMatrix,
+            matrix: updatedLedger.attendanceMatrix,
             reports: updatedReports
           });
         } catch (syncErr) {
@@ -1594,57 +1691,108 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     triggerToast(`🎉 [${company}] ${name} (${dept}) 신규 근로자 등록 완료!`);
   };
 
-  // Quick Delete Worker (from Company Popup & Personnel Management Modal)
-  const handleQuickDeleteWorker = async (workerIndexInMatrix, workerName, companyName, dept, line) => {
-    if (!window.confirm(`정말로 [${companyName}] ${workerName} (${dept || ""}) 근로자를 삭제하시겠습니까?\n(해당 작업자의 모든 ${currentMonthNum}월 근태 내역이 삭제됩니다)`)) {
-      return;
-    }
+  // ⭐ 근로자 인원 영구 삭제 모달 열기 핸들러 (인사카드/마스터 명단에서 완전 영구 삭제)
+  const handleOpenDeleteWorkerModal = (worker, originalIndex) => {
+    if (!worker) return;
+    setWorkerToDelete({
+      name: (worker.name || "").trim(),
+      company: cleanCompanyName(worker.company),
+      rawCompany: worker.company,
+      dept: normalizeDept(worker.dept),
+      line: worker.line || normalizeDept(worker.dept) || "라인",
+      position: worker.position || "작업원",
+      originalIndex: typeof originalIndex === "number" ? originalIndex : (worker.originalMatrixIndex ?? -1)
+    });
+  };
 
-    const currentMatrix = [...(smartData.attendanceMatrix || [])];
-    let updatedMatrix;
-    if (
-      typeof workerIndexInMatrix === "number" &&
-      workerIndexInMatrix >= 0 &&
-      workerIndexInMatrix < currentMatrix.length &&
-      currentMatrix[workerIndexInMatrix]?.name === workerName &&
-      cleanCompanyName(currentMatrix[workerIndexInMatrix]?.company) === cleanCompanyName(companyName)
-    ) {
-      updatedMatrix = currentMatrix.filter((_, idx) => idx !== workerIndexInMatrix);
-    } else {
-      let removed = false;
-      updatedMatrix = currentMatrix.filter((w) => {
-        if (!removed && cleanCompanyName(w.company) === cleanCompanyName(companyName) && w.name === workerName) {
-          if (!dept || normalizeDept(w.dept) === normalizeDept(dept)) {
+  // ⭐ 근로자 인원 영구 삭제 확인 및 실행 핸들러
+  const handleConfirmDeleteWorker = async () => {
+    if (!workerToDelete) return;
+    setIsDeletingWorker(true);
+    try {
+      const { name, company, position, originalIndex } = workerToDelete;
+
+      // 1. 인사카드 클라우드(Firestore) 및 로컬스토리지에서 영구 삭제
+      await deleteWorkerPersonnelCard(company, name);
+
+      // 2. 스마트 잔업 대장(attendanceMatrix & masterWorkers)에서 인원 영구 삭제
+      const currentMatrix = [...(smartData.attendanceMatrix || [])];
+      let updatedMatrix;
+      if (
+        typeof originalIndex === "number" &&
+        originalIndex >= 0 &&
+        originalIndex < currentMatrix.length &&
+        currentMatrix[originalIndex]?.name === name &&
+        cleanCompanyName(currentMatrix[originalIndex]?.company) === company
+      ) {
+        updatedMatrix = currentMatrix.filter((_, idx) => idx !== originalIndex);
+      } else {
+        let removed = false;
+        updatedMatrix = currentMatrix.filter((w) => {
+          if (!removed && cleanCompanyName(w.company) === company && (w.name || "").trim() === name.trim()) {
             removed = true;
             return false;
           }
-        }
-        return true;
+          return true;
+        });
+      }
+
+      // 3. 순번(no / companyNo) 재정렬
+      const compCounters = {};
+      const reindexedMatrix = updatedMatrix.map((w) => {
+        const c = cleanCompanyName(w.company);
+        compCounters[c] = (compCounters[c] || 0) + 1;
+        return {
+          ...w,
+          company: c,
+          companyNo: compCounters[c],
+          no: compCounters[c]
+        };
       });
+
+      const compMasterCounters = {};
+      const reindexedMaster = reindexedMatrix.map((w) => {
+        const c = cleanCompanyName(w.company);
+        compMasterCounters[c] = (compMasterCounters[c] || 0) + 1;
+        return {
+          company: c,
+          companyNo: compMasterCounters[c],
+          no: compMasterCounters[c],
+          dept: normalizeDept(w.dept),
+          line: w.line || normalizeDept(w.dept),
+          name: w.name,
+          position: w.position || "작업원",
+          employmentType: w.employmentType || "정규직",
+          status: w.status || "재직",
+          note: w.note || ""
+        };
+      });
+
+      const updatedData = {
+        ...smartData,
+        masterWorkers: reindexedMaster,
+        attendanceMatrix: reindexedMatrix
+      };
+
+      setSmartData(updatedData);
+      await handleSaveLedger(updatedData);
+
+      // 4. 로컬 personnelCardsMap 상태 동기화
+      setPersonnelCardsMap((prev) => {
+        const next = { ...prev };
+        delete next[`${company}_${name}`];
+        delete next[`${workerToDelete.rawCompany}_${name}`];
+        return next;
+      });
+
+      setWorkerToDelete(null);
+      triggerToast(`🗑️ [${company}] ${name} ${position} 님이 마스터 인원 및 인사카드에서 영구 삭제되었습니다.`);
+    } catch (err) {
+      console.error("Worker delete error:", err);
+      triggerToast("⚠️ 근로자 삭제 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsDeletingWorker(false);
     }
-
-    const reindexedMatrix = updatedMatrix.map((w, idx) => ({ ...w, no: idx + 1 }));
-    const reindexedMaster = reindexedMatrix.map((w, idx) => ({
-      no: idx + 1,
-      company: w.company,
-      dept: normalizeDept(w.dept),
-      line: w.line || normalizeDept(w.dept),
-      name: w.name,
-      position: w.position || "작업원",
-      employmentType: w.employmentType || "정규직",
-      status: w.status || "재직",
-      note: w.note || ""
-    }));
-
-    const updatedData = {
-      ...smartData,
-      masterWorkers: reindexedMaster,
-      attendanceMatrix: reindexedMatrix
-    };
-
-    setSmartData(updatedData);
-    await handleSaveLedger(updatedData);
-    triggerToast(`🗑️ [${companyName}] ${workerName} 근로자 삭제 완료`);
   };
 
   // Excel Export Handler
@@ -1851,16 +1999,34 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
   // ⭐ Dynamic Effective Matrix: seamlessly merges Firestore/local ledger with all registered reports
+  // Registered reports (reportMatrix) take authoritative precedence for official recorded days
   const effectiveMatrix = useMemo(() => {
     const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
     if (!legacyReports || legacyReports.length === 0) return rawMatrix;
-    return buildMatrixFromReports(rawMatrix, legacyReports, currentYear, currentMonthNum);
+
+    // 1. Build authoritative base from registered reports
+    const reportMatrix = buildMatrixFromReports(smartData?.masterWorkers || rawMatrix, legacyReports, currentYear, currentMonthNum);
+
+    // 2. Overlay staging edits for days without reports, while keeping registered reports authoritative
+    return reportMatrix.map((w, idx) => {
+      const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
+      const liveDaily = liveW?.daily || {};
+      const reportDaily = w.daily || {};
+      
+      // Combine: staging edits for days with no registered reports, but official reports win on recorded days
+      const combinedDaily = { ...liveDaily, ...reportDaily };
+
+      return {
+        ...w,
+        daily: combinedDaily
+      };
+    });
   }, [smartData, legacyReports, currentYear, currentMonthNum]);
 
   // Calculations & Summaries for 5 Companies (실시간 보고서와 통합된 effectiveMatrix 기준)
   const dailySummary = useMemo(() => {
-    return calculateDailySummary(effectiveMatrix || [], selectedDay);
-  }, [effectiveMatrix, selectedDay]);
+    return calculateDailySummary(effectiveMatrix || [], selectedDay, currentYear, currentMonthNum);
+  }, [effectiveMatrix, selectedDay, currentYear, currentMonthNum]);
 
   const companySummary = useMemo(() => {
     return calculateCompanySummary(effectiveMatrix || []);
@@ -1879,9 +2045,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const cleanComp = cleanCompanyName(comp);
       // 1. 등록된 근태/특근 보고서가 존재하는지 확인
       const hasReport = (legacyReports || []).some((r) => {
-        if (!r || r.workDate !== targetDateStr) return false;
-        if (r.company && r.company !== "전체") {
-          return cleanCompanyName(r.company) === cleanComp;
+        if (!r) return false;
+        const rDateKey = getReportDateSortKey(r);
+        if (rDateKey !== targetDateStr) return false;
+        const rComp = cleanCompanyName(r.company || "");
+        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
+          return rComp === cleanComp;
         }
         if (Array.isArray(r.companies) && r.companies.length > 0) {
           return r.companies.some((c) => cleanCompanyName(c) === cleanComp);
@@ -1927,7 +2096,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const missingAttendanceWorkers = useMemo(() => {
     const d = selectedDay || 1;
     return (filteredAttendanceWorkers || []).filter((w) => {
-      const val = w.daily ? w.daily[d] : "";
+      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const str = String(val || "").trim();
       return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
     });
@@ -1937,7 +2106,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const popupCompanyData = useMemo(() => {
     if (!selectedCompanyPopup) return null;
     const company = selectedCompanyPopup;
-    const breakdown = dailySummary.companyBreakdown?.[company] || {
+    const cleanComp = cleanCompanyName(company);
+    const breakdown = dailySummary.companyBreakdown?.[cleanComp] || dailySummary.companyBreakdown?.[company] || {
       total: 0,
       attended: 0,
       regular: 0,
@@ -1945,6 +2115,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       ot21: 0,
       ot22: 0,
       specialNight: 0,
+      absent: 0,
+      leave: 0,
+      otWorkers: 0,
       otHours: 0,
       totalHours: 0
     };
@@ -1955,7 +2128,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         dept: normalizeDept(w.dept),
         originalMatrixIndex
       }))
-      .filter((w) => cleanCompanyName(w.company) === cleanCompanyName(company))
+      .filter((w) => cleanCompanyName(w.company) === cleanComp)
       .map((w, cIdx) => ({
         ...w,
         companyNo: cIdx + 1
@@ -1993,21 +2166,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       samLineMap[cat] = (samLineMap[cat] || 0) + 1;
     });
     let samLines = Object.entries(samLineMap).map(([name, count]) => ({ name, count }));
-    if (samLines.length === 0) {
-      samLines = [
-        { name: "관리자", count: 3 },
-        { name: "NX4", count: 11 },
-        { name: "NX4a", count: 5 },
-        { name: "PU 찬넬", count: 1 },
-        { name: "PU 찬넬", count: 2 },
-        { name: "압출", count: 3 },
-        { name: "8톤 코팅", count: 1 },
-        { name: "DT HOOD", count: 7 },
-        { name: "JK1", count: 3 },
-        { name: "CE1", count: 2 },
-        { name: "수직 건조", count: 2 }
-      ];
-    }
 
     // 2. 한림공장 ((주)조영산업 + 한울 + 부림텍)
     const halWorkers = matrix.filter((w) => {
@@ -2029,9 +2187,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       halLineMap[cat] = (halLineMap[cat] || 0) + 1;
     });
     let halLines = Object.entries(halLineMap).map(([name, count]) => ({ name, count }));
-    if (halLines.length === 0) {
-      halLines = [{ name: "9BQC", count: 2 }, { name: "CHANNEL", count: 2 }];
-    }
 
     const dayNumStr = String(day).padStart(2, "0");
     const monthNumStr = String(currentMonthNum).padStart(2, "0");
@@ -2043,9 +2198,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         companies: "(주)오륙, 유성",
         dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
         author: "조인주 선임",
-        headcount: samWorkers.length || 40,
-        manHours: samHours || 382,
-        cost: samCost || 5730000,
+        headcount: samWorkers.length,
+        manHours: samHours,
+        cost: samCost,
         lines: samLines,
         reportId: `report_samrangjin_${currentYear}_${monthNumStr}_${dayNumStr}`
       },
@@ -2054,9 +2209,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         companies: "(주)조영산업, 한울, 부림텍",
         dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
         author: (dayLabelStr === "일" ? "황수현 선임" : "오상민 선임"),
-        headcount: halWorkers.length || (dayLabelStr === "일" ? 2 : 4),
-        manHours: halHours || (dayLabelStr === "일" ? 16 : 32),
-        cost: halCost || (dayLabelStr === "일" ? 240000 : 480000),
+        headcount: halWorkers.length,
+        manHours: halHours,
+        cost: halCost,
         lines: halLines,
         reportId: `report_hanlim_${currentYear}_${monthNumStr}_${dayNumStr}`
       }
@@ -2167,6 +2322,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 {legacyReports.length}건
               </span>
             </button>
+
+            {/* 4. 데이터 전체 초기화 (더미데이터 영구삭제) */}
+            <button
+              type="button"
+              onClick={() => setIsPurgeModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 transition-all cursor-pointer shadow-sm active:scale-95 ml-1"
+              title="근태현황관리의 모든 기존 데이터 및 더미데이터를 영구 삭제하고 143명 빈 명단으로 완전 초기화합니다."
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span>데이터 초기화</span>
+            </button>
           </div>
         </div>
 
@@ -2248,31 +2414,53 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     })()}
                   </div>
 
-                  {/* 🎯 포인트 작은 패널: 출근현황 총원:00명 결근:00명 */}
-                  <div className={`py-1.5 px-2.5 rounded-xl border flex items-center justify-between shadow-xs ${
-                    absentCount > 0
-                      ? "bg-slate-900/95 border-rose-600/70"
-                      : "bg-slate-900/90 border-slate-800"
-                  }`}>
-                    <span className="text-[11px] font-bold text-slate-300">출근현황</span>
-                    <div className="flex items-center gap-2 font-mono text-xs font-black">
-                      <span className="text-white">총원:{breakdown.total}명</span>
-                      <span className={absentCount > 0 ? "text-rose-400 font-black animate-pulse" : "text-slate-400"}>
-                        결근:{absentCount}명
+                  {/* 🎯 포인트 작은 패널: 출근현황 (평일) / 특근현황 (주말/휴무일) */}
+                  {isWeekendDay(selectedDay) ? (
+                    <div className="bg-slate-900/90 py-1.5 px-2.5 rounded-xl border border-slate-800 flex items-center justify-between shadow-xs">
+                      <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
+                        <span>🌴 특근현황</span>
                       </span>
+                      <div className="flex items-center gap-2 font-mono text-xs font-black">
+                        <span className="text-cyan-400">특근:{breakdown.attended}명</span>
+                        <span className="text-slate-400">
+                          휴무:{Math.max(0, breakdown.total - breakdown.attended)}명
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className={`py-1.5 px-2.5 rounded-xl border flex items-center justify-between shadow-xs ${
+                      absentCount > 0
+                        ? "bg-slate-900/95 border-rose-600/70"
+                        : "bg-slate-900/90 border-slate-800"
+                    }`}>
+                      <span className="text-[11px] font-bold text-slate-300">출근현황</span>
+                      <div className="flex items-center gap-2 font-mono text-xs font-black">
+                        <span className="text-white">총원:{breakdown.total}명</span>
+                        <span className={absentCount > 0 ? "text-rose-400 font-black animate-pulse" : "text-slate-400"}>
+                          결근:{absentCount}명
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
-                  {/* ⏱️ 당일 잔업투입인원 (미니멀 표시) */}
+                  {/* ⏱️ 당일 잔업/특근 투입 (미니멀 표시) */}
                   <div className="bg-slate-900/70 py-1.5 px-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>당일 잔업투입</span>
+                      <span>{isWeekendDay(selectedDay) ? "당일 특근투입" : "당일 잔업투입"}</span>
                     </span>
                     <div className="flex items-center gap-1 font-mono font-black text-xs">
-                      <span className="text-amber-400 font-bold">{otWorkersCount}명</span>
-                      {breakdown.otHours > 0 && (
-                        <span className="text-[10px] text-amber-500/90 font-normal">(+{breakdown.otHours}H)</span>
+                      <span className="text-amber-400 font-bold">
+                        {isWeekendDay(selectedDay) ? `${breakdown.attended}명` : `${otWorkersCount}명`}
+                      </span>
+                      {isWeekendDay(selectedDay) ? (
+                        breakdown.totalHours > 0 && (
+                          <span className="text-[10px] text-purple-400 font-normal">({breakdown.totalHours}H)</span>
+                        )
+                      ) : (
+                        breakdown.otHours > 0 && (
+                          <span className="text-[10px] text-amber-500/90 font-normal">(+{breakdown.otHours}H)</span>
+                        )
                       )}
                     </div>
                   </div>
@@ -2306,7 +2494,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           ? "bg-rose-950/80 hover:bg-rose-900 text-rose-300 border-rose-600/80 hover:border-rose-400 ring-1 ring-rose-500/50"
                           : "bg-slate-800/90 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border-slate-700/80 hover:border-rose-500"
                       }`}
-                      title="결근 관리 및 4M 작업자 대체투입 관리 (품질 추적성 1줄 기록)"
+                      title="결근 관리 및 대체인원 투입 (변동점 MAN 연동)"
                     >
                       <UserMinus className="w-3.5 h-3.5 text-rose-400" />
                       <span>결근관리</span>
@@ -2402,11 +2590,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
               {/* Right Group: Registration Button (클릭 시 보고서 팝업창 오픈) */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                {missingAttendanceWorkers.length > 0 ? (
-                  <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1 shadow-xs animate-pulse">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                    <span>⚠️ 미선택 {missingAttendanceWorkers.length}명 (선택 완료 후 등록 가능)</span>
+                {isWeekendDay(selectedDay) ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-black border border-cyan-400/50 flex items-center gap-1 shadow-xs">
+                    <span>🌴 휴무일 (선택자 {filteredAttendanceWorkers.length - missingAttendanceWorkers.length}명 특근 등록 가능)</span>
                   </span>
+                ) : missingAttendanceWorkers.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleSetAllFilteredWorkersRegular}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1 shadow-xs animate-pulse cursor-pointer transition-all active:scale-95"
+                    title="클릭 시 조회 인원 전체를 정시(🟢)로 일괄 선택합니다"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>⚠️ 미선택 {missingAttendanceWorkers.length}명 (클릭 시 정시 일괄선택)</span>
+                  </button>
                 ) : (
                   <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-400/50 flex items-center gap-1 shadow-xs">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -2422,12 +2619,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   onClick={handleOpenRegistrationReportModal}
                   disabled={isSaving}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
-                    missingAttendanceWorkers.length > 0
+                    !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
                       ? "bg-slate-800 text-amber-300 border-2 border-amber-400/80 hover:bg-slate-700 hover:border-amber-300"
                       : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
                   }`}
                   title={
-                    missingAttendanceWorkers.length > 0
+                    !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
                       ? `아직 근태가 미선택된 근로자가 ${missingAttendanceWorkers.length}명 있습니다. 모든 인원의 근태를 선택한 후 등록 가능합니다.`
                       : `[${selectedCompanyFilter}] ${currentMonthNum}월 ${selectedDay}일 보고서 등록`
                   }
@@ -2450,11 +2647,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <span className="text-xs font-bold text-slate-500">
                   (총 {filteredAttendanceWorkers.length}명)
                 </span>
-                {missingAttendanceWorkers.length > 0 ? (
-                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse">
-                    <AlertTriangle className="w-3 h-3 text-amber-400" />
-                    <span>미선택 {missingAttendanceWorkers.length}명</span>
+                {isWeekendDay(selectedDay) ? (
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-700/80 flex items-center gap-1">
+                    <span>🌴 휴무일 (특근 인원만 선택)</span>
                   </span>
+                ) : missingAttendanceWorkers.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleSetAllFilteredWorkersRegular}
+                    className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse cursor-pointer shadow-xs active:scale-95 transition-all"
+                    title="클릭 시 조회 인원 전체를 정시(🟢)로 일괄 선택합니다"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>미선택 {missingAttendanceWorkers.length}명 (클릭 시 정시 일괄선택)</span>
+                  </button>
                 ) : (
                   <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-700/80 flex items-center gap-1">
                     <Check className="w-3 h-3 text-emerald-400" />
@@ -3208,7 +3414,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
                             <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
                             {Array.from({ length: matrixDaysInMonth }, (_, i) => i + 1).map((d) => {
-                              const val = w.daily ? w.daily[d] : "";
+                              const isWeekend = isMatrixWeekendDay(d);
+                              let val = w.daily ? (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)]) : "";
+                              if (isWeekend && (val === "결근" || !val || val === "미입력")) {
+                                val = "-";
+                              }
                               return (
                                 <td key={d} className="p-0.5 text-center font-mono text-[10px]">
                                   <span className={`inline-block w-6 py-0.5 rounded font-bold ${
@@ -3730,9 +3940,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           <td className="py-2 px-2 text-center">
                             <button
                               type="button"
-                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company, worker.dept, worker.line)}
+                              onClick={() => handleOpenDeleteWorkerModal(worker, worker.originalMatrixIndex)}
                               className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer active:scale-95"
-                              title="근로자 삭제"
+                              title="근로자 인원 영구 삭제"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -4448,6 +4658,42 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <span className="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800">
                     공수 {popupCompanyData.breakdown.totalHours}H
                   </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const cleanComp = cleanCompanyName(popupCompanyData.company);
+                      const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+                        ? [...effectiveMatrix]
+                        : (smartData?.attendanceMatrix || []);
+                      const updatedMatrix = currentMatrix.map((w) => ({
+                        ...w,
+                        daily: { ...(w.daily || {}) }
+                      }));
+                      let updatedCount = 0;
+                      updatedMatrix.forEach((w) => {
+                        if (cleanCompanyName(w.company) === cleanComp) {
+                          w.daily[selectedDay] = "🟢";
+                          w.daily[String(selectedDay)] = "🟢";
+                          updatedCount++;
+                        }
+                      });
+                      const newLedger = {
+                        ...smartData,
+                        year: currentYear,
+                        month: currentMonthNum,
+                        attendanceMatrix: updatedMatrix
+                      };
+                      setSmartData(newLedger);
+                      setHasUnsavedChanges(true);
+                      triggerToast(`🟢 [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-emerald-500 ml-1"
+                    title="해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>🟢 정시전체선택</span>
+                  </button>
                 </div>
               </div>
 
@@ -4726,9 +4972,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           <td className="py-1.5 px-2.5 text-center">
                             <button
                               type="button"
-                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company, worker.dept, worker.line)}
+                              onClick={() => handleOpenDeleteWorkerModal(worker, worker.originalMatrixIndex)}
                               className="px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-[10.5px] transition-all cursor-pointer flex items-center gap-1 mx-auto active:scale-95"
-                              title="근로자 삭제"
+                              title="근로자 인원 영구 삭제"
                             >
                               <Trash2 className="w-3 h-3" />
                               <span>삭제</span>
@@ -5201,6 +5447,147 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             }
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🗑️ MODAL: 근태 데이터 및 더미데이터 영구삭제 확인 모달 */}
+      {/* ========================================================================= */}
+      {isPurgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-rose-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-white">
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 shrink-0">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </span>
+              <div>
+                <h3 className="text-lg font-black text-white">근태 데이터 및 더미 영구삭제</h3>
+                <p className="text-xs text-rose-300 font-bold">전체 근태보고서 및 일자별 근태 기록 초기화</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300">
+              <p className="font-bold text-slate-200">
+                ⚠️ 다음 데이터가 클라우드(Firestore) 및 로컬 저장소에서 <strong className="text-rose-400">영구히 삭제</strong>됩니다:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-400 pl-1">
+                <li>등록된 모든 근태/특근 보고서 (기존 등록 내역 전체)</li>
+                <li>1일~31일 전 일자의 작업자별 근태 선택 내역</li>
+                <li>기존 더미/샘플 매트릭스 기록</li>
+              </ul>
+              <p className="pt-2 text-[11px] text-emerald-400 font-bold">
+                ※ 5개 협력사 143명 마스터 인원 명단은 100% 안전하게 보존되며, 근태 매트릭스만 깨끗한 빈 상태로 초기화됩니다.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isPurging}
+                onClick={() => setIsPurgeModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={isPurging}
+                onClick={handleConfirmPurgeAllData}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-rose-950/50"
+              >
+                {isPurging ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>영구 삭제 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>영구 삭제 및 초기화</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🗑️ MODAL: 마스터 근로자 인원 영구 삭제 확인 모달 */}
+      {/* ========================================================================= */}
+      {workerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-rose-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-white">
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 shrink-0">
+                <Trash2 className="w-6 h-6 animate-pulse" />
+              </span>
+              <div>
+                <h3 className="text-lg font-black text-white">근로자 인원 영구 삭제</h3>
+                <p className="text-xs text-rose-300 font-bold">마스터 명단 및 인사카드 대장 영구 삭제</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs text-slate-300">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block mb-0.5">소속 업체</span>
+                  <strong className="text-white text-sm font-black">{workerToDelete.company}</strong>
+                </div>
+                <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block mb-0.5">성명 / 직급</span>
+                  <strong className="text-cyan-300 text-sm font-black">{workerToDelete.name} ({workerToDelete.position})</strong>
+                </div>
+                <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block mb-0.5">소속 부서</span>
+                  <span className="text-slate-200 font-bold">{workerToDelete.dept}</span>
+                </div>
+                <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block mb-0.5">차종 / 라인</span>
+                  <span className="text-slate-200 font-bold">{workerToDelete.line}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 space-y-1 text-slate-300">
+                <p className="text-rose-400 font-bold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>진행 확인: 이 작업은 단순 근태 취소가 아닌 <strong>인원 영구 삭제</strong>입니다.</span>
+                </p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  삭제 시 해당 작업자의 <strong>마스터 인원 명단, 제조현장 인사카드, 모든 월별 근태 대장 기록</strong>이 클라우드와 로컬에서 완전히 삭제됩니다. 계속 진행하시겠습니까?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={isDeletingWorker}
+                onClick={() => setWorkerToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingWorker}
+                onClick={handleConfirmDeleteWorker}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-rose-950/50"
+              >
+                {isDeletingWorker ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>인원 삭제 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>인원 영구 삭제</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -106,7 +106,8 @@ import {
   calculateDailySummary,
   subscribeSmartOvertimeData,
   cleanCompanyName,
-  buildMatrixFromReports
+  buildMatrixFromReports,
+  getReportDateSortKey
 } from "../services/overtimeSmartService.js";
 import {
   getLocalApprovalDocs,
@@ -178,7 +179,7 @@ import {
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
@@ -505,6 +506,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
+  useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
+  useModalHistory(isWorkLogsSummaryModalOpen, () => setIsWorkLogsSummaryModalOpen(false), "workerDashboardWorkLogsSummaryModal");
   const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
 
   const workerCard = useMemo(() => {
@@ -524,7 +527,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
-  const isManagerOrAdmin = isGeneralManager || isAdmin || workerDept === "관리팀" || currentProfile?.assignedProcess === "총괄관리" || currentProfile?.assignedProcess === "경리업무" || currentProfile?.role === "ADMIN" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.title === "전무" || isInjoo;
+  const isManagerOrAdmin =
+    isGeneralManager ||
+    isAdmin ||
+    isInjoo ||
+    currentProfile?.role === "ADMIN" ||
+    ["이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "오상민", "양인나", "유동길", "조인주", "권태형", "최미영", "TEST"].includes(currentProfile?.name) ||
+    ["sam_mj", "sam_yc", "sam_ks", "sam_cy", "sam_jy", "sam_in", "sam_dg", "sam_ij", "hal_dw", "hal_sm", "hal_test", "admin_kwon", "admin_choi"].includes(currentProfile?.id) ||
+    ["이사", "대표이사", "대표", "전무", "상무", "책임", "선임", "부장", "차장", "과장"].includes(currentProfile?.title) ||
+    ["이사", "대표이사", "대표", "전무", "상무", "책임", "선임", "부장", "차장", "과장"].includes(officialTitle) ||
+    String(currentProfile?.assignedProcess || "").includes("관리") ||
+    String(currentProfile?.assignedProcess || "").includes("총괄") ||
+    String(currentProfile?.assignedProcess || "").includes("품질") ||
+    String(currentProfile?.assignedProcess || "").includes("보전") ||
+    workerDept === "관리팀";
 
   // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
   const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
@@ -594,9 +610,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
       const hasDirectReport = (overtimeReports || []).some((r) => {
-        if (!r || r.workDate !== todayStr) return false;
-        if (r.company && r.company !== "전체") {
-          return cleanCompanyName(r.company) === cleanCompName;
+        if (!r) return false;
+        const rDateKey = getReportDateSortKey(r);
+        if (rDateKey !== todayStr) return false;
+        const rComp = cleanCompanyName(r.company || "");
+        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
+          return rComp === cleanCompName;
         }
         if (Array.isArray(r.companies) && r.companies.length > 0) {
           return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
@@ -716,6 +735,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [currentLogPage, setCurrentLogPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
+
+  // Browser/Android Back Button safe modal stack management
+  useModalHistory(isModalOpen, () => setIsModalOpen(false), "workerDashboardLogModal");
+  useModalHistory(Boolean(selectedLogDetail), () => setSelectedLogDetail(null), "workerDashboardLogDetailModal");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPlant, setFilterPlant] = useState(() => {
     if (isMyeongjae) return "삼랑진공장";
@@ -1192,6 +1215,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
+  useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "workerDashboardPreviewImageModal");
 
   const handleWorkLogImageFiles = async (files, type = "all") => {
     if (!files || files.length === 0) return;
@@ -2006,11 +2030,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   });
   const [commonScheduleSaving, setCommonScheduleSaving] = useState(false);
   const [commonScheduleModalOpen, setCommonScheduleModalOpen] = useState(false);
+  useModalHistory(commonScheduleModalOpen, () => setCommonScheduleModalOpen(false), "workerDashboardCommonScheduleModal");
   const [commonScheduleArchive, setCommonScheduleArchive] = useState([]);
   const [selectedCommonScheduleForComments, setSelectedCommonScheduleForComments] = useState(null);
   const [commonScheduleCommentInput, setCommonScheduleCommentInput] = useState("");
   const [commonScheduleCommentSubmitting, setCommonScheduleCommentSubmitting] = useState(false);
   const [dailyPnLModalOpen, setDailyPnLModalOpen] = useState(false);
+  useModalHistory(dailyPnLModalOpen, () => setDailyPnLModalOpen(false), "workerDashboardDailyPnLModal");
   const [sendingDailyPnL, setSendingDailyPnL] = useState(false);
   const [customPnLBriefing, setCustomPnLBriefing] = useState(null);
 

@@ -14,7 +14,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { STANDARD_EXPENSE_CATEGORIES, getHanulSettlementMonthData } from "../services/hanulSettlementService";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { useModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 export const HanulExpenseSummaryModal = ({
   isOpen,
@@ -22,20 +22,8 @@ export const HanulExpenseSummaryModal = ({
   month = "2026-08",
   onOpenFullModal = null
 }) => {
+  useModalHistory(isOpen, onClose, "hanul_expense_summary_modal");
   const [hideEmpty, setHideEmpty] = useState(true); // 기본값: 빈칸(0원 항목) 숨김처리
-
-  useEffect(() => {
-    if (isOpen) {
-      pushModalHistory("hanul_expense_summary_modal");
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const unsub = subscribeCloseAllModals(() => {
-      if (isOpen && onClose) onClose();
-    });
-    return () => unsub();
-  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

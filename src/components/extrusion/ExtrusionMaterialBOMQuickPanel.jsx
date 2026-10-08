@@ -10,9 +10,8 @@ import {
   RotateCcw,
   Edit3,
   Layers,
-  Sparkles,
-  ArrowRight,
-  Filter
+  ChevronDown,
+  Check
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -30,6 +29,210 @@ import {
   subscribeToCustomBOM,
   getLocalCustomBOMMap
 } from "../../services/extrusionBOMService";
+import { useModalHistory } from "../../utils/modalHistory";
+
+const DRAFT_STORAGE_KEY = "factory_extrusion_bom_draft_v2";
+
+// 🌟 Custom Material Combobox (항상 '미사용' 최상단 노출 및 전체 원재료 목록 선택/검색/직접입력 지원)
+const MaterialCombobox = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "",
+  theme = "teal", // "indigo" | "emerald" | "amber" | "sky" | "teal"
+  className = "",
+  title = ""
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Color schemes
+  const colorMap = {
+    indigo: {
+      border: "border-indigo-500/60 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-400/30",
+      text: "text-indigo-300 font-bold",
+      bgHover: "hover:bg-indigo-950/80",
+      activeBg: "bg-indigo-900/60 text-indigo-200 font-black"
+    },
+    emerald: {
+      border: "border-emerald-500/60 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30",
+      text: "text-emerald-300 font-bold",
+      bgHover: "hover:bg-emerald-950/80",
+      activeBg: "bg-emerald-900/60 text-emerald-200 font-black"
+    },
+    amber: {
+      border: "border-amber-500/60 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30",
+      text: "text-amber-300 font-bold",
+      bgHover: "hover:bg-amber-950/80",
+      activeBg: "bg-amber-900/60 text-amber-200 font-black"
+    },
+    sky: {
+      border: "border-sky-500/60 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-400/30",
+      text: "text-sky-300 font-bold",
+      bgHover: "hover:bg-sky-950/80",
+      activeBg: "bg-sky-900/60 text-sky-200 font-black"
+    },
+    teal: {
+      border: "border-teal-500/60 focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-400/30",
+      text: "text-teal-300 font-bold",
+      bgHover: "hover:bg-teal-950/80",
+      activeBg: "bg-teal-900/60 text-teal-200 font-black"
+    }
+  };
+  const themeCls = colorMap[theme] || colorMap.teal;
+
+  const isUnused = !value || value === "미사용" || value === "비사용" || value === "없음" || value === "-";
+
+  // Filter options based on search term if user is searching
+  const filteredOptions = useMemo(() => {
+    const rawOpts = options.filter((opt) => {
+      const name = typeof opt === "string" ? opt : opt.name;
+      return name !== "미사용" && name !== "비사용" && name !== "없음";
+    });
+
+    if (!searchTerm.trim()) return rawOpts;
+    const q = searchTerm.toLowerCase().trim();
+    return rawOpts.filter((opt) => {
+      const name = typeof opt === "string" ? opt : opt.name;
+      const type = typeof opt === "object" ? (opt.type || opt.category || opt.spec || opt.desc || "") : "";
+      return name.toLowerCase().includes(q) || type.toLowerCase().includes(q);
+    });
+  }, [options, searchTerm]);
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      {/* Input box with dropdown chevron */}
+      <div
+        className={`flex items-center rounded-xl bg-slate-800/90 border transition-all shadow-xs ${
+          !isUnused ? themeCls.border : "border-slate-700/80 hover:border-slate-600 focus-within:border-slate-500"
+        } ${isOpen ? "ring-2 ring-teal-400/40" : ""}`}
+      >
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setSearchTerm(e.target.value);
+          }}
+          onFocus={() => {
+            setSearchTerm("");
+            setIsOpen(true);
+          }}
+          onClick={() => {
+            if (!isOpen) {
+              setSearchTerm("");
+              setIsOpen(true);
+            }
+          }}
+          placeholder={placeholder}
+          title={title}
+          className={`w-full px-2.5 py-1.5 bg-transparent text-xs focus:outline-hidden placeholder-slate-500 ${
+            !isUnused ? themeCls.text : "text-slate-300 font-normal"
+          }`}
+        />
+
+        {/* Dropdown Chevron button */}
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isOpen) setSearchTerm("");
+            setIsOpen(!isOpen);
+          }}
+          className="px-1.5 py-1 text-slate-400 hover:text-white transition cursor-pointer shrink-0"
+          title="원재료 목록 전체보기"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180 text-teal-400" : ""}`}
+          />
+        </button>
+      </div>
+
+      {/* Dropdown Popup Menu */}
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 w-max min-w-[220px] max-w-[340px] bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs animate-fadeIn max-h-[290px] flex flex-col backdrop-blur-md">
+          {/* Top Fixed "미사용" Option */}
+          <div className="p-1 border-b border-slate-800 bg-slate-950/90">
+            <button
+              type="button"
+              onClick={() => {
+                onChange("미사용");
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-2.5 py-1.5 rounded-xl flex items-center justify-between font-black transition cursor-pointer ${
+                isUnused
+                  ? "bg-slate-800 text-rose-300 border border-rose-500/40 shadow-xs"
+                  : "text-slate-400 hover:bg-slate-800/80 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                <span className="font-black text-rose-300">미사용 (투입 안함)</span>
+              </div>
+              {isUnused && <Check className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+            </button>
+          </div>
+
+          {/* Scrollable Material Options List */}
+          <div className="overflow-y-auto divide-y divide-slate-800/50 flex-1 p-1">
+            {filteredOptions.length === 0 ? (
+              <div className="p-3 text-center text-slate-400 text-[11px]">
+                일치하는 규격이 없습니다. (직접 타이핑 가능)
+              </div>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const name = typeof opt === "string" ? opt : opt.name;
+                const type = typeof opt === "object" ? (opt.type || opt.category || opt.spec || opt.desc || "") : "";
+                const isSelected = value === name;
+
+                return (
+                  <button
+                    key={`${name}_${idx}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(name);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-xl flex items-center justify-between transition cursor-pointer ${
+                      isSelected ? themeCls.activeBg : `text-slate-200 ${themeCls.bgHover}`
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-bold text-slate-100">{name}</span>
+                      {type && (
+                        <span className="text-[10px] text-slate-400 font-medium">({type})</span>
+                      )}
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const { currentProfile, isAdmin } = useAuth();
@@ -44,6 +247,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   // Real-time custom BOM map state
   const [customBOMMap, setCustomBOMMap] = useState(() => getLocalCustomBOMMap());
   const [isListModalOpen, setIsListModalOpen] = useState(false);
+  useModalHistory(isListModalOpen, () => setIsListModalOpen(false), "bomListModal");
   const [searchFilter, setSearchFilter] = useState("");
   const [lineFilter, setLineFilter] = useState("ALL"); // ALL | pcm1 | pcm3 | pvc | tpe | custom_only
   const [toastMessage, setToastMessage] = useState("");
@@ -54,15 +258,20 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const [customVehicle, setCustomVehicle] = useState("");
   const [customItemName, setCustomItemName] = useState("");
 
-  // Form selections (연고무 2종, 컴파운드 3종, 심금, 코팅액 - 직접 타이핑 및 오탈자 수정 지원)
+  // Form selections (연고무 2종, 컴파운드 4종, 심금, 코팅액 - 직접 타이핑 및 오탈자 수정 지원)
   const [selectedItemKey, setSelectedItemKey] = useState("");
   const [rubberType, setRubberType] = useState("");
   const [rubberType2, setRubberType2] = useState("");
   const [compoundType, setCompoundType] = useState("");
   const [compoundType2, setCompoundType2] = useState("");
   const [compoundType3, setCompoundType3] = useState("");
+  const [compoundType4, setCompoundType4] = useState("");
   const [insertType, setInsertType] = useState("");
   const [coatingType, setCoatingType] = useState("");
+
+  // Safeguard refs against frequent unwanted resets while writing
+  const hasInitializedRef = useRef(false);
+  const isUserEditingRef = useRef(false);
 
   // Real-time listener for BOM updates
   useEffect(() => {
@@ -72,7 +281,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     return () => unsub();
   }, []);
 
-  // Sorted list of all authentic extrusion items (268 items from Excel baseline)
+  // Sorted list of all authentic extrusion items
   const allMasterItems = useMemo(() => {
     const all = getAllExtrusionItems();
     const map = new Map();
@@ -119,28 +328,92 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   // Pre-fill fields helper from current resolved BOM
   const applyBOMToFields = (resolvedBOM) => {
     if (!resolvedBOM) return;
-    setRubberType(resolvedBOM.rubberType || "");
-    setRubberType2(resolvedBOM.rubberType2 || "");
-    setCompoundType(resolvedBOM.compoundType || "");
-    setCompoundType2(resolvedBOM.compoundType2 || "");
-    setCompoundType3(resolvedBOM.compoundType3 || "");
-    setInsertType(resolvedBOM.insertType === "미사용" ? "" : (resolvedBOM.insertType || ""));
-    setCoatingType(resolvedBOM.coatingType === "미사용" ? "" : (resolvedBOM.coatingType || ""));
+    setRubberType(resolvedBOM.rubberType === "없음" || resolvedBOM.rubberType === "미사용" || resolvedBOM.rubberType === "비사용" ? "" : (resolvedBOM.rubberType || ""));
+    setRubberType2(resolvedBOM.rubberType2 === "없음" || resolvedBOM.rubberType2 === "미사용" || resolvedBOM.rubberType2 === "비사용" ? "" : (resolvedBOM.rubberType2 || ""));
+    setCompoundType(resolvedBOM.compoundType === "없음" || resolvedBOM.compoundType === "미사용" || resolvedBOM.compoundType === "비사용" ? "" : (resolvedBOM.compoundType || ""));
+    setCompoundType2(resolvedBOM.compoundType2 === "없음" || resolvedBOM.compoundType2 === "미사용" || resolvedBOM.compoundType2 === "비사용" ? "" : (resolvedBOM.compoundType2 || ""));
+    setCompoundType3(resolvedBOM.compoundType3 === "없음" || resolvedBOM.compoundType3 === "미사용" || resolvedBOM.compoundType3 === "비사용" ? "" : (resolvedBOM.compoundType3 || ""));
+    setCompoundType4(resolvedBOM.compoundType4 === "없음" || resolvedBOM.compoundType4 === "미사용" || resolvedBOM.compoundType4 === "비사용" ? "" : (resolvedBOM.compoundType4 || ""));
+    setInsertType(resolvedBOM.insertType === "미사용" || resolvedBOM.insertType === "비사용" || resolvedBOM.insertType === "없음" ? "" : (resolvedBOM.insertType || ""));
+    setCoatingType(resolvedBOM.coatingType === "미사용" || resolvedBOM.coatingType === "비사용" || resolvedBOM.coatingType === "없음" ? "" : (resolvedBOM.coatingType || ""));
   };
 
-  // Initial item key selection
+  // Initial load: Only once on mount to prevent wiping user's typing
   useEffect(() => {
-    if (!selectedItemKey && allMasterItems.length > 0) {
-      const first = allMasterItems[0];
-      const initialKey = `${first.vehicle}:::${first.itemName}`;
-      setSelectedItemKey(initialKey);
-      const existingBOM = getMaterialBOMForItem(first.vehicle, first.itemName, first.lineBadge);
-      applyBOMToFields(existingBOM);
-    }
-  }, [allMasterItems, selectedItemKey]);
+    if (hasInitializedRef.current) return;
+    if (allMasterItems.length === 0) return;
+
+    // Check if there is an active session draft
+    try {
+      const savedDraftRaw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (savedDraftRaw) {
+        const d = JSON.parse(savedDraftRaw);
+        if (d && (d.selectedItemKey || d.customVehicle)) {
+          setSelectedItemKey(d.selectedItemKey || "");
+          setIsCustomItemMode(Boolean(d.isCustomItemMode));
+          setCustomVehicle(d.customVehicle || "");
+          setCustomItemName(d.customItemName || "");
+          setRubberType(d.rubberType || "");
+          setRubberType2(d.rubberType2 || "");
+          setCompoundType(d.compoundType || "");
+          setCompoundType2(d.compoundType2 || "");
+          setCompoundType3(d.compoundType3 || "");
+          setCompoundType4(d.compoundType4 || "");
+          setInsertType(d.insertType || "");
+          setCoatingType(d.coatingType || "");
+          hasInitializedRef.current = true;
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // Otherwise load first item
+    const first = allMasterItems[0];
+    const initialKey = `${first.vehicle}:::${first.itemName}`;
+    setSelectedItemKey(initialKey);
+    const existingBOM = getMaterialBOMForItem(first.vehicle, first.itemName, first.lineBadge);
+    applyBOMToFields(existingBOM);
+    hasInitializedRef.current = true;
+  }, [allMasterItems]);
+
+  // Auto-save draft into sessionStorage so user typing is never lost across tab switches / renders
+  useEffect(() => {
+    if (!hasInitializedRef.current) return;
+    try {
+      const draft = {
+        selectedItemKey,
+        isCustomItemMode,
+        customVehicle,
+        customItemName,
+        rubberType,
+        rubberType2,
+        compoundType,
+        compoundType2,
+        compoundType3,
+        compoundType4,
+        insertType,
+        coatingType
+      };
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch (e) {}
+  }, [
+    selectedItemKey,
+    isCustomItemMode,
+    customVehicle,
+    customItemName,
+    rubberType,
+    rubberType2,
+    compoundType,
+    compoundType2,
+    compoundType3,
+    compoundType4,
+    insertType,
+    coatingType
+  ]);
 
   // When dropdown item selection changes, pre-fill with current BOM
   const handleItemSelect = (itemKey) => {
+    isUserEditingRef.current = false;
     setSelectedItemKey(itemKey);
     setIsCustomItemMode(false);
     if (!itemKey) return;
@@ -152,6 +425,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
 
   // Select item from list modal for editing in quick bar
   const handleEditFromModal = (item) => {
+    isUserEditingRef.current = false;
     const key = `${item.vehicle}:::${item.itemName}`;
     setSelectedItemKey(key);
     setIsCustomItemMode(false);
@@ -164,6 +438,13 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 3500);
+  };
+
+  // Helper to normalize values
+  const cleanVal = (val) => {
+    const str = String(val || "").trim();
+    if (!str || str === "없음" || str === "미사용" || str === "-") return "";
+    return str;
   };
 
   // Register or Update BOM mapping handler
@@ -197,38 +478,35 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
 
     setIsSaving(true);
     try {
+      const payload = {
+        rubberType: cleanVal(rubberType),
+        rubberType2: cleanVal(rubberType2),
+        compoundType: cleanVal(compoundType),
+        compoundType2: cleanVal(compoundType2),
+        compoundType3: cleanVal(compoundType3),
+        compoundType4: cleanVal(compoundType4),
+        insertType: cleanVal(insertType) || "미사용",
+        coatingType: cleanVal(coatingType) || "미사용"
+      };
+
       await saveBOMMapping(
         v,
         n,
-        {
-          rubberType: rubberType ? rubberType.trim() : "",
-          rubberType2: rubberType2 ? rubberType2.trim() : "",
-          compoundType: compoundType ? compoundType.trim() : "",
-          compoundType2: compoundType2 ? compoundType2.trim() : "",
-          compoundType3: compoundType3 ? compoundType3.trim() : "",
-          compoundType4: "",
-          insertType: insertType && insertType.trim() ? insertType.trim() : "미사용",
-          coatingType: coatingType && coatingType.trim() ? coatingType.trim() : "미사용"
-        },
+        payload,
         currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "책임"}` : "설유철 책임"
       );
 
       const targetKey = `${v}:::${n}`;
       setSelectedItemKey(targetKey);
       setIsCustomItemMode(false);
+      isUserEditingRef.current = false;
 
       showToast(`✅ [${v}] ${n || "전체"} 원재료 BOM 저장/수정 완료!`);
       if (onBOMRegistered) {
         onBOMRegistered({
           vehicle: v,
           itemName: n,
-          rubberType: rubberType ? rubberType.trim() : "",
-          rubberType2: rubberType2 ? rubberType2.trim() : "",
-          compoundType: compoundType ? compoundType.trim() : "",
-          compoundType2: compoundType2 ? compoundType2.trim() : "",
-          compoundType3: compoundType3 ? compoundType3.trim() : "",
-          insertType: insertType && insertType.trim() ? insertType.trim() : "미사용",
-          coatingType: coatingType && coatingType.trim() ? coatingType.trim() : "미사용"
+          ...payload
         });
       }
     } catch (err) {
@@ -242,7 +520,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   // Delete / Revert custom BOM handler
   const handleRevertCustomBOM = async (key) => {
     const [v, n] = key.split(":::");
-    if (window.confirm(`[${v}] ${n || "전체"} 의 커스텀 수정을 초기화하고 원래 엑셀 기본 BOM으로 복원하시겠습니까?`)) {
+    if (window.confirm(`[${v}] ${n || "전체"} 의 BOM 설정을 삭제/초기화하시겠습니까?`)) {
       try {
         await deleteBOMMapping(key);
         showToast(`🗑️ [${v}] ${n || "전체"} 가 기본 엑셀 BOM으로 복원되었습니다.`);
@@ -282,6 +560,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           compoundType: bom.compoundType || "",
           compoundType2: bom.compoundType2 || "",
           compoundType3: bom.compoundType3 || "",
+          compoundType4: bom.compoundType4 || "",
           insertType: bom.insertType || "미사용",
           coatingType: bom.coatingType || "미사용",
           matchType: bom.matchType || (isCustom ? "CUSTOM" : "EXCEL"),
@@ -310,12 +589,23 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           it.compoundType.toLowerCase().includes(q) ||
           it.compoundType2.toLowerCase().includes(q) ||
           it.compoundType3.toLowerCase().includes(q) ||
+          it.compoundType4.toLowerCase().includes(q) ||
           it.insertType.toLowerCase().includes(q) ||
           it.coatingType.toLowerCase().includes(q) ||
           it.lineBadge.toLowerCase().includes(q)
         );
       });
   }, [allMasterItems, customBOMMap, lineFilter, searchFilter]);
+
+  // Combined options for compound fields (컴파운드 + 연고무 혼합)
+  const compoundOptions = useMemo(() => {
+    const cpList = EPDM_COMPOUNDS.filter((cp) => cp.name !== "미사용" && cp.name !== "비사용");
+    const rbList = EPDM_RUBBERS.filter((r) => r.name !== "미사용" && r.name !== "비사용").map((r) => ({
+      name: r.name,
+      type: `${r.type} 고무혼합`
+    }));
+    return [...cpList, ...rbList];
+  }, []);
 
   // If not 설유철 and not Admin, do not render
   if (!isSeolYuCheol) return null;
@@ -330,252 +620,237 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         </div>
       )}
 
-      {/* Datalists for Datalist Autocomplete + Direct Typing */}
-      <datalist id="bom_rubber_list">
-        {EPDM_RUBBERS.map((r) => (
-          <option key={`r_${r.name}`} value={r.name}>
-            {r.name} ({r.type})
-          </option>
-        ))}
-      </datalist>
-
-      <datalist id="bom_compound_list">
-        {EPDM_COMPOUNDS.map((cp) => (
-          <option key={`cp_${cp.name}`} value={cp.name}>
-            {cp.name}
-          </option>
-        ))}
-        {EPDM_RUBBERS.map((r) => (
-          <option key={`cp_r_${r.name}`} value={r.name}>
-            {r.name} (연고무 혼합)
-          </option>
-        ))}
-      </datalist>
-
-      <datalist id="bom_insert_list">
-        <option value="미사용">미사용</option>
-        {EPDM_INSERTS.map((ins) => (
-          <option key={`ins_${ins.name}`} value={ins.name}>
-            {ins.name}
-          </option>
-        ))}
-      </datalist>
-
-      <datalist id="bom_coating_list">
-        <option value="미사용">미사용</option>
-        {EPDM_COATINGS.map((ct) => (
-          <option key={`ct_${ct.name}`} value={ct.name}>
-            {ct.name}
-          </option>
-        ))}
-      </datalist>
-
       {/* ========================================================================= */}
-      {/* ⭐ 설유철 작업자 전용 한 줄짜리 BOM 등록 & 오탈자/재료변경 수정 패널 */}
+      {/* ⭐ 설유철 작업자 전용 2줄 BOM 등록 & 오탈자/재료변경 수정 패널 */}
       {/* ========================================================================= */}
-      <div className="bg-slate-900/95 border border-teal-600/50 rounded-2xl p-2 sm:p-2.5 shadow-md text-white animate-fadeIn">
-        <form onSubmit={handleRegisterBOM} className="flex flex-wrap items-center gap-1.5 text-xs">
-          {/* Badge indicator */}
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-500/20 text-teal-300 font-black text-[11px] shrink-0 border border-teal-500/30">
-            <Edit3 className="w-3.5 h-3.5 text-teal-400" />
-            <span className="hidden sm:inline">설유철 전용 BOM 수정</span>
-            <span className="sm:hidden">BOM</span>
-          </div>
-
-          {/* 1. 품목 선택 (또는 신규 직접입력) */}
-          {!isCustomItemMode ? (
-            <div className="flex-1 min-w-[170px]">
-              <select
-                value={selectedItemKey}
-                onChange={(e) => handleItemSelect(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-teal-500/60 text-white font-black text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer shadow-xs"
-                title="생산 품목 선택 (선택 시 기존 BOM 자동로딩)"
-              >
-                <option value="">-- 품목 선택 (총 {allMasterItems.length}종) --</option>
-                {allMasterItems.map((it) => {
-                  const k = `${it.vehicle}:::${it.itemName}`;
-                  const isMod = !!customBOMMap[k];
-                  return (
-                    <option key={k} value={k}>
-                      {isMod ? "✍️ " : ""}[{it.lineBadge}] [{it.vehicle}] {it.itemName}{it.isAS ? " (A/S)" : ""}
-                    </option>
-                  );
-                })}
-              </select>
+      <div className="bg-slate-900/95 border border-teal-600/50 rounded-2xl p-3 sm:p-3.5 shadow-xl text-white animate-fadeIn space-y-2.5">
+        <form onSubmit={handleRegisterBOM} className="space-y-2.5 text-xs">
+          
+          {/* ━━━ [1줄] 품목 선택 / 신규 등록 & 심금 / 코팅액 & 액션 버튼 ━━━ */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Title / Badge indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-500/20 text-teal-300 font-black text-xs shrink-0 border border-teal-500/30 shadow-xs">
+              <Edit3 className="w-3.5 h-3.5 text-teal-400" />
+              <span>설유철 BOM 설정</span>
             </div>
-          ) : (
-            <div className="flex items-center gap-1 flex-1 min-w-[190px]">
-              <input
-                type="text"
-                value={customVehicle}
-                onChange={(e) => setCustomVehicle(e.target.value)}
-                placeholder="신규 차종(예: NX4)"
-                className="w-1/2 px-2 py-1.5 rounded-xl bg-slate-800 border border-amber-400 text-amber-300 font-bold text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-              />
-              <input
-                type="text"
-                value={customItemName}
-                onChange={(e) => setCustomItemName(e.target.value)}
-                placeholder="신규 품명(예: G/RUN)"
-                className="w-1/2 px-2 py-1.5 rounded-xl bg-slate-800 border border-amber-400 text-amber-300 font-bold text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
-              />
-            </div>
-          )}
 
-          {/* Toggle New Item Input Mode Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsCustomItemMode(!isCustomItemMode);
-              if (!isCustomItemMode) {
-                setCustomVehicle("");
-                setCustomItemName("");
-              }
-            }}
-            className={`p-1.5 rounded-xl border text-[11px] font-bold transition cursor-pointer shrink-0 flex items-center gap-0.5 ${
-              isCustomItemMode
-                ? "bg-amber-500 text-slate-950 border-amber-400 font-black"
-                : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white"
-            }`}
-            title={isCustomItemMode ? "목록 선택 모드로 전환" : "목록에 없는 신규 품목 직접 추가"}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">{isCustomItemMode ? "선택모드" : "신규추가"}</span>
-          </button>
+            {/* 품목 선택 (또는 신규 직접입력) */}
+            {!isCustomItemMode ? (
+              <div className="flex-1 min-w-[240px]">
+                <select
+                  value={selectedItemKey}
+                  onChange={(e) => handleItemSelect(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-800 border border-teal-500/70 text-white font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer shadow-xs"
+                  title="생산 품목 선택 (선택 시 기존 BOM 자동로딩)"
+                >
+                  <option value="">-- 대상 품목 선택 (총 {allMasterItems.length}종) --</option>
+                  {allMasterItems.map((it) => {
+                    const k = `${it.vehicle}:::${it.itemName}`;
+                    const isMod = !!customBOMMap[k];
+                    return (
+                      <option key={k} value={k}>
+                        {isMod ? "✍️ " : ""}[{it.lineBadge}] [{it.vehicle}] {it.itemName}{it.isAS ? " (A/S)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-1 min-w-[240px]">
+                <input
+                  type="text"
+                  value={customVehicle}
+                  onChange={(e) => {
+                    isUserEditingRef.current = true;
+                    setCustomVehicle(e.target.value);
+                  }}
+                  placeholder="신규 차종(예: NX4)"
+                  className="w-1/2 px-3 py-1.5 rounded-xl bg-slate-800 border border-amber-400 text-amber-300 font-bold text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                />
+                <input
+                  type="text"
+                  value={customItemName}
+                  onChange={(e) => {
+                    isUserEditingRef.current = true;
+                    setCustomItemName(e.target.value);
+                  }}
+                  placeholder="신규 품명(예: G/RUN)"
+                  className="w-1/2 px-3 py-1.5 rounded-xl bg-slate-800 border border-amber-400 text-amber-300 font-bold text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
+                />
+              </div>
+            )}
 
-          {/* 2. 연고무 #1 (직접입력/목록선택) */}
-          <div className="w-[105px]">
-            <input
-              list="bom_rubber_list"
-              type="text"
-              value={rubberType}
-              onChange={(e) => setRubberType(e.target.value)}
-              placeholder="연고무1"
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-indigo-300 font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500"
-              title="사용연고무 #1 (타이핑하여 오탈자 수정 및 목록 선택 가능)"
-            />
-          </div>
-
-          {/* 3. 연고무 #2 (선택/직접입력) */}
-          <div className="w-[105px]">
-            <input
-              list="bom_rubber_list"
-              type="text"
-              value={rubberType2}
-              onChange={(e) => setRubberType2(e.target.value)}
-              placeholder="+연고무2(선택)"
-              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500 ${
-                rubberType2 ? "border-indigo-500/70 text-indigo-300" : "border-slate-700 text-slate-300"
-              }`}
-              title="사용연고무 #2 (2종 투입 시)"
-            />
-          </div>
-
-          {/* 4. 컴파운드 #1 */}
-          <div className="w-[110px]">
-            <input
-              list="bom_compound_list"
-              type="text"
-              value={compoundType}
-              onChange={(e) => setCompoundType(e.target.value)}
-              placeholder="컴파운드1"
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-emerald-300 font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500"
-              title="컴파운드 #1 (타이핑하여 오탈자 수정 및 목록 선택 가능)"
-            />
-          </div>
-
-          {/* 5. 컴파운드 #2 */}
-          <div className="w-[110px]">
-            <input
-              list="bom_compound_list"
-              type="text"
-              value={compoundType2}
-              onChange={(e) => setCompoundType2(e.target.value)}
-              placeholder="+컴파운드2(선택)"
-              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500 ${
-                compoundType2 ? "border-emerald-500/70 text-emerald-300" : "border-slate-700 text-slate-300"
-              }`}
-              title="컴파운드 #2 (2종 투입 시)"
-            />
-          </div>
-
-          {/* 6. 컴파운드 #3 */}
-          <div className="w-[110px]">
-            <input
-              list="bom_compound_list"
-              type="text"
-              value={compoundType3}
-              onChange={(e) => setCompoundType3(e.target.value)}
-              placeholder="+컴파운드3(선택)"
-              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500 ${
-                compoundType3 ? "border-emerald-500/70 text-emerald-300" : "border-slate-700 text-slate-300"
-              }`}
-              title="컴파운드 #3 (3종 투입 시)"
-            />
-          </div>
-
-          {/* 7. 심금 (미사용/직접입력) */}
-          <div className="w-[105px]">
-            <input
-              list="bom_insert_list"
-              type="text"
-              value={insertType}
-              onChange={(e) => setInsertType(e.target.value)}
-              placeholder="심금(미사용)"
-              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500 ${
-                insertType && insertType !== "미사용" ? "border-amber-500/70 text-amber-300" : "border-slate-700 text-slate-300"
-              }`}
-              title="심금(Insert) - 미사용 가능"
-            />
-          </div>
-
-          {/* 8. 코팅액 (미사용/직접입력) */}
-          <div className="w-[105px]">
-            <input
-              list="bom_coating_list"
-              type="text"
-              value={coatingType}
-              onChange={(e) => setCoatingType(e.target.value)}
-              placeholder="코팅액(미사용)"
-              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden placeholder-slate-500 ${
-                coatingType && coatingType !== "미사용" ? "border-sky-500/70 text-sky-300" : "border-slate-700 text-slate-300"
-              }`}
-              title="코팅액 - 미사용 가능"
-            />
-          </div>
-
-          {/* 9. 저장/등록 버튼 & 전체목록 버튼 */}
-          <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="py-1.5 px-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-md"
-              title="선택/입력 품목의 원재료 BOM 저장"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSaving ? "저장중" : "저장"}</span>
-            </button>
-
+            {/* Toggle New Item Input Mode Button */}
             <button
               type="button"
-              onClick={() => setIsListModalOpen(true)}
-              className="py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 border border-slate-700 shadow-xs"
-              title="268종 전체 압출 품목 BOM 목록 조회 및 관리"
+              onClick={() => {
+                setIsCustomItemMode(!isCustomItemMode);
+                if (!isCustomItemMode) {
+                  setCustomVehicle("");
+                  setCustomItemName("");
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                isCustomItemMode
+                  ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow-md"
+                  : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:border-slate-600"
+              }`}
+              title={isCustomItemMode ? "목록 선택 모드로 전환" : "목록에 없는 신규 품목 직접 추가"}
             >
-              <ListFilter className="w-3.5 h-3.5 text-teal-400" />
-              <span>전체목록 ({allMasterItems.length})</span>
-              {customModifiedCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-teal-500 text-slate-950 text-[10px] font-black">
-                  수정 {customModifiedCount}
-                </span>
-              )}
+              <Plus className="w-3.5 h-3.5" />
+              <span>{isCustomItemMode ? "선택모드" : "신규추가"}</span>
             </button>
+
+            {/* 심금 (미사용/직접선택/입력) */}
+            <MaterialCombobox
+              value={insertType}
+              onChange={(val) => {
+                isUserEditingRef.current = true;
+                setInsertType(val);
+              }}
+              options={EPDM_INSERTS}
+              placeholder="심금(미사용)"
+              title="심금(Insert) - 미사용 가능"
+              theme="amber"
+              className="w-[130px]"
+            />
+
+            {/* 코팅액 (미사용/직접선택/입력) */}
+            <MaterialCombobox
+              value={coatingType}
+              onChange={(val) => {
+                isUserEditingRef.current = true;
+                setCoatingType(val);
+              }}
+              options={EPDM_COATINGS}
+              placeholder="코팅액(미사용)"
+              title="코팅액 - 미사용 가능"
+              theme="sky"
+              className="w-[130px]"
+            />
+
+            {/* 저장/등록 버튼 & 전체목록 버튼 */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="py-1.5 px-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md hover:shadow-teal-500/20"
+                title="선택/입력 품목의 원재료 BOM 저장"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? "저장중..." : "저장"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsListModalOpen(true)}
+                className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border border-slate-700 shadow-xs"
+                title="268종 전체 압출 품목 BOM 목록 조회 및 관리"
+              >
+                <ListFilter className="w-3.5 h-3.5 text-teal-400" />
+                <span>전체목록 ({allMasterItems.length})</span>
+                {customModifiedCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-teal-500 text-slate-950 text-[10px] font-black">
+                    {customModifiedCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* ━━━ [2줄] 연고무 2종 + 컴파운드 4종 배합 상세 ━━━ */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/80">
+            {/* 연고무 묶음 */}
+            <div className="flex items-center gap-1.5 flex-1 min-w-[280px] bg-slate-950/40 p-1.5 rounded-xl border border-indigo-900/40">
+              <span className="px-2 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 font-extrabold text-[11px] shrink-0 border border-indigo-500/30">
+                연고무
+              </span>
+              <MaterialCombobox
+                value={rubberType}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setRubberType(val);
+                }}
+                options={EPDM_RUBBERS}
+                placeholder="연고무 1종(미사용)"
+                title="사용연고무 #1 (목록 선택/타이핑, 미사용 선택 가능)"
+                theme="indigo"
+                className="flex-1 min-w-[110px]"
+              />
+              <MaterialCombobox
+                value={rubberType2}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setRubberType2(val);
+                }}
+                options={EPDM_RUBBERS}
+                placeholder="연고무 2종(미사용)"
+                title="사용연고무 #2 (2종 투입 시, 미사용 선택 가능)"
+                theme="indigo"
+                className="flex-1 min-w-[110px]"
+              />
+            </div>
+
+            {/* 컴파운드 4종 묶음 */}
+            <div className="flex items-center gap-1.5 flex-2 min-w-[520px] bg-slate-950/40 p-1.5 rounded-xl border border-emerald-900/40">
+              <span className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] shrink-0 border border-emerald-500/30">
+                컴파운드
+              </span>
+              <MaterialCombobox
+                value={compoundType}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setCompoundType(val);
+                }}
+                options={compoundOptions}
+                placeholder="컴파운드 1종"
+                title="컴파운드 #1 (목록 선택/타이핑, 미사용 선택 가능)"
+                theme="emerald"
+                className="flex-1 min-w-[110px]"
+              />
+              <MaterialCombobox
+                value={compoundType2}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setCompoundType2(val);
+                }}
+                options={compoundOptions}
+                placeholder="컴파운드 2종"
+                title="컴파운드 #2 (2종 투입 시, 미사용 선택 가능)"
+                theme="emerald"
+                className="flex-1 min-w-[110px]"
+              />
+              <MaterialCombobox
+                value={compoundType3}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setCompoundType3(val);
+                }}
+                options={compoundOptions}
+                placeholder="컴파운드 3종"
+                title="컴파운드 #3 (3종 투입 시, 미사용 선택 가능)"
+                theme="emerald"
+                className="flex-1 min-w-[110px]"
+              />
+              <MaterialCombobox
+                value={compoundType4}
+                onChange={(val) => {
+                  isUserEditingRef.current = true;
+                  setCompoundType4(val);
+                }}
+                options={compoundOptions}
+                placeholder="컴파운드 4종"
+                title="컴파운드 #4 (4종 투입 시, 미사용 선택 가능)"
+                theme="emerald"
+                className="flex-1 min-w-[110px]"
+              />
+            </div>
           </div>
         </form>
       </div>
 
       {/* ========================================================================= */}
-      {/* 📋 전체 압출 품목 원재료 BOM 목록 & 수정 모달 (268개 전체 품목 지원) */}
+      {/* 📋 전체 압출 품목 원재료 BOM 목록 & 수정/삭제 모달 */}
       {/* ========================================================================= */}
       {isListModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-fadeIn">
@@ -596,13 +871,13 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                       총 {allMasterItems.length}종 (조회: {fullBOMCatalogList.length}건)
                     </span>
                     {customModifiedCount > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-bold border border-indigo-300">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-bold border border-indigo-300">
                         설유철 수정 {customModifiedCount}건
                       </span>
                     )}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    삼랑진공장 PCM 1호·3호, PVC, TPE 라인 268개 품목별 연고무, 컴파운드, 심금, 코팅액 전체 BOM 목록 (수정 시 실시간 작업일보 자동 연동)
+                    삼랑진공장 PCM 1호·3호, PVC, TPE 라인 268개 품목별 연고무, 컴파운드 4종, 심금, 코팅액 전체 BOM 목록
                   </p>
                 </div>
               </div>
@@ -687,11 +962,11 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                       <th className="p-2.5 w-16">차종</th>
                       <th className="p-2.5">품명</th>
                       <th className="p-2.5">연고무 (1·2종)</th>
-                      <th className="p-2.5">컴파운드 (1·2·3종)</th>
+                      <th className="p-2.5">컴파운드 (1·2·3·4종)</th>
                       <th className="p-2.5">심금</th>
                       <th className="p-2.5">코팅액</th>
                       <th className="p-2.5 text-center w-16">상태</th>
-                      <th className="p-2.5 text-center w-20">수정 / 관리</th>
+                      <th className="p-2.5 text-center w-24">수정 / 삭제</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -742,7 +1017,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                           )}
                         </td>
 
-                        {/* 컴파운드 */}
+                        {/* 컴파운드 (1~4종) */}
                         <td className="p-2.5 font-bold text-emerald-700 dark:text-emerald-400">
                           <div>{row.compoundType || "-"}</div>
                           {row.compoundType2 && (
@@ -751,11 +1026,14 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                           {row.compoundType3 && (
                             <div className="text-[10.5px] text-emerald-600 font-semibold">+ {row.compoundType3}</div>
                           )}
+                          {row.compoundType4 && (
+                            <div className="text-[10.5px] text-emerald-600 font-semibold">+ {row.compoundType4}</div>
+                          )}
                         </td>
 
                         {/* 심금 */}
                         <td className="p-2.5 text-slate-700 dark:text-slate-300">
-                          {row.insertType && row.insertType !== "미사용" ? (
+                          {row.insertType && row.insertType !== "미사용" && row.insertType !== "비사용" && row.insertType !== "없음" ? (
                             <span className="text-amber-700 dark:text-amber-400 font-bold">{row.insertType}</span>
                           ) : (
                             <span className="text-slate-400 text-[10.5px]">미사용</span>
@@ -764,7 +1042,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
 
                         {/* 코팅액 */}
                         <td className="p-2.5 text-slate-700 dark:text-slate-300">
-                          {row.coatingType && row.coatingType !== "미사용" ? (
+                          {row.coatingType && row.coatingType !== "미사용" && row.coatingType !== "비사용" && row.coatingType !== "없음" ? (
                             <span className="text-sky-700 dark:text-sky-400 font-bold">{row.coatingType}</span>
                           ) : (
                             <span className="text-slate-400 text-[10.5px]">미사용</span>
@@ -784,7 +1062,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                           )}
                         </td>
 
-                        {/* 수정 / 초기화 액션 */}
+                        {/* 수정 / 삭제 액션 */}
                         <td className="p-2.5 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button
@@ -797,16 +1075,14 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                               <span>수정</span>
                             </button>
 
-                            {row.isCustom && (
-                              <button
-                                type="button"
-                                onClick={() => handleRevertCustomBOM(row.key)}
-                                className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition cursor-pointer"
-                                title="커스텀 수정 초기화 (기본값 복원)"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRevertCustomBOM(row.key)}
+                              className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition cursor-pointer border border-transparent hover:border-rose-300"
+                              title="BOM 삭제 / 초기화"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -819,7 +1095,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             {/* Modal Footer */}
             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
               <span className="text-teal-700 dark:text-teal-300 font-bold">
-                * [수정] 버튼을 누르면 상단 한 줄 입력바에 즉시 로드되어 오탈자 수정 및 원재료 변경이 가능합니다.
+                * [수정]을 누르면 상단 입력바에 즉시 로드되고, [삭제] 아이콘을 누르면 해당 BOM 설정이 삭제/초기화됩니다.
               </span>
               <button
                 type="button"

@@ -14,7 +14,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { formatYYYYMMDDWithWeekday, formatMMDDWithWeekday, getKSTDateString } from "../utils/dateUtils";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { useModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // Standard Workers list for un-registration check (Excludes general managers: 이명재, 김동욱)
 const TARGET_WORKERS = {
@@ -29,18 +29,7 @@ export const RecentWorkLogsSummaryModal = ({
   onOpenIndividualLog = null,
   onNavigateTab = null
 }) => {
-  useEffect(() => {
-    if (isOpen) {
-      pushModalHistory("recent_work_logs_summary_modal");
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const unsub = subscribeCloseAllModals(() => {
-      if (isOpen && onClose) onClose();
-    });
-    return () => unsub();
-  }, [isOpen, onClose]);
+  useModalHistory(isOpen, onClose, "recent_work_logs_summary_modal");
 
   // 🌟 Extract ONLY dates that actually have registered workers/logs
   const availableDates = useMemo(() => {

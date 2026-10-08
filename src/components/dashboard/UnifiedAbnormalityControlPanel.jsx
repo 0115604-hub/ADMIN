@@ -57,7 +57,8 @@ import {
 import {
   subscribeSmartOvertimeData,
   getLocalSmartOvertimeData,
-  cleanCompanyName
+  cleanCompanyName,
+  isWeekendByDate
 } from "../../services/overtimeSmartService";
 import {
   subscribe4MAbsenceLogs,
@@ -697,14 +698,16 @@ export const UnifiedAbnormalityControlPanel = ({
       const resolvedMainProc = card?.mainProcess || w.line || "압출";
       const photoUrl = card?.photoUrl || w.photoUrl || "";
 
-      // Check days 1 to 31
+      // Check days 1 to 31 (주말 및 법정 휴무일은 특근일이므로 결근 이상발생 건에서 제외)
       for (let d = 1; d <= 31; d++) {
+        const dStr = String(d).padStart(2, "0");
+        const dateStr = `${ym}-${dStr}`;
+        if (isWeekendByDate(dateStr)) continue;
+
         const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) || w[d] || w[String(d)];
         if (!val) continue;
         const strVal = String(val).trim();
         if (strVal === "결근" || strVal === "무단결근" || strVal === "휴가" || strVal === "연차" || strVal === "반차" || strVal.includes("결근")) {
-          const dStr = String(d).padStart(2, "0");
-          const dateStr = `${ym}-${dStr}`;
           const key = `${resolvedComp}_${workerName}_${dateStr}`;
           if (registeredAbsenceKeys.has(key)) continue; // avoid duplication with detailed log
           registeredAbsenceKeys.add(key);

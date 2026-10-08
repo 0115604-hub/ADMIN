@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { isMeetingExpired } from "../../services/urgentIssueService";
 import { getKSTDateString } from "../../utils/dateUtils";
+import { useModalHistory } from "../../utils/modalHistory";
 
 const getIssueOpinionCount = (item) => {
   if (!item) return 0;
@@ -58,7 +59,7 @@ export const IssueLedgerModal = ({
   onOpenDeleteModal,
   onOpenNewIssue
 }) => {
-  if (!isOpen || typeof document === "undefined") return null;
+  useModalHistory(isOpen, onClose, "issueLedgerModal");
 
   const sortedFilteredIssues = React.useMemo(() => {
     if (!Array.isArray(filteredIssues)) return [];
@@ -71,6 +72,8 @@ export const IssueLedgerModal = ({
       return String(b.id || "").localeCompare(String(a.id || ""));
     });
   }, [filteredIssues]);
+
+  if (!isOpen || typeof document === "undefined") return null;
 
   const ISSUES_PER_PAGE = 5;
   const totalIssuePages = Math.max(1, Math.ceil(sortedFilteredIssues.length / ISSUES_PER_PAGE));

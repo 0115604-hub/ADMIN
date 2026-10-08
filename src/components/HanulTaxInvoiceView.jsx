@@ -22,7 +22,7 @@ import {
   X
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
 import {
   getHanulMonthData,
@@ -68,15 +68,7 @@ export const HanulTaxInvoiceView = () => {
   const [isExpenseSummaryModalOpen, setIsExpenseSummaryModalOpen] = useState(false);
   const [isAdminSettlementModalOpen, setIsAdminSettlementModalOpen] = useState(false);
 
-  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
-  useEffect(() => {
-    const unsub = subscribeCloseAllModals(() => {
-      setIsSummaryModalOpen(false);
-      setIsExpenseSummaryModalOpen(false);
-      setIsAdminSettlementModalOpen(false);
-    });
-    return () => unsub();
-  }, []);
+  useModalHistory(isSummaryModalOpen, () => setIsSummaryModalOpen(false), "hanulSummaryModal");
 
   const handleOpenSummaryModal = () => {
     pushModalHistory("hanul_summary_modal");

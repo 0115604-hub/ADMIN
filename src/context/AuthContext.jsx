@@ -109,26 +109,24 @@ export const AuthProvider = ({ children }) => {
       console.warn("SessionStorage parse error:", e);
     }
 
-    // 2. If not in sessionStorage, check localStorage ONLY if rememberMe was explicitly enabled & valid
+    // 2. If not in sessionStorage, check localStorage (robust multi-day session persistence)
     if (!savedProfile) {
       try {
         const localRaw = localStorage.getItem("admin_user_profile");
         if (localRaw) {
           const parsedLocal = JSON.parse(localRaw);
-          if (parsedLocal && parsedLocal.rememberMe && parsedLocal.expiresAt) {
+          if (parsedLocal && parsedLocal.expiresAt) {
             if (Date.now() < parsedLocal.expiresAt) {
               savedProfile = parsedLocal.profile || parsedLocal;
             } else {
               localStorage.removeItem("admin_user_profile");
             }
-          } else {
-            // Legacy format or no rememberMe -> clear to prevent unintended auto-login on shared factory devices
-            localStorage.removeItem("admin_user_profile");
+          } else if (parsedLocal && (parsedLocal.id || parsedLocal.name || parsedLocal.profile)) {
+            savedProfile = parsedLocal.profile || parsedLocal;
           }
         }
       } catch (e) {
         console.warn("LocalStorage parse error:", e);
-        localStorage.removeItem("admin_user_profile");
       }
     }
 
@@ -146,7 +144,9 @@ export const AuthProvider = ({ children }) => {
             roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name}${titleStr}`.trim()
           };
           setCurrentProfile(refreshed);
-          sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
+          try {
+            sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
+          } catch (e) {}
         } else {
           setCurrentProfile(savedProfile);
         }
@@ -165,9 +165,9 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const loginWithProfile = (userOrId, inputPin, rememberMe = false) => {
+  const loginWithProfile = (userOrId, inputPin, rememberMe = true) => {
     let target = null;
-    let effectiveRememberMe = rememberMe;
+    let effectiveRememberMe = rememberMe !== false;
 
     if (typeof userOrId === "object" && userOrId !== null) {
       target = ALL_DESIGNATED_USERS.find((u) => u.id === userOrId.id || u.name === userOrId.name) || userOrId;
@@ -213,18 +213,14 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
     } catch (e) {}
 
-    // If rememberMe is true (personal device), store in localStorage with 24-hour expiration
+    // Persist in localStorage for 60 days to prevent sudden mobile browser memory purge resets
     try {
-      if (effectiveRememberMe) {
-        const persistentData = {
-          rememberMe: true,
-          profile: profileToSave,
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-        };
-        localStorage.setItem("admin_user_profile", JSON.stringify(persistentData));
-      } else {
-        localStorage.removeItem("admin_user_profile");
-      }
+      const persistentData = {
+        rememberMe: true,
+        profile: profileToSave,
+        expiresAt: Date.now() + 60 * 24 * 60 * 60 * 1000 // 60 days
+      };
+      localStorage.setItem("admin_user_profile", JSON.stringify(persistentData));
     } catch (e) {}
 
     // Record login access log

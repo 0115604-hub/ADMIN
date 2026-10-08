@@ -61,18 +61,24 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
   const key = n ? `${v}:::${n}` : v;
   const currentMap = getLocalCustomBOMMap();
 
+  const normalizeVal = (val, defaultVal = "") => {
+    const s = String(val || "").trim();
+    if (!s || s === "없음" || s === "미사용" || s === "비사용" || s === "-") return defaultVal;
+    return s;
+  };
+
   const record = {
     vehicle: v,
     itemName: n,
     key,
-    rubberType: String(bomData.rubberType || "").trim(),
-    rubberType2: String(bomData.rubberType2 || "").trim(),
-    compoundType: String(bomData.compoundType || "").trim(),
-    compoundType2: String(bomData.compoundType2 || "").trim(),
-    compoundType3: String(bomData.compoundType3 || "").trim(),
-    compoundType4: String(bomData.compoundType4 || "").trim(),
-    insertType: String(bomData.insertType || "").trim() || "미사용",
-    coatingType: String(bomData.coatingType || "").trim() || "미사용",
+    rubberType: normalizeVal(bomData.rubberType),
+    rubberType2: normalizeVal(bomData.rubberType2),
+    compoundType: normalizeVal(bomData.compoundType),
+    compoundType2: normalizeVal(bomData.compoundType2),
+    compoundType3: normalizeVal(bomData.compoundType3),
+    compoundType4: normalizeVal(bomData.compoundType4),
+    insertType: normalizeVal(bomData.insertType, "미사용"),
+    coatingType: normalizeVal(bomData.coatingType, "미사용"),
     registeredBy: String(registeredBy || "설유철 책임"),
     updatedAt: new Date().toISOString()
   };

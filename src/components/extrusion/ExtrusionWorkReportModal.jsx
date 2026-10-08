@@ -51,6 +51,7 @@ import {
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
 import { getWorkLogText } from "../../services/workLogI18nService";
+import { useModalHistory } from "../../utils/modalHistory";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -154,6 +155,7 @@ export const ExtrusionWorkReportModal = ({
   isEditing = false,
   existingReports = []
 }) => {
+  useModalHistory(isOpen, onClose, "extrusionWorkReportModal");
   const todayStr = new Date().toISOString().split("T")[0];
 
   // Helper to check if TPM check was already done today for the specified worker (초/중/종물 3회 접속 고려)
@@ -276,7 +278,7 @@ export const ExtrusionWorkReportModal = ({
         downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
           ? initialData.downtimeEvents.map((e, idx) => ({
               id: e.id || `dt_${idx + 1}`,
-              type: e.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅", "다이스수정"].includes(e.category) ? "불량" : "비가동"),
+              type: e.type || (DOWNTIME_CATEGORIES.find((c) => c.id === e.category)?.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅"].includes(e.category) ? "불량" : "비가동")),
               startTime: e.startTime || "",
               endTime: e.endTime || "",
               minutes: Number(e.minutes) || 0,
@@ -332,7 +334,87 @@ export const ExtrusionWorkReportModal = ({
           coatingThicknessInner: initialData?.conditions?.coatingThicknessInner || EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
           pcmZones: Array.isArray(initialData?.conditions?.pcmZones) && initialData.conditions.pcmZones.length === 13
             ? initialData.conditions.pcmZones
-            : [...EXTRUSION_STANDARD_SPECS.pcmZones]
+            : [...EXTRUSION_STANDARD_SPECS.pcmZones],
+          // TPE 4개 압출기 속도 & 압출기온도(±10℃) & 냉각수온도
+          tpeExtruder100Rpm: initialData?.conditions?.tpeExtruder100Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder100Rpm,
+          tpeExtruder80Rpm: initialData?.conditions?.tpeExtruder80Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder80Rpm,
+          tpeExtruder65Rpm: initialData?.conditions?.tpeExtruder65Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder65Rpm,
+          tpeExtruder35Rpm: initialData?.conditions?.tpeExtruder35Rpm || initialData?.conditions?.tpeExtruder45Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+          tpeExtruder45Rpm: initialData?.conditions?.tpeExtruder35Rpm || initialData?.conditions?.tpeExtruder45Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+          tpeCoolingWaterTemp: initialData?.conditions?.tpeCoolingWaterTemp || EXTRUSION_STANDARD_SPECS.tpeCoolingWaterTemp,
+          tpeTemps100: {
+            screw: initialData?.conditions?.tpeTemps100?.screw || EXTRUSION_STANDARD_SPECS.tpeTemps100.screw,
+            cylinder1: initialData?.conditions?.tpeTemps100?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder1,
+            cylinder2: initialData?.conditions?.tpeTemps100?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder2,
+            cylinder3: initialData?.conditions?.tpeTemps100?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder3,
+            cylinder4: initialData?.conditions?.tpeTemps100?.cylinder4 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder4,
+            cylinder5: initialData?.conditions?.tpeTemps100?.cylinder5 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder5,
+            cylinder6: initialData?.conditions?.tpeTemps100?.cylinder6 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder6,
+            adapter: initialData?.conditions?.tpeTemps100?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps100.adapter,
+            die: initialData?.conditions?.tpeTemps100?.die || EXTRUSION_STANDARD_SPECS.tpeTemps100.die,
+            head1: initialData?.conditions?.tpeTemps100?.head1 || EXTRUSION_STANDARD_SPECS.tpeTemps100.head1,
+            head2: initialData?.conditions?.tpeTemps100?.head2 || EXTRUSION_STANDARD_SPECS.tpeTemps100.head2,
+            hopperDryer: initialData?.conditions?.tpeTemps100?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps100.hopperDryer
+          },
+          tpeTemps80: {
+            cylinder1: initialData?.conditions?.tpeTemps80?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder1,
+            cylinder2: initialData?.conditions?.tpeTemps80?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder2,
+            cylinder3: initialData?.conditions?.tpeTemps80?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder3,
+            cylinder4: initialData?.conditions?.tpeTemps80?.cylinder4 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder4,
+            adapter: initialData?.conditions?.tpeTemps80?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps80.adapter,
+            nozzle: initialData?.conditions?.tpeTemps80?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps80.nozzle,
+            hopperDryer: initialData?.conditions?.tpeTemps80?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps80.hopperDryer
+          },
+          tpeTemps65: {
+            cylinder1: initialData?.conditions?.tpeTemps65?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder1,
+            cylinder2: initialData?.conditions?.tpeTemps65?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder2,
+            cylinder3: initialData?.conditions?.tpeTemps65?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder3,
+            adapter: initialData?.conditions?.tpeTemps65?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps65.adapter,
+            nozzle: initialData?.conditions?.tpeTemps65?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps65.nozzle,
+            hopperDryer: initialData?.conditions?.tpeTemps65?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps65.hopperDryer
+          },
+          tpeTemps35: {
+            cylinder1: initialData?.conditions?.tpeTemps35?.cylinder1 || initialData?.conditions?.tpeTemps45?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder1,
+            cylinder2: initialData?.conditions?.tpeTemps35?.cylinder2 || initialData?.conditions?.tpeTemps45?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder2,
+            adapter: initialData?.conditions?.tpeTemps35?.adapter || initialData?.conditions?.tpeTemps45?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps35.adapter,
+            nozzle: initialData?.conditions?.tpeTemps35?.nozzle || initialData?.conditions?.tpeTemps45?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps35.nozzle,
+            hopperDryer: initialData?.conditions?.tpeTemps35?.hopperDryer || initialData?.conditions?.tpeTemps45?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps35.hopperDryer
+          },
+          tpeTemps45: {
+            cylinder1: initialData?.conditions?.tpeTemps35?.cylinder1 || initialData?.conditions?.tpeTemps45?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder1,
+            cylinder2: initialData?.conditions?.tpeTemps35?.cylinder2 || initialData?.conditions?.tpeTemps45?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder2,
+            adapter: initialData?.conditions?.tpeTemps35?.adapter || initialData?.conditions?.tpeTemps45?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps35.adapter,
+            nozzle: initialData?.conditions?.tpeTemps35?.nozzle || initialData?.conditions?.tpeTemps45?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps35.nozzle,
+            hopperDryer: initialData?.conditions?.tpeTemps35?.hopperDryer || initialData?.conditions?.tpeTemps45?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps35.hopperDryer
+          },
+          // PVC 80Ø 속도 & 7구간 압출기온도(±10℃) & 냉각조/본드도포/후로킹/건조로
+          pvcExtruder80Rpm: initialData?.conditions?.pvcExtruder80Rpm || EXTRUSION_STANDARD_SPECS.pvcExtruder80Rpm,
+          pvcHaulOffSpeed: initialData?.conditions?.pvcHaulOffSpeed || initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.pvcHaulOffSpeed,
+          pvcCoolingTankTemp: initialData?.conditions?.pvcCoolingTankTemp || EXTRUSION_STANDARD_SPECS.pvcCoolingTankTemp,
+          pvcBondFeeder1Rpm: initialData?.conditions?.pvcBondFeeder1Rpm || EXTRUSION_STANDARD_SPECS.pvcBondFeeder1Rpm,
+          pvcBondFeeder2Rpm: initialData?.conditions?.pvcBondFeeder2Rpm || EXTRUSION_STANDARD_SPECS.pvcBondFeeder2Rpm,
+          pvcBondCoating: initialData?.conditions?.pvcBondCoating || EXTRUSION_STANDARD_SPECS.pvcBondCoating,
+          pvcFlockVoltage: initialData?.conditions?.pvcFlockVoltage || EXTRUSION_STANDARD_SPECS.pvcFlockVoltage,
+          pvcFlockCurrent: initialData?.conditions?.pvcFlockCurrent || EXTRUSION_STANDARD_SPECS.pvcFlockCurrent,
+          pvcFlockingCondition: initialData?.conditions?.pvcFlockingCondition || initialData?.conditions?.flockingCondition || EXTRUSION_STANDARD_SPECS.pvcFlockingCondition,
+          pvcDryerDriveSpeed: initialData?.conditions?.pvcDryerDriveSpeed || initialData?.conditions?.pvcDryerSpeed || EXTRUSION_STANDARD_SPECS.pvcDryerDriveSpeed,
+          pvcDryerSpeed: initialData?.conditions?.pvcDryerSpeed || initialData?.conditions?.pvcDryerDriveSpeed || EXTRUSION_STANDARD_SPECS.pvcDryerSpeed,
+          pvcDryerTemp: initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerTemp,
+          pvcDryerZones: {
+            zone1: initialData?.conditions?.pvcDryerZones?.zone1 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[0] : null) || initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone1,
+            zone2: initialData?.conditions?.pvcDryerZones?.zone2 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[1] : null) || initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone2,
+            zone3: initialData?.conditions?.pvcDryerZones?.zone3 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[2] : null) || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone3,
+            zone4: initialData?.conditions?.pvcDryerZones?.zone4 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[3] : null) || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone4
+          },
+          pvcTemps: {
+            cylinder1: initialData?.conditions?.pvcTemps?.cylinder1 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder1,
+            cylinder2: initialData?.conditions?.pvcTemps?.cylinder2 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder2,
+            cylinder3: initialData?.conditions?.pvcTemps?.cylinder3 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder3,
+            cylinder4: initialData?.conditions?.pvcTemps?.cylinder4 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder4,
+            adapter: initialData?.conditions?.pvcTemps?.adapter || EXTRUSION_STANDARD_SPECS.pvcTemps.adapter,
+            nozzle: initialData?.conditions?.pvcTemps?.nozzle || EXTRUSION_STANDARD_SPECS.pvcTemps.nozzle,
+            die: initialData?.conditions?.pvcTemps?.die || EXTRUSION_STANDARD_SPECS.pvcTemps.die
+          }
         }
       };
     }
@@ -407,7 +489,34 @@ export const ExtrusionWorkReportModal = ({
         coatingThicknessBase: EXTRUSION_STANDARD_SPECS.coatingThicknessBase,
         coatingThicknessOuter: EXTRUSION_STANDARD_SPECS.coatingThicknessOuter,
         coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
-        pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
+        pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones],
+        // TPE 4개 압출기 속도 & 압출기온도(±10℃) & 냉각수온도
+        tpeExtruder100Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder100Rpm,
+        tpeExtruder80Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder80Rpm,
+        tpeExtruder65Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder65Rpm,
+        tpeExtruder35Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+        tpeExtruder45Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+        tpeCoolingWaterTemp: EXTRUSION_STANDARD_SPECS.tpeCoolingWaterTemp,
+        tpeTemps100: { ...EXTRUSION_STANDARD_SPECS.tpeTemps100 },
+        tpeTemps80: { ...EXTRUSION_STANDARD_SPECS.tpeTemps80 },
+        tpeTemps65: { ...EXTRUSION_STANDARD_SPECS.tpeTemps65 },
+        tpeTemps35: { ...EXTRUSION_STANDARD_SPECS.tpeTemps35 },
+        tpeTemps45: { ...EXTRUSION_STANDARD_SPECS.tpeTemps35 },
+        // PVC 80Ø 속도 & 7구간 압출기온도(±10℃) & 냉각조/본드도포/후로킹/건조로
+        pvcExtruder80Rpm: EXTRUSION_STANDARD_SPECS.pvcExtruder80Rpm,
+        pvcHaulOffSpeed: EXTRUSION_STANDARD_SPECS.pvcHaulOffSpeed,
+        pvcCoolingTankTemp: EXTRUSION_STANDARD_SPECS.pvcCoolingTankTemp,
+        pvcBondFeeder1Rpm: EXTRUSION_STANDARD_SPECS.pvcBondFeeder1Rpm,
+        pvcBondFeeder2Rpm: EXTRUSION_STANDARD_SPECS.pvcBondFeeder2Rpm,
+        pvcBondCoating: EXTRUSION_STANDARD_SPECS.pvcBondCoating,
+        pvcFlockVoltage: EXTRUSION_STANDARD_SPECS.pvcFlockVoltage,
+        pvcFlockCurrent: EXTRUSION_STANDARD_SPECS.pvcFlockCurrent,
+        pvcFlockingCondition: EXTRUSION_STANDARD_SPECS.pvcFlockingCondition,
+        pvcDryerDriveSpeed: EXTRUSION_STANDARD_SPECS.pvcDryerDriveSpeed,
+        pvcDryerSpeed: EXTRUSION_STANDARD_SPECS.pvcDryerSpeed,
+        pvcDryerTemp: EXTRUSION_STANDARD_SPECS.pvcDryerTemp,
+        pvcDryerZones: { ...EXTRUSION_STANDARD_SPECS.pvcDryerZones },
+        pvcTemps: { ...EXTRUSION_STANDARD_SPECS.pvcTemps }
       },
       downtimeEvents: [createDefaultDowntimeEvent()],
       downtimeMinutes: 30,
@@ -420,6 +529,10 @@ export const ExtrusionWorkReportModal = ({
   });
 
   const [errors, setErrors] = useState({});
+
+  // Line identification
+  const isTPELine = formData?.lineId === "tpe" || String(formData?.lineName || "").toLowerCase().includes("tpe");
+  const isPVCLine = formData?.lineId === "pvc" || String(formData?.lineName || "").toLowerCase().includes("pvc");
 
   // Items for currently selected line
   const activeLineItems = useMemo(() => {
@@ -512,7 +625,7 @@ export const ExtrusionWorkReportModal = ({
           downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
             ? initialData.downtimeEvents.map((e, idx) => ({
                 id: e.id || `dt_${idx + 1}`,
-                type: e.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅", "다이스수정"].includes(e.category) ? "불량" : "비가동"),
+                type: e.type || (DOWNTIME_CATEGORIES.find((c) => c.id === e.category)?.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅"].includes(e.category) ? "불량" : "비가동")),
                 startTime: e.startTime || "",
                 endTime: e.endTime || "",
                 minutes: Number(e.minutes) || 0,
@@ -568,7 +681,87 @@ export const ExtrusionWorkReportModal = ({
             coatingThicknessInner: initialData?.conditions?.coatingThicknessInner || EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
             pcmZones: Array.isArray(initialData?.conditions?.pcmZones) && initialData.conditions.pcmZones.length === 13
               ? initialData.conditions.pcmZones
-              : [...EXTRUSION_STANDARD_SPECS.pcmZones]
+              : [...EXTRUSION_STANDARD_SPECS.pcmZones],
+            // TPE 4개 압출기 속도 & 압출기온도(±10℃) & 냉각수온도
+            tpeExtruder100Rpm: initialData?.conditions?.tpeExtruder100Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder100Rpm,
+            tpeExtruder80Rpm: initialData?.conditions?.tpeExtruder80Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder80Rpm,
+            tpeExtruder65Rpm: initialData?.conditions?.tpeExtruder65Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder65Rpm,
+            tpeExtruder35Rpm: initialData?.conditions?.tpeExtruder35Rpm || initialData?.conditions?.tpeExtruder45Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+            tpeExtruder45Rpm: initialData?.conditions?.tpeExtruder35Rpm || initialData?.conditions?.tpeExtruder45Rpm || EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+            tpeCoolingWaterTemp: initialData?.conditions?.tpeCoolingWaterTemp || EXTRUSION_STANDARD_SPECS.tpeCoolingWaterTemp,
+            tpeTemps100: {
+              screw: initialData?.conditions?.tpeTemps100?.screw || EXTRUSION_STANDARD_SPECS.tpeTemps100.screw,
+              cylinder1: initialData?.conditions?.tpeTemps100?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder1,
+              cylinder2: initialData?.conditions?.tpeTemps100?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder2,
+              cylinder3: initialData?.conditions?.tpeTemps100?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder3,
+              cylinder4: initialData?.conditions?.tpeTemps100?.cylinder4 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder4,
+              cylinder5: initialData?.conditions?.tpeTemps100?.cylinder5 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder5,
+              cylinder6: initialData?.conditions?.tpeTemps100?.cylinder6 || EXTRUSION_STANDARD_SPECS.tpeTemps100.cylinder6,
+              adapter: initialData?.conditions?.tpeTemps100?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps100.adapter,
+              die: initialData?.conditions?.tpeTemps100?.die || EXTRUSION_STANDARD_SPECS.tpeTemps100.die,
+              head1: initialData?.conditions?.tpeTemps100?.head1 || EXTRUSION_STANDARD_SPECS.tpeTemps100.head1,
+              head2: initialData?.conditions?.tpeTemps100?.head2 || EXTRUSION_STANDARD_SPECS.tpeTemps100.head2,
+              hopperDryer: initialData?.conditions?.tpeTemps100?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps100.hopperDryer
+            },
+            tpeTemps80: {
+              cylinder1: initialData?.conditions?.tpeTemps80?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder1,
+              cylinder2: initialData?.conditions?.tpeTemps80?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder2,
+              cylinder3: initialData?.conditions?.tpeTemps80?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder3,
+              cylinder4: initialData?.conditions?.tpeTemps80?.cylinder4 || EXTRUSION_STANDARD_SPECS.tpeTemps80.cylinder4,
+              adapter: initialData?.conditions?.tpeTemps80?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps80.adapter,
+              nozzle: initialData?.conditions?.tpeTemps80?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps80.nozzle,
+              hopperDryer: initialData?.conditions?.tpeTemps80?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps80.hopperDryer
+            },
+            tpeTemps65: {
+              cylinder1: initialData?.conditions?.tpeTemps65?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder1,
+              cylinder2: initialData?.conditions?.tpeTemps65?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder2,
+              cylinder3: initialData?.conditions?.tpeTemps65?.cylinder3 || EXTRUSION_STANDARD_SPECS.tpeTemps65.cylinder3,
+              adapter: initialData?.conditions?.tpeTemps65?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps65.adapter,
+              nozzle: initialData?.conditions?.tpeTemps65?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps65.nozzle,
+              hopperDryer: initialData?.conditions?.tpeTemps65?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps65.hopperDryer
+            },
+            tpeTemps35: {
+              cylinder1: initialData?.conditions?.tpeTemps35?.cylinder1 || initialData?.conditions?.tpeTemps45?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder1,
+              cylinder2: initialData?.conditions?.tpeTemps35?.cylinder2 || initialData?.conditions?.tpeTemps45?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder2,
+              adapter: initialData?.conditions?.tpeTemps35?.adapter || initialData?.conditions?.tpeTemps45?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps35.adapter,
+              nozzle: initialData?.conditions?.tpeTemps35?.nozzle || initialData?.conditions?.tpeTemps45?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps35.nozzle,
+              hopperDryer: initialData?.conditions?.tpeTemps35?.hopperDryer || initialData?.conditions?.tpeTemps45?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps35.hopperDryer
+            },
+            tpeTemps45: {
+              cylinder1: initialData?.conditions?.tpeTemps35?.cylinder1 || initialData?.conditions?.tpeTemps45?.cylinder1 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder1,
+              cylinder2: initialData?.conditions?.tpeTemps35?.cylinder2 || initialData?.conditions?.tpeTemps45?.cylinder2 || EXTRUSION_STANDARD_SPECS.tpeTemps35.cylinder2,
+              adapter: initialData?.conditions?.tpeTemps35?.adapter || initialData?.conditions?.tpeTemps45?.adapter || EXTRUSION_STANDARD_SPECS.tpeTemps35.adapter,
+              nozzle: initialData?.conditions?.tpeTemps35?.nozzle || initialData?.conditions?.tpeTemps45?.nozzle || EXTRUSION_STANDARD_SPECS.tpeTemps35.nozzle,
+              hopperDryer: initialData?.conditions?.tpeTemps35?.hopperDryer || initialData?.conditions?.tpeTemps45?.hopperDryer || EXTRUSION_STANDARD_SPECS.tpeTemps35.hopperDryer
+            },
+            // PVC 80Ø 속도 & 7구간 압출기온도(±10℃) & 냉각조/본드도포/후로킹/건조로
+            pvcExtruder80Rpm: initialData?.conditions?.pvcExtruder80Rpm || EXTRUSION_STANDARD_SPECS.pvcExtruder80Rpm,
+            pvcHaulOffSpeed: initialData?.conditions?.pvcHaulOffSpeed || initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.pvcHaulOffSpeed,
+            pvcCoolingTankTemp: initialData?.conditions?.pvcCoolingTankTemp || EXTRUSION_STANDARD_SPECS.pvcCoolingTankTemp,
+            pvcBondFeeder1Rpm: initialData?.conditions?.pvcBondFeeder1Rpm || EXTRUSION_STANDARD_SPECS.pvcBondFeeder1Rpm,
+            pvcBondFeeder2Rpm: initialData?.conditions?.pvcBondFeeder2Rpm || EXTRUSION_STANDARD_SPECS.pvcBondFeeder2Rpm,
+            pvcBondCoating: initialData?.conditions?.pvcBondCoating || EXTRUSION_STANDARD_SPECS.pvcBondCoating,
+            pvcFlockVoltage: initialData?.conditions?.pvcFlockVoltage || EXTRUSION_STANDARD_SPECS.pvcFlockVoltage,
+            pvcFlockCurrent: initialData?.conditions?.pvcFlockCurrent || EXTRUSION_STANDARD_SPECS.pvcFlockCurrent,
+            pvcFlockingCondition: initialData?.conditions?.pvcFlockingCondition || initialData?.conditions?.flockingCondition || EXTRUSION_STANDARD_SPECS.pvcFlockingCondition,
+            pvcDryerDriveSpeed: initialData?.conditions?.pvcDryerDriveSpeed || initialData?.conditions?.pvcDryerSpeed || EXTRUSION_STANDARD_SPECS.pvcDryerDriveSpeed,
+            pvcDryerSpeed: initialData?.conditions?.pvcDryerSpeed || initialData?.conditions?.pvcDryerDriveSpeed || EXTRUSION_STANDARD_SPECS.pvcDryerSpeed,
+            pvcDryerTemp: initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerTemp,
+            pvcDryerZones: {
+              zone1: initialData?.conditions?.pvcDryerZones?.zone1 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[0] : null) || initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone1,
+              zone2: initialData?.conditions?.pvcDryerZones?.zone2 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[1] : null) || initialData?.conditions?.pvcDryerTemp || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone2,
+              zone3: initialData?.conditions?.pvcDryerZones?.zone3 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[2] : null) || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone3,
+              zone4: initialData?.conditions?.pvcDryerZones?.zone4 || (Array.isArray(initialData?.conditions?.pvcDryerZones) ? initialData.conditions.pvcDryerZones[3] : null) || EXTRUSION_STANDARD_SPECS.pvcDryerZones.zone4
+            },
+            pvcTemps: {
+              cylinder1: initialData?.conditions?.pvcTemps?.cylinder1 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder1,
+              cylinder2: initialData?.conditions?.pvcTemps?.cylinder2 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder2,
+              cylinder3: initialData?.conditions?.pvcTemps?.cylinder3 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder3,
+              cylinder4: initialData?.conditions?.pvcTemps?.cylinder4 || EXTRUSION_STANDARD_SPECS.pvcTemps.cylinder4,
+              adapter: initialData?.conditions?.pvcTemps?.adapter || EXTRUSION_STANDARD_SPECS.pvcTemps.adapter,
+              nozzle: initialData?.conditions?.pvcTemps?.nozzle || EXTRUSION_STANDARD_SPECS.pvcTemps.nozzle,
+              die: initialData?.conditions?.pvcTemps?.die || EXTRUSION_STANDARD_SPECS.pvcTemps.die
+            }
           }
         });
       } else {
@@ -644,7 +837,34 @@ export const ExtrusionWorkReportModal = ({
             coatingThicknessBase: EXTRUSION_STANDARD_SPECS.coatingThicknessBase,
             coatingThicknessOuter: EXTRUSION_STANDARD_SPECS.coatingThicknessOuter,
             coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
-            pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
+            pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones],
+            // TPE 4개 압출기 속도 & 압출기온도(±10℃) & 냉각수온도
+            tpeExtruder100Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder100Rpm,
+            tpeExtruder80Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder80Rpm,
+            tpeExtruder65Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder65Rpm,
+            tpeExtruder35Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+            tpeExtruder45Rpm: EXTRUSION_STANDARD_SPECS.tpeExtruder35Rpm,
+            tpeCoolingWaterTemp: EXTRUSION_STANDARD_SPECS.tpeCoolingWaterTemp,
+            tpeTemps100: { ...EXTRUSION_STANDARD_SPECS.tpeTemps100 },
+            tpeTemps80: { ...EXTRUSION_STANDARD_SPECS.tpeTemps80 },
+            tpeTemps65: { ...EXTRUSION_STANDARD_SPECS.tpeTemps65 },
+            tpeTemps35: { ...EXTRUSION_STANDARD_SPECS.tpeTemps35 },
+            tpeTemps45: { ...EXTRUSION_STANDARD_SPECS.tpeTemps35 },
+            // PVC 80Ø 속도 & 7구간 압출기온도(±10℃) & 냉각조/본드도포/후로킹/건조로
+            pvcExtruder80Rpm: EXTRUSION_STANDARD_SPECS.pvcExtruder80Rpm,
+            pvcHaulOffSpeed: EXTRUSION_STANDARD_SPECS.pvcHaulOffSpeed,
+            pvcCoolingTankTemp: EXTRUSION_STANDARD_SPECS.pvcCoolingTankTemp,
+            pvcBondFeeder1Rpm: EXTRUSION_STANDARD_SPECS.pvcBondFeeder1Rpm,
+            pvcBondFeeder2Rpm: EXTRUSION_STANDARD_SPECS.pvcBondFeeder2Rpm,
+            pvcBondCoating: EXTRUSION_STANDARD_SPECS.pvcBondCoating,
+            pvcFlockVoltage: EXTRUSION_STANDARD_SPECS.pvcFlockVoltage,
+            pvcFlockCurrent: EXTRUSION_STANDARD_SPECS.pvcFlockCurrent,
+            pvcFlockingCondition: EXTRUSION_STANDARD_SPECS.pvcFlockingCondition,
+            pvcDryerDriveSpeed: EXTRUSION_STANDARD_SPECS.pvcDryerDriveSpeed,
+            pvcDryerSpeed: EXTRUSION_STANDARD_SPECS.pvcDryerSpeed,
+            pvcDryerTemp: EXTRUSION_STANDARD_SPECS.pvcDryerTemp,
+            pvcDryerZones: { ...EXTRUSION_STANDARD_SPECS.pvcDryerZones },
+            pvcTemps: { ...EXTRUSION_STANDARD_SPECS.pvcTemps }
           },
           downtimeEvents: [createDefaultDowntimeEvent("비가동", "압개시")],
           downtimeMinutes: 30,
@@ -1064,6 +1284,112 @@ export const ExtrusionWorkReportModal = ({
           cylinder1: valStr,
           cylinder2: valStr,
           cylinder3: valStr
+        }
+      }
+    }));
+  };
+
+  const handleTpeTempChange = (extruderKey, zoneKey, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        [extruderKey]: {
+          ...(prev.conditions?.[extruderKey] || {}),
+          [zoneKey]: value
+        }
+      }
+    }));
+  };
+
+  const handleBatchTpeExtruderTemps = (targetTemp = "190") => {
+    const val = prompt("TPE 4개 압출기 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
+    if (!val || isNaN(Number(val))) return;
+    const numStr = String(Math.round(Number(val)));
+    setFormData((prev) => {
+      const updateExtruder = (extKey) => {
+        const current = prev.conditions?.[extKey] || EXTRUSION_STANDARD_SPECS[extKey] || {};
+        const res = {};
+        Object.keys(current).forEach((k) => {
+          res[k] = k === "hopperDryer" ? String(current[k] || "80").replace(/\.0+$/, "") : numStr;
+        });
+        return res;
+      };
+
+      return {
+        ...prev,
+        conditions: {
+          ...(prev.conditions || {}),
+          tpeTemps100: updateExtruder("tpeTemps100"),
+          tpeTemps80: updateExtruder("tpeTemps80"),
+          tpeTemps65: updateExtruder("tpeTemps65"),
+          tpeTemps35: updateExtruder("tpeTemps35"),
+          tpeTemps45: updateExtruder("tpeTemps35")
+        }
+      };
+    });
+  };
+
+  const handlePvcTempChange = (zoneKey, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        pvcTemps: {
+          ...(prev.conditions?.pvcTemps || {}),
+          [zoneKey]: value
+        }
+      }
+    }));
+  };
+
+  const handleBatchPvcExtruderTemps = (targetTemp = "180") => {
+    const val = prompt("PVC 압출기 7개 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
+    if (!val || isNaN(Number(val))) return;
+    const numStr = String(Math.round(Number(val)));
+    setFormData((prev) => {
+      const current = prev.conditions?.pvcTemps || EXTRUSION_STANDARD_SPECS.pvcTemps || {};
+      const res = {};
+      Object.keys(current).forEach((k) => {
+        res[k] = numStr;
+      });
+      return {
+        ...prev,
+        conditions: {
+          ...(prev.conditions || {}),
+          pvcTemps: res
+        }
+      };
+    });
+  };
+
+  const handlePvcDryerZoneChange = (zoneKey, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        pvcDryerZones: {
+          ...(prev.conditions?.pvcDryerZones || {}),
+          [zoneKey]: value
+        }
+      }
+    }));
+  };
+
+  const handleBatchPvcDryerTemps = (targetTemp = "160") => {
+    const val = prompt("PVC 건조로 4개 존 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
+    if (!val || isNaN(Number(val))) return;
+    const numStr = String(Math.round(Number(val)));
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        pvcDryerTemp: numStr,
+        pvcDryerZones: {
+          zone1: numStr,
+          zone2: numStr,
+          zone3: numStr,
+          zone4: numStr
         }
       }
     }));
@@ -1795,8 +2121,8 @@ export const ExtrusionWorkReportModal = ({
                             }
                           ];
 
-                          const activeSlots = ALL_MATERIAL_SLOTS.filter(s => s.val && typeof s.val === "string" && s.val.trim() !== "" && s.val.trim() !== "미사용");
-                          const unusedSlots = ALL_MATERIAL_SLOTS.filter(s => !s.val || typeof s.val !== "string" || s.val.trim() === "" || s.val.trim() === "미사용");
+                          const activeSlots = ALL_MATERIAL_SLOTS.filter(s => s.val && typeof s.val === "string" && s.val.trim() !== "" && s.val.trim() !== "미사용" && s.val.trim() !== "비사용" && s.val.trim() !== "없음");
+                          const unusedSlots = ALL_MATERIAL_SLOTS.filter(s => !s.val || typeof s.val !== "string" || s.val.trim() === "" || s.val.trim() === "미사용" || s.val.trim() === "비사용" || s.val.trim() === "없음");
 
                           return (
                             <div className="pt-2 pb-0.5 space-y-2">
@@ -2021,323 +2347,1083 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Extruder Speeds, 9-Zone Water Bath, Curing Temp & Coating Pressure */}
+            {/* Section 3: Extruder Speeds & Temperatures (Standard PCM/PVC vs TPE 4-Extruders) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+              {/* Header */}
               <div className="flex items-center justify-between flex-wrap gap-1.5">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  ③ 작업조건
+                  {isTPELine ? "③ TPE 작업조건" : isPVCLine ? "③ PVC 작업조건" : "③ 작업조건"}
                 </span>
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-[10.5px] border border-indigo-300">
-                    압출·인취속도
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
-                    온조기(9구간)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
-                    가류조(13존)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
-                    코팅압력
-                  </span>
+                  {isTPELine ? (
+                    <>
+                      <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-black text-[10.5px] border border-purple-300">
+                        4개 압출기(100·80·65·35Ø) & 인취속도
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
+                        압출기온도 (설정온도 ±10℃)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-black text-[10.5px] border border-blue-300">
+                        냉각수온도
+                      </span>
+                    </>
+                  ) : isPVCLine ? (
+                    <>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-black text-[10.5px] border border-amber-300">
+                        80Ø 압출속도 & 인취속도
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
+                        압출기온도 (7구간, ±10℃)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
+                        냉각조 · 본드(공급기1·2) · 후로킹(식모) · 건조로(1~4존)
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-[10.5px] border border-indigo-300">
+                        압출·인취속도
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
+                        온조기(9구간)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
+                        가류조(13존)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
+                        코팅압력
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* 1. 압출기 속도 (110Ø, 70Ø) & 인취기 속도 */}
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-300/80 dark:border-indigo-900/60 shadow-xs space-y-2">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5" />
-                    압출속도 & 인취기속도
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    110Ø / 70Ø RPM & 라인 인취 m/분
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* 110Ø Extruder Speed */}
-                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
-                      <span>110Ø 압출속도</span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.extruder110Rpm ?? ""}
-                        onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
-                        placeholder="속도 입력"
-                        className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
-                        RPM
+              {isTPELine ? (
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                /* 🌟 TPE 라인 전용 작업조건 (4개 압출기 RPM & 4개 압출기온도 ±10℃) */
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                <div className="space-y-3">
+                  {/* 1. TPE 압출속도 (100Ø, 80Ø, 65Ø, 45Ø RPM) & 인취기 속도 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-purple-300/80 dark:border-purple-900/60 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white font-black text-xs flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" />
+                        TPE 4개 압출기 속도 & 인취기 속도
+                      </span>
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-300">
+                        100Ø · 80Ø · 65Ø · 35Ø RPM & 라인 인취 m/분
                       </span>
                     </div>
-                  </div>
 
-                  {/* 70Ø Extruder Speed */}
-                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
-                      <span>70Ø 압출속도</span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.extruder70Rpm ?? ""}
-                        onChange={(e) => handleNestedFieldChange("conditions", "extruder70Rpm", e.target.value)}
-                        placeholder="속도 입력"
-                        className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
-                        RPM
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Haul-off Speed */}
-                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
-                      <span>인취기 속도</span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.haulOffSpeed ?? ""}
-                        onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
-                        placeholder="속도 입력"
-                        className="w-full text-right pr-13 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
-                        m/분
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. 온조기 조건 (표준: 50±5℃) - Ø110 5개 + Ø70 4개 = 총 9구간 */}
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs flex items-center gap-1">
-                    <Droplets className="w-3.5 h-3.5" />
-                    온조기 조건 (표준 50±5℃)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const val = prompt("온조기 9개 전체 구간에 일괄 적용할 온도를 입력하세요(℃):", "50.0");
-                      if (val && !isNaN(Number(val))) {
-                        handleBatchWaterZones(val);
-                      }
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10.5px] font-black border border-teal-300 dark:border-teal-800 transition cursor-pointer"
-                  >
-                    ⚡ 50℃ 일괄적용
-                  </button>
-                </div>
-
-                {/* Group 1: Ø110 압출기 온조기 (5개 구간: 스크류, 실린더1, 실린더2, 실린더3, 헤드) */}
-                <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
-                      Ø110 압출기 온조기 (5개 구간)
-                    </span>
-                    <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
-                      스크류 · 실린더1~3 · 헤드 (±5℃)
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
-                    {[
-                      { key: "screw", label: "스크류" },
-                      { key: "cylinder1", label: "실린더1" },
-                      { key: "cylinder2", label: "실린더2" },
-                      { key: "cylinder3", label: "실린더3" },
-                      { key: "head", label: "헤드" }
-                    ].map((item) => {
-                      const curVal = formData.conditions?.waterZones110?.[item.key] ?? "50.0";
-                      return (
-                        <div
-                          key={`w110_${item.key}`}
-                          className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
-                        >
-                          <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
-                            {item.label}
-                          </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {/* 100Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span>100Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
                           <input
                             type="number"
-                            step="0.5"
-                            value={curVal}
-                            onChange={(e) => handleWaterZone110Change(item.key, e.target.value)}
-                            placeholder="50.0"
-                            className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                            step="0.1"
+                            value={formData.conditions?.tpeExtruder100Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "tpeExtruder100Rpm", e.target.value)}
+                            placeholder="25.0"
+                            className="w-full text-right pr-11 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs sm:text-sm text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
                           />
-                          <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Group 2: Ø70 압출기 온조기 (4개 구간: 스크류, 실린더1, 실린더2, 실린더3) */}
-                <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
-                      Ø70 압출기 온조기 (4개 구간)
-                    </span>
-                    <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
-                      스크류 · 실린더1~3 (±5℃)
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                    {[
-                      { key: "screw", label: "스크류" },
-                      { key: "cylinder1", label: "실린더1" },
-                      { key: "cylinder2", label: "실린더2" },
-                      { key: "cylinder3", label: "실린더3" }
-                    ].map((item) => {
-                      const curVal = formData.conditions?.waterZones70?.[item.key] ?? "50.0";
-                      return (
-                        <div
-                          key={`w70_${item.key}`}
-                          className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
-                        >
-                          <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
-                            {item.label}
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500 pointer-events-none">
+                            RPM
                           </span>
+                        </div>
+                      </div>
+
+                      {/* 80Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span>80Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
                           <input
                             type="number"
-                            step="0.5"
-                            value={curVal}
-                            onChange={(e) => handleWaterZone70Change(item.key, e.target.value)}
-                            placeholder="50.0"
-                            className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                            step="0.1"
+                            value={formData.conditions?.tpeExtruder80Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "tpeExtruder80Rpm", e.target.value)}
+                            placeholder="20.0"
+                            className="w-full text-right pr-11 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs sm:text-sm text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
                           />
-                          <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500 pointer-events-none">
+                            RPM
+                          </span>
                         </div>
-                      );
-                    })}
+                      </div>
+
+                      {/* 65Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span>65Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.tpeExtruder65Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "tpeExtruder65Rpm", e.target.value)}
+                            placeholder="18.0"
+                            className="w-full text-right pr-11 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs sm:text-sm text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500 pointer-events-none">
+                            RPM
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 35Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span>35Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.tpeExtruder35Rpm ?? formData.conditions?.tpeExtruder45Rpm ?? ""}
+                            onChange={(e) => {
+                              handleNestedFieldChange("conditions", "tpeExtruder35Rpm", e.target.value);
+                              handleNestedFieldChange("conditions", "tpeExtruder45Rpm", e.target.value);
+                            }}
+                            placeholder="15.0"
+                            className="w-full text-right pr-11 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs sm:text-sm text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500 pointer-events-none">
+                            RPM
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Haul-off Speed */}
+                      <div className="col-span-2 sm:col-span-1 p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span>인취기 속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.haulOffSpeed ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
+                            placeholder="15.0"
+                            className="w-full text-right pr-12 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs sm:text-sm text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500 pointer-events-none">
+                            m/분
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. TPE 압출기온도 (설정온도 ±10℃) - 100Ø, 80Ø, 65Ø, 35Ø 4개 압출기별 온도 + 냉각수온도 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs flex items-center gap-1">
+                        <Thermometer className="w-3.5 h-3.5" />
+                        압출기온도 (설정온도 ±10℃)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchTpeExtruderTemps("190")}
+                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10.5px] font-black border border-teal-300 dark:border-teal-800 transition cursor-pointer shadow-2xs"
+                      >
+                        ⚡ 190℃ 일괄적용
+                      </button>
+                    </div>
+
+                    {/* Group 1: 100Ø 압출기 온도 (12개 구간, ±10℃) */}
+                    <div className="p-2.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                          100Ø 압출기 온도 (±10℃)
+                        </span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          스크류 · 실린더1~6 · 어댑터 · 다이스 · 헤드1~2 · 호퍼드라이어 (12구간)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-1 sm:gap-1.5">
+                        {[
+                          { key: "screw", label: "스크류" },
+                          { key: "cylinder1", label: "실린더1" },
+                          { key: "cylinder2", label: "실린더2" },
+                          { key: "cylinder3", label: "실린더3" },
+                          { key: "cylinder4", label: "실린더4" },
+                          { key: "cylinder5", label: "실린더5" },
+                          { key: "cylinder6", label: "실린더6" },
+                          { key: "adapter", label: "어댑터" },
+                          { key: "die", label: "다이스" },
+                          { key: "head1", label: "헤드1" },
+                          { key: "head2", label: "헤드2" },
+                          { key: "hopperDryer", label: "호퍼드라이어" }
+                        ].map((item) => {
+                          const curVal = String(
+                            formData.conditions?.tpeTemps100?.[item.key] ??
+                            EXTRUSION_STANDARD_SPECS.tpeTemps100[item.key] ??
+                            (item.key === "hopperDryer" ? "80" : "190")
+                          ).replace(/\.0+$/, "");
+                          return (
+                            <div
+                              key={`tpe100_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center" title={item.label}>
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="1"
+                                value={curVal}
+                                onChange={(e) => handleTpeTempChange("tpeTemps100", item.key, e.target.value)}
+                                placeholder={item.key === "hopperDryer" ? "80" : "190"}
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Group 2: 80Ø 압출기 온도 (7개 구간, ±10℃) */}
+                    <div className="p-2.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                          80Ø 압출기 온도 (±10℃)
+                        </span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          실린더1~4 · 어댑터 · 노즐 · 호퍼드라이어 (7구간)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
+                        {[
+                          { key: "cylinder1", label: "실린더1" },
+                          { key: "cylinder2", label: "실린더2" },
+                          { key: "cylinder3", label: "실린더3" },
+                          { key: "cylinder4", label: "실린더4" },
+                          { key: "adapter", label: "어댑터" },
+                          { key: "nozzle", label: "노즐" },
+                          { key: "hopperDryer", label: "호퍼드라이어" }
+                        ].map((item) => {
+                          const curVal = String(
+                            formData.conditions?.tpeTemps80?.[item.key] ??
+                            EXTRUSION_STANDARD_SPECS.tpeTemps80[item.key] ??
+                            (item.key === "hopperDryer" ? "80" : "190")
+                          ).replace(/\.0+$/, "");
+                          return (
+                            <div
+                              key={`tpe80_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center" title={item.label}>
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="1"
+                                value={curVal}
+                                onChange={(e) => handleTpeTempChange("tpeTemps80", item.key, e.target.value)}
+                                placeholder={item.key === "hopperDryer" ? "80" : "190"}
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Group 3: 65Ø 압출기 온도 (6개 구간, ±10℃) */}
+                    <div className="p-2.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                          65Ø 압출기 온도 (±10℃)
+                        </span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          실린더1~3 · 어댑터 · 노즐 · 호퍼드라이어 (6구간)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2">
+                        {[
+                          { key: "cylinder1", label: "실린더1" },
+                          { key: "cylinder2", label: "실린더2" },
+                          { key: "cylinder3", label: "실린더3" },
+                          { key: "adapter", label: "어댑터" },
+                          { key: "nozzle", label: "노즐" },
+                          { key: "hopperDryer", label: "호퍼드라이어" }
+                        ].map((item) => {
+                          const curVal = String(
+                            formData.conditions?.tpeTemps65?.[item.key] ??
+                            EXTRUSION_STANDARD_SPECS.tpeTemps65[item.key] ??
+                            (item.key === "hopperDryer" ? "80" : "190")
+                          ).replace(/\.0+$/, "");
+                          return (
+                            <div
+                              key={`tpe65_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center" title={item.label}>
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="1"
+                                value={curVal}
+                                onChange={(e) => handleTpeTempChange("tpeTemps65", item.key, e.target.value)}
+                                placeholder={item.key === "hopperDryer" ? "80" : "190"}
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Group 4: 35Ø 압출기 온도 (5개 구간, ±10℃) + 오른쪽에 냉각수온도 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-2.5">
+                      {/* 35Ø 압출기 온도 (lg:col-span-3) */}
+                      <div className="lg:col-span-3 p-2.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                            35Ø 압출기 온도 (±10℃)
+                          </span>
+                          <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                            실린더1~2 · 어댑터 · 노즐 · 호퍼드라이어 (5구간)
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 sm:gap-2">
+                          {[
+                            { key: "cylinder1", label: "실린더1" },
+                            { key: "cylinder2", label: "실린더2" },
+                            { key: "adapter", label: "어댑터" },
+                            { key: "nozzle", label: "노즐" },
+                            { key: "hopperDryer", label: "호퍼드라이어" }
+                          ].map((item) => {
+                            const curVal = String(
+                              formData.conditions?.tpeTemps35?.[item.key] ??
+                              formData.conditions?.tpeTemps45?.[item.key] ??
+                              EXTRUSION_STANDARD_SPECS.tpeTemps35[item.key] ??
+                              (item.key === "hopperDryer" ? "80" : "190")
+                            ).replace(/\.0+$/, "");
+                            return (
+                              <div
+                                key={`tpe35_${item.key}`}
+                                className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                              >
+                                <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center" title={item.label}>
+                                  {item.label}
+                                </span>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={curVal}
+                                  onChange={(e) => {
+                                    handleTpeTempChange("tpeTemps35", item.key, e.target.value);
+                                    handleTpeTempChange("tpeTemps45", item.key, e.target.value);
+                                  }}
+                                  placeholder={item.key === "hopperDryer" ? "80" : "190"}
+                                  className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                                />
+                                <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 냉각수온도 패널 (35Ø 패널 우측) */}
+                      <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/80 flex flex-col justify-between space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-blue-900 dark:text-blue-300 flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                            냉각수온도
+                          </span>
+                          <span className="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold">1도 단위</span>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700/80 shadow-2xs">
+                          <div className="w-full relative">
+                            <input
+                              type="number"
+                              step="1"
+                              value={String(formData.conditions?.tpeCoolingWaterTemp ?? EXTRUSION_STANDARD_SPECS.tpeCoolingWaterTemp ?? "20").replace(/\.0+$/, "")}
+                              onChange={(e) => handleNestedFieldChange("conditions", "tpeCoolingWaterTemp", e.target.value)}
+                              placeholder="20"
+                              className="w-full text-center pr-6 pl-2 py-1 bg-blue-50/50 dark:bg-slate-900 border border-blue-300/80 dark:border-blue-600 rounded font-black text-xs sm:text-sm text-blue-950 dark:text-blue-100 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-blue-500 pointer-events-none">
+                              ℃
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-blue-700 dark:text-blue-300 font-bold mt-1">
+                            설정온도 (오차 ±2℃)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : isPVCLine ? (
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                /* 🌟 PVC 라인 전용 작업조건 (80Ø 속도/인취속도 & 7구간 압출기온도 & 냉각조/본드/후로킹/건조로) */
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                <div className="space-y-3">
+                  {/* 1. PVC 80Ø 압출속도 & 라인 인취속도 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-amber-300/80 dark:border-amber-900/60 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white font-black text-xs flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" />
+                        PVC 압출속도 & 인취기 속도
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                        80Ø 압출기 RPM & 라인 인취 m/분
+                      </span>
+                    </div>
 
-              {/* 3. 가류조 온도: 1~13존 한줄 패널 */}
-              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
-                    🔥 가류조 (210±20℃)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const val = prompt("13개 가류존에 일괄 적용할 온도를 입력하세요(℃):", "210.0");
-                      if (val && !isNaN(Number(val))) {
-                        const num = Number(val);
-                        setFormData((prev) => ({
-                          ...prev,
-                          conditions: {
-                            ...(prev.conditions || {}),
-                            cureZoneTemp: String(num),
-                            pcmZones: Array(13).fill(num)
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* 80Ø Extruder Speed */}
+                      <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-amber-900 dark:text-amber-300">
+                          <span>80Ø 압출기속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.pvcExtruder80Rpm ?? EXTRUSION_STANDARD_SPECS.pvcExtruder80Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "pvcExtruder80Rpm", e.target.value)}
+                            placeholder="20.0"
+                            className="w-full text-right pr-11 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg font-black text-xs sm:text-sm text-amber-950 dark:text-amber-100 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-500 pointer-events-none">
+                            RPM
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Haul-off Speed */}
+                      <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-amber-900 dark:text-amber-300">
+                          <span>인취속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.pvcHaulOffSpeed ?? formData.conditions?.haulOffSpeed ?? EXTRUSION_STANDARD_SPECS.pvcHaulOffSpeed ?? ""}
+                            onChange={(e) => {
+                              handleNestedFieldChange("conditions", "pvcHaulOffSpeed", e.target.value);
+                              handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value);
+                            }}
+                            placeholder="15.0"
+                            className="w-full text-right pr-12 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg font-black text-xs sm:text-sm text-amber-950 dark:text-amber-100 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-500 pointer-events-none">
+                            m/분
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. PVC 압출기온도 (설정온도 ±10℃) - 7구간: 실린더1~4, 어댑터, 노즐, 다이스 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs flex items-center gap-1">
+                        <Thermometer className="w-3.5 h-3.5" />
+                        80Ø 압출기온도 (설정온도 ±10℃)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchPvcExtruderTemps("180")}
+                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10.5px] font-black border border-teal-300 dark:border-teal-800 transition cursor-pointer shadow-2xs"
+                      >
+                        ⚡ 180℃ 일괄적용
+                      </button>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
+                          실린더1~4 · 어댑터 · 노즐 · 다이스 (7구간)
+                        </span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          1도 단위 조정 (±10℃)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
+                        {[
+                          { key: "cylinder1", label: "실린더1", def: "170" },
+                          { key: "cylinder2", label: "실린더2", def: "175" },
+                          { key: "cylinder3", label: "실린더3", def: "180" },
+                          { key: "cylinder4", label: "실린더4", def: "185" },
+                          { key: "adapter", label: "어댑터", def: "190" },
+                          { key: "nozzle", label: "노즐", def: "195" },
+                          { key: "die", label: "다이스", def: "195" }
+                        ].map((item) => {
+                          const curVal = String(
+                            formData.conditions?.pvcTemps?.[item.key] ??
+                            EXTRUSION_STANDARD_SPECS.pvcTemps[item.key] ??
+                            item.def
+                          ).replace(/\.0+$/, "");
+                          return (
+                            <div
+                              key={`pvc_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center" title={item.label}>
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="1"
+                                value={curVal}
+                                onChange={(e) => handlePvcTempChange(item.key, e.target.value)}
+                                placeholder={item.def}
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. PVC 부대 및 후공정 작업조건 (냉각조온도 · 본드도포 공급기1·2 · 후로킹(식모) 전압·전류 · 건조로 1~4존 & 구동속도) */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs flex items-center gap-1">
+                        <Droplets className="w-3.5 h-3.5" />
+                        냉각조 · 본드도포 · 후로킹(식모) · 건조로 조건
+                      </span>
+                      <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                        PVC 부대설비 및 후가공 품질 관리조건
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {/* 3-1. 냉각조온도 */}
+                      <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/80 space-y-1.5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-[11px] font-black text-blue-900 dark:text-blue-300">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                            냉각조온도
+                          </span>
+                          <span className="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold">1도 단위 (±2℃)</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="1"
+                            value={String(formData.conditions?.pvcCoolingTankTemp ?? EXTRUSION_STANDARD_SPECS.pvcCoolingTankTemp ?? "20").replace(/\.0+$/, "")}
+                            onChange={(e) => handleNestedFieldChange("conditions", "pvcCoolingTankTemp", e.target.value)}
+                            placeholder="20"
+                            className="w-full text-right pr-7 pl-2 py-1.5 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-lg font-black text-xs sm:text-sm text-blue-950 dark:text-blue-100 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-blue-500 pointer-events-none">
+                            ℃
+                          </span>
+                        </div>
+                        <div className="text-[9px] text-blue-700 dark:text-blue-300 text-center font-bold">
+                          기준: 20℃ (관리범위: 18~22℃)
+                        </div>
+                      </div>
+
+                      {/* 3-2. 본드도포 (공급기1, 2 RPM) */}
+                      <div className="p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-black text-sky-900 dark:text-sky-300">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
+                            본드도포 (공급기 1 · 2)
+                          </span>
+                          <span className="text-[9.5px] text-sky-600 dark:text-sky-400 font-bold">RPM 제어</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] font-bold text-sky-800 dark:text-sky-300 block text-center">공급기1</span>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={formData.conditions?.pvcBondFeeder1Rpm ?? EXTRUSION_STANDARD_SPECS.pvcBondFeeder1Rpm ?? ""}
+                                onChange={(e) => handleNestedFieldChange("conditions", "pvcBondFeeder1Rpm", e.target.value)}
+                                placeholder="15.0"
+                                className="w-full text-right pr-9 pl-1.5 py-1.5 bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded-lg font-black text-xs text-sky-950 dark:text-sky-100 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-sky-500 pointer-events-none">
+                                RPM
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] font-bold text-sky-800 dark:text-sky-300 block text-center">공급기2</span>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={formData.conditions?.pvcBondFeeder2Rpm ?? EXTRUSION_STANDARD_SPECS.pvcBondFeeder2Rpm ?? ""}
+                                onChange={(e) => handleNestedFieldChange("conditions", "pvcBondFeeder2Rpm", e.target.value)}
+                                placeholder="15.0"
+                                className="w-full text-right pr-9 pl-1.5 py-1.5 bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded-lg font-black text-xs text-sky-950 dark:text-sky-100 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-sky-500 pointer-events-none">
+                                RPM
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3-3. 후로킹(식모)조건 (전압 & 전류 & 파일조건) */}
+                      <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-black text-purple-900 dark:text-purple-300">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                            후로킹(식모)조건
+                          </span>
+                          <span className="text-[9.5px] text-purple-600 dark:text-purple-400 font-bold">정전기력 제어</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] font-bold text-purple-800 dark:text-purple-300 block text-center">인가전압</span>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="1"
+                                value={String(formData.conditions?.pvcFlockVoltage ?? EXTRUSION_STANDARD_SPECS.pvcFlockVoltage ?? "50").replace(/\.0+$/, "")}
+                                onChange={(e) => handleNestedFieldChange("conditions", "pvcFlockVoltage", e.target.value)}
+                                placeholder="50"
+                                className="w-full text-right pr-7 pl-1.5 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-purple-500 pointer-events-none">
+                                kV
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] font-bold text-purple-800 dark:text-purple-300 block text-center">인가전류</span>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="1"
+                                value={String(formData.conditions?.pvcFlockCurrent ?? EXTRUSION_STANDARD_SPECS.pvcFlockCurrent ?? "120").replace(/\.0+$/, "")}
+                                onChange={(e) => handleNestedFieldChange("conditions", "pvcFlockCurrent", e.target.value)}
+                                placeholder="120"
+                                className="w-full text-right pr-7 pl-1.5 py-1.5 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg font-black text-xs text-purple-950 dark:text-purple-100 focus:ring-1 focus:ring-purple-500 focus:outline-hidden"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-purple-500 pointer-events-none">
+                                ㎂
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3-4. 건조로 조건 (1~4존 온도 & 구동속도) */}
+                    <div className="p-2.5 rounded-xl bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 space-y-2">
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span>
+                          <span className="text-[11px] font-black text-orange-900 dark:text-orange-200">
+                            건조로 조건 (1~4존 온도 & 구동속도)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9.5px] text-orange-700 dark:text-orange-300 font-bold">1도 단위 조정 (±10℃)</span>
+                          <button
+                            type="button"
+                            onClick={() => handleBatchPvcDryerTemps("160")}
+                            className="px-2 py-0.5 rounded bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/60 dark:hover:bg-orange-800 text-orange-900 dark:text-orange-200 text-[10px] font-black border border-orange-300 dark:border-orange-700 cursor-pointer shadow-2xs"
+                          >
+                            ⚡ 160℃ 일괄적용
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {/* 건조로 구동속도 */}
+                        <div className="flex flex-col justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700/80 shadow-2xs">
+                          <span className="text-[10px] font-black text-orange-900 dark:text-orange-300 text-center">
+                            구동속도
+                          </span>
+                          <div className="relative mt-1">
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.conditions?.pvcDryerDriveSpeed ?? formData.conditions?.pvcDryerSpeed ?? EXTRUSION_STANDARD_SPECS.pvcDryerDriveSpeed ?? ""}
+                              onChange={(e) => {
+                                handleNestedFieldChange("conditions", "pvcDryerDriveSpeed", e.target.value);
+                                handleNestedFieldChange("conditions", "pvcDryerSpeed", e.target.value);
+                              }}
+                              placeholder="15.0"
+                              className="w-full text-right pr-9 pl-1 py-1 bg-orange-50/50 dark:bg-slate-900 border border-orange-300/80 dark:border-orange-600 rounded font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                            />
+                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-orange-500 pointer-events-none">
+                              m/분
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 1존 ~ 4존 온도 */}
+                        {[
+                          { key: "zone1", label: "1존 온도", def: "160" },
+                          { key: "zone2", label: "2존 온도", def: "160" },
+                          { key: "zone3", label: "3존 온도", def: "165" },
+                          { key: "zone4", label: "4존 온도", def: "165" }
+                        ].map((zone) => {
+                          const curVal = String(
+                            formData.conditions?.pvcDryerZones?.[zone.key] ??
+                            EXTRUSION_STANDARD_SPECS.pvcDryerZones[zone.key] ??
+                            zone.def
+                          ).replace(/\.0+$/, "");
+                          return (
+                            <div
+                              key={`pvc_dryer_${zone.key}`}
+                              className="flex flex-col justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-orange-800 dark:text-orange-300 text-center">
+                                {zone.label}
+                              </span>
+                              <div className="relative mt-1">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={curVal}
+                                  onChange={(e) => handlePvcDryerZoneChange(zone.key, e.target.value)}
+                                  placeholder={zone.def}
+                                  className="w-full text-center pr-5 pl-1 py-1 bg-orange-50/50 dark:bg-slate-900 border border-orange-300/80 dark:border-orange-600 rounded font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                                />
+                                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold pointer-events-none">
+                                  ℃
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                /* 🌟 표준 PCM/PVC 라인 작업조건 (110Ø/70Ø, 온조기 9구간, 가류조, 코팅건) */
+                /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+                <>
+                  {/* 1. 압출기 속도 (110Ø, 70Ø) & 인취기 속도 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-300/80 dark:border-indigo-900/60 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" />
+                        압출속도 & 인취기속도
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        110Ø / 70Ø RPM & 라인 인취 m/분
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {/* 110Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                          <span>110Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.extruder110Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
+                            placeholder="속도 입력"
+                            className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                            RPM
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 70Ø Extruder Speed */}
+                      <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                          <span>70Ø 압출속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.extruder70Rpm ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "extruder70Rpm", e.target.value)}
+                            placeholder="속도 입력"
+                            className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                            RPM
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Haul-off Speed */}
+                      <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                          <span>인취기 속도</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={formData.conditions?.haulOffSpeed ?? ""}
+                            onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
+                            placeholder="속도 입력"
+                            className="w-full text-right pr-13 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                            m/분
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. 온조기 조건 (표준: 50±5℃) - Ø110 5개 + Ø70 4개 = 총 9구간 */}
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs flex items-center gap-1">
+                        <Droplets className="w-3.5 h-3.5" />
+                        온조기 조건 (표준 50±5℃)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = prompt("온조기 9개 전체 구간에 일괄 적용할 온도를 입력하세요(℃):", "50.0");
+                          if (val && !isNaN(Number(val))) {
+                            handleBatchWaterZones(val);
                           }
-                        }));
-                      }
-                    }}
-                    className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
-                  >
-                    ⚡ 일괄설정
-                  </button>
-                </div>
-
-                {/* 13 Zones Horizontal Strip */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth">
-                  {Array.from({ length: 13 }).map((_, zIdx) => {
-                    const zoneNum = zIdx + 1;
-                    const currentZoneVal = formData.conditions?.pcmZones?.[zIdx] ?? EXTRUSION_STANDARD_SPECS.pcmZones[zIdx] ?? 210.0;
-                    return (
-                      <div
-                        key={`pcm_zone_${zoneNum}`}
-                        className="flex flex-col items-center justify-between min-w-[56px] sm:min-w-[62px] p-1.5 rounded-xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 shrink-0"
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10.5px] font-black border border-teal-300 dark:border-teal-800 transition cursor-pointer"
                       >
-                        <span className="text-[9.5px] font-black text-orange-800 dark:text-orange-300">
-                          {zoneNum}존
+                        ⚡ 50℃ 일괄적용
+                      </button>
+                    </div>
+
+                    {/* Group 1: Ø110 압출기 온조기 (5개 구간: 스크류, 실린더1, 실린더2, 실린더3, 헤드) */}
+                    <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                          Ø110 압출기 온조기 (5개 구간)
                         </span>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={currentZoneVal}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData((prev) => {
-                              const curZones = Array.isArray(prev.conditions?.pcmZones) && prev.conditions.pcmZones.length === 13
-                                ? [...prev.conditions.pcmZones]
-                                : [...EXTRUSION_STANDARD_SPECS.pcmZones];
-                              curZones[zIdx] = val === "" ? "" : Number(val);
-                              return {
-                                ...prev,
-                                conditions: {
-                                  ...(prev.conditions || {}),
-                                  pcmZones: curZones,
-                                  cureZoneTemp: String(curZones[0] || 210.0)
-                                }
-                              };
-                            });
-                          }}
-                          className="w-full text-center bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700 rounded py-1 font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
-                        />
-                        <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          스크류 · 실린더1~3 · 헤드 (±5℃)
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* 4. 코팅 분사압력: 1~3번건 한줄 패널 */}
-              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
-                    🧪 코팅압력 (2.5±0.3 bar)
-                  </span>
-                </div>
+                      <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
+                        {[
+                          { key: "screw", label: "스크류" },
+                          { key: "cylinder1", label: "실린더1" },
+                          { key: "cylinder2", label: "실린더2" },
+                          { key: "cylinder3", label: "실린더3" },
+                          { key: "head", label: "헤드" }
+                        ].map((item) => {
+                          const curVal = formData.conditions?.waterZones110?.[item.key] ?? "50.0";
+                          return (
+                            <div
+                              key={`w110_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="0.5"
+                                value={curVal}
+                                onChange={(e) => handleWaterZone110Change(item.key, e.target.value)}
+                                placeholder="50.0"
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {/* 3 Guns Grid */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                  {[
-                    { id: "sprayGun1", label: "1번건", defaultVal: "2.5" },
-                    { id: "sprayGun2", label: "2번건", defaultVal: "2.6" },
-                    { id: "sprayGun3", label: "3번건", defaultVal: "2.5" }
-                  ].map((gun) => {
-                    const curGunVal = formData.conditions?.[gun.id] ?? gun.defaultVal;
-                    return (
-                      <div
-                        key={gun.id}
-                        className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80"
+                    {/* Group 2: Ø70 압출기 온조기 (4개 구간: 스크류, 실린더1, 실린더2, 실린더3) */}
+                    <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                          Ø70 압출기 온조기 (4개 구간)
+                        </span>
+                        <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                          스크류 · 실린더1~3 (±5℃)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                        {[
+                          { key: "screw", label: "스크류" },
+                          { key: "cylinder1", label: "실린더1" },
+                          { key: "cylinder2", label: "실린더2" },
+                          { key: "cylinder3", label: "실린더3" }
+                        ].map((item) => {
+                          const curVal = formData.conditions?.waterZones70?.[item.key] ?? "50.0";
+                          return (
+                            <div
+                              key={`w70_${item.key}`}
+                              className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
+                                {item.label}
+                              </span>
+                              <input
+                                type="number"
+                                step="0.5"
+                                value={curVal}
+                                onChange={(e) => handleWaterZone70Change(item.key, e.target.value)}
+                                placeholder="50.0"
+                                className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                              />
+                              <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. 가류조 온도: 1~13존 한줄 패널 */}
+                  <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
+                        🔥 가류조 (210±20℃)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = prompt("13개 가류존에 일괄 적용할 온도를 입력하세요(℃):", "210.0");
+                          if (val && !isNaN(Number(val))) {
+                            const num = Number(val);
+                            setFormData((prev) => ({
+                              ...prev,
+                              conditions: {
+                                ...(prev.conditions || {}),
+                                cureZoneTemp: String(num),
+                                pcmZones: Array(13).fill(num)
+                              }
+                            }));
+                          }
+                        }}
+                        className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
                       >
-                        <span className="text-[10px] font-black text-sky-800 dark:text-sky-300">
-                          {gun.label}
-                        </span>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={curGunVal}
-                          onChange={(e) => handleNestedFieldChange("conditions", gun.id, e.target.value)}
-                          placeholder="2.5"
-                          className="w-full text-center bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded py-1 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-100 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
-                        />
-                        <span className="text-[8.5px] text-slate-400 font-bold">bar</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                        ⚡ 일괄설정
+                      </button>
+                    </div>
+
+                    {/* 13 Zones Horizontal Strip */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth">
+                      {Array.from({ length: 13 }).map((_, zIdx) => {
+                        const zoneNum = zIdx + 1;
+                        const currentZoneVal = formData.conditions?.pcmZones?.[zIdx] ?? EXTRUSION_STANDARD_SPECS.pcmZones[zIdx] ?? 210.0;
+                        return (
+                          <div
+                            key={`pcm_zone_${zoneNum}`}
+                            className="flex flex-col items-center justify-between min-w-[56px] sm:min-w-[62px] p-1.5 rounded-xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 shrink-0"
+                          >
+                            <span className="text-[9.5px] font-black text-orange-800 dark:text-orange-300">
+                              {zoneNum}존
+                            </span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={currentZoneVal}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormData((prev) => {
+                                  const curZones = Array.isArray(prev.conditions?.pcmZones) && prev.conditions.pcmZones.length === 13
+                                    ? [...prev.conditions.pcmZones]
+                                    : [...EXTRUSION_STANDARD_SPECS.pcmZones];
+                                  curZones[zIdx] = val === "" ? "" : Number(val);
+                                  return {
+                                    ...prev,
+                                    conditions: {
+                                      ...(prev.conditions || {}),
+                                      pcmZones: curZones,
+                                      cureZoneTemp: String(curZones[0] || 210.0)
+                                    }
+                                  };
+                                });
+                              }}
+                              className="w-full text-center bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700 rounded py-1 font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                            />
+                            <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 4. 코팅 분사압력: 1~3번건 한줄 패널 */}
+                  <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
+                        🧪 코팅압력 (2.5±0.3 bar)
+                      </span>
+                    </div>
+
+                    {/* 3 Guns Grid */}
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                      {[
+                        { id: "sprayGun1", label: "1번건", defaultVal: "2.5" },
+                        { id: "sprayGun2", label: "2번건", defaultVal: "2.6" },
+                        { id: "sprayGun3", label: "3번건", defaultVal: "2.5" }
+                      ].map((gun) => {
+                        const curGunVal = formData.conditions?.[gun.id] ?? gun.defaultVal;
+                        return (
+                          <div
+                            key={gun.id}
+                            className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80"
+                          >
+                            <span className="text-[10px] font-black text-sky-800 dark:text-sky-300">
+                              {gun.label}
+                            </span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={curGunVal}
+                              onChange={(e) => handleNestedFieldChange("conditions", gun.id, e.target.value)}
+                              placeholder="2.5"
+                              className="w-full text-center bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded py-1 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-100 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
+                            />
+                            <span className="text-[8.5px] text-slate-400 font-bold">bar</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ========================================================================= */}
@@ -2374,7 +3460,7 @@ export const ExtrusionWorkReportModal = ({
                   {/* 항목 선택 (4 cols) */}
                   <div className="col-span-2 sm:col-span-4">
                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-                      부적합품/비가동 항목 (22종)
+                      부적합품/비가동 항목 ({DOWNTIME_CATEGORIES.length}종)
                     </label>
                     <select
                       value={downtimeDraft.category || "압개시"}
@@ -2383,7 +3469,7 @@ export const ExtrusionWorkReportModal = ({
                     >
                       {DOWNTIME_CATEGORIES.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.label} ({["압개시", "형교환", "종료", "설비이상", "다이스수정", "기술TRY"].includes(c.id) ? "비가동" : "부적합"})
+                          {c.label} ({c.type === "비가동" || ["압개시", "형교환", "종료", "설비이상", "다이스수정", "기술TRY", "포밍", "박리", "후로킹"].includes(c.id) ? "비가동" : "부적합"})
                         </option>
                       ))}
                     </select>
