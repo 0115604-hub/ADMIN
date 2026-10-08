@@ -263,6 +263,7 @@ export const App = () => {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
 
     // High-precision adaptive interval (10 seconds) for zero-latency dispatch
     const timer = setInterval(() => {
@@ -274,6 +275,7 @@ export const App = () => {
       unsubTelegram();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
     };
   }, []);
 

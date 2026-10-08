@@ -318,10 +318,10 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
 
   // 🔒 텔레그램 발송 가드: skipTelegram인 경우 완전 생략
   const skipTelegram = Boolean(options.skipTelegram);
-  // 신규 등록(CREATE)은 오직 options.isNew === true 이거나 (기존 ID/생성일시가 없고 로컬스토리지에도 없는 최초 등록 시)에만 발송
+  // 신규 등록(CREATE)은 options.isNew === true 이거나 기존 목록에 없는 신규 항목인 경우 발송
   const isTrulyNew = !skipTelegram && (
     options.isNew === true ||
-    (existingIdx < 0 && !issueData.id && !issueData._docId && !issueData.createdAt)
+    existingIdx < 0
   );
 
   if (!fullItem.isDeleted && !skipTelegram) {
@@ -792,7 +792,7 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     isManuallyRestored: true
   };
 
-  const saved = await saveUrgentIssue(updatedTarget);
+  const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });
 
   // Trigger real-time Telegram notification ONLY for 품질경보 조치완료 (사내공지/회의일정은 등록시만 발송)
   if (trimmed && updatedTarget.category === "품질경보") {

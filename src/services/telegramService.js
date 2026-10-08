@@ -289,9 +289,9 @@ export const subscribeTelegramCustomTemplates = (onUpdate) => {
 };
 
 /**
- * Send a custom text message via Telegram Bot API with low latency & 8s timeout
+ * Send a custom text message via Telegram Bot API with low latency & 20s timeout
  */
-export const sendTelegramMessage = async (text, customConfig = null) => {
+export const sendTelegramMessage = async (text, customConfig = null, retryCount = 0) => {
   const config = customConfig || getLocalTelegramConfig();
   if (config.enabled === false) {
     console.log("[Telegram] 연동이 일시 중단 상태이므로 발송을 건너뜁니다.");
@@ -306,17 +306,17 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
 
-  // 🔒 1회 발송 원칙: 동일 수신처 & 동일 내용 15초 이내 중복 발송 차단
-  const msgFingerprint = `msg_${chatId}_${sanitizedText.slice(0, 100)}`;
-  if (isDuplicateMessage(msgFingerprint, 15000)) {
-    console.log(`[Telegram] 동일 메시지 15초 이내 중복 발송 방지 차단 (${chatId})`);
+  // 🔒 1회 발송 원칙: 동일 수신처 & 완전 동일 본문 4초 이내 중복 클릭/연타만 차단
+  const msgFingerprint = `msg_${chatId}_${sanitizedText.trim()}`;
+  if (isDuplicateMessage(msgFingerprint, 4000)) {
+    console.log(`[Telegram] 동일 메시지 4초 이내 연타 방지 차단 (${chatId})`);
     return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 20000) : null;
 
   try {
     const response = await fetch(endpoint, {
@@ -364,7 +364,15 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
     return { success: false, error: fallbackData.description || data.description || "API_ERROR", data: fallbackData };
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
-    console.error("Telegram Network Error:", error);
+    console.warn(`Telegram Network Error (attempt ${retryCount + 1}):`, error);
+
+    // 1 automatic retry on transient network glitch
+    if (retryCount < 1) {
+      console.log("[Telegram] 1초 후 재전송을 시도합니다...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return await sendTelegramMessage(text, customConfig, retryCount + 1);
+    }
+
     return { success: false, error: error.message };
   }
 };
@@ -372,7 +380,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 /**
  * Send a single photo with caption via Telegram Bot API (Style B: show_caption_above_media)
  */
-export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig = null) => {
+export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig = null, retryCount = 0) => {
   const config = customConfig || getLocalTelegramConfig();
   if (config.enabled === false) {
     return { success: false, skipped: true, reason: "PAUSED" };
@@ -385,17 +393,17 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
 
-  // 🔒 1회 발송 원칙: 동일 사진/캡션 15초 이내 중복 발송 차단
-  const photoFingerprint = `photo_${chatId}_${sanitizedCaption.slice(0, 100)}_${photoDataUrl.slice(0, 60)}`;
-  if (isDuplicateMessage(photoFingerprint, 15000)) {
-    console.log(`[Telegram] 동일 사진 15초 이내 중복 발송 방지 차단 (${chatId})`);
+  // 🔒 1회 발송 원칙: 동일 사진/캡션 4초 이내 연타 차단
+  const photoFingerprint = `photo_${chatId}_${sanitizedCaption.trim()}_${photoDataUrl.slice(0, 100)}`;
+  if (isDuplicateMessage(photoFingerprint, 4000)) {
+    console.log(`[Telegram] 동일 사진 4초 이내 연타 방지 차단 (${chatId})`);
     return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const endpoint = `https://api.telegram.org/bot${token}/sendPhoto`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 20000) : null;
 
   try {
     const resBlob = await (await fetch(photoDataUrl)).blob();
@@ -447,7 +455,11 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
     return await sendTelegramMessage(sanitizedCaption, customConfig);
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
-    console.warn("Telegram sendPhoto Network Error, fallback:", error);
+    console.warn(`Telegram sendPhoto Network Error (attempt ${retryCount + 1}):`, error);
+    if (retryCount < 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return await sendTelegramPhoto(photoDataUrl, caption, customConfig, retryCount + 1);
+    }
     return await sendTelegramMessage(sanitizedCaption, customConfig);
   }
 };
@@ -882,6 +894,20 @@ const getClientInstanceId = () => {
   return "runner_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
 };
 
+const getBriefingFieldNames = (briefingType) => {
+  switch (briefingType) {
+    case "general":
+      return { dateField: "lastSentDate", lockField: "generalLock", sentAtField: "sentAt" };
+    case "closing":
+      return { dateField: "lastClosingSentDate", lockField: "closingLock", sentAtField: "closingSentAt" };
+    case "schedule_remind":
+      return { dateField: "lastScheduleRemindSentDate", lockField: "scheduleRemindLock", sentAtField: "scheduleRemindSentAt" };
+    case "pnl":
+    default:
+      return { dateField: "lastPnLSentDate", lockField: "pnlLock", sentAtField: "pnlSentAt" };
+  }
+};
+
 /**
  * Acquire Distributed Atomic Lock for Daily Briefing via Firestore Transaction
  * Ensures exactly ONE sender across all clients and GitHub Actions runners per day.
@@ -893,27 +919,25 @@ export const acquireBriefingLock = async (briefingType, todayStr, clientId = nul
 
   const id = clientId || getClientInstanceId();
   const lockDocRef = doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]);
+  const { dateField, lockField } = getBriefingFieldNames(briefingType);
 
   try {
     const result = await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(lockDocRef);
       const data = snap.exists() ? snap.data() : {};
 
-      const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
-      const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
-
       // 1. If already successfully completed today, do not acquire
       if (data[dateField] === todayStr) {
         return { acquired: false, reason: "ALREADY_SENT_TODAY", lastSentDate: data[dateField] };
       }
 
-      // 2. Check if locked by another active process (with 90-second lease timeout)
+      // 2. Check if locked by another active process (with 60-second lease timeout)
       const currentLock = data[lockField];
       if (currentLock && currentLock.date === todayStr && currentLock.status === "SENDING") {
         const lockedAtMs = currentLock.lockedAt ? new Date(currentLock.lockedAt).getTime() : 0;
         const nowMs = Date.now();
-        // If locked within the last 90 seconds, another process is actively sending
-        if (nowMs - lockedAtMs < 90000) {
+        // If locked within the last 60 seconds, another process is actively sending
+        if (nowMs - lockedAtMs < 60000) {
           return { acquired: false, reason: "LOCKED_BY_ANOTHER_INSTANCE", lockedBy: currentLock.lockedBy };
         }
       }
@@ -944,9 +968,7 @@ export const acquireBriefingLock = async (briefingType, todayStr, clientId = nul
 export const completeBriefingLock = async (briefingType, todayStr, isSuccess, errorMsg = null, clientId = null) => {
   const id = clientId || getClientInstanceId();
   const lockDocRef = doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]);
-  const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
-  const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
-  const sentAtField = briefingType === "general" ? "sentAt" : briefingType === "closing" ? "closingSentAt" : "pnlSentAt";
+  const { dateField, lockField, sentAtField } = getBriefingFieldNames(briefingType);
 
   try {
     if (isSuccess) {
@@ -1671,8 +1693,8 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 
   const { dateStr: todayStr, totalMinutes } = getKSTTimeInfo();
 
-  // Client auto-trigger window: 07:30 AM ~ 07:55 AM KST (450 ~ 475 minutes)
-  if (totalMinutes < 450 || totalMinutes > 475) {
+  // Client auto-trigger window: 07:30 AM ~ 12:00 PM KST (450 ~ 720 minutes)
+  if (totalMinutes < 450 || totalMinutes > 720) {
     return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
   }
 
@@ -2005,8 +2027,8 @@ export const checkAndAutoSendDailyClosingBriefing = async () => {
     return { skipped: true, reason: "SUNDAY_SKIPPED" };
   }
 
-  // Client auto-trigger window: 17:30 PM ~ 17:45 PM KST (1050 ~ 1065 minutes)
-  if (totalMinutes < 1050 || totalMinutes > 1065) {
+  // Client auto-trigger window: 17:30 PM ~ 23:59 PM KST (1050 ~ 1439 minutes)
+  if (totalMinutes < 1050 || totalMinutes > 1439) {
     return { skipped: true, reason: "OUTSIDE_17_30_WINDOW" };
   }
 
