@@ -124,18 +124,6 @@ export const ExtrusionDowntimeView = () => {
     } catch (e) {}
   }, [selectedLine]);
 
-  // Clean up legacy dummy data stores from previous versions
-  useEffect(() => {
-    try {
-      localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
-      localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v3");
-      localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v4");
-      localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v5");
-      localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
-      localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
-      localStorage.removeItem("factory_extrusion_downtime_logs_clean_v1");
-    } catch (e) {}
-  }, []);
 
   // Filter reports by line, period, search query, and category
   const filteredReports = useMemo(() => {

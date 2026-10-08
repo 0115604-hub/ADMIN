@@ -236,14 +236,6 @@ const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_user_uploaded_v5";
 export const getExtrusionSummaryData = () => {
   let store = {};
   try {
-    // Permanently clear legacy sample data stores
-    localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
-    localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v3");
-    localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v4");
-    localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
-    localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
-    localStorage.removeItem("factory_extrusion_downtime_logs_clean_v1");
-
     const saved = localStorage.getItem(STORAGE_KEY_EXTRUSION);
     if (saved) {
       const parsed = JSON.parse(saved);

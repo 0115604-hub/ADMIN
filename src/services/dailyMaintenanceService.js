@@ -301,18 +301,22 @@ const createDailySnapshot = async (todayStr) => {
     const overtimeRaw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
     const qualityRaw = localStorage.getItem("factory_daily_quality_records_v4_exact");
     const issuesRaw = localStorage.getItem("oryuk_urgent_issues_v2");
+    const personnelRaw = localStorage.getItem("oryuk_personnel_cards_v1");
+    const schedulesRaw = localStorage.getItem("oryuk_common_schedules_v1");
 
     const snapshot = {
       backupDate: todayStr,
       createdAt: getCurrentTimestampStr(),
       timestamp: Date.now(),
-      version: "v5",
+      version: "v6",
       counts: {
         approvals: approvalsRaw ? (JSON.parse(approvalsRaw) || []).length : 0,
         workLogs: workLogsRaw ? (JSON.parse(workLogsRaw) || []).length : 0,
         overtimeReports: overtimeRaw ? (JSON.parse(overtimeRaw) || []).length : 0,
         qualityRecords: qualityRaw ? (JSON.parse(qualityRaw) || []).length : 0,
-        urgentIssues: issuesRaw ? (JSON.parse(issuesRaw) || []).length : 0
+        urgentIssues: issuesRaw ? (JSON.parse(issuesRaw) || []).length : 0,
+        personnelCards: personnelRaw ? Object.keys(JSON.parse(personnelRaw) || {}).length : 0,
+        commonSchedules: schedulesRaw ? (JSON.parse(schedulesRaw) || []).length : 0
       },
       data: {
         extrusion: extrusionRaw ? JSON.parse(extrusionRaw) : {},
@@ -320,7 +324,9 @@ const createDailySnapshot = async (todayStr) => {
         workLogs: workLogsRaw ? JSON.parse(workLogsRaw) : [],
         overtimeReports: overtimeRaw ? JSON.parse(overtimeRaw) : [],
         qualityRecords: qualityRaw ? JSON.parse(qualityRaw) : [],
-        urgentIssues: issuesRaw ? JSON.parse(issuesRaw) : []
+        urgentIssues: issuesRaw ? JSON.parse(issuesRaw) : [],
+        personnelCards: personnelRaw ? JSON.parse(personnelRaw) : {},
+        commonSchedules: schedulesRaw ? JSON.parse(schedulesRaw) : []
       }
     };
 
