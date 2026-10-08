@@ -581,17 +581,23 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       const activeReps = samrangjinReps.filter(checkHasContent);
       const targetReps = activeReps.length > 0 ? activeReps : samrangjinReps;
       const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
-      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = targetReps.flatMap((r) => r.items || []);
 
       const drafterName = "조인주";
       const drafterTitle = "선임";
       const leadName = "윤경수";
 
+      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.attendedWorkers || (r.items ? r.items.filter(it => (Number(it.hours) || 0) > 0).length : (r.totalWorkers || 0))), 0);
+      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const allItems = targetReps.flatMap((r) => r.items || []).map(it => {
+        if (isWk && (it.attendanceCode === "결근" || it.hours === 0 || !it.attendanceCode || it.attendanceCode === "-")) {
+          return { ...it, attendanceCode: "-", workContent: `${it.company || ""} ${it.dept || ""} 미출근`, workDetails: `${it.company || ""} ${it.dept || ""} 미출근` };
+        }
+        return it;
+      });
+
       const compBreakdownText = targetReps.map((cr) => {
-        const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+        const wCount = cr.attendedWorkers || (cr.items ? cr.items.filter(it => (Number(it.hours) || 0) > 0).length : (cr.totalWorkers || 0));
         const hCount = cr.totalHours || (wCount * 8);
         const cAmt = cr.cost || (hCount * 15000);
         return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
@@ -636,18 +642,22 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       const plant = "한림공장";
       const activeReps = hanlimReps.filter(checkHasContent);
       const targetReps = activeReps.length > 0 ? activeReps : hanlimReps;
-      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
-      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.attendedWorkers || (r.items ? r.items.filter(it => (Number(it.hours) || 0) > 0).length : (r.totalWorkers || 0))), 0);
       const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
       const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = targetReps.flatMap((r) => r.items || []);
+      const allItems = targetReps.flatMap((r) => r.items || []).map(it => {
+        if (isWk && (it.attendanceCode === "결근" || it.hours === 0 || !it.attendanceCode || it.attendanceCode === "-")) {
+          return { ...it, attendanceCode: "-", workContent: `${it.company || ""} ${it.dept || ""} 미출근`, workDetails: `${it.company || ""} ${it.dept || ""} 미출근` };
+        }
+        return it;
+      });
 
       const drafterName = "오상민";
       const drafterTitle = "선임";
       const leadName = "김동욱";
 
       const compBreakdownText = targetReps.map((cr) => {
-        const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+        const wCount = cr.attendedWorkers || (cr.items ? cr.items.filter(it => (Number(it.hours) || 0) > 0).length : (cr.totalWorkers || 0));
         const hCount = cr.totalHours || (wCount * 8);
         const cAmt = cr.cost || (hCount * 15000);
         return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
@@ -1416,11 +1426,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
         const strVal = String(val || "").trim();
         const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-        // 주말/휴무일 특근 시 미출근자는 결근이 아닌 휴무(-)로 강제 보정
+        // 주말/휴무일 특근 시 미출근자는 결근이 아닌 미출근(-)로 강제 보정
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
           val = "-";
         }
-        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무" || !val;
+        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무" || val === "미출근" || !val;
         return {
           id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
@@ -1431,14 +1441,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           category: w.line || normalizeDept(w.dept) || "",
           workerName: (w.name || "").trim(),
           position: w.position || "작업원",
-          attendanceCode: val || (isWk ? "-" : "🟢"),
+          attendanceCode: isWk ? (isOff ? "-" : val) : (val || "🟢"),
+          attendanceLabel: isWk ? (isOff ? "미출근" : val) : (val || "정시"),
           startTime: isOff ? "-" : "08:00",
           endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : (isOff ? "-" : "17:00"),
-          hours: workHours || (isAttended ? 8 : 0),
-          otHours: (weekdayOt + weekendOt) || 0,
-          count: 1,
-          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "휴무" : "특근 투입") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행")}`,
-          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "휴무" : "생산 및 납품 대응") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응")}`
+          hours: isOff ? 0 : (workHours || (isAttended ? 8 : 0)),
+          otHours: isOff ? 0 : ((weekdayOt + weekendOt) || 0),
+          count: isOff ? 0 : 1,
+          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "미출근" : "특근 투입") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행")}`,
+          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "미출근" : "생산 및 납품 대응") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응")}`
         };
       });
 
@@ -2408,7 +2419,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <div className="flex items-center gap-2 font-mono text-xs font-black">
                         <span className="text-cyan-400">특근:{breakdown.attended}명</span>
                         <span className="text-slate-400">
-                          휴무:{Math.max(0, breakdown.total - breakdown.attended)}명
+                          미출근:{Math.max(0, breakdown.total - breakdown.attended)}명
                         </span>
                       </div>
                     </div>
@@ -2799,7 +2810,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       )}
                                       {isWk && isOffWeekend && (
                                         <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
-                                          - 휴무
+                                          - 미출근
                                         </span>
                                       )}
                                       {/* 정시 / 특근 */}
@@ -2912,22 +2923,32 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         연차
                                       </button>
 
-                                      {/* 결근 */}
+                                      {/* 결근 / 미출근 */}
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const isCurrent = strVal === "결근" || strVal === "무단결근" || strVal.includes("결근");
-                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "결근";
-                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                          if (isWk) {
+                                            const isCurrentOff = strVal === "-" || strVal === "휴무" || strVal === "미출근" || strVal === "결근";
+                                            const nextCode = isCurrentOff ? "특근" : "-";
+                                            handleUpdateWorkerDayAttendance(worker, nextCode);
+                                          } else {
+                                            const isCurrent = strVal === "결근" || strVal === "무단결근" || strVal.includes("결근");
+                                            const nextCode = isCurrent ? "🟢" : "결근";
+                                            handleUpdateWorkerDayAttendance(worker, nextCode);
+                                          }
                                         }}
-                                        title="결근"
+                                        title={isWk ? "주말/휴일 미출근 (특근 미투입)" : "결근"}
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")
-                                            ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400 scale-102"
-                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                                          isWk
+                                            ? (strVal === "결근" || strVal === "-" || strVal === "휴무" || strVal === "미출근"
+                                                ? "bg-slate-700 text-slate-200 font-black shadow-xs ring-1 ring-slate-500"
+                                                : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700")
+                                            : (strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")
+                                                ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400 scale-102"
+                                                : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700")
                                         }`}
                                       >
-                                        결근
+                                        {isWk ? "미출근" : "결근"}
                                       </button>
                                     </div>
                                   </td>
@@ -4569,8 +4590,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
               {/* Workers Summary: 선택된 인원 + 근태현황만 축약 표시 (미입력 제외) */}
               {(() => {
+                const isWkModal = isWeekendDay(selectedDay);
                 const enteredWorkers = filteredAttendanceWorkers.filter((w) => {
                   const val = w.daily ? String(w.daily[selectedDay] || "").trim() : "";
+                  return val !== "" && val !== "미입력";
+                });
+
+                const attendedWorkers = enteredWorkers.filter((w) => {
+                  const val = w.daily ? String(w.daily[selectedDay] || "").trim() : "";
+                  if (isWkModal) {
+                    return val !== "" && val !== "미입력" && val !== "-" && val !== "휴무" && val !== "결근" && val !== "미출근";
+                  }
                   return val !== "" && val !== "미입력" && val !== "-";
                 });
 
@@ -4579,13 +4609,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-purple-400" />
-                        <span>{currentMonthNum}월 {selectedDay}일 투입/등록 인원 ({enteredWorkers.length}명)</span>
+                        <span>{currentMonthNum}월 {selectedDay}일 {isWkModal ? `특근 투입 (${attendedWorkers.length}명) / 미출근 포함 (${enteredWorkers.length}명)` : `투입/등록 인원 (${enteredWorkers.length}명)`}</span>
                       </span>
 
                       {/* 근태별 인원 요약 뱃지 */}
                       <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono font-bold">
                         {(() => {
-                          const counts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "연차": 0, "결근": 0, "특근": 0 };
+                          const counts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "특근": 0, "연차": 0, "결근": 0, "미출근": 0 };
                           enteredWorkers.forEach((w) => {
                             const val = w.daily ? w.daily[selectedDay] : "";
                             if (val === "🟢" || val === "정시" || val === "17") counts["정시"]++;
@@ -4593,20 +4623,25 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             else if (val === "21" || val === "21시") counts["21시"]++;
                             else if (val === "22" || val === "22시") counts["22시"]++;
                             else if (val === "야간") counts["야간"]++;
-                            else if (val === "연차") counts["연차"]++;
-                            else if (val === "결근") counts["결근"]++;
                             else if (val === "특근" || val === "주말특근") counts["특근"]++;
+                            else if (val === "연차") counts["연차"]++;
+                            else if (val === "결근") {
+                              if (isWkModal) counts["미출근"]++;
+                              else counts["결근"]++;
+                            }
+                            else if (val === "-" || val === "휴무" || val === "미출근") counts["미출근"]++;
                           });
                           return (
                             <>
+                              {counts["특근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800">🌙 특근 {counts["특근"]}명</span>}
                               {counts["정시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800">🟢 정시 {counts["정시"]}명</span>}
                               {counts["19시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">🟡 19시 {counts["19시"]}명</span>}
                               {counts["21시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-800">🟠 21시 {counts["21시"]}명</span>}
                               {counts["22시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800">🔴 22시 {counts["22시"]}명</span>}
                               {counts["야간"] > 0 && <span className="px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800">🌌 야간 {counts["야간"]}명</span>}
-                              {counts["특근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800">🌙 특근 {counts["특근"]}명</span>}
                               {counts["연차"] > 0 && <span className="px-2 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-800">🌴 연차 {counts["연차"]}명</span>}
                               {counts["결근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-800">❌ 결근 {counts["결근"]}명</span>}
+                              {counts["미출근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">- 미출근 {counts["미출근"]}명</span>}
                             </>
                           );
                         })()}
@@ -4630,10 +4665,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
                               if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
                               if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
-                              if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
-                              if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
                               if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
-                              if (str === "-" || str === "휴무") return { label: "- 휴무", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                              if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
+                              if (str === "결근") {
+                                if (isWkModal) return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                                return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
+                              }
+                              if (str === "-" || str === "휴무" || str === "미출근") return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
                               return { label: str || "미입력", bg: "bg-slate-800 text-slate-300 border-slate-700" };
                             };
                             const badge = getBadge(val);
@@ -4785,10 +4823,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     columns.push(workers.slice(i * perCol, (i + 1) * perCol));
                   }
 
+                  const isWkPopup = isWeekendDay(selectedDay);
                   const renderBadge = (code) => {
                     const str = code ? String(code).trim() : "";
                     if (!str || str === "-") {
-                      return <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-400">-</span>;
+                      return <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-400">{isWkPopup ? "- 미출근" : "-"}</span>;
                     }
                     if (str === "🟢" || str === "정시" || str === "17") {
                       return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-600 text-white shadow-2xs">🟢정시</span>;
@@ -4812,11 +4851,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-600 text-white shadow-2xs">⛅반차</span>;
                     }
                     if (str === "결근") {
+                      if (isWkPopup) {
+                        return <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">- 미출근</span>;
+                      }
                       return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-red-600 text-white shadow-2xs">❌결근</span>;
+                    }
+                    if (str === "휴무" || str === "미출근") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">- 미출근</span>;
                     }
                     return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">{str}</span>;
                   };
-
                   return (
                     <div className={`grid gap-2.5 ${numCols === 3 ? "grid-cols-1 md:grid-cols-3" : numCols === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
                       {columns.map((colWorkers, colIdx) => (
@@ -5252,152 +5296,221 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 </div>
               </div>
 
-              {/* Summary KPIs */}
+              {/* Summary KPIs & Worker breakdown */}
               {(() => {
-                const workersCount = selectedLegacyReport.totalWorkers || (selectedLegacyReport.items ? selectedLegacyReport.items.length : 0);
-                const totalHours = selectedLegacyReport.totalHours || (workersCount * 8);
-                const cost = selectedLegacyReport.cost || (totalHours * 15000);
+                const isWkReport = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
+                const rawItems = selectedLegacyReport.items || [];
 
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                      <span className="text-[10.5px] text-slate-400 font-bold block">총 출근/투입 인원</span>
-                      <span className="font-mono font-black text-sm text-emerald-400">{workersCount}명</span>
-                    </div>
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                      <span className="text-[10.5px] text-slate-400 font-bold block">총 투입 공수</span>
-                      <span className="font-mono font-black text-sm text-cyan-300">{totalHours} M/H</span>
-                    </div>
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                      <span className="text-[10.5px] text-slate-400 font-bold block">소속 공장/업체</span>
-                      <span className="font-mono font-black text-sm text-purple-400">{selectedLegacyReport.company || selectedLegacyReport.plant || "-"}</span>
-                    </div>
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                      <span className="text-[10.5px] text-slate-400 font-bold block">예상 총 노무비</span>
-                      <span className="font-mono font-black text-rose-400">₩{cost.toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* ⭐ If Synthesized: Render Child Reports Breakdown by Company */}
-              {isSynthesized && selectedLegacyReport.childReports && selectedLegacyReport.childReports.length > 0 && (
-                <div className="space-y-2">
-                  <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>소속 협력사별 개별 보고서 취합 내역 ({selectedLegacyReport.childReports.length}개사)</span>
-                  </span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {selectedLegacyReport.childReports.map((cr, crIdx) => {
-                      const crWorkers = cr.totalWorkers || (cr.items ? cr.items.length : 0);
-                      const crHours = cr.totalHours || (crWorkers * 8);
-                      const crCost = cr.cost || (crHours * 15000);
-                      return (
-                        <div key={crIdx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-black text-indigo-300 text-xs flex items-center gap-1">
-                              <Factory className="w-3.5 h-3.5 text-indigo-400" />
-                              <span>{cr.company}</span>
-                            </span>
-                            <span className="text-[11px] font-bold text-slate-400">
-                              작성: {cr.author || "선임"}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
-                            <span className="text-emerald-300 font-bold">{crWorkers}명 출근</span>
-                            <span className="text-cyan-300 font-bold">{crHours} M/H</span>
-                            <span className="text-rose-300 font-black">₩{crCost.toLocaleString()}</span>
-                          </div>
-                          {cr.items && cr.items.length > 0 && (
-                            <div className="text-[10.5px] text-slate-400 truncate">
-                              작업자: {cr.items.map(it => it.workerName || it.names).filter(Boolean).join(", ")}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Reason / Notes Area */}
-              {selectedLegacyReport.reasons && selectedLegacyReport.reasons.length > 0 && (
-                <div className="space-y-1 p-3 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-purple-400" />
-                    <span>{isSynthesized ? "취합 사유 및 주요 작업 내용" : "특근 사유 및 주요 작업 내용"}</span>
-                  </span>
-                  <div className="space-y-1 text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">
-                    {selectedLegacyReport.reasons.map((rs, rIdx) => (
-                      <div key={rIdx}>{rs}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Workers Summary: 선택된 인원 + 근태현황만 축약 표시 (미입력 제외) */}
-              {(() => {
-                const items = selectedLegacyReport.items || [];
-                const validItems = items.filter((it) => {
-                  const val = String(it.attendanceCode || it.category || "").trim();
-                  return val !== "" && val !== "미입력" && val !== "-";
+                // Attended vs Non-attended
+                const attendedItems = rawItems.filter(it => {
+                  const code = String(it.attendanceCode || it.category || "").trim();
+                  const hrs = Number(it.hours) || 0;
+                  if (isWkReport) {
+                    if (code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0) {
+                      return false;
+                    }
+                    return true;
+                  }
+                  return code !== "-" && code !== "미입력";
                 });
 
-                const displayItems = validItems.length > 0 ? validItems : items;
+                const offItems = rawItems.filter(it => {
+                  const code = String(it.attendanceCode || it.category || "").trim();
+                  const hrs = Number(it.hours) || 0;
+                  if (isWkReport) {
+                    return code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0;
+                  }
+                  return false;
+                });
+
+                const workersCount = isWkReport
+                  ? (attendedItems.length > 0 ? attendedItems.length : (selectedLegacyReport.totalWorkers || 0))
+                  : (selectedLegacyReport.totalWorkers || (rawItems.length > 0 ? rawItems.length : 0));
+
+                const totalHours = isWkReport
+                  ? (attendedItems.reduce((acc, it) => acc + (Number(it.hours) || 8), 0) || selectedLegacyReport.totalHours || (workersCount * 8))
+                  : (selectedLegacyReport.totalHours || (workersCount * 8));
+
+                const cost = selectedLegacyReport.cost || (totalHours * 15000);
+
+                const getBadge = (code) => {
+                  const str = String(code || "").trim();
+                  if (str === "🟢" || str === "정시" || str === "17") return { label: "🟢 정시", bg: "bg-emerald-950 text-emerald-300 border-emerald-700/80" };
+                  if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
+                  if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
+                  if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
+                  if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
+                  if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
+                  if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
+                  if (str === "결근") {
+                    if (isWkReport) return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                    return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
+                  }
+                  if (str === "-" || str === "휴무" || str === "미출근") return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                  return { label: isWkReport ? "🌙 특근(8H)" : (str || "정시"), bg: isWkReport ? "bg-purple-950 text-purple-300 border-purple-700" : "bg-emerald-950 text-emerald-300 border-emerald-700" };
+                };
 
                 return (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-purple-400" />
-                        <span>{isSynthesized ? "전체 투입 작업자 통합 명단" : "투입 작업자 명단"} ({displayItems.length}명)</span>
-                      </span>
+                  <div className="space-y-4">
+                    {/* Summary KPIs */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                        <span className="text-[10.5px] text-slate-400 font-bold block">{isWkReport ? "총 특근 투입 인원" : "총 출근/투입 인원"}</span>
+                        <span className="font-mono font-black text-sm text-emerald-400">{workersCount}명</span>
+                      </div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                        <span className="text-[10.5px] text-slate-400 font-bold block">총 투입 공수</span>
+                        <span className="font-mono font-black text-sm text-cyan-300">{totalHours} M/H</span>
+                      </div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                        <span className="text-[10.5px] text-slate-400 font-bold block">소속 공장/업체</span>
+                        <span className="font-mono font-black text-sm text-purple-400">{selectedLegacyReport.company || selectedLegacyReport.plant || "-"}</span>
+                      </div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                        <span className="text-[10.5px] text-slate-400 font-bold block">예상 총 노무비</span>
+                        <span className="font-mono font-black text-rose-400">₩{cost.toLocaleString()}</span>
+                      </div>
                     </div>
 
-                    <div className="border border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto bg-slate-950/60 p-2">
-                      {displayItems.length === 0 ? (
-                        <div className="py-6 text-center text-slate-500 font-bold text-xs">
-                          등록된 투입 인원 정보가 없습니다.
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-                          {displayItems.map((it, idx) => {
-                            const getBadge = (code) => {
-                              const str = String(code || "").trim();
-                              if (str === "🟢" || str === "정시" || str === "17") return { label: "🟢 정시", bg: "bg-emerald-950 text-emerald-300 border-emerald-700/80" };
-                              if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
-                              if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
-                              if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
-                              if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
-                              if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
-                              if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
-                              if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
-                              if (str === "-" || str === "휴무") return { label: "- 휴무", bg: "bg-slate-800 text-slate-400 border-slate-700" };
-                              return { label: str || "특근", bg: "bg-purple-950 text-purple-300 border-purple-700" };
-                            };
-
-                            const badge = getBadge(it.attendanceCode || it.category || "특근");
-
+                    {/* ⭐ If Synthesized: Render Child Reports Breakdown by Company */}
+                    {isSynthesized && selectedLegacyReport.childReports && selectedLegacyReport.childReports.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>소속 협력사별 개별 보고서 취합 내역 ({selectedLegacyReport.childReports.length}개사)</span>
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                          {selectedLegacyReport.childReports.map((cr, crIdx) => {
+                            const crItems = cr.items || [];
+                            const crAttendedItems = crItems.filter(it => {
+                              const code = String(it.attendanceCode || it.category || "").trim();
+                              const hrs = Number(it.hours) || 0;
+                              if (isWkReport) {
+                                if (code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0) {
+                                  return false;
+                                }
+                                return true;
+                              }
+                              return code !== "-" && code !== "미입력";
+                            });
+                            const crWorkers = isWkReport ? (crAttendedItems.length > 0 ? crAttendedItems.length : (cr.totalWorkers || 0)) : (cr.totalWorkers || crItems.length);
+                            const crHours = cr.totalHours || (crWorkers * 8);
+                            const crCost = cr.cost || (crHours * 15000);
                             return (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800/90 text-xs"
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="font-mono text-[10.5px] text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
-                                  <span className="text-[11px] font-bold text-slate-400 shrink-0">{it.company || it.factory || ""}</span>
-                                  <span className="text-[11px] text-slate-500 shrink-0">{it.dept || it.line || it.category || ""}</span>
-                                  <span className="font-black text-white text-xs truncate">{it.workerName || it.names || "-"}</span>
+                              <div key={crIdx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-black text-indigo-300 text-xs flex items-center gap-1">
+                                    <Factory className="w-3.5 h-3.5 text-indigo-400" />
+                                    <span>{cr.company}</span>
+                                  </span>
+                                  <span className="text-[11px] font-bold text-slate-400">
+                                    작성: {cr.author || "선임"}
+                                  </span>
                                 </div>
-                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 whitespace-nowrap ${badge.bg}`}>
-                                  {badge.label}
-                                </span>
+                                <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
+                                  <span className="text-emerald-300 font-bold">{crWorkers}명 {isWkReport ? "특근" : "출근"}</span>
+                                  <span className="text-cyan-300 font-bold">{crHours} M/H</span>
+                                  <span className="text-rose-300 font-black">₩{crCost.toLocaleString()}</span>
+                                </div>
+                                {crAttendedItems.length > 0 && (
+                                  <div className="text-[10.5px] text-slate-400 truncate">
+                                    작업자: {crAttendedItems.map(it => it.workerName || it.names).filter(Boolean).join(", ")}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
                         </div>
-                      )}
+                      </div>
+                    )}
+
+                    {/* Reason / Notes Area */}
+                    {selectedLegacyReport.reasons && selectedLegacyReport.reasons.length > 0 && (
+                      <div className="space-y-1 p-3 rounded-xl bg-slate-950 border border-slate-800">
+                        <span className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-purple-400" />
+                          <span>{isSynthesized ? "취합 사유 및 주요 작업 내용" : "특근 사유 및 주요 작업 내용"}</span>
+                        </span>
+                        <div className="space-y-1 text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">
+                          {selectedLegacyReport.reasons.map((rs, rIdx) => (
+                            <div key={rIdx}>{rs}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1. 특근/출근 투입 작업자 명단 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-purple-400" />
+                          <span>{isWkReport ? (isSynthesized ? "전체 특근 투입 작업자 통합 명단" : "특근 투입 작업자 명단") : (isSynthesized ? "전체 투입 작업자 통합 명단" : "투입 작업자 명단")} ({attendedItems.length}명)</span>
+                        </span>
+                      </div>
+
+                      <div className="border border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto bg-slate-950/60 p-2">
+                        {attendedItems.length === 0 ? (
+                          <div className="py-6 text-center text-slate-500 font-bold text-xs">
+                            등록된 투입 인원 정보가 없습니다.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                            {attendedItems.map((it, idx) => {
+                              const badge = getBadge(it.attendanceCode || it.category || (isWkReport ? "특근" : "정시"));
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800/90 text-xs"
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="font-mono text-[10.5px] text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
+                                    <span className="text-[11px] font-bold text-slate-400 shrink-0">{it.company || it.factory || ""}</span>
+                                    <span className="text-[11px] text-slate-500 shrink-0">{it.dept || it.line || it.category || ""}</span>
+                                    <span className="font-black text-white text-xs truncate">{it.workerName || it.names || "-"}</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 whitespace-nowrap ${badge.bg}`}>
+                                    {badge.label}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* 2. 주말 미출근 명단 (미출근 인원이 등록되어 있을 경우 별도 표시) */}
+                    {isWkReport && offItems.length > 0 && (
+                      <div className="space-y-2 mt-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="font-black text-slate-400 text-xs flex items-center gap-1.5">
+                            <UserMinus className="w-3.5 h-3.5 text-slate-500" />
+                            <span>미출근 명단 ({offItems.length}명)</span>
+                          </span>
+                        </div>
+
+                        <div className="border border-slate-800/80 rounded-xl overflow-hidden max-h-40 overflow-y-auto bg-slate-950/40 p-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                            {offItems.map((it, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-800/60 text-xs opacity-75"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-mono text-[10.5px] text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
+                                  <span className="text-[11px] font-bold text-slate-500 shrink-0">{it.company || it.factory || ""}</span>
+                                  <span className="text-[11px] text-slate-500 shrink-0">{it.dept || it.line || it.category || ""}</span>
+                                  <span className="font-bold text-slate-300 text-xs truncate">{it.workerName || it.names || "-"}</span>
+                                </div>
+                                <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-400 border border-slate-700 shrink-0 whitespace-nowrap">
+                                  - 미출근
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
