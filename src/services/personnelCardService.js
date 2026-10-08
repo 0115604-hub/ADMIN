@@ -13,8 +13,9 @@ import { cleanCompanyName } from "./overtimeSmartService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_personnel_cards_v1";
 
-// ⭐ 표준 6대 제조 공정 목록 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
+// ⭐ 표준 7대 제조 및 관리 공정 목록 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
 export const STANDARD_PROCESS_LIST = [
+  "관리자",
   "압출",
   "소재준비",
   "조인트",
@@ -405,38 +406,61 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     ? normalizeStandardPosition(merged.position, company)
     : (worker.position ? normalizeStandardPosition(worker.position, company) : (isPartner ? "대표이사" : "사원"));
 
-  // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
+  // ⭐ 관리자 직급/직책 확인 (사원, 선임, 책임, 이사, 대표이사 또는 관리부서 소속)
+  // 사용자 요구사항: 사원, 선임, 책임, 이사, 대표이사인 경우 담당공정을 "관리자"로 표시하고 "다기능공"으로 지정 (현장 결근 발생 시 관리자가 전 제조공정 대체 근무)
+  const isManagerRole = (
+    position === "사원" ||
+    position === "선임" ||
+    position === "책임" ||
+    position === "이사" ||
+    position === "대표이사" ||
+    dept === "관리팀" ||
+    dept === "관리부" ||
+    (worker.line && worker.line.includes("관리"))
+  );
+
+  // 기본 주공정 추정 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
   let defaultMainProcess = merged.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
-    const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
-    if (hint.includes("압출")) defaultMainProcess = "압출";
-    else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
-    else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
-    else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
-    else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
-    else if (hint.includes("검사") || hint.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
-    else defaultMainProcess = "압출";
+    if (isManagerRole) {
+      defaultMainProcess = "관리자";
+    } else {
+      const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
+      if (hint.includes("압출")) defaultMainProcess = "압출";
+      else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
+      else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
+      else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
+      else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
+      else if (hint.includes("검사") || hint.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
+      else defaultMainProcess = "압출";
+    }
+  } else if (isManagerRole && !merged.mainProcessManuallySet && defaultMainProcess !== "관리자") {
+    defaultMainProcess = "관리자";
   }
 
   // 기본 숙련도 추정
   let defaultSkillLevel = merged.skillLevel;
   if (!defaultSkillLevel) {
-    if (position === "이사" || position === "책임") {
+    if (position === "대표이사" || position === "이사" || position === "책임") {
       defaultSkillLevel = 5;
     } else if (position === "선임") {
+      defaultSkillLevel = 4;
+    } else if (position === "사원" && isManagerRole) {
       defaultSkillLevel = 4;
     } else {
       defaultSkillLevel = 3;
     }
   }
 
-  // 기본 다기능공 여부
-  const isMultiSkill = merged.isMultiSkill !== undefined ? merged.isMultiSkill : (defaultSkillLevel >= 4);
+  // 기본 다기능공 여부 (사원/선임/책임/이사/대표이사/관리자는 100% 다기능공 지정)
+  const isMultiSkill = merged.isMultiSkill !== undefined ? merged.isMultiSkill : (isManagerRole || defaultSkillLevel >= 4);
 
-  // 기본 서브 지원공정 (압출, 소재준비, 조인트, 사상, 코팅, 검사 중 선택)
+  // 기본 서브 지원공정 (작업자 결근 시 관리자가 전 공정 대체 근무 가능하도록 전 제조 공정 자동 지원 배정)
   let subProcesses = merged.subProcesses;
   if (!subProcesses || !Array.isArray(subProcesses) || subProcesses.length === 0) {
-    if (isMultiSkill) {
+    if (isManagerRole || defaultMainProcess === "관리자") {
+      subProcesses = ["압출", "소재준비", "조인트", "사상", "코팅", "검사"];
+    } else if (isMultiSkill) {
       if (defaultMainProcess === "압출") subProcesses = ["소재준비", "사상", "검사"];
       else if (defaultMainProcess === "조인트") subProcesses = ["사상", "코팅", "검사"];
       else if (defaultMainProcess === "소재준비") subProcesses = ["압출", "사상"];
@@ -447,7 +471,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     }
   }
 
-  // 지원 공정 중 표준 6대 공정에 해당하는 항목만 필터링
+  // 지원 공정 중 표준 공정에 해당하는 항목만 필터링 (주공정 제외)
   subProcesses = subProcesses.filter((p) => STANDARD_PROCESS_LIST.includes(p) && p !== defaultMainProcess);
 
   const joinDate = merged.joinDate || "2022-03-15";
@@ -485,7 +509,11 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     subProcesses,
     inspectorGrade,
     inspectorCertDate,
-    notes: merged.notes || `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`,
+    notes: merged.notes || (
+      isManagerRole || defaultMainProcess === "관리자"
+        ? "관리자 (현장 작업자 결근 시 전 제조공정 대체 투입 및 생산 지원)"
+        : `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`
+    ),
     updatedAt: merged.updatedAt || new Date().toISOString()
   };
 };

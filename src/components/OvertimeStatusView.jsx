@@ -3886,9 +3886,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
                           {/* 직위 */}
                           <td className="py-2 px-2 text-center">
-                            <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                              {worker.position || "작업원"}
-                            </span>
+                            {(() => {
+                              const pos = card.position || worker.position || "작업원";
+                              const isExecutive = pos === "대표이사" || pos === "이사";
+                              const isLead = pos === "책임";
+                              const isSenior = pos === "선임";
+                              const isStaff = pos === "사원";
+                              return (
+                                <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border ${
+                                  isExecutive
+                                    ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800 font-black"
+                                    : isLead
+                                    ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 font-black"
+                                    : isSenior
+                                    ? "bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800 font-black"
+                                    : isStaff
+                                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                }`}>
+                                  {pos}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           {/* 성명 & 사번 & 프로필 사진 */}
@@ -3939,9 +3958,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
                           {/* 주공정 (년차 / 검사원 등급) */}
                           <td className="py-2 px-2">
-                            <div className="flex items-center gap-1">
-                              <span className="font-black text-amber-600 dark:text-amber-300 text-xs truncate">
-                                {card.mainProcess || "압출"}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className={`text-xs truncate ${
+                                card.mainProcess === "관리자"
+                                  ? "font-black px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 flex items-center gap-0.5"
+                                  : "font-black text-amber-600 dark:text-amber-300"
+                              }`}>
+                                {card.mainProcess === "관리자" ? "🛡️ 관리자" : (card.mainProcess || "압출")}
                               </span>
                               {card.mainProcess === "검사" && card.inspectorGrade && (() => {
                                 const meta = getInspectorGradeMeta(card.inspectorGrade);

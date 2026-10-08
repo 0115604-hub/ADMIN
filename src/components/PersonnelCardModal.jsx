@@ -193,6 +193,18 @@ export default function PersonnelCardModal({
           }
         }
       }
+      // 직위 변경 시 사원, 선임, 책임, 이사, 대표이사는 기본 주공정을 관리자 및 다기능공으로 자동 설정
+      if (field === "position") {
+        const isManager = value === "사원" || value === "선임" || value === "책임" || value === "이사" || value === "대표이사";
+        if (isManager && (!prev.mainProcess || prev.mainProcess === "압출" || prev.mainProcess === "관리자")) {
+          next.mainProcess = "관리자";
+          next.isMultiSkill = true;
+          next.subProcesses = ["압출", "소재준비", "조인트", "사상", "코팅", "검사"];
+          if (!prev.notes || prev.notes.includes("공정 트러블") || prev.notes.includes("관리자")) {
+            next.notes = "관리자 (작업자 결근 시 전 제조공정 대체 투입 및 생산 지원)";
+          }
+        }
+      }
       // 입사일 변경 시 근속기간 및 공정년차 동시 자동 계산
       if (field === "joinDate") {
         next.tenure = calculateTenureFromJoinDate(value);
@@ -202,9 +214,18 @@ export default function PersonnelCardModal({
       if (field === "skillLevel") {
         next.skillGrade = getSkillMeta(value).grade;
       }
-      // 주공정 변경 시 지원 공정에서 해당 주공정 제거
+      // 주공정 변경 시 지원 공정에서 해당 주공정 제거 및 관리자 선택 시 다기능공 자동 활성화
       if (field === "mainProcess") {
         next.subProcesses = (prev.subProcesses || []).filter((p) => p !== value);
+        if (value === "관리자") {
+          next.isMultiSkill = true;
+          if (!prev.subProcesses || prev.subProcesses.length === 0) {
+            next.subProcesses = ["압출", "소재준비", "조인트", "사상", "코팅", "검사"];
+          }
+          if (!prev.notes || prev.notes.includes("공정 트러블")) {
+            next.notes = "관리자 (작업자 결근 시 전 제조공정 대체 투입 및 생산 지원)";
+          }
+        }
         // 검사 공정 선택 시 기본 검사원 등급 자동 부여
         if (value === "검사" && !prev.inspectorGrade) {
           next.inspectorGrade = "A등급 (정검사원)";
@@ -572,17 +593,17 @@ export default function PersonnelCardModal({
                 </span>
               </div>
 
-              {/* 주공정 6가지 (코팅 포함) 선택 버튼 그룹 */}
+              {/* 주 담당 공정 (관리자 포함 7대 공정) 선택 버튼 그룹 */}
               <div>
                 <div className="flex items-center justify-between pb-1.5">
                   <label className="text-[11px] font-bold text-slate-400">
-                    주 담당 공정 선택 (6대 표준 공정):
+                    주 담당 공정 선택 (표준 제조 및 관리 공정):
                   </label>
                   <span className="text-[10.5px] text-amber-400 font-bold">
-                    현재: {formData.mainProcess}
+                    현재: {formData.mainProcess === "관리자" ? "🛡️ 관리자 (다기능공)" : formData.mainProcess}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
                   {STANDARD_PROCESS_LIST.map((proc) => {
                     const isSelected = formData.mainProcess === proc;
                     return (
@@ -592,11 +613,13 @@ export default function PersonnelCardModal({
                         onClick={() => handleChange("mainProcess", proc)}
                         className={`py-2 px-1 rounded-xl font-black text-xs transition-all cursor-pointer text-center ${
                           isSelected
-                            ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102 font-black"
+                            ? proc === "관리자"
+                              ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 scale-102 font-black"
+                              : "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102 font-black"
                             : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700 font-bold"
                         }`}
                       >
-                        {proc}
+                        {proc === "관리자" ? "🛡️ 관리자" : proc}
                       </button>
                     );
                   })}
@@ -963,8 +986,8 @@ export default function PersonnelCardModal({
 
                 <div className="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800/80 space-y-0.5">
                   <span className="text-[10px] font-bold text-slate-400 block">주공정 / 공정년차</span>
-                  <div className="font-black text-amber-300 text-xs">
-                    {formData.mainProcess}
+                  <div className={`font-black text-xs ${formData.mainProcess === "관리자" ? "text-indigo-300 font-black" : "text-amber-300"}`}>
+                    {formData.mainProcess === "관리자" ? "🛡️ 관리자" : formData.mainProcess}
                   </div>
                   <div className="text-cyan-300 font-black text-[11.5px]">
                     {formData.processYear || calculateProcessYearFromJoinDate(formData.joinDate)}
