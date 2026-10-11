@@ -772,8 +772,6 @@ export const WorkerPinModal = ({
     });
   }, [unifiedPinMatrix, todayDayNum]);
 
-  const isAfter9AM = useMemo(() => new Date().getHours() >= 9, []);
-
   // 당일 근태
   const leaveStatus = useMemo(() => {
     if (!selectedUser) return null;
@@ -1648,9 +1646,12 @@ export const WorkerPinModal = ({
                                 <span className="font-bold text-slate-900 dark:text-white block text-xs">{b.attended}/{b.total}명</span>
                                 <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block">잔업 {b.otWorkers}명</span>
                                 {isUn ? (
-                                  <span className="text-[9px] text-rose-500 font-bold block">{isAfter9AM ? "미작성" : "작성전"}</span>
+                                  <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block">작성전</span>
                                 ) : (
-                                  <span className="text-[9px] text-emerald-500 font-bold block">완료</span>
+                                  <span className="text-[9.5px] text-emerald-500 font-black flex items-center justify-center gap-0.5">
+                                    <span>✅</span>
+                                    <span>완료</span>
+                                  </span>
                                 )}
                               </div>
                             );

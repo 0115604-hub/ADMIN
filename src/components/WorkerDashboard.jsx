@@ -570,8 +570,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, []);
 
-  // 9시 기준 작성여부 및 미작성 업체 계산 (보고서와 대장 실시간 통합)
-  const { companyOverviewStats, unwrittenCompanies, isAfter9AM } = useMemo(() => {
+  // 당일 작성여부 및 미작성 업체 계산 (보고서와 대장 실시간 통합)
+  const { companyOverviewStats, unwrittenCompanies } = useMemo(() => {
     const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
     const todayStr = getKSTDateString();
     const todayParts = todayStr.split("-");
@@ -592,10 +592,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         };
       });
     }
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const isAfter9 = currentHour >= 9;
 
     const daily = calculateDailySummary(matrix, todayDayNum);
     const companyStyles = {
@@ -641,13 +637,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const otHours = b ? (b.otHours || 0) : 0;
       const totalHours = b ? (b.totalHours || 0) : 0;
 
-      const statusBadgeText = isWritten ? "작성완료" : (isAfter9 ? "09:00 미작성" : "작성전");
+      const statusBadgeText = isWritten ? "작성완료" : "작성전";
       const statusBadgeClass = isWritten
         ? "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-        : (isAfter9
-            ? "bg-rose-100 dark:bg-rose-950/90 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700 font-black animate-pulse"
-            : "bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold"
-          );
+        : "bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold";
 
       return {
         name,
@@ -699,8 +692,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     return {
       companyOverviewStats: [totalItem, ...companies],
-      unwrittenCompanies: unwritten,
-      isAfter9AM: isAfter9
+      unwrittenCompanies: unwritten
     };
   }, [smartOvertimeData, overtimeReports]);
 
@@ -4324,22 +4316,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
               {todayFormattedLabel}
             </span>
-            {/* ⭐ [당일 9시 기준] 미작성 업체 표기 배지 */}
+            {/* ⭐ 미작성 업체 표기 배지 */}
             {unwrittenCompanies.length > 0 ? (
               <span
-                className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-1 animate-pulse"
-                title="당일 9시 기준 근태대장 미작성 협력사 목록입니다."
+                className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-1"
+                title="당일 근태대장 미작성 협력사 목록입니다."
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping shrink-0" />
-                <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (9시 기준)</span>
+                <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
               </span>
             ) : (
               <span
                 className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0 flex items-center gap-1"
-                title="5개 협력사 전원 당일 9시 기준 작성 완료되었습니다."
+                title="5개 협력사 전원 작성 완료되었습니다."
               >
                 <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span>5개사 전원 작성완료 (9시 기준)</span>
+                <span>5개사 전원 작성완료</span>
               </span>
             )}
           </div>
@@ -4372,7 +4364,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               } ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
               title={comp.isTotal ? "클릭 시 전회사 근태/잔업 상세대장으로 이동" : "클릭 시 5개사 근태/잔업 대장 상세관리로 이동"}
             >
-              {/* Header: Company Name & 9시 기준 작성상태 미니 배지 */}
+              {/* Header: Company Name & 작성상태 미니 배지 */}
               <div className={`flex items-center justify-between gap-1 pb-1 border-b ${
                 comp.isTotal
                   ? "border-cyan-200/80 dark:border-cyan-800/80"
