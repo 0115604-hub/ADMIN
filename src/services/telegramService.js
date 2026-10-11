@@ -1038,6 +1038,9 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     const leaves = getLocalAnnualLeaves() || [];
     const prevDayLeaves = leaves.filter((l) => {
       if (!l.startDate || l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
+      // 🔒 [보안 원칙] 대표이사(권태형) 개인 일정 및 연차는 텔레그램 공용 브리핑 노출 절대 차단
+      const uName = String(l.userName || l.name || "");
+      if (uName.includes("권태형") || uName.includes("대표이사") || uName.includes("대표님") || uName.includes("대표")) return false;
       const start = l.startDate;
       const end = l.endDate || l.startDate;
       return start <= prevDayStr && prevDayStr <= end;
@@ -1242,8 +1245,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       return Array.from(onLeaveUsers).some((u) => u.includes(t) || t.includes(u));
     };
 
-    const samUnregistered = samTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
-    const halUnregistered = halTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
+    const samUnregistered = isWeekendOrHoliday ? [] : samTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
+    const halUnregistered = isWeekendOrHoliday ? [] : halTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
     const totalUnregistered = samUnregistered.length + halUnregistered.length;
 
     // 결재대기 라인
@@ -1273,10 +1276,17 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 
     const workLogLines = `${pendingLineStr}\n${unregisteredLineStr}`;
 
+    // 🔒 [보안 원칙] 대표이사(권태형) 관련 모든 항목은 텔레그램 공용 브리핑 노출 절대 차단
+    const isCeoItem = (item) => {
+      if (!item) return false;
+      const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""} ${item.speaker || ""}`;
+      return text.includes("권태형") || text.includes("대표이사") || text.includes("대표님") || text.includes("대표");
+    };
+
     // 4. 진행중인 오픈이슈 (미해결 & 미삭제) - 마감일 가까운 순(오름차순) 정렬
     const allUrgent = getLocalUrgentIssues();
     const activeOpenIssues = allUrgent.filter(
-      (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue")
+      (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue") && !isCeoItem(i)
     ).sort((a, b) => {
       const dateA = a.expireDate || a.targetDate || "9999-99-99";
       const dateB = b.expireDate || b.targetDate || "9999-99-99";
@@ -1313,8 +1323,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     }
 
     // 5. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지) - 날짜 가까운 순(오름차순) 정렬
-    const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
-    const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
+    const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr && !isCeoItem(i));
+    const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr) && !isCeoItem(i));
 
     let noticeMeetingLines = "• 예정된 회의 및 공지사항 없음";
     const combined = [];
@@ -1626,6 +1636,19 @@ export const sendTodayCommonScheduleReminderTelegram = async (targetDate = null,
       } catch (e) {}
       todayScheds = getTodayCommonSchedules(todayStr);
     }
+
+    // 🔒 [보안 원칙] 대표이사(권태형) 개인 일정 노출 절대 차단
+    todayScheds = (todayScheds || []).filter((s) => {
+      const title = String(s.title || "");
+      const author = String(s.author || "");
+      const content = String(s.content || "");
+      if (title.includes("권태형") || title.includes("대표이사") || title.includes("대표님") ||
+          author.includes("권태형") || author.includes("대표이사") || author.includes("대표님") ||
+          content.includes("권태형") || content.includes("대표이사") || content.includes("대표님")) {
+        return false;
+      }
+      return true;
+    });
 
     if (!todayScheds || todayScheds.length === 0) {
       console.log(`[당일 공통일정 리마인드] 오늘(${todayStr}) 예정된 공통일정이 없어 발송을 생략합니다.`);

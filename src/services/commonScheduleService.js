@@ -633,7 +633,19 @@ export const getScheduleCategoryMeta = (target) => {
 };
 
 export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateString()) => {
-  const validScheds = (scheds || []).filter((s) => !isScheduleExpired(s));
+  const validScheds = (scheds || []).filter((s) => {
+    if (isScheduleExpired(s)) return false;
+    // 🔒 [보안 원칙] 대표이사 일정 및 관련 개인 일정은 텔레그램 공용 브리핑 노출 차단
+    const title = String(s.title || "");
+    const author = String(s.author || "");
+    const content = String(s.content || "");
+    if (title.includes("권태형") || title.includes("대표이사") || title.includes("대표님") ||
+        author.includes("권태형") || author.includes("대표이사") || author.includes("대표님") ||
+        content.includes("권태형") || content.includes("대표이사") || content.includes("대표님")) {
+      return false;
+    }
+    return true;
+  });
   if (validScheds.length === 0) {
     return "• 등록된 공통 일정이 없습니다.";
   }

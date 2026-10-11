@@ -188,6 +188,9 @@ export const TelegramView = () => {
     const leaves = getLocalAnnualLeaves() || [];
     const prevDayLeaves = leaves.filter((l) => {
       if (!l.startDate || l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
+      // 🔒 [보안 원칙] 대표이사(권태형) 개인 일정 및 연차는 텔레그램 공용 브리핑 노출 절대 차단
+      const uName = String(l.userName || l.name || "");
+      if (uName.includes("권태형") || uName.includes("대표이사") || uName.includes("대표님") || uName.includes("대표")) return false;
       const start = l.startDate;
       const end = l.endDate || l.startDate;
       return start <= prevDayStr && prevDayStr <= end;
@@ -387,6 +390,9 @@ export const TelegramView = () => {
     const leaves = getLocalAnnualLeaves() || [];
     const prevDayLeaves = leaves.filter((l) => {
       if (!l.startDate || l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
+      // 🔒 [보안 원칙] 대표이사(권태형) 개인 일정 및 연차는 텔레그램 공용 브리핑 노출 절대 차단
+      const uName = String(l.userName || l.name || "");
+      if (uName.includes("권태형") || uName.includes("대표이사") || uName.includes("대표님") || uName.includes("대표")) return false;
       const start = l.startDate;
       const end = l.endDate || l.startDate;
       return start <= prevDayStr && prevDayStr <= end;
@@ -408,8 +414,9 @@ export const TelegramView = () => {
       return Array.from(onLeaveUsers).some((u) => u.includes(t) || t.includes(u));
     };
 
-    const samUnregistered = samTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
-    const halUnregistered = halTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
+    const isWeekendOrHoliday = prevDateInfo?.prevDayWeekName === "토" || prevDateInfo?.prevDayWeekName === "일";
+    const samUnregistered = isWeekendOrHoliday ? [] : samTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
+    const halUnregistered = isWeekendOrHoliday ? [] : halTargetWorkers.filter((name) => !isWorkerRegistered(name) && !isWorkerOnLeave(name));
     const totalUnregistered = samUnregistered.length + halUnregistered.length;
 
     // 결재대기 라인
@@ -444,8 +451,12 @@ export const TelegramView = () => {
   // Live active open issues
   const morningOpenIssues = useMemo(() => {
     const allUrgent = getLocalUrgentIssues();
+    const isCeo = (item) => {
+      const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""}`;
+      return text.includes("권태형") || text.includes("대표이사") || text.includes("대표님") || text.includes("대표");
+    };
     return allUrgent.filter(
-      (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue")
+      (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue") && !isCeo(i)
     );
   }, []);
 
@@ -479,8 +490,12 @@ export const TelegramView = () => {
   // Live active meetings & notices
   const morningNoticeMeetings = useMemo(() => {
     const allUrgent = getLocalUrgentIssues();
-    const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayDateStr);
-    const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayDateStr));
+    const isCeo = (item) => {
+      const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""}`;
+      return text.includes("권태형") || text.includes("대표이사") || text.includes("대표님") || text.includes("대표");
+    };
+    const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayDateStr && !isCeo(i));
+    const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayDateStr) && !isCeo(i));
 
     const combined = [];
     upcomingMeetings.forEach((m) => {
