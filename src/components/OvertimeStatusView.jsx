@@ -2051,7 +2051,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         if (Array.isArray(r.companies) && r.companies.length > 0) {
           return r.companies.some((c) => cleanCompanyName(c) === cleanComp);
         }
-        return true;
+        return false;
       });
       if (hasReport) return false; // 보고서 등록 완료
 

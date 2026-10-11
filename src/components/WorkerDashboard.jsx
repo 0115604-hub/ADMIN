@@ -579,9 +579,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
     const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
 
-    const matrix = (overtimeReports && overtimeReports.length > 0)
-      ? buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth)
-      : rawMatrix;
+    let matrix = rawMatrix;
+    if (overtimeReports && overtimeReports.length > 0) {
+      const reportMatrix = buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth);
+      matrix = reportMatrix.map((w, idx) => {
+        const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
+        const liveDaily = liveW?.daily || {};
+        const reportDaily = w.daily || {};
+        return {
+          ...w,
+          daily: { ...reportDaily, ...liveDaily }
+        };
+      });
+    }
 
     const now = new Date();
     const currentHour = now.getHours();

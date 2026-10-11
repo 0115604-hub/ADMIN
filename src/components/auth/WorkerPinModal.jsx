@@ -739,9 +739,17 @@ export const WorkerPinModal = ({
     const p = todayKst.split("-");
     const todayYear = parseInt(p[0], 10) || 2026;
     const todayMonth = parseInt(p[1], 10) || 10;
-    return (overtimeReports && overtimeReports.length > 0)
-      ? buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth)
-      : rawMatrix;
+    if (!overtimeReports || overtimeReports.length === 0) return rawMatrix;
+    const reportMatrix = buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth);
+    return reportMatrix.map((w, idx) => {
+      const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
+      const liveDaily = liveW?.daily || {};
+      const reportDaily = w.daily || {};
+      return {
+        ...w,
+        daily: { ...reportDaily, ...liveDaily }
+      };
+    });
   }, [smartOvertimeData, overtimeReports]);
 
   const dailyOvertimeSummary = useMemo(() => {
