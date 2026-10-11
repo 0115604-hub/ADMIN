@@ -1000,6 +1000,22 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
+        // ⭐ Sanitize Day 12 if premature entries exist for today (10/12 is not yet submitted by partners)
+        if (ym === "2026-10" || ym === "2026_10") {
+          let modified = false;
+          parsed.attendanceMatrix.forEach((w) => {
+            if (w.daily && (w.daily[12] !== undefined || w.daily["12"] !== undefined)) {
+              delete w.daily[12];
+              delete w.daily["12"];
+              modified = true;
+            }
+          });
+          if (modified) {
+            try {
+              localStorage.setItem(key, JSON.stringify(parsed));
+            } catch (e) {}
+          }
+        }
         return ensureAllCompaniesPresent(parsed);
       }
     }
