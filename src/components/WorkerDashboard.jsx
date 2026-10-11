@@ -612,7 +612,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         if (Array.isArray(r.companies) && r.companies.length > 0) {
           return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
         }
-        return true;
+        return false;
       });
 
       const enteredCount = compWorkers.filter((w) => {

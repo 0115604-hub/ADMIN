@@ -713,9 +713,6 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
               return matchCompany(itComp, wComp);
             }
             return targetCompanies.some(tc => matchCompany(tc, wComp));
-          }) || matrix.find((w) => {
-            const cleanW = cleanWorkerNameOnly(w.name);
-            return (w.name || "").trim() === wName || (cleanItName && cleanW === cleanItName);
           });
 
           if (targetW) {
@@ -792,9 +789,6 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
               if (!sameName) return false;
               if (it.company) return matchCompany(it.company, w.company);
               return targetCompanies.some(tc => matchCompany(tc, w.company));
-            }) || matrix.find((w) => {
-              const cleanW = cleanWorkerNameOnly(w.name);
-              return (w.name || "").trim() === n || (cleanN && cleanW === cleanN);
             });
 
             if (targetW) {
@@ -813,7 +807,8 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
     }
 
     // Case C: Report was registered for company but had no individual items -> set all workers of that company to attended ONLY on regular weekdays
-    if (!hasAppliedAnyItem && targetCompanies.length > 0 && !isWeekend) {
+    // ONLY apply if report explicitly specifies a single company, NOT to composite groups or unverified plants
+    if (!hasAppliedAnyItem && targetCompanies.length === 1 && !isWeekend && !isAllGroup) {
       matrix.forEach((w) => {
         if (targetCompanies.some(tc => matchCompany(tc, w.company))) {
           const defaultCode = "🟢";

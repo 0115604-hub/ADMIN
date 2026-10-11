@@ -1400,8 +1400,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const titleCompList = participatingCompanies.size > 0 ? Array.from(participatingCompanies) : targetCompanies;
       const title = `[특근보고서] ${monthNum}월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
-        ? "생산총괄 ((주)오륙 + 유성)"
-        : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
+        ? (titleCompList.includes("유성") ? "생산총괄 ((주)오륙 + 유성)" : "생산총괄 ((주)오륙)")
+        : (titleCompList.length === 1 ? `생산총괄 ((주)${titleCompList[0]})` : `생산총괄 (${titleCompList.map(c => `(주)${c}`).join(" + ")})`);
 
       // ⭐ 세부투입현황: 회사별로 관리자 / 작업자 분리 표시
       const breakdownText = companySummaries.map(cs => {
