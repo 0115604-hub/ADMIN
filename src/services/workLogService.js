@@ -56,10 +56,32 @@ export const parseLogFields = (log) => {
       parsed.maintenanceItems = [];
     }
   }
+  if (typeof parsed.imagesBefore === "string") {
+    try {
+      parsed.imagesBefore = JSON.parse(parsed.imagesBefore);
+    } catch {
+      parsed.imagesBefore = [];
+    }
+  }
+  if (!Array.isArray(parsed.imagesBefore)) {
+    parsed.imagesBefore = parsed.imagesBefore ? [parsed.imagesBefore] : [];
+  }
+  if (typeof parsed.imagesAfter === "string") {
+    try {
+      parsed.imagesAfter = JSON.parse(parsed.imagesAfter);
+    } catch {
+      parsed.imagesAfter = [];
+    }
+  }
+  if (!Array.isArray(parsed.imagesAfter)) {
+    parsed.imagesAfter = parsed.imagesAfter ? [parsed.imagesAfter] : [];
+  }
   return parsed;
 };
 
 export const WRITER_PLANT_MAP = {
+  "권태형": "본사",
+  "최미영": "본사",
   "이명재": "삼랑진공장",
   "설유철": "삼랑진공장",
   "윤경수": "삼랑진공장",
@@ -88,25 +110,44 @@ export const normalizeWorkLogApproval = (log) => {
     parsed.plant =
       parsed.approverPlant ||
       WRITER_PLANT_MAP[parsed.writer] ||
-      (parsed.approverName === "김동욱" ? "한림공장" : "삼랑진공장");
+      (parsed.approverName === "김동욱" ? "한림공장" : (parsed.writer === "권태형" || parsed.writer === "최미영" ? "본사" : "삼랑진공장"));
   }
 
-  // 2. Default approval status to pending if not present
+  const isHeadquarterOrAdmin =
+    parsed.plant === "본사" ||
+    parsed.writer === "권태형" ||
+    parsed.writer === "최미영" ||
+    parsed.department === "본사 관리팀";
+
+  // 2. Default approval status to pending if not present (Admin / 본사 logs are pre-approved)
   if (!parsed.approvalStatus) {
-    parsed.approvalStatus = "결재대기";
+    if (isHeadquarterOrAdmin) {
+      parsed.approvalStatus = "결재완료";
+      parsed.approverName = parsed.writer || "권태형";
+      parsed.approverTitle = parsed.writer === "최미영" ? "전무" : "대표이사";
+      parsed.approverPlant = "본사";
+      parsed.approvalComment = parsed.approvalComment || "대표이사 전결 승인 완료";
+    } else {
+      parsed.approvalStatus = "결재대기";
+    }
   }
 
   // 3. If approved, ensure approver metadata is present
   if (parsed.approvalStatus === "결재완료" || parsed.approvalStatus === "APPROVED") {
     parsed.approvalStatus = "결재완료";
     if (!parsed.approverName) {
-      parsed.approverName = parsed.plant === "한림공장" ? "김동욱" : "이명재";
-    }
-    if (!parsed.approverTitle) {
-      parsed.approverTitle = parsed.plant === "한림공장" ? "책임" : "이사";
-    }
-    if (!parsed.approverPlant) {
-      parsed.approverPlant = parsed.plant;
+      if (isHeadquarterOrAdmin) {
+        parsed.approverName = parsed.writer || "권태형";
+        parsed.approverTitle = parsed.writer === "최미영" ? "전무" : "대표이사";
+        parsed.approverPlant = "본사";
+        if (!parsed.approvalComment) {
+          parsed.approvalComment = "대표이사 전결 승인 완료";
+        }
+      } else {
+        parsed.approverName = parsed.plant === "한림공장" ? "김동욱" : "이명재";
+        parsed.approverTitle = parsed.plant === "한림공장" ? "책임" : "이사";
+        parsed.approverPlant = parsed.plant;
+      }
     }
   }
 
@@ -288,8 +329,8 @@ export const saveWorkLog = async (newLog) => {
   const current = getLocalWorkLogs();
   const existingLog = current.find((l) => String(l.id) === logId);
 
-  // Guard: If already approved and this is an edit attempt, reject
-  if (existingLog && isWorkLogApproved(existingLog) && !newLog._isApprovalAction) {
+  // Guard: If already approved and this is an edit attempt, reject unless forceAdminEdit is set
+  if (existingLog && isWorkLogApproved(existingLog) && !newLog._isApprovalAction && !newLog._forceAdminEdit) {
     console.warn("Cannot edit an already approved work log:", logId);
     throw new Error("결재가 완료된 업무일지는 수정할 수 없습니다.");
   }

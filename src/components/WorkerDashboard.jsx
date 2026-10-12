@@ -507,18 +507,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [currentProfile]);
 
   const isPartnerProfile = currentProfile?.isPartner || currentProfile?.name === "유성" || currentProfile?.name === "한울" || currentProfile?.name === "부림텍" || currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍";
-  const isJaeyulWorker = isJaeyul || currentProfile?.name === "전재율" || currentProfile?.assignedProcess === "설비보전";
-  const workerDept = isPartnerProfile
-    ? (currentProfile?.name || currentProfile?.company || "유성")
-    : (workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀"));
-  const workerPosition = isPartnerProfile
-    ? "대표이사"
-    : (officialTitle || workerCard?.position || "선임");
-
-  // General Manager & Management Staff Identification (관리자 및 관리팀 여부)
+  const isHeadquarterUser = isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영" || currentProfile?.plant === "본사";
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
+
+  const workerDept = isPartnerProfile
+    ? (currentProfile?.name || currentProfile?.company || "유성")
+    : isHeadquarterUser
+    ? "본사 관리팀"
+    : (isGeneralManager || isInjoo || currentProfile?.assignedProcess === "총괄관리" || currentProfile?.assignedProcess === "관리팀")
+    ? "관리팀"
+    : (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : (workerCard?.dept || "생산팀"));
+  const workerPosition = isPartnerProfile
+    ? "대표이사"
+    : (officialTitle || workerCard?.position || "선임");
   const isManagerOrAdmin =
     isGeneralManager ||
     isAdmin ||
@@ -1197,15 +1200,33 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   useEffect(() => {
     if (currentProfile) {
+      const isHQ = isAdmin || currentProfile.role === "ADMIN" || currentProfile.name === "권태형" || currentProfile.name === "최미영" || currentProfile.plant === "본사";
+      const isGM = isMyeongjae || isDongwook || currentProfile.assignedProcess === "총괄관리";
       setFormData((prev) => ({
         ...prev,
-        plant: currentProfile.plant || "삼랑진공장",
+        plant: prev.plant || currentProfile.plant || (isHQ ? "본사" : "삼랑진공장"),
         writer: currentProfile.name || "작업자",
-        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (currentProfile.assignedProcess || "가공동 관리"),
-        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : (currentProfile.assignedProcess?.includes("압출") ? "9BQC 압출 1호기" : "가공 라인")
+        process: isInjoo
+          ? "경리업무"
+          : isQualityWorker
+          ? "품질관리"
+          : isHQ
+          ? "총괄경영관리"
+          : isGM
+          ? "총괄관리"
+          : (currentProfile.assignedProcess || "가공동 관리"),
+        line: isInjoo
+          ? "본사/현장 정산 및 전표 마감"
+          : isQualityWorker
+          ? "전라인 품질 검사 및 불량 분석"
+          : isHQ
+          ? "본사 총괄 경영 및 운영 관리"
+          : isGM
+          ? `${currentProfile.plant || "공장"} 총괄 운영 관리`
+          : (currentProfile.assignedProcess?.includes("압출") ? "9BQC 압출 1호기" : "가공 라인")
       }));
     }
-  }, [currentProfile?.id, currentProfile?.name, isInjoo, isQualityWorker, isExtrusionWorker]);
+  }, [currentProfile?.id, currentProfile?.name, isInjoo, isQualityWorker, isExtrusionWorker, isAdmin, isMyeongjae, isDongwook]);
 
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
@@ -1400,19 +1421,37 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   useEffect(() => {
     if (currentProfile) {
+      const isHQ = isAdmin || currentProfile.role === "ADMIN" || currentProfile.name === "권태형" || currentProfile.name === "최미영" || currentProfile.plant === "본사";
+      const isGM = isMyeongjae || isDongwook || currentProfile.assignedProcess === "총괄관리";
       setFormData((prev) => ({
         ...prev,
-        plant: workerPlant,
+        plant: prev.plant || (isHQ ? "본사" : workerPlant),
         writer: workerFullName,
-        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
-        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : prev.line
+        process: isInjoo
+          ? "경리업무"
+          : isQualityWorker
+          ? "품질관리"
+          : isHQ
+          ? "총괄경영관리"
+          : isGM
+          ? "총괄관리"
+          : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
+        line: isInjoo
+          ? "본사/현장 정산 및 전표 마감"
+          : isQualityWorker
+          ? "전라인 품질 검사 및 불량 분석"
+          : isHQ
+          ? "본사 총괄 경영 및 운영 관리"
+          : isGM
+          ? `${workerPlant} 총괄 운영 관리`
+          : (prev.line || "가공 라인")
       }));
 
       // Automatically focus on manager's dedicated plant
       if (isMyeongjae) setFilterPlant("삼랑진공장");
       else if (isDongwook) setFilterPlant("한림공장");
     }
-  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker, isMyeongjae, isDongwook]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker, isMyeongjae, isDongwook, isAdmin]);
 
   // Real-time Cloud Synchronization for Work Logs across all mobile phones & PCs
   useEffect(() => {
@@ -2848,16 +2887,44 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       }
       if (!finalIssues) finalIssues = "-";
 
+      const isWriterAdmin = isAdmin || currentProfile?.name === "권태형" || currentProfile?.name === "최미영" || currentProfile?.role === "ADMIN";
+      const nowFormatted = new Date().toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      const targetPlant = formData.plant || (isWriterAdmin ? "본사" : workerPlant) || "삼랑진공장";
+      const isGM = isMyeongjae || isDongwook || currentProfile?.assignedProcess === "총괄관리";
+
       const newLog = {
         id: String(Date.now()),
         date: formData.date || getKSTDateString(),
-        plant: formData.plant || workerPlant || "삼랑진공장",
+        plant: targetPlant,
         writer: currentProfile?.name || workerFullName || "작업자",
         title: officialTitle || workerPosition || "선임",
         department: workerDept,
-        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (formData.process || assignedProcess || "가공동 관리"),
+        process: isInjoo
+          ? "경리업무"
+          : isQualityWorker
+          ? "품질관리"
+          : isWriterAdmin
+          ? "총괄경영관리"
+          : isGM
+          ? "총괄관리"
+          : (formData.process || assignedProcess || "가공동 관리"),
         shift: formData.shift || "주간",
-        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? (formData.line || "전라인 품질 검사 및 불량 분석") : (formData.line || "생산 라인"),
+        line: isInjoo
+          ? "본사/현장 정산 및 전표 마감"
+          : isQualityWorker
+          ? (formData.line || "전라인 품질 검사 및 불량 분석")
+          : isWriterAdmin
+          ? "본사 총괄 경영 및 운영 관리"
+          : isGM
+          ? `${targetPlant} 총괄 운영 관리`
+          : (formData.line || "생산 라인"),
         workContent: formData.workContent,
         defectType: formData.defectType || "",
         issues: finalIssues,
@@ -2865,6 +2932,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         imagesBefore: formData.imagesBefore || [],
         imagesAfter: formData.imagesAfter || [],
         status: "완료",
+        approvalStatus: isWriterAdmin ? "결재완료" : "결재대기",
+        approverName: isWriterAdmin ? (currentProfile?.name || "권태형") : undefined,
+        approverTitle: isWriterAdmin ? (officialTitle || (currentProfile?.name === "최미영" ? "전무" : "대표이사")) : undefined,
+        approverPlant: isWriterAdmin ? "본사" : undefined,
+        approvedAt: isWriterAdmin ? nowFormatted : undefined,
+        approvalComment: isWriterAdmin ? "대표이사 전결 승인 완료" : "",
         createdAt: new Date().toLocaleString("ko-KR", {
           month: "2-digit",
           day: "2-digit",
@@ -2904,10 +2977,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     await deleteWorkLog(id);
   };
 
-  // ✏️ Open Work Log Edit Modal (Only allowed before approval)
+  // ✏️ Open Work Log Edit Modal (Only allowed before approval, or by Admin)
   const handleOpenEditModal = (log) => {
     if (!log) return;
-    if (isWorkLogApproved(log)) {
+    if (isWorkLogApproved(log) && !isAdmin) {
       alert("결재가 완료된 업무일지는 내용을 수정할 수 없습니다.");
       return;
     }
@@ -3106,7 +3179,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (e) e.preventDefault();
     if (!editingLog) return;
 
-    if (isWorkLogApproved(editingLog)) {
+    if (isWorkLogApproved(editingLog) && !isAdmin) {
       alert("결재가 완료된 업무일지는 수정할 수 없습니다.");
       return;
     }
@@ -3180,7 +3253,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         imagesBefore: allEditBefore.length > 0 ? allEditBefore : (editFormData.imagesBefore || []),
         imagesAfter: allEditAfter.length > 0 ? allEditAfter : (editFormData.imagesAfter || []),
         maintenanceItems: formattedItems.length > 0 ? formattedItems : (editingLog.maintenanceItems || []),
-        approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기")
+        approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기"),
+        _forceAdminEdit: isAdmin
       };
 
       const targetLogId = editingLog.id || editFormData.id;
@@ -3217,13 +3291,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           line.includes(term) ||
           issues.includes(term);
 
-        const logPlant = log.plant || log.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(log.writer) ? "한림공장" : "삼랑진공장");
+        const logPlant = log.plant || log.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(log.writer) ? "한림공장" : (["권태형", "최미영"].includes(log.writer) || log.department === "본사 관리팀" ? "본사" : "삼랑진공장"));
 
         const matchPlant =
           filterPlant === "all" ||
           logPlant === filterPlant ||
           (filterPlant === "한림공장" && (logPlant.includes("한림") || logPlant === "한림")) ||
-          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || logPlant === "삼랑진"));
+          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || logPlant === "삼랑진")) ||
+          (filterPlant === "본사" && (logPlant.includes("본사") || logPlant === "본사"));
 
         return matchSearch && matchPlant;
       })
@@ -4945,8 +5020,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <option value="all">전체 ({workLogs.length})</option>
-              <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => l.plant === "삼랑진공장").length})</option>
-              <option value="한림공장">한림 ({workLogs.filter((l) => l.plant === "한림공장").length})</option>
+              <option value="본사">본사 ({workLogs.filter((l) => l.plant === "본사" || l.writer === "권태형" || l.writer === "최미영" || l.department === "본사 관리팀").length})</option>
+              <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => (l.plant === "삼랑진공장" || !l.plant) && l.plant !== "본사" && l.writer !== "권태형" && l.writer !== "최미영" && !["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)).length})</option>
+              <option value="한림공장">한림 ({workLogs.filter((l) => l.plant === "한림공장" || ["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)).length})</option>
             </select>
             <button
               type="button"
@@ -5013,9 +5089,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
                         log.plant === "한림공장"
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : log.plant === "본사" || log.writer === "권태형" || log.writer === "최미영"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
                           : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
                       }`}>
-                        {log.plant === "한림공장" ? "한림" : "삼랑진"}
+                        {log.plant === "한림공장" ? "한림" : log.plant === "본사" || log.writer === "권태형" || log.writer === "최미영" ? "본사" : "삼랑진"}
                       </span>
                     </td>
                     <td className="py-1 px-2 font-bold text-slate-900 dark:text-white truncate">
@@ -5049,7 +5127,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           title={`결재자: ${log.approverName || "총괄관리자"} ${log.approverTitle || ""} (${log.approvedAt || ""})${log.approvalComment ? '\n지시사항: ' + log.approvalComment : ''}`}
                         >
                           <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                          <span>{log.approverName || (log.plant === "한림공장" ? "김동욱" : "이명재")} {log.approverTitle || "결재"}</span>
+                          <span>
+                            {log.approverName || (log.plant === "본사" || log.writer === "권태형" ? "권태형" : log.plant === "한림공장" ? "김동욱" : "이명재")}{" "}
+                            {log.approverTitle || (log.plant === "본사" || log.writer === "권태형" ? "대표이사" : log.plant === "한림공장" ? "책임" : "이사")}
+                          </span>
                           {log.approvalComment && log.approvalComment !== "확인 및 전자결재 승인 완료" && (
                             <span className="p-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200" title={`코멘트: ${log.approvalComment}`}>
                               <MessageSquare className="w-2 h-2" />
@@ -5075,7 +5156,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     {/* 수정 / 관리 열 */}
                     <td className="py-1 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-1.5">
-                        {isWorkLogApproved(log) ? (
+                        {isWorkLogApproved(log) && !isAdmin ? (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700 cursor-not-allowed select-none shadow-2xs"
                             title="결재가 완료되어 내용 수정이 불가합니다."
@@ -5088,10 +5169,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             type="button"
                             onClick={() => handleOpenEditModal(log)}
                             className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9.5px] font-black bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/70 dark:text-blue-300 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 shadow-2xs active:scale-95 transition-all cursor-pointer ring-1 ring-blue-400/20"
-                            title="결재 전 일지 내용 수정"
+                            title={isWorkLogApproved(log) ? "관리자 권한으로 내용 수정" : "결재 전 일지 내용 수정"}
                           >
                             <Edit3 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                            <span>내용수정</span>
+                            <span>{isWorkLogApproved(log) ? "관리자수정" : "내용수정"}</span>
                           </button>
                         )}
 
@@ -5656,7 +5737,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>3. 공장 총괄관리자 전자결재 & 코멘트</span>
+                  <span>
+                    {selectedLogDetail.plant === "본사" || selectedLogDetail.writer === "권태형" || selectedLogDetail.writer === "최미영"
+                      ? "3. 최고경영진 전자결재 & 확인사항"
+                      : "3. 공장 총괄관리자 전자결재 & 코멘트"}
+                  </span>
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                   selectedLogDetail.approvalStatus === "결재완료"
@@ -5680,43 +5765,73 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <p className="text-[10px] text-slate-400 mt-1 font-mono">{selectedLogDetail.createdAt || selectedLogDetail.date}</p>
                 </div>
 
-                {/* 2. 총괄관리자 결재 도장 */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center shadow-2xs">
-                  <span className="text-[10px] text-slate-400 font-bold block mb-1">
-                    {selectedLogDetail.plant === "한림공장" ? "한림 총괄 (김동욱 책임)" : "삼랑진 총괄 (이명재 이사)"} 결재
-                  </span>
-                  {selectedLogDetail.approvalStatus === "결재완료" ? (
-                    <div className="animate-scaleUp">
-                      <div className="inline-block border-2 border-rose-600 text-rose-600 rounded-xl px-3 py-1 font-black text-xs font-serif tracking-wider shadow-xs">
-                        {selectedLogDetail.approverName || (selectedLogDetail.plant === "한림공장" ? "김동욱" : "이명재")} [결재]
-                      </div>
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 font-mono">
-                        {selectedLogDetail.approvedAt || "승인완료"}
-                      </p>
+                {/* 2. 총괄관리자 / 최고경영진 결재 도장 */}
+                {(() => {
+                  const isHeadquarterLog =
+                    selectedLogDetail.plant === "본사" ||
+                    selectedLogDetail.writer === "권태형" ||
+                    selectedLogDetail.writer === "최미영" ||
+                    selectedLogDetail.department === "본사 관리팀";
+
+                  const approverLabel = isHeadquarterLog
+                    ? "본사 최고경영진 전결"
+                    : selectedLogDetail.plant === "한림공장"
+                    ? "한림 총괄 (김동욱 책임) 결재"
+                    : "삼랑진 총괄 (이명재 이사) 결재";
+
+                  const defaultName = isHeadquarterLog
+                    ? (selectedLogDetail.writer === "최미영" ? "최미영" : "권태형")
+                    : selectedLogDetail.plant === "한림공장"
+                    ? "김동욱"
+                    : "이명재";
+
+                  const stampTag = isHeadquarterLog ? "[전결]" : "[결재]";
+
+                  return (
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center shadow-2xs">
+                      <span className="text-[10px] text-slate-400 font-bold block mb-1">
+                        {approverLabel}
+                      </span>
+                      {selectedLogDetail.approvalStatus === "결재완료" ? (
+                        <div className="animate-scaleUp">
+                          <div className="inline-block border-2 border-rose-600 text-rose-600 rounded-xl px-3 py-1 font-black text-xs font-serif tracking-wider shadow-xs">
+                            {selectedLogDetail.approverName || defaultName} {stampTag}
+                          </div>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 font-mono">
+                            {selectedLogDetail.approvedAt || "승인완료"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="py-0.5">
+                          <div className="inline-block border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 rounded-xl px-3 py-1 font-bold text-xs">
+                            내용 확인 대기
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {isHeadquarterLog ? "최고경영진 전결 예정" : selectedLogDetail.plant === "한림공장" ? "김동욱 책임 결재 예정" : "이명재 이사 결재 예정"}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="py-0.5">
-                      <div className="inline-block border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 rounded-xl px-3 py-1 font-bold text-xs">
-                        내용 확인 대기
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {selectedLogDetail.plant === "한림공장" ? "김동욱 책임" : "이명재 이사"} 결재 예정
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
 
-              {/* 💬 총괄관리자 결재 의견 / 피드백 카드 (결재 완료 시 표시) */}
+              {/* 💬 총괄관리자 / 최고경영진 결재 의견 / 피드백 카드 (결재 완료 시 표시) */}
               {selectedLogDetail.approvalStatus === "결재완료" && selectedLogDetail.approvalComment && (
                 <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800 space-y-1.5 animate-fadeIn">
                   <div className="flex items-center justify-between text-xs font-black text-indigo-950 dark:text-indigo-200">
                     <span className="flex items-center gap-1.5">
                       <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      <span>총괄관리자 결재 의견 및 지시사항</span>
+                      <span>
+                        {selectedLogDetail.plant === "본사" || selectedLogDetail.writer === "권태형" || selectedLogDetail.writer === "최미영"
+                          ? "최고경영진 확인의견 및 경영지침"
+                          : "총괄관리자 결재 의견 및 지시사항"}
+                      </span>
                     </span>
                     <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-bold">
-                      {selectedLogDetail.approverName} {selectedLogDetail.approverTitle} 날인
+                      {selectedLogDetail.approverName || (selectedLogDetail.plant === "본사" || selectedLogDetail.writer === "권태형" ? "권태형" : selectedLogDetail.plant === "한림공장" ? "김동욱" : "이명재")}{" "}
+                      {selectedLogDetail.approverTitle || (selectedLogDetail.plant === "본사" ? "대표이사" : selectedLogDetail.plant === "한림공장" ? "책임" : "이사")}{" "}
+                      날인
                     </span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-indigo-100 dark:border-indigo-900 text-xs text-indigo-950 dark:text-indigo-100 font-medium leading-relaxed shadow-2xs whitespace-pre-wrap">
@@ -5913,12 +6028,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">소속공장</label>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">소속공장/사업장</label>
                   <select
                     value={editFormData.plant}
                     onChange={(e) => setEditFormData({ ...editFormData, plant: e.target.value })}
                     className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
                   >
+                    <option value="본사">본사</option>
                     <option value="삼랑진공장">삼랑진공장</option>
                     <option value="한림공장">한림공장</option>
                   </select>
@@ -8332,8 +8448,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
 
               <form onSubmit={handleSaveLog} className="space-y-3.5 text-xs">
-                {/* Row 1: [작성일자] [부서 (자동)] [이름(직책) (자동)] */}
-                <div className="grid grid-cols-3 gap-2">
+                {/* Row 1: [사업장/공장] [작성일자] [부서 (자동)] [이름(직책) (자동)] */}
+                <div className={`grid gap-2 ${isAdmin || isGeneralManager ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+                  {(isAdmin || isGeneralManager) && (
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">사업장/공장</label>
+                      <select
+                        value={formData.plant || (isAdmin ? "본사" : workerPlant)}
+                        onChange={(e) => setFormData({ ...formData, plant: e.target.value })}
+                        className="w-full px-2 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-950/40 text-[11px] font-bold text-blue-800 dark:text-blue-300 shadow-inner cursor-pointer"
+                      >
+                        {isAdmin && <option value="본사">본사</option>}
+                        <option value="삼랑진공장">삼랑진공장</option>
+                        <option value="한림공장">한림공장</option>
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">작성일자</label>
                     <input
