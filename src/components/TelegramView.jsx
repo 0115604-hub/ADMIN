@@ -106,7 +106,6 @@ export const TelegramView = () => {
   const [templateSavedToast, setTemplateSavedToast] = useState(false);
   const [templateResetToast, setTemplateResetToast] = useState(false);
   const [loadingLiveBriefing, setLoadingLiveBriefing] = useState(false);
-  const [briefingFormat, setBriefingFormat] = useState("compact"); // "compact" (간략 요약형) | "detailed" (상세 보고형)
 
   // Editable Message Texts (Direct In-Place Editing)
   const [editableUnifiedText, setEditableUnifiedText] = useState("");
@@ -542,7 +541,23 @@ export const TelegramView = () => {
 
     if (unifiedMsgType === "briefing") {
       const dateFormatted = `${formatYYYYMMDDWithWeekday(todayDateStr)} 07:40 기준`;
-      return `<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>\n<b>${dateFormatted}</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 전일 근태실적 (${prevDateInfo.formatted} 기준)</b>\n• 삼랑진: ${morningAttendanceSamStr}\n• 한림: ${morningAttendanceHanStr}\n\n📑 <b>[2] 전일 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${morningApprovalDocLines}\n\n📝 <b>[3] 전일 업무일지 미결 & 미등록</b>\n${morningWorkLogLines}\n\n📌 <b>[4] 진행중인 오픈이슈 ${morningOpenIssues.length > 0 ? `(${morningOpenIssues.length}건)` : ""}</b>\n${morningOpenIssueLines}\n\n📅 <b>[5] 회의 & 사내공지</b>\n${morningNoticeMeetings}\n━━━━━━━━━━━━━━━━━━━━━\n※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
+      const samCompact = morningAttendanceSamStr
+        .replace(/휴무 \(특근 없음\)/g, "휴무")
+        .replace(/\/ 연차 0명/g, "| 연차 0")
+        .replace(/명\s*\(/g, "명(")
+        .replace(/명\s*\/\s*연차/g, "명 | 연차");
+      const hanCompact = morningAttendanceHanStr
+        .replace(/휴무 \(특근 없음\)/g, "휴무")
+        .replace(/\/ 연차 0명/g, "| 연차 0")
+        .replace(/명\s*\(/g, "명(")
+        .replace(/명\s*\/\s*연차/g, "명 | 연차");
+
+      let approvalCompact = "• 없음 (전건 결재완료) ✅";
+      if (morningApprovalDocs.length > 0) {
+        approvalCompact = `• 총 ${morningApprovalDocs.length}건 결재 대기 중`;
+      }
+
+      return `<b>⬛ [오륙 생산관리] 일일 모닝 요약</b>\n<b>${dateFormatted}</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 전일 근태 (${prevDateInfo.formatted})</b>\n• 삼랑진: ${samCompact}\n• 한림: ${hanCompact}\n\n📑 <b>[2] 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${approvalCompact}\n\n📝 <b>[3] 업무일지</b>\n${morningWorkLogLines.includes("전원 등록완료") ? "• 전원 등록 및 결재 완료 ✅" : morningWorkLogLines}\n\n📌 <b>[4] 진행중 오픈이슈 ${morningOpenIssues.length > 0 ? `(${morningOpenIssues.length}건)` : ""}</b>\n${morningOpenIssueLines}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
     }
 
     if (unifiedMsgType === "quality") {
@@ -583,7 +598,18 @@ export const TelegramView = () => {
 
   // Load custom template if exists, else load default text from Aggregator
   useEffect(() => {
-    const saved = savedTemplates[currentUnifiedTemplateKey]?.text;
+    let saved = savedTemplates[currentUnifiedTemplateKey]?.text;
+    // 🌟 상세보고형 영구 삭제: 저장된 템플릿이 상세보고형(일일 모닝 브리핑, 전일 근태실적 등)인 경우 무효화하고 최신 간략 요약형으로 자동 전환
+    if (unifiedMsgType === "briefing" && saved && (saved.includes("일일 모닝 브리핑") || saved.includes("전일 근태실적") || saved.includes("특근보고서 등 (대기:"))) {
+      deleteTelegramCustomTemplate(currentUnifiedTemplateKey);
+      setSavedTemplates((prev) => {
+        const next = { ...prev };
+        delete next[currentUnifiedTemplateKey];
+        return next;
+      });
+      saved = null;
+    }
+
     if (saved) {
       // 🔒 [보안 원칙] 저장된 커스텀 템플릿이라도 대표이사(권태형) 개인정보/결재가 포함되어 있다면 자동 정제
       let sanitized = saved;
@@ -597,7 +623,7 @@ export const TelegramView = () => {
     } else {
       if (unifiedMsgType === "briefing") {
         setLoadingLiveBriefing(true);
-        buildDailyMorningBriefingText(null, null, briefingFormat)
+        buildDailyMorningBriefingText(null, null)
           .then((liveText) => {
             setEditableUnifiedText(liveText);
           })
@@ -612,7 +638,7 @@ export const TelegramView = () => {
         setEditableUnifiedText(generateDefaultUnifiedText());
       }
     }
-  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, briefingFormat, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
+  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
 
   // ----------------------------------------------------
   // 2. 경영총괄 실시간 데이터 (Management Room Live Data)
@@ -805,7 +831,7 @@ export const TelegramView = () => {
     if (unifiedMsgType === "briefing") {
       setLoadingLiveBriefing(true);
       try {
-        const liveText = await buildDailyMorningBriefingText(null, null, briefingFormat);
+        const liveText = await buildDailyMorningBriefingText(null, null);
         setEditableUnifiedText(liveText);
       } catch (e) {
         setEditableUnifiedText(generateDefaultUnifiedText());
@@ -821,8 +847,7 @@ export const TelegramView = () => {
   };
 
   // 🌟 [실시간 취합 최신화 (F5 기능)] - 현재 시각 기준 Firestore 원천 데이터로 다시 즉시 취합 및 문구 재구성
-  const handleRefreshLiveBriefing = async (targetFormat = null) => {
-    const fmt = targetFormat || briefingFormat;
+  const handleRefreshLiveBriefing = async () => {
     if (isUnifiedTemplateCustom) {
       await deleteTelegramCustomTemplate(currentUnifiedTemplateKey);
       setSavedTemplates((prev) => {
@@ -835,7 +860,7 @@ export const TelegramView = () => {
     if (unifiedMsgType === "briefing") {
       setLoadingLiveBriefing(true);
       try {
-        const liveText = await buildDailyMorningBriefingText(null, null, fmt);
+        const liveText = await buildDailyMorningBriefingText(null, null);
         setEditableUnifiedText(liveText);
         setTemplateResetToast(true);
         setTimeout(() => setTemplateResetToast(false), 3000);
@@ -1089,7 +1114,7 @@ export const TelegramView = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                예시창에서 텍스트를 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 계속 발송됩니다.
+                모바일 가독성에 최적화된 <strong>간략 요약형</strong>으로 실시간 자동 취합되어 발송됩니다.
               </p>
             </div>
 
@@ -1098,13 +1123,12 @@ export const TelegramView = () => {
             </span>
           </div>
 
-          {/* Sub Message Type Selector */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* Sub Message Type Selector (3개 주요 서식으로 간결하게 구성) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
-              { id: "briefing", label: "📋 07:40 모닝브리핑", desc: "근태/미결재/오픈이슈" },
-              { id: "quality", label: "🚨 품질경보 서식", desc: "신규발령/조치완료" },
-              { id: "notice_meeting", label: "🟩 공지 & 🟪 회의", desc: "사내공지/회의일정" },
-              { id: "approval", label: "🟦 전자결재/일지", desc: "정책상 발송중지" }
+              { id: "briefing", label: "📋 07:40 모닝브리핑", desc: "근태 • 전자결재 • 업무일지 • 오픈이슈 (간략 요약)" },
+              { id: "quality", label: "🚨 품질경보 서식", desc: "신규 발령 및 조치완료 알림" },
+              { id: "notice_meeting", label: "📢 사내공지 & 회의", desc: "공지사항 및 회의 일정" }
             ].map((t) => (
               <button
                 key={t.id}
@@ -1116,52 +1140,13 @@ export const TelegramView = () => {
                     : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400"
                 }`}
               >
-                <div className="text-xs">{t.label}</div>
-                <div className="text-[10px] opacity-80 mt-0.5">{t.desc}</div>
+                <div className="text-xs sm:text-sm font-black">{t.label}</div>
+                <div className="text-[10.5px] opacity-80 mt-0.5">{t.desc}</div>
               </button>
             ))}
           </div>
 
           {/* Sub-level selectors based on unifiedMsgType */}
-          {unifiedMsgType === "briefing" && (
-            <div className="p-3 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900/50 flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-sky-800 dark:text-sky-300">📢 브리핑 전달 서식:</span>
-                <span className="text-[11px] text-slate-500 hidden sm:inline">모바일에서 빠르게 훑어볼 수 있도록 핵심을 요약합니다.</span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBriefingFormat("compact");
-                    handleRefreshLiveBriefing("compact");
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                    briefingFormat === "compact"
-                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
-                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400"
-                  }`}
-                >
-                  ⚡ 간략 요약형 (한눈에 보기)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBriefingFormat("detailed");
-                    handleRefreshLiveBriefing("detailed");
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                    briefingFormat === "detailed"
-                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
-                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400"
-                  }`}
-                >
-                  📑 상세 보고형 (전체 항목별)
-                </button>
-              </div>
-            </div>
-          )}
-
           {unifiedMsgType === "quality" && (
             <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-xs font-bold text-rose-800 dark:text-rose-300">품질경보 알림 단계 서식:</span>
@@ -1215,129 +1200,87 @@ export const TelegramView = () => {
             </div>
           )}
 
-          {unifiedMsgType === "approval" && (
-            <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">전자결재/일지 서식 (정책상 발송 제외):</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { key: "draft", label: "🟦 기안 상신" },
-                  { key: "approve", label: "🟦 최종 승인 완료" },
-                  { key: "reject", label: "🟦 반려 알림" },
-                  { key: "worklog", label: "⬛ 업무일지 결재 승인" }
-                ].map((ap) => (
-                  <button
-                    key={ap.key}
-                    type="button"
-                    onClick={() => setApprovalType(ap.key)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      approvalType === ap.key
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    {ap.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* 🌟 예시창 스마트폰 프레임 (직접 편집 가능한 텍스트 상자 & 렌더링 미리보기 탭) */}
           <div className="bg-slate-950 text-slate-100 rounded-3xl p-5 border border-slate-800 shadow-2xl space-y-3 font-sans">
             {/* Top Toolbar in Smartphone frame */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-800 text-xs">
               <div className="flex items-center gap-2 font-bold text-sky-400">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>📢 오륙 통합방 (수신처: -4186792536)</span>
-                {isUnifiedTemplateCustom ? (
-                  <button
-                    type="button"
-                    disabled={loadingLiveBriefing}
-                    onClick={handleResetUnifiedTemplate}
-                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 border border-amber-500/60 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all cursor-pointer animate-pulse"
-                    title="클릭 시 저장된 커스텀 고정 서식을 삭제하고, 최신 Firestore 데이터로 리셋합니다 (F5 기능)"
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 text-amber-400 group-hover:rotate-180 transition-transform duration-500 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
-                    <span>🔄 F5 실시간 리셋 (커스텀 해제)</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={loadingLiveBriefing}
-                    onClick={handleRefreshLiveBriefing}
-                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/35 hover:to-teal-500/35 text-emerald-300 border border-emerald-500/50 shadow-md hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
-                    title="클릭 시 CTRL+F5와 동일하게 Firestore 원천 데이터로 최신 문구를 즉시 다시 불러옵니다."
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 text-emerald-400 group-hover:rotate-180 transition-transform duration-500 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
-                    <span>⚡ F5 실시간 데이터 갱신</span>
-                  </button>
+                <span>📢 오륙 통합방 (-4186792536)</span>
+                <span className="text-[11px] font-mono text-slate-400 font-normal">
+                  ({editableUnifiedText.length}자)
+                </span>
+                {isUnifiedTemplateCustom && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    고정 서식
+                  </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-center">
-                {/* Mode Switcher: Edit vs Preview */}
+              <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                {/* 1. 보기 모드 전환: 직접 수정 vs 수신 화면 */}
                 <div className="flex items-center bg-slate-900 rounded-xl p-0.5 border border-slate-800">
                   <button
                     type="button"
                     onClick={() => setUnifiedViewMode("edit")}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       unifiedViewMode === "edit"
-                        ? "bg-blue-600 text-white shadow-xs"
+                        ? "bg-blue-600 text-white shadow-xs font-black"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                    <span>✏️ 텍스트 직접 수정</span>
+                    <span>직접 수정</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setUnifiedViewMode("preview")}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       unifiedViewMode === "preview"
-                        ? "bg-blue-600 text-white shadow-xs"
+                        ? "bg-blue-600 text-white shadow-xs font-black"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>👁️ 수신 화면 뷰</span>
+                    <span>수신 화면</span>
                   </button>
                 </div>
 
-                {/* 🔄 실시간 최신 취합 새로고침 버튼 (briefing일 때) */}
-                {unifiedMsgType === "briefing" && (
-                  <button
-                    type="button"
-                    disabled={loadingLiveBriefing}
-                    onClick={handleRefreshLiveBriefing}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-900/60 hover:bg-blue-800 text-blue-200 hover:text-white border border-blue-700/80 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                    title="현재 시점 최신 Firestore 데이터로 실시간 다시 취합"
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 text-blue-300 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
-                    <span>실시간 취합</span>
-                  </button>
-                )}
-
-                {/* Reset to system default button */}
+                {/* 2. 단일 F5 실시간 최신 갱신 버튼 */}
                 <button
                   type="button"
                   disabled={loadingLiveBriefing}
-                  onClick={handleResetUnifiedTemplate}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                  title="저장된 고정 서식을 삭제하고 시스템 실시간 취합 서식으로 리셋"
+                  onClick={handleRefreshLiveBriefing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-black shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  title="최신 Firestore 원천 데이터로 즉시 새로고침 (F5 동기화)"
                 >
-                  <RotateCw className={`w-3.5 h-3.5 text-sky-400 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
-                  <span>기본서식 리셋</span>
+                  <RotateCw className={`w-3.5 h-3.5 text-emerald-400 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
+                  <span>{loadingLiveBriefing ? "취합 중..." : "⚡ F5 실시간 갱신"}</span>
                 </button>
 
-                {/* Copy button */}
+                {/* 3. 커스텀 템플릿 사용 중일 때만 기본값 복원 버튼 노출 */}
+                {isUnifiedTemplateCustom && (
+                  <button
+                    type="button"
+                    disabled={loadingLiveBriefing}
+                    onClick={handleResetUnifiedTemplate}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    title="저장된 고정 서식을 삭제하고 실시간 취합 기본 서식으로 복원"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 text-amber-400 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
+                    <span>기본값 복원</span>
+                  </button>
+                )}
+
+                {/* 4. 복사 버튼 */}
                 <button
                   type="button"
                   onClick={() => handleCopyText(editableUnifiedText)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
+                  className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
                   title="클립보드에 복사"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -1346,7 +1289,7 @@ export const TelegramView = () => {
             {unifiedViewMode === "edit" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>💡 <strong>예시창 텍스트 수정:</strong> 원하는 내용을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 계속 발송됩니다.</span>
+                  <span>💡 <strong>간략 요약형 서식:</strong> 원하는 내용을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 고정 저장됩니다.</span>
                   <span className="font-mono text-slate-500">{editableUnifiedText.length}자</span>
                 </div>
                 <textarea

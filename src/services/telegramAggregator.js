@@ -448,93 +448,92 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
     noticeMeetingLines = combined.slice(0, 5).map((c) => c.text).join("\n") + (combined.length > 5 ? `\n• 외 ${combined.length - 5}건` : "");
   }
 
-  // 🌟 [간략 요약형 (Compact)] 브리핑 서식 (모바일 가독성 극대화)
-  if (formatMode === "compact") {
-    // 1. 근태 컴팩트
-    const samCompact = samStr
-      .replace(/휴무 \(특근 없음\)/g, "휴무")
-      .replace(/\/ 연차 0명/g, "| 연차 0")
-      .replace(/명\s*\(/g, "명(")
-      .replace(/명\s*\/\s*연차/g, "명 | 연차");
-    const hanCompact = hanStr
-      .replace(/휴무 \(특근 없음\)/g, "휴무")
-      .replace(/\/ 연차 0명/g, "| 연차 0")
-      .replace(/명\s*\(/g, "명(")
-      .replace(/명\s*\/\s*연차/g, "명 | 연차");
+  // 🌟 [간략 요약형 (Compact)] 브리핑 서식 (영구 단일 기본 서식)
+  // 1. 근태 컴팩트
+  const samCompact = samStr
+    .replace(/휴무 \(특근 없음\)/g, "휴무")
+    .replace(/\/ 연차 0명/g, "| 연차 0")
+    .replace(/명\s*\(/g, "명(")
+    .replace(/명\s*\/\s*연차/g, "명 | 연차");
+  const hanCompact = hanStr
+    .replace(/휴무 \(특근 없음\)/g, "휴무")
+    .replace(/\/ 연차 0명/g, "| 연차 0")
+    .replace(/명\s*\(/g, "명(")
+    .replace(/명\s*\/\s*연차/g, "명 | 연차");
 
-    // 2. 전자결재 컴팩트 요약 (공장 및 결재자별 깔끔한 그룹핑)
-    let approvalCompact = "• 없음 (전건 결재완료) ✅";
-    if (pendingDocsList.length > 0) {
-      const groupMap = new Map();
-      pendingDocsList.forEach((d) => {
-        const isSam = d.title.includes("삼랑진") || d.drafter === "양인나";
-        const plant = isSam ? "삼랑진" : "한림";
-        const key = `${plant}__${d.nextApprover} ${d.nextTitle}`;
-        if (!groupMap.has(key)) {
-          groupMap.set(key, { plant, approver: `${d.nextApprover} ${d.nextTitle}`, items: [] });
-        }
-        groupMap.get(key).items.push(d);
-      });
-
-      const summaryLines = [];
-      groupMap.forEach((g) => {
-        if (g.items.length === 1) {
-          const item = g.items[0];
-          const cleanTitle = item.title
-            .replace(/\[특근보고서\]/g, "")
-            .replace(/삼랑진공장|한림공장/g, "")
-            .replace(/\([^)]*\)/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-          summaryLines.push(`• <b>${g.plant} (1건):</b> ${cleanTitle} (${item.drafter} ➜ 대기: ${g.approver})`);
-        } else {
-          const dates = g.items.map((i) => i.date).filter(Boolean).sort();
-          let dateRange = "";
-          if (dates.length >= 2) {
-            const dStart = dates[0].slice(5).replace("-", "/");
-            const dEnd = dates[dates.length - 1].slice(5).replace("-", "/");
-            dateRange = `${dStart}~${dEnd} `;
-          }
-          summaryLines.push(`• <b>${g.plant} (${g.items.length}건):</b> ${dateRange}특근보고서 등 (대기: ${g.approver})`);
-        }
-      });
-      approvalCompact = summaryLines.join("\n");
-    }
-
-    // 3. 업무일지 컴팩트
-    let workLogCompact = "• 전원 등록 및 결재 완료 ✅";
-    if (pendingLogs.length > 0 || totalUnregistered > 0) {
-      const parts = [];
-      if (pendingLogs.length > 0) parts.push(`결재대기 ${pendingLogs.length}건`);
-      if (totalUnregistered > 0) {
-        const uList = [...samUnregistered, ...halUnregistered];
-        parts.push(`미등록 ${totalUnregistered}명 (${uList.slice(0, 4).join(", ")}${uList.length > 4 ? ` 외 ${uList.length - 4}명` : ""})`);
+  // 2. 전자결재 컴팩트 요약 (공장 및 결재자별 깔끔한 그룹핑)
+  let approvalCompact = "• 없음 (전건 결재완료) ✅";
+  if (pendingDocsList.length > 0) {
+    const groupMap = new Map();
+    pendingDocsList.forEach((d) => {
+      const isSam = d.title.includes("삼랑진") || d.drafter === "양인나";
+      const plant = isSam ? "삼랑진" : "한림";
+      const key = `${plant}__${d.nextApprover} ${d.nextTitle}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { plant, approver: `${d.nextApprover} ${d.nextTitle}`, items: [] });
       }
-      workLogCompact = `• ${parts.join(" | ")}`;
-    }
+      groupMap.get(key).items.push(d);
+    });
 
-    // 4. 오픈이슈 컴팩트
-    let openIssueCompact = "• 진행중인 오픈이슈 없음";
-    if (activeOpenIssues.length > 0) {
-      openIssueCompact = activeOpenIssues.slice(0, 3).map((o) => {
-        const d = o.expireDate || o.targetDate ? ` (~${formatMMDDWithWeekday(o.expireDate || o.targetDate)})` : "";
-        const replyCount = o.replies?.length || 0;
-        const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
-        const updateIcon = hasUpdate ? " 🔄" : "";
-        return `• [${o.category === "품질경보" ? "품질" : "이슈"}] ${o.title || o.content}${d}${updateIcon}`;
-      }).join("\n");
-      if (activeOpenIssues.length > 3) openIssueCompact += `\n• 외 ${activeOpenIssues.length - 3}건`;
-    }
+    const summaryLines = [];
+    groupMap.forEach((g) => {
+      if (g.items.length === 1) {
+        const item = g.items[0];
+        const cleanTitle = item.title
+          .replace(/\[특근보고서\]/g, "")
+          .replace(/삼랑진공장|한림공장/g, "")
+          .replace(/\([^)]*\)/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        summaryLines.push(`• <b>${g.plant} (1건):</b> ${cleanTitle} (${item.drafter} ➜ 대기: ${g.approver})`);
+      } else {
+        const dates = g.items.map((i) => i.date).filter(Boolean).sort();
+        let dateRange = "";
+        if (dates.length >= 2) {
+          const dStart = dates[0].slice(5).replace("-", "/");
+          const dEnd = dates[dates.length - 1].slice(5).replace("-", "/");
+          dateRange = `${dStart}~${dEnd} `;
+        }
+        summaryLines.push(`• <b>${g.plant} (${g.items.length}건):</b> ${dateRange}특근보고서 등 (대기: ${g.approver})`);
+      }
+    });
+    approvalCompact = summaryLines.join("\n");
+  }
 
-    // 5. 회의 & 공지 컴팩트
-    let noticeMeetingCompact = "";
-    if (combined.length > 0) {
-      noticeMeetingCompact = `\n\n📅 <b>[5] 회의 & 공지 (${combined.length}건)</b>\n` + combined.slice(0, 2).map((c) => c.text).join("\n");
-      if (combined.length > 2) noticeMeetingCompact += `\n• 외 ${combined.length - 2}건`;
+  // 3. 업무일지 컴팩트
+  let workLogCompact = "• 전원 등록 및 결재 완료 ✅";
+  if (pendingLogs.length > 0 || totalUnregistered > 0) {
+    const parts = [];
+    if (pendingLogs.length > 0) parts.push(`결재대기 ${pendingLogs.length}건`);
+    if (totalUnregistered > 0) {
+      const uList = [...samUnregistered, ...halUnregistered];
+      parts.push(`미등록 ${totalUnregistered}명 (${uList.slice(0, 4).join(", ")}${uList.length > 4 ? ` 외 ${uList.length - 4}명` : ""})`);
     }
+    workLogCompact = `• ${parts.join(" | ")}`;
+  }
 
-    return `
-<b>⬛ [오륙] 일일 모닝 요약</b>
+  // 4. 오픈이슈 컴팩트
+  let openIssueCompact = "• 진행중인 오픈이슈 없음";
+  if (activeOpenIssues.length > 0) {
+    openIssueCompact = activeOpenIssues.slice(0, 3).map((o) => {
+      const d = o.expireDate || o.targetDate ? ` (~${formatMMDDWithWeekday(o.expireDate || o.targetDate)})` : "";
+      const replyCount = o.replies?.length || 0;
+      const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
+      const updateIcon = hasUpdate ? " 🔄" : "";
+      return `• [${o.category === "품질경보" ? "품질" : "이슈"}] ${o.title || o.content}${d}${updateIcon}`;
+    }).join("\n");
+    if (activeOpenIssues.length > 3) openIssueCompact += `\n• 외 ${activeOpenIssues.length - 3}건`;
+  }
+
+  // 5. 회의 & 공지 컴팩트
+  let noticeMeetingCompact = "";
+  if (combined.length > 0) {
+    noticeMeetingCompact = `\n\n📅 <b>[5] 회의 & 공지 (${combined.length}건)</b>\n` + combined.slice(0, 2).map((c) => c.text).join("\n");
+    if (combined.length > 2) noticeMeetingCompact += `\n• 외 ${combined.length - 2}건`;
+  }
+
+  return `
+<b>⬛ [오륙 생산관리] 일일 모닝 요약</b>
 <b>${dateFormatted}</b>
 ━━━━━━━━━━━━━━━━━━━━━
 👥 <b>[1] 전일 근태 (${prevDateFormatted})</b>
@@ -550,32 +549,6 @@ ${workLogCompact}
 📌 <b>[4] 진행중 오픈이슈 ${activeOpenIssues.length > 0 ? `(${activeOpenIssues.length}건)` : ""}</b>
 ${openIssueCompact}${noticeMeetingCompact}
 ━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-  }
-
-  // 🌟 [상세 보고형 (Detailed)] 브리핑 서식
-  return `
-<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
-<b>${dateFormatted}</b>
-━━━━━━━━━━━━━━━━━━━━━
-👥 <b>[1] 전일 근태실적 (${prevDateFormatted} 기준)</b>
-• 삼랑진: ${samStr}
-• 한림: ${hanStr}
-
-📑 <b>[2] 전일 전자결재 미결 ${pendingDocsList.length > 0 ? `(${pendingDocsList.length}건)` : ""}</b>
-${approvalDocLines}
-
-📝 <b>[3] 전일 업무일지 미결 & 미등록</b>
-${workLogLines}
-
-📌 <b>[4] 진행중인 오픈이슈 ${activeOpenIssues.length > 0 ? `(${activeOpenIssues.length}건)` : ""}</b>
-${openIssueLines}
-
-📅 <b>[5] 회의 & 사내공지 ${combined.length > 0 ? `(${combined.length}건)` : ""}</b>
-${noticeMeetingLines}
-━━━━━━━━━━━━━━━━━━━━━
-※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 };
