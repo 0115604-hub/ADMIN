@@ -83,6 +83,7 @@ export const AuthModal = () => {
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
   const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
+  const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
   const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("황수현");
@@ -293,6 +294,31 @@ export const AuthModal = () => {
   const hanulWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
       (w) => w.company?.includes("한울")
+    );
+  }, []);
+
+  // Bulimtech partner user definition (한림공장 외주가공 대표 계정)
+  const bulimtechUser = useMemo(() => {
+    return (
+      PLANTS[1]?.workers?.find((w) => w.name === "부림텍" || w.id === "hal_br") || {
+        id: "hal_br",
+        name: "부림텍",
+        title: "대표이사",
+        plant: "한림공장",
+        company: "부림텍",
+        assignedProcess: "외주가공",
+        role: "OPERATOR",
+        avatar: "부",
+        pin: "11",
+        isPartner: true
+      }
+    );
+  }, []);
+
+  // Bulimtech master workers list (6명)
+  const bulimtechWorkers = useMemo(() => {
+    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
+      (w) => w.company?.includes("부림텍")
     );
   }, []);
 
@@ -1390,6 +1416,7 @@ export const AuthModal = () => {
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
+  useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
@@ -1490,6 +1517,19 @@ export const AuthModal = () => {
                 <span>한울</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 hidden sm:inline">
                   26명
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsBulimtechModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
+                title="한림공장 외주가공 (주)부림텍 작업자 전용 포털 (6명)"
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
+                <span>부림텍</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-900/80 text-teal-100 hidden sm:inline">
+                  6명
                 </span>
               </button>
             </div>
@@ -1818,75 +1858,6 @@ export const AuthModal = () => {
               </button>
             </div>
 
-            {/* Direct Login & Report Buttons */}
-            <div className="space-y-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsHanulModalOpen(false);
-                  handleUserClick(hanulUser);
-                }}
-                className="w-full p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md hover:shadow-lg border border-indigo-300/40 active:scale-98 transition-all cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-xl bg-white/20 text-white">
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-black text-white">한울 대표 포털 바로 입장</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 font-bold">대표이사</span>
-                    </div>
-                    <span className="text-[11px] text-indigo-200 font-medium">터치 시 안전알림판 및 일일 생산·정산 화면으로 즉시 연결 (PIN: 11)</span>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-indigo-200" />
-              </button>
-
-              {/* Quick Work Report Launch Buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHanulModalOpen(false);
-                    setHanulWorkReportProject("9BQC");
-                    setHanulWorkReportWorker("황수현");
-                    setIsHanulWorkReportModalOpen(true);
-                  }}
-                  className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 font-black text-xs flex items-center justify-between border-2 border-indigo-300 dark:border-indigo-700 shadow-2xs cursor-pointer active:scale-98 transition-all"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-base shrink-0">🚗</span>
-                    <div className="text-left min-w-0">
-                      <span className="font-black text-xs block truncate">9BQC G/RUN 일보</span>
-                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block truncate">8개 공정 지원</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHanulModalOpen(false);
-                    setHanulWorkReportProject("LQ2A");
-                    setHanulWorkReportWorker("알프레도");
-                    setIsHanulWorkReportModalOpen(true);
-                  }}
-                  className="p-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-900 dark:text-purple-200 font-black text-xs flex items-center justify-between border-2 border-purple-300 dark:border-purple-700 shadow-2xs cursor-pointer active:scale-98 transition-all"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-base shrink-0">⚡</span>
-                    <div className="text-left min-w-0">
-                      <span className="font-black text-xs block truncate">LQ2a Hood Side 일보</span>
-                      <span className="text-[10px] text-purple-600 dark:text-purple-400 block truncate">4개 공정 지원</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                </button>
-              </div>
-            </div>
-
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
               본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 한울 외주가공 및 생산관리 화면으로 바로 연결됩니다.
             </p>
@@ -1934,6 +1905,83 @@ export const AuthModal = () => {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏢 한림공장 부림텍 외주가공 전용 팝업 선택 모달 */}
+      {isBulimtechModalOpen && (
+        <div
+          onClick={() => setIsBulimtechModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border-2 border-teal-400 dark:border-teal-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-teal-600 text-white shadow-xs">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                    <span>한림공장 외주가공 (주)부림텍</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
+                      총원 6명
+                    </span>
+                  </h3>
+                  <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
+                    비밀번호: 11 • 안전·품질 확인 후 부림텍 외주가공 및 생산관리 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBulimtechModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 확인하신 후 부림텍 외주가공 및 생산관리 화면으로 연결됩니다.
+            </p>
+
+            {/* Scrollable Bulimtech Workers Grid (6명) */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {bulimtechWorkers.map((worker, idx) => (
+                  <button
+                    key={worker.no || idx}
+                    type="button"
+                    onClick={() => {
+                      setIsBulimtechModalOpen(false);
+                      handleUserClick({
+                        ...bulimtechUser,
+                        id: `hal_br_${worker.no || idx}`,
+                        name: worker.name,
+                        title: worker.position || "작업원",
+                        line: worker.line,
+                        assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공"
+                      });
+                    }}
+                    className="min-h-[48px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-teal-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
+                  >
+                    <div className="w-[50%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
+                      <span className="font-black text-xs tracking-tight truncate">
+                        {worker.name}
+                      </span>
+                    </div>
+                    <div className="w-[50%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-300">
+                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "작업원"}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
