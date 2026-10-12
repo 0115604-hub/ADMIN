@@ -328,8 +328,8 @@ export const IssueLedgerModal = ({
                       Boolean(it.updatedAt && it.createdAt && it.updatedAt !== it.createdAt) ||
                       Boolean(it.isUpdated)
                     ) && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500 text-white shrink-0 shadow-2xs flex items-center gap-0.5 animate-pulse" title="새로운 의견/진척 내용이 추가된 업데이트 항목">
-                        🔄 UPDATE
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500 text-white shrink-0 shadow-2xs flex items-center justify-center animate-pulse" title="새로운 의견/진척 내용이 추가된 업데이트 항목">
+                        🔄
                       </span>
                     )}
 

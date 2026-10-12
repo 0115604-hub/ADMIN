@@ -405,9 +405,9 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
       const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
       const replyCount = o.replies?.length || 0;
       const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
-      const updateBadge = hasUpdate ? "🔄 [UPDATE] " : "";
+      const updateIcon = hasUpdate ? " 🔄" : "";
       const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
-      let line = `• [오픈이슈] ${updateBadge}${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+      let line = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}${updateIcon}`;
       if (Array.isArray(o.replies) && o.replies.length > 0) {
         const sortedReplies = [...o.replies].sort((a, b) => (a.actionDate || a.createdAt || "").localeCompare(b.actionDate || b.createdAt || ""));
         const lastRep = sortedReplies[sortedReplies.length - 1];
@@ -520,8 +520,8 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
         const d = o.expireDate || o.targetDate ? ` (~${formatMMDDWithWeekday(o.expireDate || o.targetDate)})` : "";
         const replyCount = o.replies?.length || 0;
         const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
-        const updateBadge = hasUpdate ? "🔄 [UPDATE] " : "";
-        return `• [${o.category === "품질경보" ? "품질" : "이슈"}] ${updateBadge}${o.title || o.content}${d}`;
+        const updateIcon = hasUpdate ? " 🔄" : "";
+        return `• [${o.category === "품질경보" ? "품질" : "이슈"}] ${o.title || o.content}${d}${updateIcon}`;
       }).join("\n");
       if (activeOpenIssues.length > 3) openIssueCompact += `\n• 외 ${activeOpenIssues.length - 3}건`;
     }
