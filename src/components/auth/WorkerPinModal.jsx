@@ -729,38 +729,46 @@ export const WorkerPinModal = ({
   };
 
   // 당일 일자 및 일일 근태 요약 (보고서와 실시간 동기화)
-  const todayDayNum = useMemo(() => {
+  const { todayYear, todayMonth, todayDayNum } = useMemo(() => {
     const kst = getKSTDateString();
     const p = kst.split("-");
-    return p.length === 3 ? parseInt(p[2], 10) : new Date().getDate();
+    return {
+      todayYear: p.length === 3 ? parseInt(p[0], 10) : 2026,
+      todayMonth: p.length === 3 ? parseInt(p[1], 10) : 10,
+      todayDayNum: p.length === 3 ? parseInt(p[2], 10) : new Date().getDate()
+    };
   }, []);
+
   const unifiedPinMatrix = useMemo(() => {
     const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
-    const todayKst = getKSTDateString();
-    const p = todayKst.split("-");
-    const todayYear = parseInt(p[0], 10) || 2026;
-    const todayMonth = parseInt(p[1], 10) || 10;
     if (!overtimeReports || overtimeReports.length === 0) return rawMatrix;
     const reportMatrix = buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth);
     return reportMatrix.map((w, idx) => {
       const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
       const liveDaily = liveW?.daily || {};
       const reportDaily = w.daily || {};
+      const combinedDaily = { ...reportDaily };
+      Object.keys(liveDaily).forEach((key) => {
+        const val = liveDaily[key];
+        if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
+          combinedDaily[key] = val;
+        }
+      });
       return {
         ...w,
-        daily: { ...reportDaily, ...liveDaily }
+        daily: combinedDaily
       };
     });
-  }, [smartOvertimeData, overtimeReports]);
+  }, [smartOvertimeData, overtimeReports, todayYear, todayMonth]);
 
   const dailyOvertimeSummary = useMemo(() => {
     if (!unifiedPinMatrix || unifiedPinMatrix.length === 0) return null;
-    return calculateDailySummary(unifiedPinMatrix, todayDayNum);
-  }, [unifiedPinMatrix, todayDayNum]);
+    return calculateDailySummary(unifiedPinMatrix, todayDayNum, todayYear, todayMonth);
+  }, [unifiedPinMatrix, todayDayNum, todayYear, todayMonth]);
 
   const unwrittenCompanies = useMemo(() => {
     const matrix = unifiedPinMatrix || [];
-    const todayStr = todayKst || getKSTDateString();
+    const todayStr = `${todayYear}-${String(todayMonth).padStart(2, "0")}-${String(todayDayNum).padStart(2, "0")}`;
     return COMPANIES.filter((comp) => {
       const cleanCompName = cleanCompanyName(comp);
       // 1. 등록된 일일 보고서 존재 여부 확인
@@ -789,7 +797,7 @@ export const WorkerPinModal = ({
       }).length;
       return enteredCount === 0;
     });
-  }, [unifiedPinMatrix, overtimeReports, todayDayNum, todayKst]);
+  }, [unifiedPinMatrix, overtimeReports, todayYear, todayMonth, todayDayNum]);
 
   // 당일 근태
   const leaveStatus = useMemo(() => {

@@ -15,7 +15,9 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import {
   getLocalSmartOvertimeData,
   saveSmartOvertimeData,
-  buildMatrixFromReports
+  buildMatrixFromReports,
+  cleanCompanyName,
+  cleanWorkerNameOnly
 } from "./overtimeSmartService";
 
 const COLLECTION_NAME = "overtime_reports";
@@ -404,15 +406,47 @@ export const saveOvertimeReport = async (report) => {
 
         // Safely update only workers contained in this report for day d
         (cleanReport.items || []).forEach((it) => {
-          const wName = (it.workerName || "").trim();
-          const wComp = cleanCompanyName(it.company || cleanReport.company);
-          const target = matrix.find(
-            (w) => (w.name || "").trim() === wName && cleanCompanyName(w.company) === wComp
-          );
-          if (target) {
-            if (!target.daily) target.daily = {};
-            target.daily[d] = it.attendanceCode;
-            target.daily[String(d)] = it.attendanceCode;
+          if (!it) return;
+          const wName = String(it.workerName || it.name || it.worker || it.empName || it.userName || "").trim();
+          const rawCode = it.attendanceCode || it.code || it.attendance || it.status || it.category || "";
+          let codeStr = String(rawCode || "").trim();
+
+          if (!codeStr) {
+            const h = Number(it.hours || 0);
+            if (h >= 13 || it.endTime === "22:00") codeStr = "22";
+            else if (h >= 12 || it.endTime === "21:00") codeStr = "21";
+            else if (h >= 10 || it.endTime === "19:00") codeStr = "19";
+            else if (h > 0) codeStr = "🟢";
+            else if (it.startTime === "-" || it.endTime === "-") codeStr = "결근";
+          }
+
+          if (wName) {
+            const cleanItName = cleanWorkerNameOnly(wName);
+            const wComp = cleanCompanyName(it.company || cleanReport.company);
+            const target = matrix.find(
+              (w) => ((w.name || "").trim() === wName || (cleanItName && cleanWorkerNameOnly(w.name) === cleanItName)) &&
+                     cleanCompanyName(w.company) === wComp
+            );
+            if (target && codeStr) {
+              if (!target.daily) target.daily = {};
+              target.daily[d] = codeStr;
+              target.daily[String(d)] = codeStr;
+            }
+          } else if (it.names) {
+            const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
+            namesList.forEach((n) => {
+              const cleanN = cleanWorkerNameOnly(n);
+              const wComp = cleanCompanyName(it.company || cleanReport.company);
+              const target = matrix.find(
+                (w) => ((w.name || "").trim() === n || (cleanN && cleanWorkerNameOnly(w.name) === cleanN)) &&
+                       cleanCompanyName(w.company) === wComp
+              );
+              if (target && codeStr) {
+                if (!target.daily) target.daily = {};
+                target.daily[d] = codeStr;
+                target.daily[String(d)] = codeStr;
+              }
+            });
           }
         });
 
@@ -422,7 +456,7 @@ export const saveOvertimeReport = async (report) => {
           month: targetMonth,
           attendanceMatrix: matrix
         };
-        await saveSmartOvertimeData(updatedLedger, ym);
+        await saveSmartOvertimeData(updatedLedger, ym, { targetCompany: cleanReport.company });
       }
     } catch (ledgerSyncErr) {
       console.warn("Matrix ledger auto-sync error in saveOvertimeReport:", ledgerSyncErr);
@@ -460,28 +494,56 @@ export const deleteOvertimeReport = async (reportId) => {
   const updatedReports = currentReports.filter((r) => r.id !== reportId);
   saveLocalOvertimeReports(updatedReports);
 
-  // ⭐ Synchronize Matrix Ledger on deletion
+  // ⭐ Synchronize Matrix Ledger on deletion safely without wiping other workers or companies
   if (deletedRep && deletedRep.workDate) {
     try {
       const parts = deletedRep.workDate.split("-");
-      if (parts.length >= 2) {
+      if (parts.length === 3) {
         const ym = `${parts[0]}-${parts[1]}`;
         const targetYear = parseInt(parts[0], 10);
         const targetMonth = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
         const currentLedger = getLocalSmartOvertimeData(ym);
-        const synchedMatrix = buildMatrixFromReports(
-          currentLedger.masterWorkers || currentLedger.attendanceMatrix,
-          updatedReports,
-          targetYear,
-          targetMonth
-        );
+        const matrix = [...(currentLedger.attendanceMatrix || currentLedger.masterWorkers || [])];
+
+        // Clear attendance code for workers in this deleted report for day d
+        (deletedRep.items || []).forEach((it) => {
+          if (!it) return;
+          const wName = String(it.workerName || it.name || it.worker || it.empName || it.userName || "").trim();
+          const cleanItName = cleanWorkerNameOnly(wName);
+          const wComp = cleanCompanyName(it.company || deletedRep.company);
+          if (wName) {
+            const target = matrix.find(
+              (w) => ((w.name || "").trim() === wName || (cleanItName && cleanWorkerNameOnly(w.name) === cleanItName)) &&
+                     cleanCompanyName(w.company) === wComp
+            );
+            if (target && target.daily) {
+              delete target.daily[d];
+              delete target.daily[String(d)];
+            }
+          } else if (it.names) {
+            const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
+            namesList.forEach((n) => {
+              const cleanN = cleanWorkerNameOnly(n);
+              const target = matrix.find(
+                (w) => ((w.name || "").trim() === n || (cleanN && cleanWorkerNameOnly(w.name) === cleanN)) &&
+                       cleanCompanyName(w.company) === wComp
+              );
+              if (target && target.daily) {
+                delete target.daily[d];
+                delete target.daily[String(d)];
+              }
+            });
+          }
+        });
+
         const updatedLedger = {
           ...currentLedger,
           year: targetYear,
           month: targetMonth,
-          attendanceMatrix: synchedMatrix
+          attendanceMatrix: matrix
         };
-        await saveSmartOvertimeData(updatedLedger, ym);
+        await saveSmartOvertimeData(updatedLedger, ym, { targetCompany: deletedRep.company, clearedDay: d });
       }
     } catch (ledgerDelSyncErr) {
       console.warn("Matrix ledger auto-sync error in deleteOvertimeReport:", ledgerDelSyncErr);

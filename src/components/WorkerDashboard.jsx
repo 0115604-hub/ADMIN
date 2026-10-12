@@ -591,14 +591,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
         const liveDaily = liveW?.daily || {};
         const reportDaily = w.daily || {};
+        const combinedDaily = { ...reportDaily };
+        Object.keys(liveDaily).forEach((key) => {
+          const val = liveDaily[key];
+          if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
+            combinedDaily[key] = val;
+          }
+        });
         return {
           ...w,
-          daily: { ...reportDaily, ...liveDaily }
+          daily: combinedDaily
         };
       });
     }
 
-    const daily = calculateDailySummary(matrix, todayDayNum);
+    const daily = calculateDailySummary(matrix, todayDayNum, todayYear, todayMonth);
     const companyStyles = {
       "오륙": { dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
       "조영": { dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },

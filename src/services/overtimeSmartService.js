@@ -314,7 +314,18 @@ export const getOptionMeta = (code) => {
   if (strCode === "휴가" || strCode.includes("휴가")) return ATTENDANCE_OPTIONS[8];
   if (strCode === "연차" || strCode.includes("연차")) return ATTENDANCE_OPTIONS[9];
   if (strCode === "반차" || strCode.includes("반차")) return ATTENDANCE_OPTIONS[10];
-  if (strCode === "결근" || strCode.includes("결근") || strCode === "병결" || strCode.includes("병결") || strCode === "사결" || strCode === "공결") return ATTENDANCE_OPTIONS[11];
+  if (
+    strCode === "결근" ||
+    strCode.includes("결근") ||
+    strCode === "병결" ||
+    strCode.includes("병결") ||
+    strCode === "사결" ||
+    strCode.includes("사결") ||
+    strCode === "공결" ||
+    strCode.includes("공결") ||
+    strCode === "병가" ||
+    strCode.includes("병가")
+  ) return ATTENDANCE_OPTIONS[11];
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
 };
 
@@ -343,6 +354,8 @@ export const calculateWorkerDailyHours = (code) => {
     strCode.includes("사결") ||
     strCode === "공결" ||
     strCode.includes("공결") ||
+    strCode === "병가" ||
+    strCode.includes("병가") ||
     strCode === "휴가" ||
     strCode.includes("휴가") ||
     strCode === "연차" ||
@@ -503,12 +516,30 @@ export const calculateDailySummary = (attendanceList, dayNum = 8, year = 2026, m
     } else if (str === "특근" || str === "주말특근" || str.includes("특근") || str === "야간" || str.includes("야간") || str === "주야" || str.includes("주야")) {
       specialNightCount++;
       companyBreakdown[comp].specialNight++;
-    } else if (str === "결근" || str === "무단결근" || str === "병결" || str.includes("결근")) {
+    } else if (
+      str === "결근" ||
+      str === "무단결근" ||
+      str === "병결" ||
+      str.includes("병결") ||
+      str === "사결" ||
+      str.includes("사결") ||
+      str === "공결" ||
+      str.includes("공결") ||
+      str.includes("결근")
+    ) {
       // 주말 및 법정 휴무일은 전원 필수 출근일이 아니므로 결근으로 집계하지 않음
       if (!isWeekend) {
         companyBreakdown[comp].absent = (companyBreakdown[comp].absent || 0) + 1;
       }
-    } else if (str === "연차" || str === "반차" || str === "휴가" || str.includes("휴가") || str.includes("연차")) {
+    } else if (
+      str === "연차" ||
+      str === "반차" ||
+      str === "휴가" ||
+      str === "병가" ||
+      str.includes("휴가") ||
+      str.includes("연차") ||
+      str.includes("병가")
+    ) {
       companyBreakdown[comp].leave = (companyBreakdown[comp].leave || 0) + 1;
     }
 
@@ -731,6 +762,14 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
 
             if (codeStr === "결근" || codeStr.includes("결근") || contentStr.includes("결근")) {
               code = isWeekend ? "-" : "결근";
+            } else if (codeStr === "병결" || codeStr.includes("병결") || contentStr.includes("병결")) {
+              code = isWeekend ? "-" : "병결";
+            } else if (codeStr === "사결" || codeStr.includes("사결") || contentStr.includes("사결")) {
+              code = isWeekend ? "-" : "사결";
+            } else if (codeStr === "공결" || codeStr.includes("공결") || contentStr.includes("공결")) {
+              code = isWeekend ? "-" : "공결";
+            } else if (codeStr === "병가" || codeStr.includes("병가") || contentStr.includes("병가")) {
+              code = isWeekend ? "-" : "병가";
             } else if (codeStr === "연차" || codeStr.includes("연차") || contentStr.includes("연차")) {
               code = isWeekend ? "-" : "연차";
             } else if (codeStr === "휴가" || codeStr.includes("휴가") || contentStr.includes("휴가")) {
@@ -1020,11 +1059,14 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
   return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
 };
 
-export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
+export const saveSmartOvertimeData = async (data, targetYearMonth = null, options = {}) => {
   try {
     const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : "2026-10");
     const key = getStorageKeyForMonth(ym);
     const docId = getFirestoreDocIdForMonth(ym);
+
+    const targetComp = options.targetCompany ? cleanCompanyName(options.targetCompany) : null;
+    const isTargetAll = !targetComp || targetComp === "전체" || targetComp === "5개사 통합" || targetComp === "전사" || targetComp === "ALL";
 
     const normalizedData = ensureAllCompaniesPresent(data);
     localStorage.setItem(key, JSON.stringify(normalizedData));
@@ -1054,13 +1096,36 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
               if (!cloudW) return localW;
               const cloudDaily = cloudW.daily || {};
               const localDaily = localW.daily || {};
+              const wComp = cleanCompanyName(localW.company);
+              const isTargetWorker = isTargetAll || wComp === targetComp;
+
               const mergedDaily = { ...cloudDaily };
-              Object.keys(localDaily).forEach((d) => {
-                const val = localDaily[d];
-                if (val !== undefined && val !== null && val !== "" && val !== "미입력") {
-                  mergedDaily[d] = val;
+
+              if (isTargetWorker) {
+                // Authoritative update for target company: accept all local codes and honor deletions
+                Object.keys(localDaily).forEach((d) => {
+                  const val = localDaily[d];
+                  if (val === "" || val === "미입력" || val === "undefined" || val === "null") {
+                    delete mergedDaily[d];
+                    delete mergedDaily[String(d)];
+                  } else if (val !== undefined && val !== null) {
+                    mergedDaily[d] = val;
+                  }
+                });
+                if (options.clearedDay) {
+                  delete mergedDaily[options.clearedDay];
+                  delete mergedDaily[String(options.clearedDay)];
                 }
-              });
+              } else {
+                // Untargeted companies: preserve cloud daily data, only accept non-empty edits
+                Object.keys(localDaily).forEach((d) => {
+                  const val = localDaily[d];
+                  if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
+                    mergedDaily[d] = val;
+                  }
+                });
+              }
+
               return {
                 ...cloudW,
                 ...localW,
@@ -1084,6 +1149,16 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
         }),
         { merge: true }
       );
+
+      // Immediately keep local storage & runtime listeners in sync with mergedMatrix
+      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix };
+      localStorage.setItem(key, JSON.stringify(finalData));
+      if (ym === "2026-09" || ym === "2026_09") {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...finalData, yearMonth: ym } }));
+      }
     }
     return true;
   } catch (err) {

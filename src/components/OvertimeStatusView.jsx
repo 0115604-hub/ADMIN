@@ -1026,7 +1026,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       } else {
         setPrevMonthData(updatedData);
       }
-      await saveSmartOvertimeData(updatedData, ym);
+      await saveSmartOvertimeData(updatedData, ym, { targetCompany: selectedCompanyFilter });
       
       setHasUnsavedChanges(false);
     } catch (err) {
@@ -1078,7 +1078,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
+    const targetComp = updatedMatrix[targetIdx]?.company;
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: targetComp });
   };
 
   // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day (Excluding Calendar Special Work Days)
@@ -1210,7 +1211,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const msg = `📋 [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${appliedCount}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
   };
 
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
@@ -1257,7 +1258,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
@@ -1404,7 +1405,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         attendanceMatrix: currentMatrix
       };
       setSmartData(updatedLedger);
-      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
+      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10", { targetCompany: popupCompanyData?.company || selectedCompanyFilter });
       
       // 2. Generate and save company-specific report record
       const reportType = isWk ? "특근보고서" : "근태보고서";
@@ -2011,8 +2012,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const liveDaily = liveW?.daily || {};
       const reportDaily = w.daily || {};
       
-      // Combine: registered reports as baseline, live user edits override on modified days
-      const combinedDaily = { ...reportDaily, ...liveDaily };
+      // Combine: registered reports as baseline, live user edits override ONLY on non-empty modified days
+      const combinedDaily = { ...reportDaily };
+      Object.keys(liveDaily).forEach((key) => {
+        const val = liveDaily[key];
+        if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
+          combinedDaily[key] = val;
+        }
+      });
 
       return {
         ...w,
@@ -4800,7 +4807,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       setSmartData(newLedger);
                       setHasUnsavedChanges(true);
                       triggerToast(`${isWk ? "🌙" : "🟢"} [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(🌙)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
-                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
+                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: popupCompanyData?.company });
                     }}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isWeekendDay(selectedDay) ? "bg-purple-600 hover:bg-purple-500 border-purple-500" : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"} text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ml-1`}
                     title={isWeekendDay(selectedDay) ? "해당 협력사 인원 전체를 오늘 특근(🌙)으로 일괄 선택합니다" : "해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"}
