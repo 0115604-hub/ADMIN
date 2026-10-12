@@ -261,6 +261,22 @@ export const saveTelegramCustomTemplate = async (templateKey, templateText) => {
   }
 };
 
+export const deleteTelegramCustomTemplate = async (templateKey) => {
+  try {
+    const current = getLocalTelegramTemplates();
+    const updated = { ...current };
+    delete updated[templateKey];
+    localStorage.setItem(TELEGRAM_TEMPLATES_KEY, JSON.stringify(updated));
+    if (db) {
+      await setDoc(doc(db, TEMPLATES_DOC_PATH[0], TEMPLATES_DOC_PATH[1]), updated);
+    }
+    return { success: true, templates: updated };
+  } catch (e) {
+    console.warn("Failed to delete telegram template from Firestore, deleted local only:", e);
+    return { success: true, localOnly: true };
+  }
+};
+
 export const subscribeTelegramCustomTemplates = (onUpdate) => {
   try {
     const docRef = doc(db, TEMPLATES_DOC_PATH[0], TEMPLATES_DOC_PATH[1]);

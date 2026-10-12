@@ -49,8 +49,14 @@ import {
   sendTelegramMessage,
   getLocalTelegramTemplates,
   saveTelegramCustomTemplate,
+  deleteTelegramCustomTemplate,
   subscribeTelegramCustomTemplates
 } from "../services/telegramService";
+import {
+  buildDailyMorningBriefingText,
+  buildDailyClosingBriefingText,
+  isCeoPrivateItem
+} from "../services/telegramAggregator";
 import {
   getKSTDateString,
   getKSTFormattedString,
@@ -98,6 +104,8 @@ export const TelegramView = () => {
   // Saved Custom Templates State
   const [savedTemplates, setSavedTemplates] = useState(() => getLocalTelegramTemplates());
   const [templateSavedToast, setTemplateSavedToast] = useState(false);
+  const [templateResetToast, setTemplateResetToast] = useState(false);
+  const [loadingLiveBriefing, setLoadingLiveBriefing] = useState(false);
 
   // Editable Message Texts (Direct In-Place Editing)
   const [editableUnifiedText, setEditableUnifiedText] = useState("");
@@ -300,11 +308,11 @@ export const TelegramView = () => {
     return { samStr, hanStr };
   }, [prevDateInfo]);
 
-  // Live approvals (모든 미결 및 대기 전자결재 문서만 단일 소스로 정확히 추출)
+  // Live approvals (모든 미결 및 대기 전자결재 문서만 단일 소스로 정확히 추출 - 대표이사 비공개 철저 차단)
   const morningApprovalDocs = useMemo(() => {
     const docs = getLocalApprovalDocs() || [];
     return docs
-      .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD"))
+      .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD") && !isCeoPrivateItem(d))
       .map((d) => {
         const nextApproverObj = d.approvers?.find((a) => a.status === "PENDING") ||
                                d.steps?.find((s) => s.status === "PENDING") ||
@@ -320,6 +328,7 @@ export const TelegramView = () => {
           date: d.workDate || d.date || d.createdAt || ""
         };
       })
+      .filter((d) => !d.nextApprover.includes("권태형") && !d.nextApprover.includes("대표"))
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [todayDateStr]);
 
@@ -570,15 +579,38 @@ export const TelegramView = () => {
     return `<b>⬛ [일일업무일지 결재 승인]</b>\n----------------------------------------\n• <b>공장:</b> 삼랑진공장\n• <b>작성자:</b> 김동욱 부장 (생산)\n• <b>결재자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n• <b>지시사항:</b> 수고하셨습니다. 익일 야간조 인수인계 철저\n• <b>업무일자:</b> ${todayDateStr}\n----------------------------------------\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
   };
 
-  // Load custom template if exists, else load default text
+  // Load custom template if exists, else load default text from Aggregator
   useEffect(() => {
     const saved = savedTemplates[currentUnifiedTemplateKey]?.text;
     if (saved) {
-      setEditableUnifiedText(saved);
+      // 🔒 [보안 원칙] 저장된 커스텀 템플릿이라도 대표이사(권태형) 개인정보/결재가 포함되어 있다면 자동 정제
+      let sanitized = saved;
+      if (sanitized.includes("권태형") || sanitized.includes("대표이사") || sanitized.includes("대표님")) {
+        sanitized = sanitized
+          .split("\n")
+          .filter((line) => !line.includes("권태형") && !line.includes("대표이사") && !line.includes("대표님") && !line.includes("대표"))
+          .join("\n");
+      }
+      setEditableUnifiedText(sanitized);
     } else {
-      setEditableUnifiedText(generateDefaultUnifiedText());
+      if (unifiedMsgType === "briefing") {
+        setLoadingLiveBriefing(true);
+        buildDailyMorningBriefingText()
+          .then((liveText) => {
+            setEditableUnifiedText(liveText);
+          })
+          .catch((err) => {
+            console.error("Live briefing aggregator error:", err);
+            setEditableUnifiedText(generateDefaultUnifiedText());
+          })
+          .finally(() => {
+            setLoadingLiveBriefing(false);
+          });
+      } else {
+        setEditableUnifiedText(generateDefaultUnifiedText());
+      }
     }
-  }, [currentUnifiedTemplateKey, savedTemplates, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
+  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
 
   // ----------------------------------------------------
   // 2. 경영총괄 실시간 데이터 (Management Room Live Data)
@@ -755,6 +787,64 @@ export const TelegramView = () => {
     await saveTelegramCustomTemplate(currentManagementTemplateKey, editableManagementText);
     setTemplateSavedToast(true);
     setTimeout(() => setTemplateSavedToast(false), 3000);
+  };
+
+  // 🌟 [기본서식 리셋] - 저장된 커스텀 템플릿 DB/로컬 영구 삭제 후 최신 실시간 취합 서식 복원
+  const handleResetUnifiedTemplate = async () => {
+    if (isUnifiedTemplateCustom) {
+      await deleteTelegramCustomTemplate(currentUnifiedTemplateKey);
+      setSavedTemplates((prev) => {
+        const next = { ...prev };
+        delete next[currentUnifiedTemplateKey];
+        return next;
+      });
+    }
+
+    if (unifiedMsgType === "briefing") {
+      setLoadingLiveBriefing(true);
+      try {
+        const liveText = await buildDailyMorningBriefingText();
+        setEditableUnifiedText(liveText);
+      } catch (e) {
+        setEditableUnifiedText(generateDefaultUnifiedText());
+      } finally {
+        setLoadingLiveBriefing(false);
+      }
+    } else {
+      setEditableUnifiedText(generateDefaultUnifiedText());
+    }
+
+    setTemplateResetToast(true);
+    setTimeout(() => setTemplateResetToast(false), 3000);
+  };
+
+  // 🌟 [실시간 취합 최신화] - 현재 시각 기준 Firestore 원천 데이터로 다시 즉시 취합
+  const handleRefreshLiveBriefing = async () => {
+    setLoadingLiveBriefing(true);
+    try {
+      const liveText = await buildDailyMorningBriefingText();
+      setEditableUnifiedText(liveText);
+      setTemplateResetToast(true);
+      setTimeout(() => setTemplateResetToast(false), 2500);
+    } catch (e) {
+      alert("실시간 취합 오류: " + e.message);
+    } finally {
+      setLoadingLiveBriefing(false);
+    }
+  };
+
+  const handleResetManagementTemplate = async () => {
+    if (isManagementTemplateCustom) {
+      await deleteTelegramCustomTemplate(currentManagementTemplateKey);
+      setSavedTemplates((prev) => {
+        const next = { ...prev };
+        delete next[currentManagementTemplateKey];
+        return next;
+      });
+    }
+    setEditableManagementText(generateDefaultManagementText());
+    setTemplateResetToast(true);
+    setTimeout(() => setTemplateResetToast(false), 3000);
   };
 
   // 1. 오륙통합방 직접 편집 텍스트 발송
@@ -1139,14 +1229,29 @@ export const TelegramView = () => {
                   </button>
                 </div>
 
+                {/* 🔄 실시간 최신 취합 새로고침 버튼 (briefing일 때) */}
+                {unifiedMsgType === "briefing" && (
+                  <button
+                    type="button"
+                    disabled={loadingLiveBriefing}
+                    onClick={handleRefreshLiveBriefing}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-900/60 hover:bg-blue-800 text-blue-200 hover:text-white border border-blue-700/80 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    title="현재 시점 최신 Firestore 데이터로 실시간 다시 취합"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 text-blue-300 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
+                    <span>실시간 취합</span>
+                  </button>
+                )}
+
                 {/* Reset to system default button */}
                 <button
                   type="button"
-                  onClick={() => setEditableUnifiedText(generateDefaultUnifiedText())}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
-                  title="시스템 실시간 데이터 기본 서식으로 초기화"
+                  disabled={loadingLiveBriefing}
+                  onClick={handleResetUnifiedTemplate}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  title="저장된 고정 서식을 삭제하고 시스템 실시간 취합 서식으로 리셋"
                 >
-                  <RotateCw className="w-3.5 h-3.5 text-sky-400" />
+                  <RotateCw className={`w-3.5 h-3.5 text-sky-400 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
                   <span>기본서식 리셋</span>
                 </button>
 
@@ -1202,6 +1307,11 @@ export const TelegramView = () => {
                 {templateSavedToast && (
                   <span className="text-xs font-bold text-amber-400 flex items-center gap-1 animate-fadeIn">
                     <BookmarkCheck className="w-4 h-4 text-amber-400" /> 앞으로도 계속 적용 저장 완료!
+                  </span>
+                )}
+                {templateResetToast && (
+                  <span className="text-xs font-bold text-sky-400 flex items-center gap-1 animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-sky-400" /> 기본서식 리셋 및 최신 실시간 취합 완료!
                   </span>
                 )}
                 {unifiedToast && (
@@ -1369,9 +1479,9 @@ export const TelegramView = () => {
                 {/* Reset to system default button */}
                 <button
                   type="button"
-                  onClick={() => setEditableManagementText(generateDefaultManagementText())}
+                  onClick={handleResetManagementTemplate}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
-                  title="시스템 실시간 데이터 기본 서식으로 초기화"
+                  title="저장된 고정 서식을 삭제하고 시스템 실시간 데이터 기본 서식으로 초기화"
                 >
                   <RotateCw className="w-3.5 h-3.5 text-purple-400" />
                   <span>기본서식 리셋</span>
@@ -1435,6 +1545,11 @@ export const TelegramView = () => {
                 {templateSavedToast && (
                   <span className="text-xs font-bold text-amber-400 flex items-center gap-1 animate-fadeIn">
                     <BookmarkCheck className="w-4 h-4 text-amber-400" /> 앞으로도 계속 적용 저장 완료!
+                  </span>
+                )}
+                {templateResetToast && (
+                  <span className="text-xs font-bold text-purple-400 flex items-center gap-1 animate-fadeIn">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" /> 기본서식 리셋 완료!
                   </span>
                 )}
                 {dailyPnLToast && (

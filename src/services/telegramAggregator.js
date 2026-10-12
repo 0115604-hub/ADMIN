@@ -39,7 +39,9 @@ import { getLocalExtrusionReports } from "./extrusionProductionService";
  */
 export const isCeoPrivateItem = (item) => {
   if (!item) return false;
-  const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""} ${item.speaker || ""} ${item.userName || ""} ${item.name || ""} ${item.drafter || ""}`;
+  const approverNames = (item.approvers || []).map((a) => a?.name || "").join(" ");
+  const stepNames = (item.steps || []).map((s) => s?.name || "").join(" ");
+  const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""} ${item.speaker || ""} ${item.userName || ""} ${item.name || ""} ${item.drafter || ""} ${approverNames} ${stepNames} ${item.nextApprover || ""}`;
   return (
     text.includes("권태형") ||
     text.includes("대표이사") ||
@@ -184,10 +186,12 @@ export const getPreviousWorkDayInfo = (todayStr) => {
 /**
  * ☀️ [1] 일일 모닝 브리핑 문안 취합 빌더
  */
-export const buildDailyMorningBriefingText = async (targetDateStr = null) => {
+export const buildDailyMorningBriefingText = async (targetDateStr = null, customTimeStr = null) => {
   const todayStr = targetDateStr || getKSTDateString();
   const ctx = await fetchDirectFirestoreContext(todayStr);
-  const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)} 07:30 기준`;
+  const now = new Date();
+  const timeStr = customTimeStr || (now.getHours() < 8 ? "07:40" : `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+  const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)} ${timeStr} 기준`;
 
   const { prevDayStr, prevDayNum, prevDateFormatted, isWeekendOrHoliday } = getPreviousWorkDayInfo(todayStr);
 
@@ -301,6 +305,7 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null) => {
         date: d.workDate || d.date || d.createdAt || ""
       };
     })
+    .filter((d) => !d.nextApprover.includes("권태형") && !d.nextApprover.includes("대표"))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   let approvalDocLines = "• 없음 (전건 결재완료)";
