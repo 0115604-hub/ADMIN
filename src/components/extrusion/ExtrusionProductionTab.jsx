@@ -218,8 +218,18 @@ export const ExtrusionProductionTab = () => {
             </div>
           </div>
 
-          {/* Right Action: 엑셀취합 뱃지만 단독 생성 */}
+          {/* Right Action: 일보작성 및 엑셀취합 뱃지 */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingReport(null);
+                setIsModalOpen(true);
+              }}
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md shadow-teal-500/20 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <span>✍️ 일보 작성</span>
+            </button>
             <button
               type="button"
               onClick={handleExportExcel}

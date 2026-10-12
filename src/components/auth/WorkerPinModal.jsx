@@ -85,7 +85,7 @@ import {
 } from "../../services/urgentIssueService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
-const HanulWorkReportModal = lazy(() => import("../HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
+import HanulWorkReportModal from "../HanulWorkReportModal";
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
 export const WorkerPinModal = ({
@@ -1941,14 +1941,12 @@ export const WorkerPinModal = ({
 
       {/* 📋 한울 외주가공 작업일보 모달 (9BQC G/RUN / LQ2a Hood Side) */}
       {isHanulWorkReportOpen && (
-        <Suspense fallback={null}>
-          <HanulWorkReportModal
-            isOpen={isHanulWorkReportOpen}
-            onClose={() => setIsHanulWorkReportOpen(false)}
-            initialProject={hanulReportProject}
-            initialWorker={selectedUser?.name || "황수현"}
-          />
-        </Suspense>
+        <HanulWorkReportModal
+          isOpen={isHanulWorkReportOpen}
+          onClose={() => setIsHanulWorkReportOpen(false)}
+          initialProject={hanulReportProject}
+          initialWorker={selectedUser?.name || "황수현"}
+        />
       )}
     </>
   );

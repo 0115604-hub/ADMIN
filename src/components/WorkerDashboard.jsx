@@ -496,8 +496,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isJaeyul = currentProfile?.name === "전재율" || currentProfile?.id === "sam_jy" || currentProfile?.assignedProcess === "설비보전" || (assignedProcess?.includes("설비보전"));
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
   const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
-  const isChangyong = false;
-  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
+  const isHanul = Boolean(
+    currentProfile?.name === "한울" ||
+    currentProfile?.company === "한울" ||
+    currentProfile?.company?.includes("한울") ||
+    currentProfile?.id === "hal_hu" ||
+    String(currentProfile?.id || "").startsWith("hal_hu") ||
+    (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) ||
+    workerFullName?.includes("한울") ||
+    currentProfile?.assignedProcess?.includes("한울") ||
+    [
+      "황수현", "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+      "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+      "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+      "마이카", "알프레도", "아이린", "에릭", "언"
+    ].includes(currentProfile?.name)
+  );
   const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);

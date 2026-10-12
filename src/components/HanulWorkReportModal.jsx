@@ -318,12 +318,14 @@ export const HanulWorkReportModal = ({
     });
   };
 
+  if (!isOpen) return null;
+
   return (
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-70 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn"
     >
       <div
         ref={modalRef}
@@ -1136,3 +1138,5 @@ export const HanulWorkReportModal = ({
     </div>
   );
 };
+
+export default HanulWorkReportModal;
