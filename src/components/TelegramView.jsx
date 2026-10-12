@@ -308,11 +308,11 @@ export const TelegramView = () => {
     return { samStr, hanStr };
   }, [prevDateInfo]);
 
-  // Live approvals (모든 미결 및 대기 전자결재 문서만 단일 소스로 정확히 추출 - 대표이사 비공개 철저 차단)
+  // Live approvals (모든 미결 및 대기 전자결재 문서 단일 소스 집계)
   const morningApprovalDocs = useMemo(() => {
     const docs = getLocalApprovalDocs() || [];
     return docs
-      .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD") && !isCeoPrivateItem(d))
+      .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD" || d.status === "PENDING"))
       .map((d) => {
         const nextApproverObj = d.approvers?.find((a) => a.status === "PENDING") ||
                                d.steps?.find((s) => s.status === "PENDING") ||
@@ -328,7 +328,6 @@ export const TelegramView = () => {
           date: d.workDate || d.date || d.createdAt || ""
         };
       })
-      .filter((d) => !d.nextApprover.includes("권태형") && !d.nextApprover.includes("대표"))
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [todayDateStr]);
 

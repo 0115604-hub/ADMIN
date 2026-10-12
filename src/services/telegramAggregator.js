@@ -39,14 +39,12 @@ import { getLocalExtrusionReports } from "./extrusionProductionService";
  */
 export const isCeoPrivateItem = (item) => {
   if (!item) return false;
-  const approverNames = (item.approvers || []).map((a) => a?.name || "").join(" ");
-  const stepNames = (item.steps || []).map((s) => s?.name || "").join(" ");
-  const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""} ${item.speaker || ""} ${item.userName || ""} ${item.name || ""} ${item.drafter || ""} ${approverNames} ${stepNames} ${item.nextApprover || ""}`;
+  // 연차, 개인 일정, 오픈이슈 등에서 대표이사 개인 비공개 항목 판별 (결재선의 대표 직함이나 승인 단계는 차단 대상이 아님)
+  const text = `${item.title || ""} ${item.content || ""} ${item.author || ""} ${item.manager || ""} ${item.speaker || ""} ${item.userName || ""} ${item.name || ""}`;
   return (
     text.includes("권태형") ||
     text.includes("대표이사") ||
-    text.includes("대표님") ||
-    text.includes("대표")
+    text.includes("대표님")
   );
 };
 
@@ -105,9 +103,9 @@ export const fetchDirectFirestoreContext = async (targetDateStr = null) => {
       context.overtimeReports = getLocalOvertimeReports() || [];
     }
 
-    // 3. 전자결재 문서
+    // 3. 전자결재 문서 (Firestore 원천 approval_documents)
     try {
-      const apprSnap = await getDocs(collection(db, "approvals"));
+      const apprSnap = await getDocs(collection(db, "approval_documents"));
       const apps = [];
       apprSnap.forEach((d) => apps.push({ id: d.id, ...d.data() }));
       context.approvals = apps.length > 0 ? apps : (getLocalApprovalDocs() || []);
@@ -287,9 +285,9 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
       : `휴무 / 연차 ${hanPrevLeaves.length}명${hanLeaveDetailStr}`;
   }
 
-  // --- 3. 전일 전자결재 미결 (대표이사 차단) ---
+  // --- 3. 전일 전자결재 미결 ---
   const pendingDocsList = (ctx.approvals || [])
-    .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD") && !isCeoPrivateItem(d))
+    .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD" || d.status === "PENDING"))
     .map((d) => {
       const nextApproverObj = d.approvers?.find((a) => a.status === "PENDING") ||
                              d.steps?.find((s) => s.status === "PENDING") ||
@@ -305,7 +303,6 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
         date: d.workDate || d.date || d.createdAt || ""
       };
     })
-    .filter((d) => !d.nextApprover.includes("권태형") && !d.nextApprover.includes("대표"))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   let approvalDocLines = "• 없음 (전건 결재완료)";
