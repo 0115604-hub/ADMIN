@@ -818,18 +818,33 @@ export const TelegramView = () => {
     setTimeout(() => setTemplateResetToast(false), 3000);
   };
 
-  // 🌟 [실시간 취합 최신화] - 현재 시각 기준 Firestore 원천 데이터로 다시 즉시 취합
+  // 🌟 [실시간 취합 최신화 (F5 기능)] - 현재 시각 기준 Firestore 원천 데이터로 다시 즉시 취합 및 문구 재구성
   const handleRefreshLiveBriefing = async () => {
-    setLoadingLiveBriefing(true);
-    try {
-      const liveText = await buildDailyMorningBriefingText();
-      setEditableUnifiedText(liveText);
+    if (isUnifiedTemplateCustom) {
+      await deleteTelegramCustomTemplate(currentUnifiedTemplateKey);
+      setSavedTemplates((prev) => {
+        const next = { ...prev };
+        delete next[currentUnifiedTemplateKey];
+        return next;
+      });
+    }
+
+    if (unifiedMsgType === "briefing") {
+      setLoadingLiveBriefing(true);
+      try {
+        const liveText = await buildDailyMorningBriefingText();
+        setEditableUnifiedText(liveText);
+        setTemplateResetToast(true);
+        setTimeout(() => setTemplateResetToast(false), 3000);
+      } catch (e) {
+        alert("실시간 취합 오류: " + e.message);
+      } finally {
+        setLoadingLiveBriefing(false);
+      }
+    } else {
+      setEditableUnifiedText(generateDefaultUnifiedText());
       setTemplateResetToast(true);
-      setTimeout(() => setTemplateResetToast(false), 2500);
-    } catch (e) {
-      alert("실시간 취합 오류: " + e.message);
-    } finally {
-      setLoadingLiveBriefing(false);
+      setTimeout(() => setTemplateResetToast(false), 3000);
     }
   };
 
@@ -1192,10 +1207,28 @@ export const TelegramView = () => {
               <div className="flex items-center gap-2 font-bold text-sky-400">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>📢 오륙 통합방 (수신처: -4186792536)</span>
-                {isUnifiedTemplateCustom && (
-                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/80">
-                    저장된 커스텀 템플릿 활성
-                  </span>
+                {isUnifiedTemplateCustom ? (
+                  <button
+                    type="button"
+                    disabled={loadingLiveBriefing}
+                    onClick={handleResetUnifiedTemplate}
+                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 border border-amber-500/60 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all cursor-pointer animate-pulse"
+                    title="클릭 시 저장된 커스텀 고정 서식을 삭제하고, 최신 Firestore 데이터로 리셋합니다 (F5 기능)"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 text-amber-400 group-hover:rotate-180 transition-transform duration-500 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
+                    <span>🔄 F5 실시간 리셋 (커스텀 해제)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={loadingLiveBriefing}
+                    onClick={handleRefreshLiveBriefing}
+                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/35 hover:to-teal-500/35 text-emerald-300 border border-emerald-500/50 shadow-md hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
+                    title="클릭 시 CTRL+F5와 동일하게 Firestore 원천 데이터로 최신 문구를 즉시 다시 불러옵니다."
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 text-emerald-400 group-hover:rotate-180 transition-transform duration-500 ${loadingLiveBriefing ? "animate-spin" : ""}`} />
+                    <span>⚡ F5 실시간 데이터 갱신</span>
+                  </button>
                 )}
               </div>
 
@@ -1311,7 +1344,7 @@ export const TelegramView = () => {
                 )}
                 {templateResetToast && (
                   <span className="text-xs font-bold text-sky-400 flex items-center gap-1 animate-fadeIn">
-                    <CheckCircle2 className="w-4 h-4 text-sky-400" /> 기본서식 리셋 및 최신 실시간 취합 완료!
+                    <CheckCircle2 className="w-4 h-4 text-sky-400" /> [F5 동기화] Firestore 최신 원천 데이터로 문구가 갱신되었습니다!
                   </span>
                 )}
                 {unifiedToast && (
@@ -1439,10 +1472,26 @@ export const TelegramView = () => {
                     ? "👑 경영방 (대표·전무 전용 채널: -1003939516875)"
                     : "👤 권태형 대표님 1:1 개인톡 (290615483)"}
                 </span>
-                {isManagementTemplateCustom && (
-                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/80">
-                    저장된 커스텀 템플릿 활성
-                  </span>
+                {isManagementTemplateCustom ? (
+                  <button
+                    type="button"
+                    onClick={handleResetManagementTemplate}
+                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/40 hover:to-orange-500/40 text-amber-300 border border-amber-500/60 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all cursor-pointer animate-pulse"
+                    title="저장된 고정 서식을 삭제하고 최신 데이터로 리셋합니다 (F5 기능)"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-180 transition-transform duration-500" />
+                    <span>🔄 F5 실시간 리셋 (커스텀 해제)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResetManagementTemplate}
+                    className="group flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-purple-500/20 to-indigo-500/20 hover:from-purple-500/35 hover:to-indigo-500/35 text-purple-300 border border-purple-500/50 shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all cursor-pointer"
+                    title="클릭 시 CTRL+F5와 동일하게 최신 데이터로 문구를 즉시 다시 불러옵니다."
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-purple-400 group-hover:rotate-180 transition-transform duration-500" />
+                    <span>⚡ F5 실시간 데이터 갱신</span>
+                  </button>
                 )}
               </div>
 
