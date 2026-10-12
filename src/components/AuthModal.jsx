@@ -10,6 +10,7 @@ import {
   subscribeSmartOvertimeData,
   getLocalSmartOvertimeData
 } from "../services/overtimeSmartService";
+import { INITIAL_SMART_OVERTIME_DATA } from "../data/masterOvertimeSmartData.js";
 import { getKSTDateString, getKSTTimeInfo } from "../utils/dateUtils";
 import {
   getLocalUrgentIssues,
@@ -53,6 +54,9 @@ import {
   Cpu,
   Layers,
   Factory,
+  Building2,
+  Users,
+  ArrowRight,
   ChevronRight,
   CheckCircle2,
   X
@@ -77,6 +81,7 @@ export const AuthModal = () => {
   const [isSevereDisasterModalOpen, setIsSevereDisasterModalOpen] = useState(false);
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
   const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
+  const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [firstPageToast, setFirstPageToast] = useState("");
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -260,6 +265,31 @@ export const AuthModal = () => {
       list.push({ ...adm, plantName: "본사", title: adm.title || "대표이사" });
     });
     return list;
+  }, []);
+
+  // Hanul partner user definition (한림공장 외주가공 대표 계정)
+  const hanulUser = useMemo(() => {
+    return (
+      PLANTS[1]?.workers?.find((w) => w.name === "한울" || w.id === "hal_hu") || {
+        id: "hal_hu",
+        name: "한울",
+        title: "대표이사",
+        plant: "한림공장",
+        company: "한울",
+        assignedProcess: "외주가공",
+        role: "OPERATOR",
+        avatar: "한",
+        pin: "11",
+        isPartner: true
+      }
+    );
+  }, []);
+
+  // Hanul master workers list (26명)
+  const hanulWorkers = useMemo(() => {
+    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
+      (w) => w.company?.includes("한울")
+    );
   }, []);
 
   // Category drafts for clean draft switching
@@ -1355,6 +1385,7 @@ export const AuthModal = () => {
   useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
+  useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
@@ -1414,7 +1445,7 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Right: 2 Badges: [압출동] & [가공동] */}
+            {/* Right: 3 Badges: [압출동] & [가공동] & [한울] */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
               <button
                 type="button"
@@ -1442,6 +1473,19 @@ export const AuthModal = () => {
                 <span>가공동</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hidden sm:inline">
                   삼랑진·한림
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsHanulModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-indigo-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-indigo-400/30"
+                title="한림공장 외주가공 (주)한울 작업자 전용 포털 (26명)"
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-200 animate-pulse" />
+                <span>한울</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 hidden sm:inline">
+                  26명
                 </span>
               </button>
             </div>
@@ -1728,6 +1772,115 @@ export const AuthModal = () => {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏢 한림공장 한울 외주가공 전용 팝업 선택 모달 */}
+      {isHanulModalOpen && (
+        <div
+          onClick={() => setIsHanulModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border-2 border-indigo-400 dark:border-indigo-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                    <span>한림공장 외주가공 (주)한울</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
+                      총원 26명
+                    </span>
+                  </h3>
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    비밀번호: 11 • 안전·품질 확인 후 한울 외주가공 및 생산관리 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHanulModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Direct Login Button */}
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHanulModalOpen(false);
+                  handleUserClick(hanulUser);
+                }}
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md hover:shadow-lg border border-indigo-300/40 active:scale-98 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-xl bg-white/20 text-white">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-black text-white">한울 대표 포털 바로 입장</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 font-bold">대표이사</span>
+                    </div>
+                    <span className="text-[11px] text-indigo-200 font-medium">터치 시 안전알림판 및 일일 생산·정산 화면으로 즉시 연결 (PIN: 11)</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-indigo-200" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 한울 외주가공 및 생산관리 화면으로 바로 연결됩니다.
+            </p>
+
+            {/* Scrollable Hanul Workers Grid (26명) */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                {hanulWorkers.map((worker, idx) => {
+                  const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "황수현" || worker.name === "박종미";
+                  return (
+                    <button
+                      key={worker.no || idx}
+                      type="button"
+                      onClick={() => {
+                        setIsHanulModalOpen(false);
+                        handleUserClick(hanulUser);
+                      }}
+                      className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
+                        isLeader
+                          ? "border-indigo-400 bg-indigo-700 text-white shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-indigo-400"
+                      }`}
+                    >
+                      <div className={`${worker.position ? "w-[50%]" : "w-full"} flex items-center justify-center px-1 text-center shrink-0 ${
+                        isLeader ? "bg-indigo-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      }`}>
+                        <span className="font-black text-xs tracking-tight truncate">
+                          {worker.name}
+                        </span>
+                      </div>
+                      {worker.position && (
+                        <div className={`w-[50%] flex items-center justify-center text-center px-1 py-0.5 ${
+                          isLeader ? "bg-indigo-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        }`}>
+                          <span className="text-[10px] font-bold truncate">{worker.position}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
