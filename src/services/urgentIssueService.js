@@ -286,7 +286,8 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : false,
     deletedAt: issueData.deletedAt || "",
     deletedBy: issueData.deletedBy || "",
-    createdAt: issueData.createdAt || nowStr
+    createdAt: issueData.createdAt || nowStr,
+    updatedAt: (!options.isNew || existingIdx >= 0) ? nowStr : (issueData.updatedAt || "")
   };
 
   // Strip any undefined keys so Firestore setDoc does not throw
@@ -817,4 +818,14 @@ export const toggleIssueResolved = async (id) => {
 
   const updatedTarget = { ...target, isResolved: !target.isResolved };
   return await saveUrgentIssue(updatedTarget);
+};
+
+// Helper to determine if an issue has new updates / replies / opinions added
+export const isIssueUpdated = (item) => {
+  if (!item) return false;
+  if (Array.isArray(item.replies) && item.replies.length > 0) return true;
+  if (typeof item.actionResult === "string" && item.actionResult.trim().length > 0) return true;
+  if (item.updatedAt && item.createdAt && item.updatedAt !== item.createdAt) return true;
+  if (item.isUpdated || item.hasNewUpdate) return true;
+  return false;
 };

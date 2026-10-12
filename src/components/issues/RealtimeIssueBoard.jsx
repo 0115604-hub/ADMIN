@@ -278,6 +278,11 @@ export const RealtimeIssueBoard = ({
                         📌 오픈이슈
                       </span>
                     )}
+                    {isOpenIssue && (hasReplies || hasAction || Boolean(item.updatedAt && item.createdAt && item.updatedAt !== item.createdAt) || Boolean(item.isUpdated)) && (
+                      <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-black bg-amber-500 text-white shrink-0 shadow-2xs flex items-center gap-0.5 animate-pulse" title="새로운 의견/진척 내용이 추가된 업데이트 항목">
+                        🔄 UPDATE
+                      </span>
+                    )}
                     <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
                       item.plant === "한림공장"
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"

@@ -475,8 +475,10 @@ export const TelegramView = () => {
       const d = o.expireDate || o.targetDate || "";
       const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
       const replyCount = o.replies?.length || 0;
+      const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
+      const updateBadge = hasUpdate ? "🔄 [UPDATE] " : "";
       const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
-      let line = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+      let line = `• [오픈이슈] ${updateBadge}${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
 
       // 🌟 가장 최근 의견 1건만 표시
       if (Array.isArray(o.replies) && o.replies.length > 0) {
@@ -487,7 +489,7 @@ export const TelegramView = () => {
         const contentText = (lastRep.content || lastRep.text || "내용 없음").replace(/\r?\n+/g, " ").trim();
         const repDate = lastRep.actionDate || lastRep.createdAt?.slice(0, 10);
         const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
-        line += `\n  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+        line += `\n  └ 💬 [최신의견] ${authorText}${titleText}: ${contentText}${repDateStr}`;
       }
       return line;
     });

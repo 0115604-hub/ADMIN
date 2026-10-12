@@ -1589,7 +1589,9 @@ export const formatDailyClosingBriefing = (todayStr = null) => {
         statusText = `✅ 조치완료`;
       }
 
-      let oLine = ` • [${plant}] ${dText}${title}\n   - 상태: ${statusText}`;
+      const hasUpdate = (o.replies && o.replies.length > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
+      const updateBadge = hasUpdate ? "🔄 [UPDATE] " : "";
+      let oLine = ` • [${plant}] ${updateBadge}${dText}${title}\n   - 상태: ${statusText}`;
 
       // Check for today's reply or latest reply
       const todayReplies = (o.replies || []).filter((r) => r.actionDate === targetDate || r.createdAt?.startsWith(targetDate));
