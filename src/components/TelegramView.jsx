@@ -106,6 +106,7 @@ export const TelegramView = () => {
   const [templateSavedToast, setTemplateSavedToast] = useState(false);
   const [templateResetToast, setTemplateResetToast] = useState(false);
   const [loadingLiveBriefing, setLoadingLiveBriefing] = useState(false);
+  const [briefingFormat, setBriefingFormat] = useState("compact"); // "compact" (간략 요약형) | "detailed" (상세 보고형)
 
   // Editable Message Texts (Direct In-Place Editing)
   const [editableUnifiedText, setEditableUnifiedText] = useState("");
@@ -594,7 +595,7 @@ export const TelegramView = () => {
     } else {
       if (unifiedMsgType === "briefing") {
         setLoadingLiveBriefing(true);
-        buildDailyMorningBriefingText()
+        buildDailyMorningBriefingText(null, null, briefingFormat)
           .then((liveText) => {
             setEditableUnifiedText(liveText);
           })
@@ -609,7 +610,7 @@ export const TelegramView = () => {
         setEditableUnifiedText(generateDefaultUnifiedText());
       }
     }
-  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
+  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, briefingFormat, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
 
   // ----------------------------------------------------
   // 2. 경영총괄 실시간 데이터 (Management Room Live Data)
@@ -802,7 +803,7 @@ export const TelegramView = () => {
     if (unifiedMsgType === "briefing") {
       setLoadingLiveBriefing(true);
       try {
-        const liveText = await buildDailyMorningBriefingText();
+        const liveText = await buildDailyMorningBriefingText(null, null, briefingFormat);
         setEditableUnifiedText(liveText);
       } catch (e) {
         setEditableUnifiedText(generateDefaultUnifiedText());
@@ -818,7 +819,8 @@ export const TelegramView = () => {
   };
 
   // 🌟 [실시간 취합 최신화 (F5 기능)] - 현재 시각 기준 Firestore 원천 데이터로 다시 즉시 취합 및 문구 재구성
-  const handleRefreshLiveBriefing = async () => {
+  const handleRefreshLiveBriefing = async (targetFormat = null) => {
+    const fmt = targetFormat || briefingFormat;
     if (isUnifiedTemplateCustom) {
       await deleteTelegramCustomTemplate(currentUnifiedTemplateKey);
       setSavedTemplates((prev) => {
@@ -831,7 +833,7 @@ export const TelegramView = () => {
     if (unifiedMsgType === "briefing") {
       setLoadingLiveBriefing(true);
       try {
-        const liveText = await buildDailyMorningBriefingText();
+        const liveText = await buildDailyMorningBriefingText(null, null, fmt);
         setEditableUnifiedText(liveText);
         setTemplateResetToast(true);
         setTimeout(() => setTemplateResetToast(false), 3000);
@@ -1119,6 +1121,45 @@ export const TelegramView = () => {
           </div>
 
           {/* Sub-level selectors based on unifiedMsgType */}
+          {unifiedMsgType === "briefing" && (
+            <div className="p-3 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900/50 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-sky-800 dark:text-sky-300">📢 브리핑 전달 서식:</span>
+                <span className="text-[11px] text-slate-500 hidden sm:inline">모바일에서 빠르게 훑어볼 수 있도록 핵심을 요약합니다.</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBriefingFormat("compact");
+                    handleRefreshLiveBriefing("compact");
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
+                    briefingFormat === "compact"
+                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
+                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400"
+                  }`}
+                >
+                  ⚡ 간략 요약형 (한눈에 보기)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBriefingFormat("detailed");
+                    handleRefreshLiveBriefing("detailed");
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
+                    briefingFormat === "detailed"
+                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
+                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400"
+                  }`}
+                >
+                  📑 상세 보고형 (전체 항목별)
+                </button>
+              </div>
+            </div>
+          )}
+
           {unifiedMsgType === "quality" && (
             <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-xs font-bold text-rose-800 dark:text-rose-300">품질경보 알림 단계 서식:</span>
