@@ -54,7 +54,8 @@ import {
   Eye,
   MessageCircle,
   RotateCcw,
-  Receipt
+  Receipt,
+  Cpu
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -507,6 +508,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [currentProfile]);
 
   const isPartnerProfile = currentProfile?.isPartner || currentProfile?.name === "유성" || currentProfile?.name === "한울" || currentProfile?.name === "부림텍" || currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍";
+  const isJaeyulWorker = isJaeyul || currentProfile?.name === "전재율" || currentProfile?.assignedProcess === "설비보전";
   const isHeadquarterUser = isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영" || currentProfile?.plant === "본사";
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
@@ -968,7 +970,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (smartOvertimeData && Array.isArray(smartOvertimeData.attendanceMatrix) && report.workDate) {
       const parts = String(report.workDate).split("-");
       const dayNum = parts.length >= 3 ? parseInt(parts[2], 10) : NaN;
-      if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return list;
+      if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return [];
       const targetComp = cleanCompanyName(report.company || (report.badgeLabel || ""));
       const matched = smartOvertimeData.attendanceMatrix.filter((w) => {
         const matchComp = !targetComp || cleanCompanyName(w.company) === targetComp;

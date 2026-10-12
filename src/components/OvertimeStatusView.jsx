@@ -663,6 +663,8 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
       }).join("\n");
 
+      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
+
       synthList.push({
         id: `synth_hal_${workDate.replace(/-/g, "")}`,
         isSynthesized: true,
