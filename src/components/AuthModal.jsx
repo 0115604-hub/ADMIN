@@ -68,6 +68,7 @@ const IssueLedgerModal = lazy(() => import("./issues/IssueLedgerModal").then(m =
 const IssueEditModal = lazy(() => import("./issues/IssueEditModal").then(m => ({ default: m.IssueEditModal || m.default })));
 const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m => ({ default: m.IssueActionModal || m.default })));
 const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
+const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
 
 export const AuthModal = () => {
   const { currentProfile, loginWithProfile } = useAuth();
@@ -82,6 +83,9 @@ export const AuthModal = () => {
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
   const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
+  const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
+  const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
+  const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("황수현");
   const [firstPageToast, setFirstPageToast] = useState("");
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -1814,8 +1818,8 @@ export const AuthModal = () => {
               </button>
             </div>
 
-            {/* Direct Login Button */}
-            <div className="shrink-0">
+            {/* Direct Login & Report Buttons */}
+            <div className="space-y-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -1838,6 +1842,49 @@ export const AuthModal = () => {
                 </div>
                 <ArrowRight className="w-4 h-4 text-indigo-200" />
               </button>
+
+              {/* Quick Work Report Launch Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHanulModalOpen(false);
+                    setHanulWorkReportProject("9BQC");
+                    setHanulWorkReportWorker("황수현");
+                    setIsHanulWorkReportModalOpen(true);
+                  }}
+                  className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 font-black text-xs flex items-center justify-between border-2 border-indigo-300 dark:border-indigo-700 shadow-2xs cursor-pointer active:scale-98 transition-all"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0">🚗</span>
+                    <div className="text-left min-w-0">
+                      <span className="font-black text-xs block truncate">9BQC G/RUN 일보</span>
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block truncate">8개 공정 지원</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHanulModalOpen(false);
+                    setHanulWorkReportProject("LQ2A");
+                    setHanulWorkReportWorker("알프레도");
+                    setIsHanulWorkReportModalOpen(true);
+                  }}
+                  className="p-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-900 dark:text-purple-200 font-black text-xs flex items-center justify-between border-2 border-purple-300 dark:border-purple-700 shadow-2xs cursor-pointer active:scale-98 transition-all"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0">⚡</span>
+                    <div className="text-left min-w-0">
+                      <span className="font-black text-xs block truncate">LQ2a Hood Side 일보</span>
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 block truncate">4개 공정 지원</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                </button>
+              </div>
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
@@ -1855,7 +1902,14 @@ export const AuthModal = () => {
                       type="button"
                       onClick={() => {
                         setIsHanulModalOpen(false);
-                        handleUserClick(hanulUser);
+                        handleUserClick({
+                          ...hanulUser,
+                          id: `hal_hu_${worker.no || idx}`,
+                          name: worker.name,
+                          title: worker.position || "작업원",
+                          line: worker.line,
+                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공"
+                        });
                       }}
                       className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
                         isLeader
@@ -1901,6 +1955,18 @@ export const AuthModal = () => {
           onClose={() => setIsExtrusionReportModalOpen(false)}
           onSave={handleSaveExtrusionReport}
         />
+      )}
+
+      {/* 📋 한울 외주가공 작업일보 신규 작성 모달 (9BQC / LQ2a) */}
+      {isHanulWorkReportModalOpen && (
+        <Suspense fallback={null}>
+          <HanulWorkReportModal
+            isOpen={isHanulWorkReportModalOpen}
+            onClose={() => setIsHanulWorkReportModalOpen(false)}
+            initialProject={hanulWorkReportProject}
+            initialWorker={hanulWorkReportWorker}
+          />
+        </Suspense>
       )}
     </div>
   );

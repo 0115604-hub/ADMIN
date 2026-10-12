@@ -190,7 +190,9 @@ import { getWorkerPersonnelCard } from "../services/personnelCardService";
 
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
+const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
 const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal").then(m => ({ default: m.RecentWorkLogsSummaryModal || m.default })));
+import { HanulWorkReportTable } from "./HanulWorkReportTable";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -498,9 +500,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
   const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
+  const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
+  const [hanulReportProject, setHanulReportProject] = useState("9BQC");
+  const [hanulReportProcess, setHanulReportProcess] = useState("정재단");
+  const [hanulReportEditData, setHanulReportEditData] = useState(null);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
   useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
+  useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "workerDashboardHanulReportModal");
   useModalHistory(isWorkLogsSummaryModalOpen, () => setIsWorkLogsSummaryModalOpen(false), "workerDashboardWorkLogsSummaryModal");
+
+  const handleOpenHanulReport = (proj = "9BQC", proc = "정재단", editData = null) => {
+    setHanulReportProject(proj);
+    setHanulReportProcess(proc);
+    setHanulReportEditData(editData);
+    setIsHanulWorkReportModalOpen(true);
+  };
   const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
 
   const workerCard = useMemo(() => {
@@ -4444,6 +4458,52 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <ArrowRight className="w-3.5 h-3.5 text-slate-950 font-black" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 한울 전용 외주가공 작업일보 (9BQC / LQ2a) 배너 & 실시간 관리 */}
+      {/* ========================================================================= */}
+      {(isHanul || isAdmin) && (
+        <div className="space-y-3">
+          <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-indigo-500/60 shadow-md shadow-indigo-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 text-white shadow-xs shrink-0 flex items-center justify-center">
+                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-100" />
+              </div>
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <span className="font-black text-xs sm:text-sm text-white tracking-tight">
+                  한울 외주가공 작업일보
+                </span>
+                <span className="hidden sm:inline text-[11px] text-indigo-300 font-semibold truncate">
+                  (9BQC G/RUN 8개 공정 & LQ2a Hood Side 4개 공정 실시간 작성 및 관리)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleOpenHanulReport("9BQC")}
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <span>🚗 9BQC 일보 작성</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenHanulReport("LQ2A")}
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <span>⚡ LQ2a 일보 작성</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Hanul Work Reports Live Table */}
+          <HanulWorkReportTable
+            onOpenReportModal={(proj, proc, rep) => handleOpenHanulReport(proj, proc, rep)}
+            currentWorkerName={currentProfile?.name || ""}
+          />
         </div>
       )}
 
@@ -11535,6 +11595,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             isOpen={isHanulSettlementModalOpen}
             onClose={() => setIsHanulSettlementModalOpen(false)}
             initialMonth={getPreviousYearMonth(selectedMonth || "2026-09")}
+          />
+        </Suspense>
+      )}
+
+      {/* 🌟 한울 외주가공 작업일보 작성/수정 모달 (9BQC / LQ2a) */}
+      {isHanulWorkReportModalOpen && (
+        <Suspense fallback={null}>
+          <HanulWorkReportModal
+            isOpen={isHanulWorkReportModalOpen}
+            onClose={() => setIsHanulWorkReportModalOpen(false)}
+            initialProject={hanulReportProject}
+            initialProcess={hanulReportProcess}
+            initialWorker={currentProfile?.name || "황수현"}
+            editReport={hanulReportEditData}
           />
         </Suspense>
       )}
