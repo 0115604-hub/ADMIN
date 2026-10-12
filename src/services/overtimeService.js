@@ -204,13 +204,7 @@ export const normalizeOvertimeReport = (report) => {
   return report;
 };
 
-const DELETED_PREMATURE_REPORT_IDS = new Set([
-  "report_부림텍_2026_10_12",
-  "report_한울_2026_10_12",
-  "report_조영_2026_10_12",
-  "report_오륙_2026_10_12",
-  "report_유성_2026_10_12"
-]);
+const DELETED_PREMATURE_REPORT_IDS = new Set();
 
 export const getLocalOvertimeReports = () => {
   try {

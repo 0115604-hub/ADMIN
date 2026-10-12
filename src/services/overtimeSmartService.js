@@ -1000,23 +1000,6 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        // ⭐ Sanitize premature Day 12 cache once for clients that previously cached dirty test data
-        if ((ym === "2026-10" || ym === "2026_10") && typeof localStorage !== "undefined" && !localStorage.getItem("burim_day12_cache_purged_v2")) {
-          let modified = false;
-          parsed.attendanceMatrix.forEach((w) => {
-            if (w.daily && (w.daily[12] !== undefined || w.daily["12"] !== undefined)) {
-              delete w.daily[12];
-              delete w.daily["12"];
-              modified = true;
-            }
-          });
-          try {
-            localStorage.setItem("burim_day12_cache_purged_v2", "true");
-            if (modified) {
-              localStorage.setItem(key, JSON.stringify(parsed));
-            }
-          } catch (e) {}
-        }
         return ensureAllCompaniesPresent(parsed);
       }
     }
