@@ -103,6 +103,7 @@ const CLEAN_LINE_OPTIONS = [
 const createDefaultItem = (lineId, suffix = Date.now()) => {
   const lineItems = getItemsByLine(lineId || "pcm1");
   const first = lineItems[0] || { vehicle: "BC4T", itemName: "D/SIDE D" };
+  const bom = getMaterialBOMForItem(first.vehicle, first.itemName, lineId) || {};
   return {
     id: `item_${suffix}_${Math.random().toString(36).substring(2, 6)}`,
     vehicle: first.vehicle,
@@ -112,8 +113,127 @@ const createDefaultItem = (lineId, suffix = Date.now()) => {
     actualQty: 1950,
     goodQty: 1900,
     defectQty: 50,
-    scrapKg: 7.5
+    scrapKg: 7.5,
+    rawMaterials: {
+      rubberType: bom.rubberType || "",
+      rubberWeight: "",
+      rubberLot: "",
+      rubberType2: bom.rubberType2 || "",
+      rubberWeight2: "",
+      rubberLot2: "",
+      coatingType: bom.coatingType || "미사용",
+      coatingWeight: "",
+      coatingLot: "",
+      insertType: bom.insertType || "미사용",
+      insertWeight: "",
+      insertLot: "",
+      compoundType: bom.compoundType || "",
+      compoundWeight: "",
+      compoundLot: "",
+      compoundType2: bom.compoundType2 || "",
+      compoundWeight2: "",
+      compoundLot2: "",
+      compoundType3: bom.compoundType3 || "",
+      compoundWeight3: "",
+      compoundLot3: "",
+      compoundType4: bom.compoundType4 || "",
+      compoundWeight4: "",
+      compoundLot4: ""
+    }
   };
+};
+
+// Helper: map items from initialData, ensuring each item has its own isolated rawMaterials
+const mapInitialItems = (initialData, defaultLine = "pcm1") => {
+  const lineId = initialData?.lineId || defaultLine;
+  if (Array.isArray(initialData?.items) && initialData.items.length > 0) {
+    return initialData.items.map((it, i) => {
+      const itBOM = getMaterialBOMForItem(it.vehicle, it.itemName, lineId) || {};
+      const itRaw = it.rawMaterials || (i === 0 ? initialData.rawMaterials : null) || {};
+      return {
+        id: it.id || `item_${i + 1}`,
+        vehicle: it.vehicle || "",
+        itemName: it.itemName || "",
+        itemCode: it.itemCode || "",
+        targetQty: it.targetQty ?? 2000,
+        actualQty: it.actualQty ?? 1950,
+        goodQty: it.goodQty ?? 1900,
+        defectQty: it.defectQty ?? 50,
+        scrapKg: it.scrapKg ?? 7.5,
+        rawMaterials: {
+          rubberType: itRaw.rubberType !== undefined ? itRaw.rubberType : (itBOM.rubberType || ""),
+          rubberWeight: itRaw.rubberWeight ?? "",
+          rubberLot: itRaw.rubberLot || "",
+          rubberType2: itRaw.rubberType2 !== undefined ? itRaw.rubberType2 : (itBOM.rubberType2 || ""),
+          rubberWeight2: itRaw.rubberWeight2 ?? "",
+          rubberLot2: itRaw.rubberLot2 || "",
+          coatingType: itRaw.coatingType !== undefined ? itRaw.coatingType : (itBOM.coatingType || "미사용"),
+          coatingWeight: itRaw.coatingWeight ?? "",
+          coatingLot: itRaw.coatingLot || "",
+          insertType: itRaw.insertType !== undefined ? itRaw.insertType : (itBOM.insertType || "미사용"),
+          insertWeight: itRaw.insertWeight ?? "",
+          insertLot: itRaw.insertLot || "",
+          compoundType: itRaw.compoundType !== undefined ? itRaw.compoundType : (itBOM.compoundType || ""),
+          compoundWeight: itRaw.compoundWeight ?? "",
+          compoundLot: itRaw.compoundLot || "",
+          compoundType2: itRaw.compoundType2 !== undefined ? itRaw.compoundType2 : (itBOM.compoundType2 || ""),
+          compoundWeight2: itRaw.compoundWeight2 ?? "",
+          compoundLot2: itRaw.compoundLot2 || "",
+          compoundType3: itRaw.compoundType3 !== undefined ? itRaw.compoundType3 : (itBOM.compoundType3 || ""),
+          compoundWeight3: itRaw.compoundWeight3 ?? "",
+          compoundLot3: itRaw.compoundLot3 || "",
+          compoundType4: itRaw.compoundType4 !== undefined ? itRaw.compoundType4 : (itBOM.compoundType4 || ""),
+          compoundWeight4: itRaw.compoundWeight4 ?? "",
+          compoundLot4: itRaw.compoundLot4 || ""
+        }
+      };
+    });
+  } else if (initialData?.vehicle || initialData?.itemName) {
+    const v = initialData.vehicle || "BC4T";
+    const n = initialData.itemName || "D/SIDE D";
+    const bom = getMaterialBOMForItem(v, n, lineId) || {};
+    const itRaw = initialData?.rawMaterials || {};
+    return [
+      {
+        id: "item_1",
+        vehicle: v,
+        itemName: n,
+        itemCode: initialData?.itemCode || "",
+        targetQty: initialData?.targetQty ?? 4000,
+        actualQty: initialData?.actualQty ?? 3950,
+        goodQty: initialData?.goodQty ?? 3880,
+        defectQty: initialData?.defectQty ?? 70,
+        scrapKg: initialData?.scrapKg ?? 15.0,
+        rawMaterials: {
+          rubberType: itRaw.rubberType !== undefined ? itRaw.rubberType : (bom.rubberType || ""),
+          rubberWeight: itRaw.rubberWeight ?? "",
+          rubberLot: itRaw.rubberLot || "",
+          rubberType2: itRaw.rubberType2 !== undefined ? itRaw.rubberType2 : (bom.rubberType2 || ""),
+          rubberWeight2: itRaw.rubberWeight2 ?? "",
+          rubberLot2: itRaw.rubberLot2 || "",
+          coatingType: itRaw.coatingType !== undefined ? itRaw.coatingType : (bom.coatingType || "미사용"),
+          coatingWeight: itRaw.coatingWeight ?? "",
+          coatingLot: itRaw.coatingLot || "",
+          insertType: itRaw.insertType !== undefined ? itRaw.insertType : (bom.insertType || "미사용"),
+          insertWeight: itRaw.insertWeight ?? "",
+          insertLot: itRaw.insertLot || "",
+          compoundType: itRaw.compoundType !== undefined ? itRaw.compoundType : (bom.compoundType || ""),
+          compoundWeight: itRaw.compoundWeight ?? "",
+          compoundLot: itRaw.compoundLot || "",
+          compoundType2: itRaw.compoundType2 !== undefined ? itRaw.compoundType2 : (bom.compoundType2 || ""),
+          compoundWeight2: itRaw.compoundWeight2 ?? "",
+          compoundLot2: itRaw.compoundLot2 || "",
+          compoundType3: itRaw.compoundType3 !== undefined ? itRaw.compoundType3 : (bom.compoundType3 || ""),
+          compoundWeight3: itRaw.compoundWeight3 ?? "",
+          compoundLot3: itRaw.compoundLot3 || "",
+          compoundType4: itRaw.compoundType4 !== undefined ? itRaw.compoundType4 : (bom.compoundType4 || ""),
+          compoundWeight4: itRaw.compoundWeight4 ?? "",
+          compoundLot4: itRaw.compoundLot4 || ""
+        }
+      }
+    ];
+  }
+  return [createDefaultItem(lineId)];
 };
 
 const calculateMinutesFromTime = (startTime, endTime) => {
@@ -211,31 +331,8 @@ export const ExtrusionWorkReportModal = ({
 
   const [formData, setFormData] = useState(() => {
     if (initialData) {
-      const items = (Array.isArray(initialData.items) && initialData.items.length > 0)
-        ? initialData.items.map((it, i) => ({
-            id: it.id || `item_${i + 1}`,
-            vehicle: it.vehicle || "",
-            itemName: it.itemName || "",
-            itemCode: it.itemCode || "",
-            targetQty: it.targetQty ?? 2000,
-            actualQty: it.actualQty ?? 1950,
-            goodQty: it.goodQty ?? 1900,
-            defectQty: it.defectQty ?? 50,
-            scrapKg: it.scrapKg ?? 7.5
-          }))
-        : [
-            {
-              id: "item_1",
-              vehicle: initialData.vehicle || "BC4T",
-              itemName: initialData.itemName || "D/SIDE D",
-              itemCode: initialData.itemCode || "",
-              targetQty: initialData.targetQty ?? 4000,
-              actualQty: initialData.actualQty ?? 3950,
-              goodQty: initialData.goodQty ?? 3880,
-              defectQty: initialData.defectQty ?? 70,
-              scrapKg: initialData.scrapKg ?? 15.0
-            }
-          ];
+      const items = mapInitialItems(initialData, initialData?.lineId || "pcm1");
+      const primaryRaw = items[0]?.rawMaterials || {};
 
       return {
         ...initialData,
@@ -245,30 +342,7 @@ export const ExtrusionWorkReportModal = ({
           ? initialData.tpmIssuePhotos
           : (Array.isArray(initialData?.tpmIssueReport?.photos) ? initialData.tpmIssueReport.photos : []),
         rawMaterials: {
-          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").rubberType || "")),
-          rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
-          rubberLot: initialData?.rawMaterials?.rubberLot || "",
-          rubberType2: initialData?.rawMaterials?.rubberType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").rubberType2 || "",
-          rubberWeight2: initialData?.rawMaterials?.rubberWeight2 ?? "",
-          rubberLot2: initialData?.rawMaterials?.rubberLot2 || "",
-          coatingType: initialData?.rawMaterials?.coatingType !== undefined ? initialData.rawMaterials.coatingType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").coatingType || ""),
-          coatingWeight: initialData?.rawMaterials?.coatingWeight ?? "",
-          coatingLot: initialData?.rawMaterials?.coatingLot || "",
-          insertType: initialData?.rawMaterials?.insertType !== undefined ? initialData.rawMaterials.insertType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").insertType || ""),
-          insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
-          insertLot: initialData?.rawMaterials?.insertLot || "",
-          compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType || ""),
-          compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
-          compoundLot: initialData?.rawMaterials?.compoundLot || "",
-          compoundType2: initialData?.rawMaterials?.compoundType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType2 || "",
-          compoundWeight2: initialData?.rawMaterials?.compoundWeight2 ?? "",
-          compoundLot2: initialData?.rawMaterials?.compoundLot2 || "",
-          compoundType3: initialData?.rawMaterials?.compoundType3 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType3 || "",
-          compoundWeight3: initialData?.rawMaterials?.compoundWeight3 ?? "",
-          compoundLot3: initialData?.rawMaterials?.compoundLot3 || "",
-          compoundType4: initialData?.rawMaterials?.compoundType4 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType4 || "",
-          compoundWeight4: initialData?.rawMaterials?.compoundWeight4 ?? "",
-          compoundLot4: initialData?.rawMaterials?.compoundLot4 || ""
+          ...primaryRaw
         },
         defectBreakdown: {
           cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -434,27 +508,7 @@ export const ExtrusionWorkReportModal = ({
       tpmIssueText: "",
       tpmIssuePhotos: [],
       rawMaterials: {
-        rubberType: defaultBOM.rubberType || "",
-        rubberWeight: "",
-        rubberLot: "",
-        rubberType2: defaultBOM.rubberType2 || "",
-        rubberWeight2: "",
-        rubberLot2: "",
-        coatingType: defaultBOM.coatingType || "",
-        coatingWeight: "",
-        coatingLot: "",
-        insertType: defaultBOM.insertType || "",
-        insertWeight: "",
-        insertLot: "",
-        compoundType: defaultBOM.compoundType || "",
-        compoundWeight: "",
-        compoundLot: "",
-        compoundType2: defaultBOM.compoundType2 || "",
-        compoundWeight2: "",
-        compoundLot2: "",
-        compoundType3: defaultBOM.compoundType3 || "",
-        compoundWeight3: "",
-        compoundLot3: ""
+        ...defaultItem.rawMaterials
       },
       defectBreakdown: {
         cutoffKg: "",
@@ -556,31 +610,8 @@ export const ExtrusionWorkReportModal = ({
       const alreadyDone = isEditing || isTpmAlreadyDone(targetDate, targetWorker);
       setCurrentStep(alreadyDone ? "report" : "tpm");
       if (initialData) {
-        const items = (Array.isArray(initialData.items) && initialData.items.length > 0)
-          ? initialData.items.map((it, i) => ({
-              id: it.id || `item_${i + 1}`,
-              vehicle: it.vehicle || "",
-              itemName: it.itemName || "",
-              itemCode: it.itemCode || "",
-              targetQty: it.targetQty ?? 2000,
-              actualQty: it.actualQty ?? 1950,
-              goodQty: it.goodQty ?? 1900,
-              defectQty: it.defectQty ?? 50,
-              scrapKg: it.scrapKg ?? 7.5
-            }))
-          : [
-              {
-                id: "item_1",
-                vehicle: initialData.vehicle || "BC4T",
-                itemName: initialData.itemName || "D/SIDE D",
-                itemCode: initialData.itemCode || "",
-                targetQty: initialData.targetQty ?? 4000,
-                actualQty: initialData.actualQty ?? 3950,
-                goodQty: initialData.goodQty ?? 3880,
-                defectQty: initialData.defectQty ?? 70,
-                scrapKg: initialData.scrapKg ?? 15.0
-              }
-            ];
+        const items = mapInitialItems(initialData, initialData?.lineId || "pcm1");
+        const primaryRaw = items[0]?.rawMaterials || {};
 
         if (Array.isArray(initialData.tpmChecks) && initialData.tpmChecks.length > 0) {
           setTpmChecks(initialData.tpmChecks);
@@ -592,30 +623,7 @@ export const ExtrusionWorkReportModal = ({
           ...initialData,
           items,
           rawMaterials: {
-            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").rubberType || "")),
-            rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
-            rubberLot: initialData?.rawMaterials?.rubberLot || "",
-            rubberType2: initialData?.rawMaterials?.rubberType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").rubberType2 || "",
-            rubberWeight2: initialData?.rawMaterials?.rubberWeight2 ?? "",
-            rubberLot2: initialData?.rawMaterials?.rubberLot2 || "",
-            coatingType: initialData?.rawMaterials?.coatingType !== undefined ? initialData.rawMaterials.coatingType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").coatingType || ""),
-            coatingWeight: initialData?.rawMaterials?.coatingWeight ?? "",
-            coatingLot: initialData?.rawMaterials?.coatingLot || "",
-            insertType: initialData?.rawMaterials?.insertType !== undefined ? initialData.rawMaterials.insertType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").insertType || ""),
-            insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
-            insertLot: initialData?.rawMaterials?.insertLot || "",
-            compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType || ""),
-            compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
-            compoundLot: initialData?.rawMaterials?.compoundLot || "",
-            compoundType2: initialData?.rawMaterials?.compoundType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType2 || "",
-            compoundWeight2: initialData?.rawMaterials?.compoundWeight2 ?? "",
-            compoundLot2: initialData?.rawMaterials?.compoundLot2 || "",
-            compoundType3: initialData?.rawMaterials?.compoundType3 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType3 || "",
-            compoundWeight3: initialData?.rawMaterials?.compoundWeight3 ?? "",
-            compoundLot3: initialData?.rawMaterials?.compoundLot3 || "",
-            compoundType4: initialData?.rawMaterials?.compoundType4 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName, initialData?.lineId || "pcm1").compoundType4 || "",
-            compoundWeight4: initialData?.rawMaterials?.compoundWeight4 ?? "",
-            compoundLot4: initialData?.rawMaterials?.compoundLot4 || ""
+            ...primaryRaw
           },
           defectBreakdown: {
             cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -766,7 +774,6 @@ export const ExtrusionWorkReportModal = ({
         });
       } else {
         const defItem = createDefaultItem("pcm1");
-        const defBOM = getMaterialBOMForItem(defItem.vehicle, defItem.itemName);
 
         setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
         setFormData({
@@ -779,30 +786,7 @@ export const ExtrusionWorkReportModal = ({
           subWorkers: "",
           items: [defItem],
           rawMaterials: {
-            rubberType: defBOM.rubberType || "",
-            rubberWeight: "",
-            rubberLot: "",
-            rubberType2: defBOM.rubberType2 || "",
-            rubberWeight2: "",
-            rubberLot2: "",
-            coatingType: defBOM.coatingType || "",
-            coatingWeight: "",
-            coatingLot: "",
-            insertType: defBOM.insertType || "",
-            insertWeight: "",
-            insertLot: "",
-            compoundType: defBOM.compoundType || "",
-            compoundWeight: "",
-            compoundLot: "",
-            compoundType2: defBOM.compoundType2 || "",
-            compoundWeight2: "",
-            compoundLot2: "",
-            compoundType3: defBOM.compoundType3 || "",
-            compoundWeight3: "",
-            compoundLot3: "",
-            compoundType4: defBOM.compoundType4 || "",
-            compoundWeight4: "",
-            compoundLot4: ""
+            ...defItem.rawMaterials
           },
           defectBreakdown: {
             cutoffKg: "",
@@ -995,16 +979,60 @@ export const ExtrusionWorkReportModal = ({
 
     const updatedItems = formData.items.map((it) => {
       const exists = newLineItems.some((n) => n.vehicle === it.vehicle && n.itemName === it.itemName);
-      if (exists) return it;
+      const vehicle = exists ? it.vehicle : defaultNewItem.vehicle;
+      const itemName = exists ? it.itemName : defaultNewItem.itemName;
+      const bom = getMaterialBOMForItem(vehicle, itemName, lineId) || {};
+
+      const itRaw = it.rawMaterials || {};
+      const newRaw = exists
+        ? {
+            ...itRaw,
+            rubberType: bom.rubberType || itRaw.rubberType || "",
+            rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (itRaw.rubberType2 || ""),
+            coatingType: bom.coatingType !== undefined ? bom.coatingType : (itRaw.coatingType || "미사용"),
+            insertType: bom.insertType !== undefined ? bom.insertType : (itRaw.insertType || "미사용"),
+            compoundType: bom.compoundType !== undefined ? bom.compoundType : (itRaw.compoundType || ""),
+            compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (itRaw.compoundType2 || ""),
+            compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (itRaw.compoundType3 || ""),
+            compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : (itRaw.compoundType4 || "")
+          }
+        : {
+            rubberType: bom.rubberType || "",
+            rubberWeight: "",
+            rubberLot: itRaw.rubberLot || "",
+            rubberType2: bom.rubberType2 || "",
+            rubberWeight2: "",
+            rubberLot2: itRaw.rubberLot2 || "",
+            coatingType: bom.coatingType || "미사용",
+            coatingWeight: "",
+            coatingLot: itRaw.coatingLot || "",
+            insertType: bom.insertType || "미사용",
+            insertWeight: "",
+            insertLot: itRaw.insertLot || "",
+            compoundType: bom.compoundType || "",
+            compoundWeight: "",
+            compoundLot: itRaw.compoundLot || "",
+            compoundType2: bom.compoundType2 || "",
+            compoundWeight2: "",
+            compoundLot2: itRaw.compoundLot2 || "",
+            compoundType3: bom.compoundType3 || "",
+            compoundWeight3: "",
+            compoundLot3: itRaw.compoundLot3 || "",
+            compoundType4: bom.compoundType4 || "",
+            compoundWeight4: "",
+            compoundLot4: itRaw.compoundLot4 || ""
+          };
+
       return {
         ...it,
-        vehicle: defaultNewItem.vehicle,
-        itemName: defaultNewItem.itemName
+        vehicle,
+        itemName,
+        rawMaterials: newRaw
       };
     });
 
     const activeItem = updatedItems[0] || defaultNewItem;
-    const bom = getMaterialBOMForItem(activeItem.vehicle, activeItem.itemName, lineId);
+    const activeRaw = activeItem.rawMaterials || {};
 
     setFormData((prev) => ({
       ...prev,
@@ -1013,14 +1041,7 @@ export const ExtrusionWorkReportModal = ({
       items: updatedItems.length > 0 ? updatedItems : [createDefaultItem(lineId)],
       rawMaterials: {
         ...prev.rawMaterials,
-        rubberType: bom.rubberType || prev.rawMaterials?.rubberType || "",
-        rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (prev.rawMaterials?.rubberType2 || ""),
-        coatingType: bom.coatingType !== undefined ? bom.coatingType : (prev.rawMaterials?.coatingType || ""),
-        insertType: bom.insertType !== undefined ? bom.insertType : (prev.rawMaterials?.insertType || ""),
-        compoundType: bom.compoundType !== undefined ? bom.compoundType : (prev.rawMaterials?.compoundType || ""),
-        compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || ""),
-        compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || ""),
-        compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : (prev.rawMaterials?.compoundType4 || "")
+        ...activeRaw
       }
     }));
   };
@@ -1037,10 +1058,15 @@ export const ExtrusionWorkReportModal = ({
   // Remove Item
   const handleRemoveItem = (index) => {
     if (formData.items.length <= 1) return;
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index)
-    }));
+    setFormData((prev) => {
+      const remainingItems = prev.items.filter((_, i) => i !== index);
+      const primaryRaw = remainingItems[0]?.rawMaterials || prev.rawMaterials;
+      return {
+        ...prev,
+        items: remainingItems,
+        rawMaterials: { ...primaryRaw }
+      };
+    });
   };
 
   // Update specific item field
@@ -1056,18 +1082,40 @@ export const ExtrusionWorkReportModal = ({
         targetItem.itemName = n || "";
 
         // Auto-match BOM from master EPDM & Excel BOM data
-        const bom = getMaterialBOMForItem(targetItem.vehicle, targetItem.itemName, prev.lineId);
-        if (bom) {
+        const bom = getMaterialBOMForItem(targetItem.vehicle, targetItem.itemName, prev.lineId) || {};
+        
+        // Reset raw material weights when item changes, so previous item's weights NEVER bleed through!
+        targetItem.rawMaterials = {
+          rubberType: bom.rubberType !== undefined ? bom.rubberType : "",
+          rubberWeight: "",
+          rubberLot: targetItem.rawMaterials?.rubberLot || "",
+          rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : "",
+          rubberWeight2: "",
+          rubberLot2: targetItem.rawMaterials?.rubberLot2 || "",
+          compoundType: bom.compoundType !== undefined ? bom.compoundType : "",
+          compoundWeight: "",
+          compoundLot: targetItem.rawMaterials?.compoundLot || "",
+          compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : "",
+          compoundWeight2: "",
+          compoundLot2: targetItem.rawMaterials?.compoundLot2 || "",
+          compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : "",
+          compoundWeight3: "",
+          compoundLot3: targetItem.rawMaterials?.compoundLot3 || "",
+          compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : "",
+          compoundWeight4: "",
+          compoundLot4: targetItem.rawMaterials?.compoundLot4 || "",
+          insertType: bom.insertType !== undefined ? bom.insertType : "미사용",
+          insertWeight: "",
+          insertLot: targetItem.rawMaterials?.insertLot || "",
+          coatingType: bom.coatingType !== undefined ? bom.coatingType : "미사용",
+          coatingWeight: "",
+          coatingLot: targetItem.rawMaterials?.coatingLot || ""
+        };
+
+        if (index === 0) {
           nextRawMaterials = {
             ...nextRawMaterials,
-            rubberType: bom.rubberType !== undefined ? bom.rubberType : (nextRawMaterials.rubberType || ""),
-            rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (nextRawMaterials.rubberType2 || ""),
-            compoundType: bom.compoundType !== undefined ? bom.compoundType : (nextRawMaterials.compoundType || ""),
-            compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (nextRawMaterials.compoundType2 || ""),
-            compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (nextRawMaterials.compoundType3 || ""),
-            compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : (nextRawMaterials.compoundType4 || ""),
-            insertType: bom.insertType !== undefined ? bom.insertType : (nextRawMaterials.insertType || ""),
-            coatingType: bom.coatingType !== undefined ? bom.coatingType : (nextRawMaterials.coatingType || "")
+            ...targetItem.rawMaterials
           };
         }
       } else if (["targetQty", "actualQty", "goodQty", "defectQty", "scrapKg"].includes(field)) {
@@ -1085,6 +1133,36 @@ export const ExtrusionWorkReportModal = ({
 
       nextItems[index] = targetItem;
       return { ...prev, items: nextItems, rawMaterials: nextRawMaterials };
+    });
+  };
+
+  // Update specific item's raw material field (weight, LOT, or type)
+  const handleItemRawMaterialChange = (itemIndex, key, value) => {
+    setFormData((prev) => {
+      const nextItems = [...(prev.items || [])];
+      const targetItem = { ...(nextItems[itemIndex] || {}) };
+      const currentItemRaw = targetItem.rawMaterials || (itemIndex === 0 ? prev.rawMaterials : null) || {};
+
+      targetItem.rawMaterials = {
+        ...currentItemRaw,
+        [key]: value
+      };
+      nextItems[itemIndex] = targetItem;
+
+      // Also sync top-level rawMaterials with primary item (item 0) for backward compatibility
+      let nextRawMaterials = { ...prev.rawMaterials };
+      if (itemIndex === 0) {
+        nextRawMaterials = {
+          ...nextRawMaterials,
+          [key]: value
+        };
+      }
+
+      return {
+        ...prev,
+        items: nextItems,
+        rawMaterials: nextRawMaterials
+      };
     });
   };
 
@@ -2021,6 +2099,7 @@ export const ExtrusionWorkReportModal = ({
                         {(() => {
                           if (!item?.vehicle || !item?.itemName) return null;
                           const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName, formData?.lineId) || {};
+                          const itemRawMat = item.rawMaterials || (index === 0 ? formData?.rawMaterials : null) || {};
 
                           const ALL_MATERIAL_SLOTS = [
                             {
@@ -2029,7 +2108,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "rubberLot",
                               icon: "⬛",
                               label: "연고무1",
-                              val: formData?.rawMaterials?.rubberType !== undefined ? formData.rawMaterials.rubberType : (itemBOM.rubberType || ""),
+                              val: itemRawMat.rubberType !== undefined ? itemRawMat.rubberType : (itemBOM.rubberType || ""),
                               defaultVal: EPDM_RUBBERS[0]?.name || "W60712$2",
                               containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
                               specTextCls: "text-amber-300",
@@ -2041,7 +2120,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "rubberLot2",
                               icon: "⬛",
                               label: "연고무2",
-                              val: formData?.rawMaterials?.rubberType2 !== undefined ? formData.rawMaterials.rubberType2 : (itemBOM.rubberType2 || ""),
+                              val: itemRawMat.rubberType2 !== undefined ? itemRawMat.rubberType2 : (itemBOM.rubberType2 || ""),
                               defaultVal: EPDM_RUBBERS[1]?.name || "W60712$1",
                               containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
                               specTextCls: "text-amber-300",
@@ -2053,7 +2132,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot",
                               icon: "🧬",
                               label: "컴파운드1",
-                              val: formData?.rawMaterials?.compoundType !== undefined ? formData.rawMaterials.compoundType : (itemBOM.compoundType || ""),
+                              val: itemRawMat.compoundType !== undefined ? itemRawMat.compoundType : (itemBOM.compoundType || ""),
                               defaultVal: EPDM_COMPOUNDS[0]?.name || "IA4-75B_1",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -2065,7 +2144,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot2",
                               icon: "🧬",
                               label: "컴파운드2",
-                              val: formData?.rawMaterials?.compoundType2 !== undefined ? formData.rawMaterials.compoundType2 : (itemBOM.compoundType2 || ""),
+                              val: itemRawMat.compoundType2 !== undefined ? itemRawMat.compoundType2 : (itemBOM.compoundType2 || ""),
                               defaultVal: EPDM_COMPOUNDS[1]?.name || "B64E",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -2077,7 +2156,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot3",
                               icon: "🧬",
                               label: "컴파운드3",
-                              val: formData?.rawMaterials?.compoundType3 !== undefined ? formData.rawMaterials.compoundType3 : (itemBOM.compoundType3 || ""),
+                              val: itemRawMat.compoundType3 !== undefined ? itemRawMat.compoundType3 : (itemBOM.compoundType3 || ""),
                               defaultVal: EPDM_COMPOUNDS[2]?.name || "L2KIA7-35B",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -2089,7 +2168,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot4",
                               icon: "🧬",
                               label: "컴파운드4",
-                              val: formData?.rawMaterials?.compoundType4 !== undefined ? formData.rawMaterials.compoundType4 : (itemBOM.compoundType4 || ""),
+                              val: itemRawMat.compoundType4 !== undefined ? itemRawMat.compoundType4 : (itemBOM.compoundType4 || ""),
                               defaultVal: EPDM_COMPOUNDS[3]?.name || "ED2-53B",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -2101,7 +2180,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "insertLot",
                               icon: "⚙️",
                               label: "심금",
-                              val: formData?.rawMaterials?.insertType !== undefined ? formData.rawMaterials.insertType : (itemBOM.insertType || "미사용"),
+                              val: itemRawMat.insertType !== undefined ? itemRawMat.insertType : (itemBOM.insertType || "미사용"),
                               defaultVal: EPDM_INSERTS[0]?.name || "SUS430(0.4*51*3)",
                               containerCls: "bg-amber-950/80 dark:bg-amber-950 border-amber-700/80 text-amber-100",
                               specTextCls: "text-amber-300",
@@ -2113,7 +2192,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "coatingLot",
                               icon: "🧪",
                               label: "코팅액",
-                              val: formData?.rawMaterials?.coatingType !== undefined ? formData.rawMaterials.coatingType : (itemBOM.coatingType || "미사용"),
+                              val: itemRawMat.coatingType !== undefined ? itemRawMat.coatingType : (itemBOM.coatingType || "미사용"),
                               defaultVal: EPDM_COATINGS[0]?.name || "HSC-2000-B-3",
                               containerCls: "bg-sky-950/80 dark:bg-sky-950 border-sky-700/80 text-sky-100",
                               specTextCls: "text-sky-300",
@@ -2150,7 +2229,7 @@ export const ExtrusionWorkReportModal = ({
                                             onClick={() => {
                                               const bVal = itemBOM[u.id];
                                               const valToSet = (bVal && bVal !== "미사용") ? bVal : u.defaultVal;
-                                              handleNestedFieldChange("rawMaterials", u.id, valToSet);
+                                              handleItemRawMaterialChange(index, u.id, valToSet);
                                             }}
                                             className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 transition active:scale-95 cursor-pointer flex items-center gap-0.5"
                                           >
@@ -2165,8 +2244,8 @@ export const ExtrusionWorkReportModal = ({
                                   {/* Single-line compact material cards */}
                                   <div className="space-y-1.5">
                                     {activeSlots.map((slot) => {
-                                      const currentWeight = formData.rawMaterials?.[slot.weightKey] ?? "";
-                                      const currentLot = formData.rawMaterials?.[slot.lotKey] || "";
+                                      const currentWeight = itemRawMat[slot.weightKey] ?? "";
+                                      const currentLot = itemRawMat[slot.lotKey] || "";
 
                                       return (
                                         <div
@@ -2182,7 +2261,7 @@ export const ExtrusionWorkReportModal = ({
                                             </div>
                                             <button
                                               type="button"
-                                              onClick={() => handleNestedFieldChange("rawMaterials", slot.id, "미사용")}
+                                              onClick={() => handleItemRawMaterialChange(index, slot.id, "미사용")}
                                               className="sm:hidden text-slate-400 hover:text-rose-400 p-0.5 rounded cursor-pointer"
                                               title="이 자재 미사용 처리"
                                             >
@@ -2200,7 +2279,7 @@ export const ExtrusionWorkReportModal = ({
                                                 type="number"
                                                 step="0.1"
                                                 value={currentWeight}
-                                                onChange={(e) => handleNestedFieldChange("rawMaterials", slot.weightKey, e.target.value)}
+                                                onChange={(e) => handleItemRawMaterialChange(index, slot.weightKey, e.target.value)}
                                                 placeholder="0.0"
                                                 className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-emerald-500/80 text-xs font-black text-emerald-300 placeholder-emerald-600/60 text-right focus:ring-1 focus:ring-emerald-400 focus:outline-hidden"
                                               />
@@ -2212,14 +2291,14 @@ export const ExtrusionWorkReportModal = ({
                                               <input
                                                 type="text"
                                                 value={currentLot}
-                                                onChange={(e) => handleNestedFieldChange("rawMaterials", slot.lotKey, e.target.value)}
+                                                onChange={(e) => handleItemRawMaterialChange(index, slot.lotKey, e.target.value)}
                                                 placeholder="LOT No."
                                                 className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-400 focus:outline-hidden"
                                               />
                                             </div>
                                             <button
                                               type="button"
-                                              onClick={() => handleNestedFieldChange("rawMaterials", slot.id, "미사용")}
+                                              onClick={() => handleItemRawMaterialChange(index, slot.id, "미사용")}
                                               className="hidden sm:block text-slate-400 hover:text-rose-400 p-0.5 rounded cursor-pointer shrink-0"
                                               title="이 자재 미사용 처리"
                                             >
@@ -2243,7 +2322,7 @@ export const ExtrusionWorkReportModal = ({
                                       <button
                                         key={u.id}
                                         type="button"
-                                        onClick={() => handleNestedFieldChange("rawMaterials", u.id, u.defaultVal)}
+                                        onClick={() => handleItemRawMaterialChange(index, u.id, u.defaultVal)}
                                         className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer"
                                       >
                                         <span>{u.icon}</span>

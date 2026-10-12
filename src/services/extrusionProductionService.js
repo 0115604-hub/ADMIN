@@ -233,6 +233,38 @@ export const TPM_CHECK_ITEMS = [
 ];
 
 /**
+ * Clean & Format raw materials data object
+ */
+export const sanitizeRawMaterials = (rawMat = {}) => {
+  return {
+    rubberType: String(rawMat.rubberType || (rawMat.rubberLot?.includes("/") ? rawMat.rubberLot.split("/")[0].trim() : "")).trim(),
+    rubberWeight: rawMat.rubberWeight !== undefined && rawMat.rubberWeight !== "" && !isNaN(Number(rawMat.rubberWeight)) ? Number(rawMat.rubberWeight) : "",
+    rubberLot: String(rawMat.rubberLot || "").trim(),
+    rubberType2: String(rawMat.rubberType2 || "").trim(),
+    rubberWeight2: rawMat.rubberWeight2 !== undefined && rawMat.rubberWeight2 !== "" && !isNaN(Number(rawMat.rubberWeight2)) ? Number(rawMat.rubberWeight2) : "",
+    rubberLot2: String(rawMat.rubberLot2 || "").trim(),
+    coatingType: String(rawMat.coatingType || "").trim(),
+    coatingWeight: rawMat.coatingWeight !== undefined && rawMat.coatingWeight !== "" && !isNaN(Number(rawMat.coatingWeight)) ? Number(rawMat.coatingWeight) : "",
+    coatingLot: String(rawMat.coatingLot || "").trim(),
+    insertType: String(rawMat.insertType || "").trim(),
+    insertWeight: rawMat.insertWeight !== undefined && rawMat.insertWeight !== "" && !isNaN(Number(rawMat.insertWeight)) ? Number(rawMat.insertWeight) : "",
+    insertLot: String(rawMat.insertLot || "").trim(),
+    compoundType: String(rawMat.compoundType || "").trim(),
+    compoundWeight: rawMat.compoundWeight !== undefined && rawMat.compoundWeight !== "" && !isNaN(Number(rawMat.compoundWeight)) ? Number(rawMat.compoundWeight) : "",
+    compoundLot: String(rawMat.compoundLot || "").trim(),
+    compoundType2: String(rawMat.compoundType2 || "").trim(),
+    compoundWeight2: rawMat.compoundWeight2 !== undefined && rawMat.compoundWeight2 !== "" && !isNaN(Number(rawMat.compoundWeight2)) ? Number(rawMat.compoundWeight2) : "",
+    compoundLot2: String(rawMat.compoundLot2 || "").trim(),
+    compoundType3: String(rawMat.compoundType3 || "").trim(),
+    compoundWeight3: rawMat.compoundWeight3 !== undefined && rawMat.compoundWeight3 !== "" && !isNaN(Number(rawMat.compoundWeight3)) ? Number(rawMat.compoundWeight3) : "",
+    compoundLot3: String(rawMat.compoundLot3 || "").trim(),
+    compoundType4: String(rawMat.compoundType4 || "").trim(),
+    compoundWeight4: rawMat.compoundWeight4 !== undefined && rawMat.compoundWeight4 !== "" && !isNaN(Number(rawMat.compoundWeight4)) ? Number(rawMat.compoundWeight4) : "",
+    compoundLot4: String(rawMat.compoundLot4 || "").trim()
+  };
+};
+
+/**
  * Clean & Format a single report entry
  */
 export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
@@ -248,6 +280,8 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       const itYield = itActual > 0 ? Number(((itGood / itActual) * 100).toFixed(1)) : 100.0;
       const itDefectRate = itActual > 0 ? Number(((itDefect / itActual) * 100).toFixed(1)) : 0.0;
 
+      const rawMatSource = it.rawMaterials || (i === 0 ? raw.rawMaterials : null) || {};
+
       return {
         id: String(it.id || `item_${i + 1}`),
         vehicle: String(it.vehicle || "").trim(),
@@ -260,7 +294,8 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
         scrapKg: itScrap,
         yieldRate: itYield,
         attainmentRate: itAttainment,
-        defectRate: itDefectRate
+        defectRate: itDefectRate,
+        rawMaterials: sanitizeRawMaterials(rawMatSource)
       };
     });
   }
@@ -279,6 +314,12 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     defectQty = items.reduce((sum, it) => sum + it.defectQty, 0);
     scrapKg = Number(items.reduce((sum, it) => sum + it.scrapKg, 0).toFixed(1));
   } else if (raw.vehicle || raw.itemName) {
+    const defaultRaw = raw.rawMaterials || {
+      rubberType: raw.rubberType,
+      compoundType: raw.compoundType,
+      insertType: raw.insertType,
+      coatingType: raw.coatingType
+    };
     items = [
       {
         id: "item_1",
@@ -292,7 +333,8 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
         scrapKg,
         yieldRate: actualQty > 0 ? Number(((goodQty / actualQty) * 100).toFixed(1)) : 100.0,
         attainmentRate: targetQty > 0 ? Number(((actualQty / targetQty) * 100).toFixed(1)) : 100.0,
-        defectRate: actualQty > 0 ? Number(((defectQty / actualQty) * 100).toFixed(1)) : 0.0
+        defectRate: actualQty > 0 ? Number(((defectQty / actualQty) * 100).toFixed(1)) : 0.0,
+        rawMaterials: sanitizeRawMaterials(defaultRaw)
       }
     ];
   }
@@ -305,6 +347,7 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
   const itemName = items.length > 0 ? items.map((it) => it.itemName).filter(Boolean).join(", ") : String(raw.itemName || "WEATHER STRIP");
 
   const todayStr = new Date().toISOString().split("T")[0];
+  const topRawMaterials = sanitizeRawMaterials(raw.rawMaterials || items[0]?.rawMaterials || {});
 
   return {
     id: String(raw.id || `epr_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`),
@@ -327,29 +370,7 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     yieldRate,
     attainmentRate,
     defectRate,
-    rawMaterials: {
-      rubberType: String(raw.rawMaterials?.rubberType || raw.rubberType || (raw.rawMaterials?.rubberLot?.includes("/") ? raw.rawMaterials.rubberLot.split("/")[0].trim() : "W60433")).trim(),
-      rubberWeight: raw.rawMaterials?.rubberWeight !== undefined && raw.rawMaterials?.rubberWeight !== "" ? Number(raw.rawMaterials.rubberWeight) : "",
-      rubberLot: String(raw.rawMaterials?.rubberLot || raw.rubberLot || "").trim(),
-      rubberType2: String(raw.rawMaterials?.rubberType2 || raw.rubberType2 || "").trim(),
-      rubberWeight2: raw.rawMaterials?.rubberWeight2 !== undefined && raw.rawMaterials?.rubberWeight2 !== "" ? Number(raw.rawMaterials.rubberWeight2) : "",
-      rubberLot2: String(raw.rawMaterials?.rubberLot2 || raw.rubberLot2 || "").trim(),
-      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || "").trim(),
-      coatingWeight: raw.rawMaterials?.coatingWeight !== undefined && raw.rawMaterials?.coatingWeight !== "" ? Number(raw.rawMaterials.coatingWeight) : "",
-      coatingLot: String(raw.rawMaterials?.coatingLot || raw.coatingLot || "").trim(),
-      insertType: String(raw.rawMaterials?.insertType || raw.insertType || "").trim(),
-      insertWeight: raw.rawMaterials?.insertWeight !== undefined && raw.rawMaterials?.insertWeight !== "" ? Number(raw.rawMaterials.insertWeight) : "",
-      insertLot: String(raw.rawMaterials?.insertLot || raw.insertLot || "").trim(),
-      compoundType: String(raw.rawMaterials?.compoundType || raw.compoundType || "").trim(),
-      compoundWeight: raw.rawMaterials?.compoundWeight !== undefined && raw.rawMaterials?.compoundWeight !== "" ? Number(raw.rawMaterials.compoundWeight) : "",
-      compoundLot: String(raw.rawMaterials?.compoundLot || raw.compoundLot || "").trim(),
-      compoundType2: String(raw.rawMaterials?.compoundType2 || raw.compoundType2 || "").trim(),
-      compoundWeight2: raw.rawMaterials?.compoundWeight2 !== undefined && raw.rawMaterials?.compoundWeight2 !== "" ? Number(raw.rawMaterials.compoundWeight2) : "",
-      compoundLot2: String(raw.rawMaterials?.compoundLot2 || raw.compoundLot2 || "").trim(),
-      compoundType3: String(raw.rawMaterials?.compoundType3 || raw.compoundType3 || "").trim(),
-      compoundWeight3: raw.rawMaterials?.compoundWeight3 !== undefined && raw.rawMaterials?.compoundWeight3 !== "" ? Number(raw.rawMaterials.compoundWeight3) : "",
-      compoundLot3: String(raw.rawMaterials?.compoundLot3 || raw.compoundLot3 || "").trim()
-    },
+    rawMaterials: topRawMaterials,
     defectBreakdown: {
       cutoffKg: Math.max(0, Number(raw.defectBreakdown?.cutoffKg || raw.cutoffKg) || 0),
       startLossKg: Math.max(0, Number(raw.defectBreakdown?.startLossKg || raw.startLossKg) || 0),
@@ -1229,7 +1250,7 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
   }
   if (report.rawMaterials?.compoundType && report.rawMaterials.compoundType !== "미사용") {
     rawMaterialItems.push({
-      cat: (report.rawMaterials?.compoundType2 || report.rawMaterials?.compoundType3) ? '컴파운드 #1' : '컴파운드',
+      cat: (report.rawMaterials?.compoundType2 || report.rawMaterials?.compoundType3 || report.rawMaterials?.compoundType4) ? '컴파운드 #1' : '컴파운드',
       type: report.rawMaterials.compoundType,
       weight: report.rawMaterials?.compoundWeight !== undefined && report.rawMaterials?.compoundWeight !== '' ? `${report.rawMaterials.compoundWeight} kg` : '-',
       lot: report.rawMaterials?.compoundLot || '-',
@@ -1251,6 +1272,15 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
       type: report.rawMaterials.compoundType3,
       weight: report.rawMaterials?.compoundWeight3 !== undefined && report.rawMaterials?.compoundWeight3 !== '' ? `${report.rawMaterials.compoundWeight3} kg` : '-',
       lot: report.rawMaterials?.compoundLot3 || '-',
+      status: '정상 투입 (○)'
+    });
+  }
+  if (report.rawMaterials?.compoundType4 && report.rawMaterials.compoundType4 !== "미사용") {
+    rawMaterialItems.push({
+      cat: '컴파운드 #4',
+      type: report.rawMaterials.compoundType4,
+      weight: report.rawMaterials?.compoundWeight4 !== undefined && report.rawMaterials?.compoundWeight4 !== '' ? `${report.rawMaterials.compoundWeight4} kg` : '-',
+      lot: report.rawMaterials?.compoundLot4 || '-',
       status: '정상 투입 (○)'
     });
   }
