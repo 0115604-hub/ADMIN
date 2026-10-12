@@ -25,7 +25,6 @@ import {
   Wrench,
   TrendingDown,
   Layers,
-  FileSpreadsheet,
   Plus,
   Check,
   ZoomIn,
@@ -1098,79 +1097,6 @@ export const WorkerPinModal = ({
                   </div>
                 )}
 
-                {/* 📋 외주가공 작업일보 작성 • 아이템 선택 (9BQC G/RUN / LQ2a Hood Side) */}
-                <div className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 border-2 border-indigo-400 dark:border-indigo-500 shadow-xl text-white space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
-                        <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-100" />
-                      </div>
-                      <div>
-                        <span className="font-black text-xs sm:text-base block text-white leading-tight">
-                          외주가공 작업일보 작성 • 아이템 선택
-                        </span>
-                        <span className="text-[11px] text-indigo-200">
-                          안전·품질 수칙을 확인하신 후, 작성하실 작업일보 아이템을 선택하시면 즉시 일보 작성 화면이 열립니다.
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-400/40 shrink-0">
-                      (주)한울 전용
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                    {/* 9BQC G/RUN Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenHanulReport("9BQC")}
-                      className="p-3 sm:p-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border-2 border-indigo-300/40 hover:border-indigo-300 text-left transition-all cursor-pointer group active:scale-98 flex items-center justify-between shadow-sm"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-base sm:text-lg">🚗</span>
-                          <span className="font-black text-xs sm:text-sm text-white group-hover:text-indigo-200 transition-colors">
-                            9BQC G/RUN 작업일보
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-indigo-500/40 text-indigo-100 font-bold">
-                            8개 공정
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-indigo-200 line-clamp-1">
-                          정재단 • 단컷팅 • 조인트 • 본드(로봇) • 사상 • 완제품 • 단면 • 최종검사
-                        </p>
-                      </div>
-                      <div className="p-2 rounded-xl bg-indigo-500/30 group-hover:bg-indigo-500 text-white transition-all shrink-0">
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-
-                    {/* LQ2a Hood Side Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenHanulReport("LQ2A")}
-                      className="p-3 sm:p-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border-2 border-purple-300/40 hover:border-purple-300 text-left transition-all cursor-pointer group active:scale-98 flex items-center justify-between shadow-sm"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-base sm:text-lg">⚡</span>
-                          <span className="font-black text-xs sm:text-sm text-white group-hover:text-purple-200 transition-colors">
-                            LQ2a Hood Side 작업일보
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/40 text-purple-100 font-bold">
-                            4개 공정
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-purple-200 line-clamp-1">
-                          정재단 (X1~X4, Y1~Y3) • 조인트 프레스 • 후가공 클립 • 최종검사
-                        </p>
-                      </div>
-                      <div className="p-2 rounded-xl bg-purple-500/30 group-hover:bg-purple-500 text-white transition-all shrink-0">
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-                  </div>
-                </div>
 
                 {/* 2-Column Responsive Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 items-stretch">
