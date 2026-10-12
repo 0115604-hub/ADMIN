@@ -19,6 +19,7 @@ import {
   sendMeetingNoticeReplyTelegram
 } from "./telegramService";
 import { getKSTTimeInfo, getKSTDateString } from "../utils/dateUtils";
+import { sanitizeForFirestore } from "../utils/firestoreUtils";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
@@ -261,6 +262,10 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
+  const existingIdx = current.findIndex(
+    (i) => i.id === id || (i._docId && i._docId === id) || (i.customId && i.customId === id)
+  );
+
   const fullItem = {
     ...issueData,
     id,
@@ -297,9 +302,6 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     }
   });
 
-  const existingIdx = current.findIndex(
-    (i) => i.id === id || (i._docId && i._docId === id) || (i.customId && i.customId === id)
-  );
   let updated;
   if (existingIdx >= 0) {
     updated = [...current];
@@ -312,7 +314,8 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
   saveLocalUrgentIssues(sorted);
 
   try {
-    await setDoc(doc(db, COLLECTION_NAME, id), fullItem);
+    const payload = sanitizeForFirestore(fullItem);
+    await setDoc(doc(db, COLLECTION_NAME, id), payload);
   } catch (e) {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
