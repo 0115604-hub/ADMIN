@@ -390,26 +390,37 @@ export const saveOvertimeReport = async (report) => {
   updatedReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
   saveLocalOvertimeReports(updatedReports);
 
-  // ⭐ Synchronize Matrix Ledger (smart_overtime_ledger) immediately
+  // ⭐ Synchronize Matrix Ledger (smart_overtime_ledger) safely without wiping other workers or companies
   if (cleanReport.workDate) {
     try {
       const parts = cleanReport.workDate.split("-");
-      if (parts.length >= 2) {
+      if (parts.length === 3) {
         const ym = `${parts[0]}-${parts[1]}`;
         const targetYear = parseInt(parts[0], 10);
         const targetMonth = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
         const currentLedger = getLocalSmartOvertimeData(ym);
-        const synchedMatrix = buildMatrixFromReports(
-          currentLedger.attendanceMatrix || currentLedger.masterWorkers,
-          updatedReports,
-          targetYear,
-          targetMonth
-        );
+        const matrix = [...(currentLedger.attendanceMatrix || currentLedger.masterWorkers || [])];
+
+        // Safely update only workers contained in this report for day d
+        (cleanReport.items || []).forEach((it) => {
+          const wName = (it.workerName || "").trim();
+          const wComp = cleanCompanyName(it.company || cleanReport.company);
+          const target = matrix.find(
+            (w) => (w.name || "").trim() === wName && cleanCompanyName(w.company) === wComp
+          );
+          if (target) {
+            if (!target.daily) target.daily = {};
+            target.daily[d] = it.attendanceCode;
+            target.daily[String(d)] = it.attendanceCode;
+          }
+        });
+
         const updatedLedger = {
           ...currentLedger,
           year: targetYear,
           month: targetMonth,
-          attendanceMatrix: synchedMatrix
+          attendanceMatrix: matrix
         };
         await saveSmartOvertimeData(updatedLedger, ym);
       }

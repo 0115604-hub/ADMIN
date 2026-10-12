@@ -2,6 +2,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   getDocs,
   onSnapshot
@@ -635,7 +636,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
       position: w.position || "작업원",
-      daily: {}
+      daily: { ...(w.daily || {}) }
     };
   });
 
@@ -1032,13 +1033,47 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
 
     if (db) {
       const ref = doc(db, "smart_overtime_ledger", docId);
+      let mergedMatrix = normalizedData.attendanceMatrix || [];
+
+      // Concurrency protection: merge with remote doc so one company never wipes out another company's attendance
+      try {
+        const cloudSnap = await getDoc(ref);
+        if (cloudSnap.exists()) {
+          const cloudData = cloudSnap.data();
+          if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
+            mergedMatrix = mergedMatrix.map((localW) => {
+              const cloudW = cloudData.attendanceMatrix.find(
+                (cw) => (cw.name || "").trim() === (localW.name || "").trim() && cleanCompanyName(cw.company) === cleanCompanyName(localW.company)
+              );
+              if (!cloudW) return localW;
+              const cloudDaily = cloudW.daily || {};
+              const localDaily = localW.daily || {};
+              const mergedDaily = { ...cloudDaily };
+              Object.keys(localDaily).forEach((d) => {
+                const val = localDaily[d];
+                if (val !== undefined && val !== null && val !== "" && val !== "미입력") {
+                  mergedDaily[d] = val;
+                }
+              });
+              return {
+                ...cloudW,
+                ...localW,
+                daily: mergedDaily
+              };
+            });
+          }
+        }
+      } catch (mergeErr) {
+        console.warn("Cloud merge fallback in saveSmartOvertimeData:", mergeErr);
+      }
+
       await setDoc(
         ref,
         sanitizeForFirestore({
           year: normalizedData.year || parseInt(ym.split("-")[0], 10) || 2026,
           month: normalizedData.month || parseInt(ym.split("-")[1], 10) || 10,
           masterWorkers: normalizedData.masterWorkers || [],
-          attendanceMatrix: normalizedData.attendanceMatrix || [],
+          attendanceMatrix: mergedMatrix,
           updatedAt: new Date().toISOString()
         }),
         { merge: true }

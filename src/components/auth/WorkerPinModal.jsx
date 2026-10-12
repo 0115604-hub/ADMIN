@@ -54,7 +54,8 @@ import {
   calculateDailySummary,
   COMPANIES,
   cleanCompanyName,
-  buildMatrixFromReports
+  buildMatrixFromReports,
+  getReportDateSortKey
 } from "../../services/overtimeSmartService";
 import {
   subscribeOvertimeReports,
@@ -759,8 +760,26 @@ export const WorkerPinModal = ({
 
   const unwrittenCompanies = useMemo(() => {
     const matrix = unifiedPinMatrix || [];
+    const todayStr = todayKst || getKSTDateString();
     return COMPANIES.filter((comp) => {
       const cleanCompName = cleanCompanyName(comp);
+      // 1. 등록된 일일 보고서 존재 여부 확인
+      const hasDirectReport = (overtimeReports || []).some((r) => {
+        if (!r) return false;
+        const rDateKey = getReportDateSortKey(r);
+        if (rDateKey !== todayStr) return false;
+        const rComp = cleanCompanyName(r.company || "");
+        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
+          return rComp === cleanCompName;
+        }
+        if (Array.isArray(r.companies) && r.companies.length > 0) {
+          return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
+        }
+        return false;
+      });
+      if (hasDirectReport) return false;
+
+      // 2. 매트릭스 입력 인원 확인
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
       if (compWorkers.length === 0) return false;
       const enteredCount = compWorkers.filter((w) => {
@@ -770,7 +789,7 @@ export const WorkerPinModal = ({
       }).length;
       return enteredCount === 0;
     });
-  }, [unifiedPinMatrix, todayDayNum]);
+  }, [unifiedPinMatrix, overtimeReports, todayDayNum, todayKst]);
 
   // 당일 근태
   const leaveStatus = useMemo(() => {
