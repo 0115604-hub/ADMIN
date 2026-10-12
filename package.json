@@ -11,7 +11,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist && npx firebase deploy --only hosting",
     "deploy:firebase": "npm run build && npx firebase deploy --only hosting",
-    "deploy:gh": "npm run build && gh-pages -d dist"
+    "deploy:gh": "npm run build && gh-pages -d dist",
+    "audit:attendance": "node scripts/audit_all_companies_attendance.mjs"
   },
   "dependencies": {
     "chart.js": "^4.4.8",
