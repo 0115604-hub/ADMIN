@@ -314,7 +314,7 @@ export const getOptionMeta = (code) => {
   if (strCode === "휴가" || strCode.includes("휴가")) return ATTENDANCE_OPTIONS[8];
   if (strCode === "연차" || strCode.includes("연차")) return ATTENDANCE_OPTIONS[9];
   if (strCode === "반차" || strCode.includes("반차")) return ATTENDANCE_OPTIONS[10];
-  if (strCode === "결근" || strCode.includes("결근")) return ATTENDANCE_OPTIONS[11];
+  if (strCode === "결근" || strCode.includes("결근") || strCode === "병결" || strCode.includes("병결") || strCode === "사결" || strCode === "공결") return ATTENDANCE_OPTIONS[11];
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
 };
 
@@ -337,6 +337,12 @@ export const calculateWorkerDailyHours = (code) => {
     strCode.includes("미출근") ||
     strCode === "결근" ||
     strCode.includes("결근") ||
+    strCode === "병결" ||
+    strCode.includes("병결") ||
+    strCode === "사결" ||
+    strCode.includes("사결") ||
+    strCode === "공결" ||
+    strCode.includes("공결") ||
     strCode === "휴가" ||
     strCode.includes("휴가") ||
     strCode === "연차" ||
