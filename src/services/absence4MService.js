@@ -352,39 +352,9 @@ export const subscribe4MAbsenceLogs = (callback) => {
   }
 };
 
-// ⭐ 4M 결근 및 작업자 변경점 전체 데이터 영구삭제 함수
+// ⭐ 데이터 안전 보호: 4M 결근 및 작업자 변경점 전체 데이터 영구삭제 함수 영구 비활성화 (운영 데이터 무단삭제 원천 차단)
 export const purgeAll4MAbsenceLogs = async () => {
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      localStorage.removeItem("oryuk_4m_absence_logs_v1");
-    } catch (e) {
-      console.warn("LocalStorage clear 4M error:", e);
-    }
-  }
-
-  if (db) {
-    try {
-      const snap = await getDocs(collection(db, "absence_4m_logs"));
-      for (const d of snap.docs) {
-        await deleteDoc(doc(db, "absence_4m_logs", d.id));
-      }
-    } catch (e) {
-      console.warn("Firestore absence_4m_logs clear error:", e);
-    }
-  }
-
-  // ⭐ 변동점 MAN 대장도 동기화하여 모든 결근/대체 MAN 레코드 영구 삭제
-  try {
-    await purgeManFourMChangePoints();
-  } catch (e) {
-    console.warn("purgeManFourMChangePoints error:", e);
-  }
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("oryuk_4m_absence_updated", { detail: { purged: true } }));
-  }
-
-  return true;
+  console.warn("🛡️ [시스템 보호] 4M 결근 관리 데이터 일괄 초기화 프로세스는 영구 비활성화되었습니다.");
+  return { success: false, message: "Disabled permanently for data safety" };
 };
 

@@ -623,60 +623,9 @@ export const getLatestOvertimeSummary = (allReports = null) => {
   };
 };
 
-// ⭐ 근태 및 특근 보고서 + 스마트 대장 데이터 영구 초기화 함수 (All Data & Dummy Purge)
+// ⭐ 데이터 안전 보호: 근태/특근 일괄 영구 초기화 함수 영구 비활성화 (운영 데이터 무단삭제 원천 차단)
 export const purgeAllOvertimeReportsAndLedger = async () => {
-  // 1. LocalStorage 삭제
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      localStorage.removeItem("official_overtime_reports_store_v7_company_reports");
-      localStorage.removeItem("oryuk_smart_overtime_data_v2_sept");
-      localStorage.removeItem("oryuk_smart_overtime_data_2026_10");
-      localStorage.removeItem("oryuk_smart_overtime_data_2026_09");
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith("oryuk_smart_overtime_data_")) {
-          localStorage.removeItem(k);
-        }
-      }
-    } catch (e) {
-      console.warn("LocalStorage clear error in purge:", e);
-    }
-  }
-
-  // 2. Firestore overtime_reports 전체 삭제
-  if (db) {
-    try {
-      const repSnap = await getDocs(collection(db, COLLECTION_NAME));
-      for (const d of repSnap.docs) {
-        await deleteDoc(doc(db, COLLECTION_NAME, d.id));
-      }
-    } catch (e) {
-      console.warn("Firestore overtime_reports clear error:", e);
-    }
-
-    // 3. Firestore smart_overtime_ledger 초기화 (143명 빈 템플릿으로 갱신)
-    try {
-      const ledgerSnap = await getDocs(collection(db, "smart_overtime_ledger"));
-      for (const d of ledgerSnap.docs) {
-        await deleteDoc(doc(db, "smart_overtime_ledger", d.id));
-      }
-      const emptyLedger10 = getLocalSmartOvertimeData("2026-10");
-      await saveSmartOvertimeData(emptyLedger10, "2026-10");
-      const emptyLedger09 = getLocalSmartOvertimeData("2026-09");
-      await saveSmartOvertimeData(emptyLedger09, "2026-09");
-    } catch (e) {
-      console.warn("Firestore smart_overtime_ledger reset error:", e);
-    }
-  }
-
-  // 4. Custom Event 브로드캐스트
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", {
-      detail: getLocalSmartOvertimeData("2026-10")
-    }));
-  }
-
-  return true;
+  console.warn("🛡️ [시스템 보호] 근태 데이터 일괄 초기화 프로세스는 영구 비활성화되었습니다.");
+  return { success: false, message: "Disabled permanently for data safety" };
 };
 

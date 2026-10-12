@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import PersonnelCardModal from "./PersonnelCardModal.jsx";
 import Absence4MModal from "./Absence4MModal.jsx";
-import { purgeAll4MAbsenceLogs } from "../services/absence4MService.js";
+import UnifiedAttendanceAuditModal from "./UnifiedAttendanceAuditModal.jsx";
 import {
   getWorkerPersonnelCard,
   saveWorkerPersonnelCard,
@@ -104,8 +104,7 @@ import {
   calculateReportMetrics,
   PLANT_COMPANIES,
   getPlantForCompany,
-  isWeekendByDate,
-  purgeAllOvertimeReportsAndLedger
+  isWeekendByDate
 } from "../services/overtimeService";
 import {
   syncPlantOvertimeToApprovalBox,
@@ -917,31 +916,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
   const [selectedWeekendDay, setSelectedWeekendDay] = useState(3);
-  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
-  const [isPurging, setIsPurging] = useState(false);
-
-  // ⭐ 근태 데이터 및 더미데이터 전체 영구삭제 핸들러
-  const handleConfirmPurgeAllData = async () => {
-    setIsPurging(true);
-    try {
-      await purgeAllOvertimeReportsAndLedger();
-      await purgeAll4MAbsenceLogs();
-      const fresh10 = getLocalSmartOvertimeData("2026-10");
-      const fresh09 = getLocalSmartOvertimeData("2026-09");
-      setSmartData(fresh10);
-      setPrevMonthData(fresh09);
-      setLegacyReports([]);
-      setSelectedLegacyReport(null);
-      setHasUnsavedChanges(false);
-      setIsPurgeModalOpen(false);
-      triggerToast("✨ 기존 근태 등록, 4M 결근 이력 및 더미데이터가 영구 삭제되고 143명 빈 명단으로 초기화되었습니다.");
-    } catch (err) {
-      console.error("Purge error:", err);
-      triggerToast("⚠️ 초기화 중 오류가 발생했습니다.");
-    } finally {
-      setIsPurging(false);
-    }
-  };
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   // Show Toast notification
   const triggerToast = (msg) => {
@@ -1276,6 +1251,31 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
       ? [...effectiveMatrix]
       : (smartData?.attendanceMatrix || []);
+
+    // ⭐ 기존 잔업/야간 근무가 이미 등록된 작업자가 있는지 확인하여 실수로 인한 덮어쓰기 방지
+    const workersWithExistingOvertime = filteredAttendanceWorkers.filter((worker) => {
+      let idx = -1;
+      if (typeof worker.originalMatrixIndex === "number" && currentMatrix[worker.originalMatrixIndex]) {
+        idx = worker.originalMatrixIndex;
+      } else {
+        const wClean = cleanWorkerNameOnly(worker.name);
+        const wComp = cleanCompanyName(worker.company);
+        idx = currentMatrix.findIndex(
+          (mw) => ((mw.name || "").trim() === (worker.name || "").trim() || (wClean && cleanWorkerNameOnly(mw.name) === wClean)) && cleanCompanyName(mw.company) === wComp
+        );
+      }
+      if (idx < 0 || !currentMatrix[idx]) return false;
+      const val = String(currentMatrix[idx].daily?.[selectedDay] || "").trim();
+      return val && val !== "🟢" && val !== "정시" && val !== "특근" && !["결근", "병결", "사결", "공결", "연차", "휴가", "병가", "휴무"].includes(val);
+    });
+
+    if (workersWithExistingOvertime.length > 0) {
+      const confirmMsg = `⚠️ 이미 잔업/야간근무가 등록된 작업자가 ${workersWithExistingOvertime.length}명 포함되어 있습니다.\n\n정말로 이 작업자들을 포함하여 조회된 전체 인원을 '${targetCode}' 상태로 일괄 변경하시겠습니까?\n\n(※ 미선택 인원만 채우시려면 '미선택 인원' 버튼을 이용하세요)`;
+      if (!window.confirm(confirmMsg)) {
+        return;
+      }
+    }
+
     const updatedMatrix = currentMatrix.map((w) => ({
       ...w,
       daily: { ...(w.daily || {}) }
@@ -1677,7 +1677,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           plant: targetRep.plant,
           company: targetRep.company,
           workDate: targetRep.workDate,
-          matrix: synchedMatrix,
+          matrix: updatedMatrix,
           reports: nextReports,
           isDeleteAction: true
         });
@@ -2407,15 +2407,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               </span>
             </button>
 
-            {/* 4. 데이터 전체 초기화 (더미데이터 영구삭제) */}
+            {/* 4. 전사 5개사 일괄 정합성 단일 검증 버튼 */}
             <button
               type="button"
-              onClick={() => setIsPurgeModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 transition-all cursor-pointer shadow-sm active:scale-95 ml-1"
-              title="근태현황관리의 모든 기존 데이터 및 더미데이터를 영구 삭제하고 143명 빈 명단으로 완전 초기화합니다."
+              onClick={() => setIsAuditModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/80 transition-all cursor-pointer shadow-md hover:shadow-emerald-950/50 active:scale-95 ml-1"
+              title="오륙, 조영, 한울, 유성, 부림텍 5개 협력사(143명)의 총원, 출근, 공수, 노무비 및 결재 보고서 일치 여부를 단일 기준으로 일괄 동시 검증합니다."
             >
-              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-              <span>데이터 초기화</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>전사 5개사 일괄검증</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-emerald-800/80 text-[10px] text-white font-mono font-bold">143명</span>
             </button>
           </div>
         </div>
@@ -5741,66 +5742,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🗑️ MODAL: 근태 데이터 및 더미데이터 영구삭제 확인 모달 */}
+      {/* 🔍 MODAL: 전사 5개사 일괄 정합성 단일 검증 모달 */}
       {/* ========================================================================= */}
-      {isPurgeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border-2 border-rose-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-white">
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 shrink-0">
-                <AlertTriangle className="w-6 h-6 animate-pulse" />
-              </span>
-              <div>
-                <h3 className="text-lg font-black text-white">근태 데이터 및 더미 영구삭제</h3>
-                <p className="text-xs text-rose-300 font-bold">전체 근태보고서 및 일자별 근태 기록 초기화</p>
-              </div>
-            </div>
-
-            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300">
-              <p className="font-bold text-slate-200">
-                ⚠️ 다음 데이터가 클라우드(Firestore) 및 로컬 저장소에서 <strong className="text-rose-400">영구히 삭제</strong>됩니다:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-slate-400 pl-1">
-                <li>등록된 모든 근태/특근 보고서 (기존 등록 내역 전체)</li>
-                <li>1일~31일 전 일자의 작업자별 근태 선택 내역</li>
-                <li>기존 더미/샘플 매트릭스 기록</li>
-              </ul>
-              <p className="pt-2 text-[11px] text-emerald-400 font-bold">
-                ※ 5개 협력사 143명 마스터 인원 명단은 100% 안전하게 보존되며, 근태 매트릭스만 깨끗한 빈 상태로 초기화됩니다.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                disabled={isPurging}
-                onClick={() => setIsPurgeModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                disabled={isPurging}
-                onClick={handleConfirmPurgeAllData}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-rose-950/50"
-              >
-                {isPurging ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>영구 삭제 중...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>영구 삭제 및 초기화</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UnifiedAttendanceAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        selectedDay={selectedDay}
+        currentYear={currentYear}
+        currentMonthNum={currentMonthNum}
+        attendanceMatrix={smartData?.attendanceMatrix || []}
+        legacyReports={legacyReports || []}
+        onSelectCompany={(comp) => {
+          setSelectedCompanyFilter(comp);
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* 🗑️ MODAL: 마스터 근로자 인원 영구 삭제 확인 모달 */}

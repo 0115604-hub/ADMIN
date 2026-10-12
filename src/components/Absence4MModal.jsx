@@ -39,8 +39,7 @@ import {
   getLocal4MAbsenceLogsMap,
   save4MAbsenceLog,
   delete4MAbsenceLog,
-  subscribe4MAbsenceLogs,
-  purgeAll4MAbsenceLogs
+  subscribe4MAbsenceLogs
 } from "../services/absence4MService.js";
 import { useModalHistory } from "../utils/modalHistory";
 
@@ -61,18 +60,6 @@ export default function Absence4MModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
-
-  // 4M 결근 및 대체투입 대장 전체 영구삭제 핸들러
-  const handlePurgeAllLogs = async () => {
-    if (!window.confirm("⚠️ 4M 결근 및 대체투입 기록의 모든 기존 이력 및 더미데이터를 영구 삭제하시겠습니까?")) return;
-    try {
-      await purgeAll4MAbsenceLogs();
-      setLogsMap({});
-      alert("✨ 4M 결근 관리 데이터가 영구 삭제 및 초기화되었습니다.");
-    } catch (err) {
-      alert("4M 초기화 중 오류가 발생했습니다: " + err.message);
-    }
-  };
 
   // selectedDay prop 변경 시 modalDay 동기화
   useEffect(() => {
@@ -432,16 +419,7 @@ export default function Absence4MModal({
             )}
           </div>
 
-          {/* 3. 4M 이력 초기화 버튼 */}
-          <button
-            type="button"
-            onClick={handlePurgeAllLogs}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 hover:text-white text-xs font-bold border border-rose-800 transition-all cursor-pointer shadow-sm"
-            title="4M 결근 관리 기록을 영구 삭제하고 초기화합니다."
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>4M 이력 초기화</span>
-          </button>
+
         </div>
 
         {/* ========================================================================= */}
