@@ -1295,14 +1295,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     });
   };
 
-  // 🌟 [전재율 책임 전용] 설비보전 항목 동적 추가/수정/삭제 상태
+  // 🌟 [전재율 책임 전용] 설비보전 항목 동적 추가/수정/삭제 상태 (항목별 개선전/개선후 사진 첨부 지원)
   const [maintenanceItems, setMaintenanceItems] = useState([
     {
       id: 1,
       category: "압출기",
       equipmentName: "PCM 1호",
       customEquipmentName: "",
-      content: ""
+      content: "",
+      imagesBefore: [],
+      imagesAfter: []
     }
   ]);
 
@@ -1314,7 +1316,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         category: "압출기",
         equipmentName: "PCM 1호",
         customEquipmentName: "",
-        content: ""
+        content: "",
+        imagesBefore: [],
+        imagesAfter: []
       }
     ]);
   };
@@ -1344,6 +1348,55 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       })
     );
   };
+
+  // 📷 [전재율 책임 전용] 항목별 개선전 / 개선후 사진 첨부 (최대 3장씩)
+  const handleMaintenanceItemImageFiles = async (itemId, files, type = "before") => {
+    if (!files || files.length === 0) return;
+    const targetItem = maintenanceItems.find((it) => it.id === itemId);
+    if (!targetItem) return;
+    const key = type === "before" ? "imagesBefore" : "imagesAfter";
+    const currentImgs = targetItem[key] || [];
+    if (currentImgs.length >= 3) {
+      alert(`${type === "before" ? "개선 전" : "개선 후"} 사진은 항목당 최대 3장까지 등록 가능합니다.`);
+      return;
+    }
+    const remainingSlots = 3 - currentImgs.length;
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, remainingSlots);
+    if (validFiles.length === 0) return;
+
+    setIsProcessingImages(true);
+    try {
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setMaintenanceItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== itemId) return item;
+          return {
+            ...item,
+            [key]: [...(item[key] || []), ...processed].slice(0, 3)
+          };
+        })
+      );
+    } catch (err) {
+      console.error("사진 처리 오류:", err);
+      alert("사진을 불러오거나 압축하는 중 오류가 발생했습니다.");
+    } finally {
+      setIsProcessingImages(false);
+    }
+  };
+
+  const handleRemoveMaintenanceItemImage = (itemId, imgIdx, type = "before") => {
+    const key = type === "before" ? "imagesBefore" : "imagesAfter";
+    setMaintenanceItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        return {
+          ...item,
+          [key]: (item[key] || []).filter((_, i) => i !== imgIdx)
+        };
+      })
+    );
+  };
+
 
   useEffect(() => {
     if (currentProfile) {
@@ -2718,6 +2771,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           })
           .join(", ");
 
+        const allImagesBefore = filledItems.flatMap((it) => it.imagesBefore || []);
+        const allImagesAfter = filledItems.flatMap((it) => it.imagesAfter || []);
+        const allImages = [...allImagesBefore, ...allImagesAfter];
+
         const newLog = {
           id: String(Date.now()),
           date: formData.date || getKSTDateString(),
@@ -2733,10 +2790,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             equipmentName: (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
               ? (it.customEquipmentName?.trim() || "직접입력")
               : it.equipmentName,
-            content: it.content.trim()
+            content: it.content.trim(),
+            imagesBefore: Array.isArray(it.imagesBefore) ? it.imagesBefore : [],
+            imagesAfter: Array.isArray(it.imagesAfter) ? it.imagesAfter : []
           })),
           issues: "-",
-          images: formData.images || [],
+          imagesBefore: allImagesBefore,
+          imagesAfter: allImagesAfter,
+          images: allImages.length > 0 ? allImages : (formData.images || []),
           status: "완료",
           createdAt: new Date().toLocaleString("ko-KR", {
             month: "2-digit",
@@ -2757,7 +2818,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             category: "압출기",
             equipmentName: "PCM 1호",
             customEquipmentName: "",
-            content: ""
+            content: "",
+            imagesBefore: [],
+            imagesAfter: []
           }
         ]);
 
@@ -2894,7 +2957,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             category: category,
             equipmentName: isStandard ? it.equipmentName : "내용직접입력",
             customEquipmentName: isStandard ? "" : (it.customEquipmentName || it.equipmentName || ""),
-            content: it.content || it.workContent || ""
+            content: it.content || it.workContent || "",
+            imagesBefore: Array.isArray(it.imagesBefore) ? [...it.imagesBefore] : [],
+            imagesAfter: Array.isArray(it.imagesAfter) ? [...it.imagesAfter] : []
           };
         })
       );
@@ -2905,7 +2970,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           category: "압출기",
           equipmentName: "PCM 1호",
           customEquipmentName: "",
-          content: log.workContent || ""
+          content: log.workContent || "",
+          imagesBefore: Array.isArray(log.imagesBefore) ? [...log.imagesBefore] : [],
+          imagesAfter: Array.isArray(log.imagesAfter) ? [...log.imagesAfter] : []
         }
       ]);
     } else {
@@ -2954,7 +3021,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         category: "압출기",
         equipmentName: "PCM 1호",
         customEquipmentName: "",
-        content: ""
+        content: "",
+        imagesBefore: [],
+        imagesAfter: []
       }
     ]);
   };
@@ -2981,6 +3050,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           };
         }
         return { ...item, [field]: value };
+      })
+    );
+  };
+
+  // 📷 [전재율 책임 전용] 수정 모달 항목별 개선전 / 개선후 사진 첨부 (최대 3장씩)
+  const handleEditMaintenanceItemImageFiles = async (itemId, files, type = "before") => {
+    if (!files || files.length === 0) return;
+    const targetItem = editMaintenanceItems.find((it) => it.id === itemId);
+    if (!targetItem) return;
+    const key = type === "before" ? "imagesBefore" : "imagesAfter";
+    const currentImgs = targetItem[key] || [];
+    if (currentImgs.length >= 3) {
+      alert(`${type === "before" ? "개선 전" : "개선 후"} 사진은 항목당 최대 3장까지 등록 가능합니다.`);
+      return;
+    }
+    const remainingSlots = 3 - currentImgs.length;
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, remainingSlots);
+    if (validFiles.length === 0) return;
+
+    setIsEditProcessingImages(true);
+    try {
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setEditMaintenanceItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== itemId) return item;
+          return {
+            ...item,
+            [key]: [...(item[key] || []), ...processed].slice(0, 3)
+          };
+        })
+      );
+    } catch (err) {
+      console.error("사진 처리 오류:", err);
+      alert("사진을 불러오거나 압축하는 중 오류가 발생했습니다.");
+    } finally {
+      setIsEditProcessingImages(false);
+    }
+  };
+
+  const handleRemoveEditMaintenanceItemImage = (itemId, imgIdx, type = "before") => {
+    const key = type === "before" ? "imagesBefore" : "imagesAfter";
+    setEditMaintenanceItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        return {
+          ...item,
+          [key]: (item[key] || []).filter((_, i) => i !== imgIdx)
+        };
       })
     );
   };
@@ -3019,7 +3136,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             category: it.category || "기타",
             equipmentName: finalEqName,
             customEquipmentName: isCustom ? (it.customEquipmentName?.trim() || "") : "",
-            content: it.content.trim()
+            content: it.content.trim(),
+            imagesBefore: Array.isArray(it.imagesBefore) ? it.imagesBefore : [],
+            imagesAfter: Array.isArray(it.imagesAfter) ? it.imagesAfter : []
           };
         });
 
@@ -3045,6 +3164,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
 
     try {
+      const allEditBefore = formattedItems.flatMap((it) => it.imagesBefore || []);
+      const allEditAfter = formattedItems.flatMap((it) => it.imagesAfter || []);
+      const allEditImages = [...allEditBefore, ...allEditAfter];
+
       const updatedFields = {
         date: editFormData.date,
         plant: editFormData.plant,
@@ -3053,9 +3176,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         workContent: formattedWorkContent,
         defectType: editFormData.defectType || "",
         issues: finalEditIssues === "" ? "-" : finalEditIssues,
-        images: editFormData.images || [],
-        imagesBefore: editFormData.imagesBefore || [],
-        imagesAfter: editFormData.imagesAfter || [],
+        images: allEditImages.length > 0 ? allEditImages : (editFormData.images || []),
+        imagesBefore: allEditBefore.length > 0 ? allEditBefore : (editFormData.imagesBefore || []),
+        imagesAfter: allEditAfter.length > 0 ? allEditAfter : (editFormData.imagesAfter || []),
         maintenanceItems: formattedItems.length > 0 ? formattedItems : (editingLog.maintenanceItems || []),
         approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기")
       };
@@ -5251,7 +5374,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
             </div>
 
-            {/* 1. 작업 내용 전문 (반드시 확인해야 하는 내용) */}
+            {/* 1. 작업 내용 전문 (설비보전 일지인 경우 항목별 & 개선 전/후 사진 상세 표기) */}
             <div className="space-y-1.5">
               <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-blue-600" />
@@ -5261,9 +5384,91 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     : "1. 작업 내용 전문"}
                 </span>
               </span>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
-                {selectedLogDetail.workContent || "작업 내용이 없습니다."}
-              </div>
+
+              {Array.isArray(selectedLogDetail.maintenanceItems) && selectedLogDetail.maintenanceItems.length > 0 ? (
+                <div className="space-y-2.5">
+                  {selectedLogDetail.maintenanceItems.map((item, idx) => {
+                    const hasItemPhotos = (item.imagesBefore && item.imagesBefore.length > 0) || (item.imagesAfter && item.imagesAfter.length > 0);
+                    return (
+                      <div key={idx} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white font-black text-[10.5px]">
+                              항목 #{idx + 1}
+                            </span>
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                              {item.category} &gt; {item.equipmentName}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs leading-relaxed text-slate-800 dark:text-slate-200 font-medium whitespace-pre-wrap pl-0.5">
+                          {item.content || item.workContent}
+                        </p>
+
+                        {/* 항목별 개선 전 / 개선 후 사진 */}
+                        {hasItemPhotos && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                            {/* 개선 전 (Before) */}
+                            {item.imagesBefore && item.imagesBefore.length > 0 && (
+                              <div className="p-2 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                                    🔴 개선 전 (Before)
+                                  </span>
+                                  <span className="text-[9px] font-mono text-rose-500 font-bold">
+                                    {item.imagesBefore.length}장
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1">
+                                  {item.imagesBefore.map((img, i) => (
+                                    <div
+                                      key={img.id || i}
+                                      onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `항목${idx + 1}_개선전_${i + 1}` })}
+                                      className="aspect-square rounded-lg overflow-hidden border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-900 cursor-pointer hover:scale-105 transition-transform"
+                                    >
+                                      <img src={img.dataUrl} alt="Before" className="w-full h-full object-cover" />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 개선 후 (After) */}
+                            {item.imagesAfter && item.imagesAfter.length > 0 && (
+                              <div className="p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                                    🟢 개선 후 (After)
+                                  </span>
+                                  <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                                    {item.imagesAfter.length}장
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1">
+                                  {item.imagesAfter.map((img, i) => (
+                                    <div
+                                      key={img.id || i}
+                                      onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `항목${idx + 1}_개선후_${i + 1}` })}
+                                      className="aspect-square rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 cursor-pointer hover:scale-105 transition-transform"
+                                    >
+                                      <img src={img.dataUrl} alt="After" className="w-full h-full object-cover" />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
+                  {selectedLogDetail.workContent || "작업 내용이 없습니다."}
+                </div>
+              )}
             </div>
 
             {/* 2. 부적합사항 및 개선조치 (설비보전 일지에는 비노출) */}
@@ -5348,8 +5553,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               );
             })()}
 
-            {/* 📷 현장 작업/품질불량 사진 증빙 (첨부된 경우) */}
-            {((Array.isArray(selectedLogDetail.imagesBefore) && selectedLogDetail.imagesBefore.length > 0) ||
+            {/* 📷 현장 작업/품질불량 사진 증빙 (설비보전 항목 사진이 이미 표시된 경우 중복 방지) */}
+            {(!selectedLogDetail.maintenanceItems?.some((it) => (it.imagesBefore?.length || 0) > 0 || (it.imagesAfter?.length || 0) > 0)) &&
+              ((Array.isArray(selectedLogDetail.imagesBefore) && selectedLogDetail.imagesBefore.length > 0) ||
               (Array.isArray(selectedLogDetail.imagesAfter) && selectedLogDetail.imagesAfter.length > 0) ||
               (Array.isArray(selectedLogDetail.images) && selectedLogDetail.images.length > 0)) && (
               <div className="space-y-2.5 p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-900/60">
@@ -5870,6 +6076,189 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
+
+                          {/* 📷 항목별 개선 전 / 개선 후 사진 첨부 */}
+                          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <Camera className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>설비보전 사진 증빙 (항목별 개선전 / 개선후)</span>
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-medium">각 최대 3장</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* 🔴 개선 전 (Before) */}
+                              <div className="p-2 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/50 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-black text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                    🔴 개선 전 (Before)
+                                  </span>
+                                  <span className="text-[8.5px] font-bold text-rose-500 font-mono">
+                                    {(item.imagesBefore?.length || 0)}/3장
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1">
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`edit-camera-before-${item.id}`}
+                                      accept="image/*"
+                                      capture="environment"
+                                      disabled={isEditProcessingImages || (item.imagesBefore?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleEditMaintenanceItemImageFiles(item.id, e.target.files, "before");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`edit-camera-before-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesBefore?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[9.5px]" : "border-rose-300 bg-white hover:bg-rose-100 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[9.5px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <Camera className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                                      <span className="truncate">촬영</span>
+                                    </label>
+                                  </div>
+
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`edit-album-before-${item.id}`}
+                                      accept="image/*"
+                                      multiple
+                                      disabled={isEditProcessingImages || (item.imagesBefore?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleEditMaintenanceItemImageFiles(item.id, e.target.files, "before");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`edit-album-before-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesBefore?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[9.5px]" : "border-rose-300 hover:border-rose-400 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-[9.5px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <UploadCloud className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span className="truncate">앨범/파일</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {item.imagesBefore && item.imagesBefore.length > 0 && (
+                                  <div className="grid grid-cols-3 gap-1 pt-0.5">
+                                    {item.imagesBefore.map((img, imgIdx) => (
+                                      <div key={img.id || imgIdx} className="relative group rounded-lg overflow-hidden border border-rose-300 dark:border-rose-800 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs">
+                                        <img
+                                          src={img.dataUrl}
+                                          alt="Before"
+                                          className="w-full h-full object-cover cursor-pointer"
+                                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `개선전_${imgIdx + 1}` })}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveEditMaintenanceItemImage(item.id, imgIdx, "before")}
+                                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-[9px] font-black cursor-pointer shadow-xs"
+                                          title="삭제"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 🟢 개선 후 (After) */}
+                              <div className="p-2 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                    🟢 개선 후 (After)
+                                  </span>
+                                  <span className="text-[8.5px] font-bold text-emerald-500 font-mono">
+                                    {(item.imagesAfter?.length || 0)}/3장
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1">
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`edit-camera-after-${item.id}`}
+                                      accept="image/*"
+                                      capture="environment"
+                                      disabled={isEditProcessingImages || (item.imagesAfter?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleEditMaintenanceItemImageFiles(item.id, e.target.files, "after");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`edit-camera-after-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesAfter?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[9.5px]" : "border-emerald-300 bg-white hover:bg-emerald-100 dark:bg-slate-900 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <Camera className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span className="truncate">촬영</span>
+                                    </label>
+                                  </div>
+
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`edit-album-after-${item.id}`}
+                                      accept="image/*"
+                                      multiple
+                                      disabled={isEditProcessingImages || (item.imagesAfter?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleEditMaintenanceItemImageFiles(item.id, e.target.files, "after");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`edit-album-after-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesAfter?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[9.5px]" : "border-emerald-300 hover:border-emerald-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9.5px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <UploadCloud className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span className="truncate">앨범/파일</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {item.imagesAfter && item.imagesAfter.length > 0 && (
+                                  <div className="grid grid-cols-3 gap-1 pt-0.5">
+                                    {item.imagesAfter.map((img, imgIdx) => (
+                                      <div key={img.id || imgIdx} className="relative group rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs">
+                                        <img
+                                          src={img.dataUrl}
+                                          alt="After"
+                                          className="w-full h-full object-cover cursor-pointer"
+                                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `개선후_${imgIdx + 1}` })}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveEditMaintenanceItemImage(item.id, imgIdx, "after")}
+                                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center text-[9px] font-black cursor-pointer shadow-xs"
+                                          title="삭제"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -5939,50 +6328,52 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               )}
 
-              {/* 사진 첨부 관리 */}
-              <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>현장 사진 증빙 ({(editFormData.images || []).length}/5장)</span>
-                  </span>
-                  {(editFormData.images || []).length < 5 && (
-                    <label className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-[10.5px] font-bold cursor-pointer transition-all">
-                      <Plus className="w-3 h-3" />
-                      <span>사진 추가</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleEditLogImageFiles(e.target.files)}
-                        className="hidden"
-                      />
-                    </label>
+              {/* 사진 첨부 관리 (비 설비보전 표준 일지 전용) */}
+              {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
+                <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>현장 사진 증빙 ({(editFormData.images || []).length}/5장)</span>
+                    </span>
+                    {(editFormData.images || []).length < 5 && (
+                      <label className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-[10.5px] font-bold cursor-pointer transition-all">
+                        <Plus className="w-3 h-3" />
+                        <span>사진 추가</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleEditLogImageFiles(e.target.files)}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {Array.isArray(editFormData.images) && editFormData.images.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 pt-1">
+                      {editFormData.images.map((img, idx) => (
+                        <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 aspect-square">
+                          <img
+                            src={img.dataUrl}
+                            alt={`사진 ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditLogImage(idx)}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow-sm hover:bg-rose-700 transition-all cursor-pointer"
+                            title="사진 삭제"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                {Array.isArray(editFormData.images) && editFormData.images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    {editFormData.images.map((img, idx) => (
-                      <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 aspect-square">
-                        <img
-                          src={img.dataUrl}
-                          alt={`사진 ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveEditLogImage(idx)}
-                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow-sm hover:bg-rose-700 transition-all cursor-pointer"
-                          title="사진 삭제"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -6802,7 +7193,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </button>
                   </div>
 
-                  <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
                     {maintenanceItems.map((item, index) => {
                       const isCustom = item.equipmentName === "내용직접입력" || item.equipmentName === "직접입력" || item.equipmentName === "내용입력 (직접입력)";
 
@@ -6911,6 +7302,189 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                             ></textarea>
                           </div>
+
+                          {/* 📷 [항목별 개선 전 / 개선 후 사진 첨부] */}
+                          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10.5px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <Camera className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>설비보전 사진 첨부 (항목별 개선전 / 개선후)</span>
+                              </span>
+                              <span className="text-[9.5px] text-slate-400 font-medium">각 최대 3장</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* 🔴 개선 전 (Before) */}
+                              <div className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/50 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10.5px] font-black text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                    🔴 개선 전 (Before)
+                                  </span>
+                                  <span className="text-[9px] font-bold text-rose-500 font-mono">
+                                    {(item.imagesBefore?.length || 0)}/3장
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`camera-before-${item.id}`}
+                                      accept="image/*"
+                                      capture="environment"
+                                      disabled={isProcessingImages || (item.imagesBefore?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleMaintenanceItemImageFiles(item.id, e.target.files, "before");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`camera-before-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesBefore?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[10px]" : "border-rose-300 bg-white hover:bg-rose-100 dark:bg-slate-900 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <Camera className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                                      <span className="truncate">촬영</span>
+                                    </label>
+                                  </div>
+
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`album-before-${item.id}`}
+                                      accept="image/*"
+                                      multiple
+                                      disabled={isProcessingImages || (item.imagesBefore?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleMaintenanceItemImageFiles(item.id, e.target.files, "before");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`album-before-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesBefore?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[10px]" : "border-rose-300 hover:border-rose-400 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-[10px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <UploadCloud className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span className="truncate">앨범/파일</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {item.imagesBefore && item.imagesBefore.length > 0 && (
+                                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                                    {item.imagesBefore.map((img, imgIdx) => (
+                                      <div key={img.id || imgIdx} className="relative group rounded-lg overflow-hidden border border-rose-300 dark:border-rose-800 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs">
+                                        <img
+                                          src={img.dataUrl}
+                                          alt="Before"
+                                          className="w-full h-full object-cover cursor-pointer"
+                                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `개선전_${imgIdx + 1}` })}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveMaintenanceItemImage(item.id, imgIdx, "before")}
+                                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-[9px] font-black cursor-pointer shadow-xs"
+                                          title="삭제"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 🟢 개선 후 (After) */}
+                              <div className="p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                    🟢 개선 후 (After)
+                                  </span>
+                                  <span className="text-[9px] font-bold text-emerald-500 font-mono">
+                                    {(item.imagesAfter?.length || 0)}/3장
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`camera-after-${item.id}`}
+                                      accept="image/*"
+                                      capture="environment"
+                                      disabled={isProcessingImages || (item.imagesAfter?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleMaintenanceItemImageFiles(item.id, e.target.files, "after");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`camera-after-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesAfter?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[10px]" : "border-emerald-300 bg-white hover:bg-emerald-100 dark:bg-slate-900 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <Camera className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span className="truncate">촬영</span>
+                                    </label>
+                                  </div>
+
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`album-after-${item.id}`}
+                                      accept="image/*"
+                                      multiple
+                                      disabled={isProcessingImages || (item.imagesAfter?.length || 0) >= 3}
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          handleMaintenanceItemImageFiles(item.id, e.target.files, "after");
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`album-after-${item.id}`}
+                                      className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer transition-all text-center ${(item.imagesAfter?.length || 0) >= 3 ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed text-[10px]" : "border-emerald-300 hover:border-emerald-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold shadow-2xs active:scale-95"}`}
+                                    >
+                                      <UploadCloud className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span className="truncate">앨범/파일</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {item.imagesAfter && item.imagesAfter.length > 0 && (
+                                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                                    {item.imagesAfter.map((img, imgIdx) => (
+                                      <div key={img.id || imgIdx} className="relative group rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs">
+                                        <img
+                                          src={img.dataUrl}
+                                          alt="After"
+                                          className="w-full h-full object-cover cursor-pointer"
+                                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `개선후_${imgIdx + 1}` })}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveMaintenanceItemImage(item.id, imgIdx, "after")}
+                                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center text-[9px] font-black cursor-pointer shadow-xs"
+                                          title="삭제"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -6925,105 +7499,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <Plus className="w-4 h-4" />
                     <span>설비보전 항목 추가하기</span>
                   </button>
-                </div>
-
-                {/* 📷 현장 작업 사진 첨부 (촬영 우선) */}
-                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                      <Camera className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      <span>설비보전 현장 / 부품 사진 첨부 (촬영 우선, 최대 5장)</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {formData.images?.length || 0}/5장
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <input
-                        type="file"
-                        id="worklog-camera-jaeyul"
-                        accept="image/*"
-                        capture="environment"
-                        disabled={isProcessingImages || (formData.images?.length || 0) >= 5}
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            handleWorkLogImageFiles(e.target.files);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="worklog-camera-jaeyul"
-                        className={`w-full py-2.5 px-2 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 text-center ${
-                          (formData.images?.length || 0) >= 5
-                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                            : "border-blue-500 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-200 ring-1 ring-blue-500/30 font-black"
-                        }`}
-                      >
-                        <Camera className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-black truncate">
-                          {isProcessingImages ? "압축 중..." : (formData.images?.length || 0) >= 5 ? "5장 완료" : "📸 현장 사진 즉시 촬영"}
-                        </span>
-                      </label>
-                    </div>
-
-                    <div>
-                      <input
-                        type="file"
-                        id="worklog-gallery-jaeyul"
-                        accept="image/*"
-                        multiple
-                        disabled={isProcessingImages || (formData.images?.length || 0) >= 5}
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            handleWorkLogImageFiles(e.target.files);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="worklog-gallery-jaeyul"
-                        className={`w-full py-2.5 px-2 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 text-center ${
-                          (formData.images?.length || 0) >= 5
-                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                            : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
-                        }`}
-                      >
-                        <UploadCloud className="w-4 h-4 shrink-0 text-slate-400" />
-                        <span className="text-xs font-bold truncate">📁 앨범 / 파일 선택</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {formData.images && formData.images.length > 0 && (
-                    <div className="grid grid-cols-5 gap-2 pt-1">
-                      {formData.images.map((img, idx) => (
-                        <div
-                          key={img.id || idx}
-                          className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs"
-                        >
-                          <img
-                            src={img.dataUrl}
-                            alt={img.name || `사진 ${idx + 1}`}
-                            className="w-full h-full object-cover cursor-pointer"
-                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진 ${idx + 1}` })}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveWorkLogImage(idx)}
-                            className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-black transition-colors cursor-pointer"
-                            title="삭제"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer Buttons */}
