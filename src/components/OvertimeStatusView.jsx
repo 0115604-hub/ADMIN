@@ -1214,7 +1214,60 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
   };
 
-  // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
+  // ⭐ 1-Click Set ONLY Unselected / Missing Workers to "🟢 정시" (Preserves existing 19시, 21시, 22시, 야간, 결근, 병결)
+  const handleSetMissingWorkersRegular = async () => {
+    if (!missingAttendanceWorkers || missingAttendanceWorkers.length === 0) {
+      triggerToast("ℹ️ 미선택된 근로자가 없습니다. (모든 근로자의 근태가 입력되어 있습니다)");
+      return;
+    }
+
+    const isWk = isWeekendDay(selectedDay);
+    const targetCode = isWk ? "특근" : "🟢";
+    const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+      ? [...effectiveMatrix]
+      : (smartData?.attendanceMatrix || []);
+    const updatedMatrix = currentMatrix.map((w) => ({
+      ...w,
+      daily: { ...(w.daily || {}) }
+    }));
+
+    let updatedCount = 0;
+    missingAttendanceWorkers.forEach((worker) => {
+      let idx = -1;
+      if (typeof worker.originalMatrixIndex === "number" && updatedMatrix[worker.originalMatrixIndex]) {
+        idx = worker.originalMatrixIndex;
+      } else {
+        const wClean = cleanWorkerNameOnly(worker.name);
+        const wComp = cleanCompanyName(worker.company);
+        idx = updatedMatrix.findIndex(
+          (mw) => ((mw.name || "").trim() === (worker.name || "").trim() || (wClean && cleanWorkerNameOnly(mw.name) === wClean)) && cleanCompanyName(mw.company) === wComp
+        );
+      }
+
+      if (idx >= 0 && updatedMatrix[idx]) {
+        const currentVal = String(updatedMatrix[idx].daily[selectedDay] || "").trim();
+        if (!currentVal || currentVal === "미입력" || currentVal === "-" || currentVal === "undefined" || currentVal === "null") {
+          updatedMatrix[idx].daily[selectedDay] = targetCode;
+          updatedMatrix[idx].daily[String(selectedDay)] = targetCode;
+          updatedCount++;
+        }
+      }
+    });
+
+    const newLedger = {
+      ...smartData,
+      year: currentYear,
+      month: currentMonthNum,
+      attendanceMatrix: updatedMatrix
+    };
+
+    setSmartData(newLedger);
+    setHasUnsavedChanges(true);
+    triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "전사" : selectedCompanyFilter}] 미입력 ${updatedCount}명이 ${isWk ? "특근(8H)" : "정시(🟢)"}로 채워졌습니다. (기존 잔업/야간/결근/병결 인원 안전 보존)`);
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
+  };
+
+  // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day (Preserves 결근/병결/휴가 사유자)
   const handleSetAllFilteredWorkersRegular = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
 
@@ -1242,6 +1295,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
 
       if (idx >= 0 && updatedMatrix[idx]) {
+        const existingVal = String(updatedMatrix[idx].daily[selectedDay] || "").trim();
+        // ⭐ 결근, 병결, 휴무, 연차 등 사유 결근자는 정시 일괄 선택 시에도 상태 보존
+        if (existingVal === "결근" || existingVal === "병결" || existingVal === "사결" || existingVal === "공결" || existingVal === "연차" || existingVal === "휴가" || existingVal === "병가") {
+          return;
+        }
         updatedMatrix[idx].daily[selectedDay] = targetCode;
         updatedMatrix[idx].daily[String(selectedDay)] = targetCode;
         updatedCount++;
@@ -1257,7 +1315,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
+    triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다. (결근/병결 인원 보존)`);
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
   };
 
@@ -1433,7 +1491,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
           val = "-";
         }
-        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무" || val === "미출근" || !val;
+        const isOff = val === "결근" || val === "병결" || val === "사결" || val === "공결" || val === "연차" || val === "휴가" || val === "병가" || val === "반차" || val === "-" || val === "휴무" || val === "미출근" || !val;
+        const reasonText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행";
+        const detailText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응";
         return {
           id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
@@ -1446,17 +1506,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           position: w.position || "작업원",
           attendanceCode: isWk ? (isOff ? "-" : val) : (val || "🟢"),
           attendanceLabel: isWk ? (isOff ? "미출근" : val) : (val || "정시"),
-          startTime: isOff ? "-" : "08:00",
-          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : (isOff ? "-" : "17:00"),
+          startTime: isOff ? "-" : (val === "야간" ? "20:00" : "08:00"),
+          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : val === "야간" ? "05:00" : (isOff ? "-" : "17:00"),
           hours: isOff ? 0 : (workHours || (isAttended ? 8 : 0)),
           otHours: isOff ? 0 : ((weekdayOt + weekendOt) || 0),
           count: isOff ? 0 : 1,
-          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "미출근" : "특근 투입") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행")}`,
-          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "미출근" : "생산 및 납품 대응") : (val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응")}`
+          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "미출근" : "특근 투입") : reasonText}`,
+          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "미출근" : "생산 및 납품 대응") : detailText}`
         };
       });
 
       const totalHours = items.reduce((sum, it) => sum + (Number(it.hours) || 0), 0);
+      const totalOtHours = items.reduce((sum, it) => sum + (Number(it.otHours) || 0), 0);
       const cost = totalHours * 15000;
 
       const compCleanSlug = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "all" : String(selectedCompanyFilter).replace(/[()]/g, "").trim();
@@ -1484,6 +1545,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         totalWorkers: allWorkersList.length,
         attendedWorkers: items.filter(it => it.hours > 0).length,
         totalHours: totalHours,
+        otHours: totalOtHours,
         cost: cost,
         items: items,
         reasons: (reportModalNotes || "").split("\n").filter(Boolean)
@@ -1579,16 +1641,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
       setLegacyReports(nextReports);
       
-      // ⭐ 삭제 즉시 근태/특근관리 기준 4개 탭 전사 동기화 (해당 일자/업체 자동 초기화)
-      const synchedMatrix = buildMatrixFromReports(smartData.masterWorkers, nextReports, currentYear, currentMonthNum);
+      // ⭐ 삭제 즉시 해당 업체의 해당 일자 근태만 안전하게 초기화 (타 협력사 근태 100% 보존)
+      let delDay = null;
+      if (targetRep && targetRep.workDate) {
+        const parts = targetRep.workDate.split("-");
+        if (parts.length === 3) delDay = parseInt(parts[2], 10);
+      }
+      const repComp = targetRep ? cleanCompanyName(targetRep.company) : null;
+      
+      const currentMatrix = smartData.attendanceMatrix || [];
+      const updatedMatrix = currentMatrix.map((w) => {
+        const copyW = { ...w, daily: { ...(w.daily || {}) } };
+        if (delDay && repComp && (repComp === "전체" || cleanCompanyName(w.company) === repComp)) {
+          delete copyW.daily[delDay];
+          delete copyW.daily[String(delDay)];
+        }
+        return copyW;
+      });
+
       const updatedLedger = {
         ...smartData,
         year: currentYear,
         month: currentMonthNum,
-        attendanceMatrix: synchedMatrix
+        attendanceMatrix: updatedMatrix
       };
       setSmartData(updatedLedger);
-      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
+      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10", {
+        targetCompany: targetRep?.company,
+        clearedDay: delDay
+      });
 
       // ⭐ 결재함 특근보고서 실시간 재수정/정리
       if (targetRep) {
@@ -1877,7 +1958,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       // 3. 로컬 및 클라우드 비동기 저장
       await saveWorkerPersonnelCard(cardKey, updatedCardData);
-      await saveSmartOvertimeData(updatedData);
+      await saveSmartOvertimeData(updatedData, selectedMonth || "2026-10", { targetCompany: cleanComp });
 
       triggerToast(`🎉 [${updatedCardData.company}] ${updatedCardData.name}님의 제조현장 인사카드가 저장되었습니다!`);
     } catch (err) {
@@ -2596,12 +2677,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 ) : missingAttendanceWorkers.length > 0 ? (
                   <button
                     type="button"
-                    onClick={handleSetAllFilteredWorkersRegular}
+                    onClick={handleSetMissingWorkersRegular}
                     className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1 shadow-xs animate-pulse cursor-pointer transition-all active:scale-95"
-                    title="클릭 시 조회 인원 전체를 정시(🟢)로 일괄 선택합니다"
+                    title="클릭 시 미선택 인원만 정시(🟢)로 채웁니다 (기존 잔업/야간/결근 인원 보존)"
                   >
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                    <span>⚠️ 미선택 {missingAttendanceWorkers.length}명 (클릭 시 정시 일괄선택)</span>
+                    <span>⚠️ 미선택 {missingAttendanceWorkers.length}명 (클릭 시 미선택자만 정시 입력)</span>
                   </button>
                 ) : (
                   <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-400/50 flex items-center gap-1 shadow-xs">
@@ -2682,12 +2763,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 ) : missingAttendanceWorkers.length > 0 ? (
                   <button
                     type="button"
-                    onClick={handleSetAllFilteredWorkersRegular}
+                    onClick={handleSetMissingWorkersRegular}
                     className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse cursor-pointer shadow-xs active:scale-95 transition-all"
-                    title="클릭 시 조회 인원 전체를 정시(🟢)로 일괄 선택합니다"
+                    title="클릭 시 미선택 인원만 정시(🟢)로 채웁니다 (기존 잔업/야간/결근 인원 보존)"
                   >
                     <AlertTriangle className="w-3 h-3 text-amber-400" />
-                    <span>미선택 {missingAttendanceWorkers.length}명 (클릭 시 정시 일괄선택)</span>
+                    <span>미선택 {missingAttendanceWorkers.length}명 (클릭 시 미선택자만 정시 입력)</span>
                   </button>
                 ) : (
                   <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-700/80 flex items-center gap-1">
@@ -4793,6 +4874,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       let updatedCount = 0;
                       updatedMatrix.forEach((w) => {
                         if (cleanCompanyName(w.company) === cleanComp) {
+                          const existingVal = String(w.daily?.[selectedDay] || "").trim();
+                          if (existingVal === "결근" || existingVal === "병결" || existingVal === "사결" || existingVal === "공결" || existingVal === "연차" || existingVal === "휴가" || existingVal === "병가") {
+                            return;
+                          }
                           w.daily[selectedDay] = targetCode;
                           w.daily[String(selectedDay)] = targetCode;
                           updatedCount++;
