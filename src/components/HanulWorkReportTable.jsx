@@ -321,6 +321,14 @@ export const HanulWorkReportTable = ({
                             {rep.subProcess === "정치절단" ? "✂️ 정치절단" : "📐 단컷팅"}
                           </span>
                         )}
+                        {rep.jointType && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            {rep.jointType === "FRT" ? "🚗 FRT"
+                              : rep.jointType === "FIXED_LH" ? "📐 FIXED LH"
+                              : rep.jointType === "FIXED_RH" ? "📐 FIXED RH"
+                              : "⚡ RR"}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">

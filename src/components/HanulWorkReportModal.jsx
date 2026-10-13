@@ -35,6 +35,7 @@ import {
 import {
   HANUL_PROJECTS,
   HANUL_PROCESSES,
+  HANUL_JOINT_TYPES,
   HANUL_WORKERS_MASTER,
   HANUL_SPECS,
   DEFAULT_DEFECT_CATEGORIES,
@@ -55,8 +56,16 @@ export const HanulWorkReportModal = ({
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
   const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
+  const [jointType, setJointType] = useState("FRT"); // For "조인트": "FRT" | "FIXED_LH" | "FIXED_RH" | "RR"
   const [bladeChangeTime, setBladeChangeTime] = useState(""); // 칼날교체시간 (정치절단 전용)
   const [machineTrouble, setMachineTrouble] = useState(""); // 설비 이상 조치사항
+  const [jointGradeName, setJointGradeName] = useState("W60664$OS"); // 조인트 재료명
+  const [jointGradeLot, setJointGradeLot] = useState(""); // 조인트 재료일자 / LOT
+  const [subMaterialsLot, setSubMaterialsLot] = useState({
+    glass: { start: "", mid: "", end: "" },
+    dv: { start: "", mid: "", end: "" },
+    bracket: { start: "", mid: "", end: "" }
+  }); // 부자재 LOT (FIXED LH/RH 전용)
   const [date, setDate] = useState(() => getKSTDateString());
   const [shift, setShift] = useState("주간");
   const [worker, setWorker] = useState(initialWorker || "황수현");
@@ -90,16 +99,22 @@ export const HanulWorkReportModal = ({
 
   // Dynamic Defects (matching sheet categories)
   const currentDefectKeys = useMemo(() => {
-    const key = processId === "소재준비"
-      ? `${project}_소재준비_${subProcess}`
-      : `${project}_${processId}`;
+    let key;
+    if (processId === "소재준비") {
+      key = `${project}_소재준비_${subProcess}`;
+    } else if (processId === "조인트") {
+      key = `${project}_조인트_${jointType}`;
+    } else {
+      key = `${project}_${processId}`;
+    }
     return (
       DEFAULT_DEFECT_CATEGORIES[key] ||
       DEFAULT_DEFECT_CATEGORIES[`${project}_${processId}`] ||
+      DEFAULT_DEFECT_CATEGORIES["9BQC_조인트"] ||
       DEFAULT_DEFECT_CATEGORIES["9BQC_정재단"] ||
       []
     );
-  }, [project, processId, subProcess]);
+  }, [project, processId, subProcess, jointType]);
 
   const [defects, setDefects] = useState({});
 
@@ -166,8 +181,12 @@ export const HanulWorkReportModal = ({
       setProject(editReport.project || "9BQC");
       setProcessId(editReport.processId || "소재준비");
       if (editReport.subProcess) setSubProcess(editReport.subProcess);
+      if (editReport.jointType) setJointType(editReport.jointType);
       if (editReport.bladeChangeTime) setBladeChangeTime(editReport.bladeChangeTime);
       if (editReport.machineTrouble) setMachineTrouble(editReport.machineTrouble);
+      if (editReport.jointGradeName) setJointGradeName(editReport.jointGradeName);
+      if (editReport.jointGradeLot) setJointGradeLot(editReport.jointGradeLot);
+      if (editReport.subMaterialsLot) setSubMaterialsLot(editReport.subMaterialsLot);
       setDate(editReport.date || getKSTDateString());
       setShift(editReport.shift || "주간");
       setWorker(editReport.worker || "황수현");
@@ -189,14 +208,15 @@ export const HanulWorkReportModal = ({
       setProject(initialProject);
       setProcessId(initialProcess);
       setSubProcess("정치절단");
+      setJointType("FRT");
       setBladeChangeTime("");
       setMachineTrouble("");
       if (initialWorker) setWorker(initialWorker);
       // Reset defects based on categories
       const initDef = {};
-      const defKey = initialProcess === "소재준비"
-        ? `${initialProject}_소재준비_정치절단`
-        : `${initialProject}_${initialProcess}`;
+      let defKey = `${initialProject}_${initialProcess}`;
+      if (initialProcess === "소재준비") defKey = `${initialProject}_소재준비_정치절단`;
+      if (initialProcess === "조인트") defKey = `${initialProject}_조인트_FRT`;
       const defKeys = DEFAULT_DEFECT_CATEGORIES[defKey] || DEFAULT_DEFECT_CATEGORIES[`${initialProject}_${initialProcess}`] || [];
       defKeys.forEach((k) => { initDef[k] = 0; });
       setDefects(initDef);
@@ -296,15 +316,22 @@ export const HanulWorkReportModal = ({
 
     setIsSaving(true);
     try {
+      const selectedJointObj = HANUL_JOINT_TYPES.find((j) => j.id === jointType) || HANUL_JOINT_TYPES[0];
+      const effectivePartName = processId === "조인트" ? selectedJointObj.partName : currentProjectObj.partName;
+
       const reportPayload = {
         id: editReport?.id,
         project,
         projectName: currentProjectObj.name,
         carModel: currentProjectObj.carModel,
-        partName: currentProjectObj.partName,
+        partName: effectivePartName,
         processId,
         processName: currentProcessObj.name,
         subProcess: processId === "소재준비" ? subProcess : "",
+        jointType: processId === "조인트" ? jointType : "",
+        jointGradeName: processId === "조인트" ? jointGradeName : "",
+        jointGradeLot: processId === "조인트" ? jointGradeLot : "",
+        subMaterialsLot: processId === "조인트" ? subMaterialsLot : null,
         date,
         shift,
         worker: effectiveWorker,
@@ -350,6 +377,7 @@ export const HanulWorkReportModal = ({
       processId,
       processName: currentProcessObj.name,
       subProcess: processId === "소재준비" ? subProcess : "",
+      jointType: processId === "조인트" ? jointType : "",
       bladeChangeTime,
       machineTrouble,
       date,
@@ -506,6 +534,28 @@ export const HanulWorkReportModal = ({
                 </div>
               </div>
             )}
+
+            {/* 🌟 조인트 공정일 때 드롭다운 선택기 (4가지 조인트 일보) */}
+            {processId === "조인트" && (
+              <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/90 px-3 py-1 rounded-xl border-2 border-purple-500 shadow-xs animate-fadeIn">
+                <span className="text-[11px] font-black text-purple-700 dark:text-purple-300 flex items-center gap-1 shrink-0">
+                  <span>📄 조인트 일보:</span>
+                </span>
+                <div className="relative">
+                  <select
+                    value={jointType}
+                    onChange={(e) => setJointType(e.target.value)}
+                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-purple-600 text-purple-950 dark:text-purple-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+                  >
+                    <option value="FRT">1. G/RUN FRT (2/3호기)</option>
+                    <option value="FIXED_LH">2. G/RUN FIXED LH (부자재)</option>
+                    <option value="FIXED_RH">3. G/RUN FIXED RH (부자재)</option>
+                    <option value="RR">4. G/RUN RR (2/3호기)</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-purple-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -562,6 +612,86 @@ export const HanulWorkReportModal = ({
                 >
                   <Layers className="w-3.5 h-3.5" />
                   <span>단컷팅 일보</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 🌟 조인트 공정일 때: 4가지 조인트 일보 상단 안내 배너 & 4대 퀵 전환 탭 */}
+          {processId === "조인트" && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-purple-950/50 border-2 border-purple-400 dark:border-purple-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-purple-600 text-white shadow-md shrink-0">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-black text-sm sm:text-base text-purple-950 dark:text-white">
+                      조인트 일보 (G/RUN) — {
+                        jointType === "FRT" ? "🚗 1. FRT (2호기 / 3호기)" :
+                        jointType === "FIXED_LH" ? "📐 2. FIXED LH (Glass/DV/Bracket)" :
+                        jointType === "FIXED_RH" ? "📐 3. FIXED RH (Glass/DV/Bracket)" :
+                        "⚡ 4. RR (2호기 / 3호기)"
+                      }
+                    </h4>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs">
+                      4대 조인트 서식
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
+                    {jointType === "FRT" && "FRT LH/RH • 압출소재 FRT A/B/C • 직각/둔각 사출조건 • 10개 불량항목"}
+                    {jointType === "FIXED_LH" && "FIXED LH • 압출소재 RR A/B • 부자재(Glass, D/V, BRACKET) • 13개 불량항목"}
+                    {jointType === "FIXED_RH" && "FIXED RH • 압출소재 RR A/B • 부자재(Glass, D/V, BRACKET) • 13개 불량항목"}
+                    {jointType === "RR" && "RR LH/RH • 압출소재 RR A/B • 2/3호기 사출조건 • 꼬임 포함 11개 불량항목"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4 Segmented Quick Toggle Buttons */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-purple-200 dark:border-purple-800 shrink-0 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setJointType("FRT")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    jointType === "FRT"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  1. FRT
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJointType("FIXED_LH")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    jointType === "FIXED_LH"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  2. FIXED LH
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJointType("FIXED_RH")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    jointType === "FIXED_RH"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  3. FIXED RH
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJointType("RR")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    jointType === "RR"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  4. RR
                 </button>
               </div>
             </div>
@@ -698,7 +828,7 @@ export const HanulWorkReportModal = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="예: 사출 2호기, X부 LH"
+                  placeholder={processId === "조인트" ? "예: 사출 2호기 / 3호기" : "예: 사출 2호기, X부 LH"}
                   value={machineNo}
                   onChange={(e) => setMachineNo(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
@@ -707,11 +837,13 @@ export const HanulWorkReportModal = ({
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  압출소재 LOT (초/중/종)
+                  {processId === "조인트"
+                    ? (jointType === "FRT" ? "압출소재 LOT (FRT A/B/C)" : "압출소재 LOT (RR A/B)")
+                    : "압출소재 LOT (초/중/종)"}
                 </label>
                 <input
                   type="text"
-                  placeholder="초:09.12 / 종:09.12"
+                  placeholder={processId === "조인트" ? (jointType === "FRT" ? "A:09.12 / B:09.12" : "RR A:09.12 / B:09.12") : "초:09.12 / 종:09.12"}
                   value={materialLot.start || ""}
                   onChange={(e) => setMaterialLot((prev) => ({ ...prev, start: e.target.value }))}
                   className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
@@ -720,33 +852,203 @@ export const HanulWorkReportModal = ({
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  조인트/원재료 LOT
+                  {processId === "조인트" ? "조인트 재료명 (Grade)" : "조인트/원재료 LOT"}
                 </label>
                 <input
                   type="text"
-                  placeholder="W60664$OS 등"
-                  value={jointLot}
-                  onChange={(e) => setJointLot(e.target.value)}
+                  placeholder={processId === "조인트" ? "예: SJ-4004B, W60664$OS" : "W60664$OS 등"}
+                  value={processId === "조인트" ? jointGradeName : jointLot}
+                  onChange={(e) => {
+                    if (processId === "조인트") {
+                      setJointGradeName(e.target.value);
+                    } else {
+                      setJointLot(e.target.value);
+                    }
+                  }}
                   className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  대차번호 / 클립 LOT
+                  {processId === "조인트" ? "조인트 재료일자 (LOT)" : "대차번호 / 클립 LOT"}
                 </label>
                 <input
                   type="text"
-                  placeholder="대차 3호 / 2T000 WH"
-                  value={dollyNo || clipLot.start || ""}
+                  placeholder={processId === "조인트" ? "예: 24.09.12 (재료일자)" : "대차 3호 / 2T000 WH"}
+                  value={processId === "조인트" ? jointGradeLot : (dollyNo || clipLot.start || "")}
                   onChange={(e) => {
-                    setDollyNo(e.target.value);
-                    setClipLot((prev) => ({ ...prev, start: e.target.value }));
+                    if (processId === "조인트") {
+                      setJointGradeLot(e.target.value);
+                    } else {
+                      setDollyNo(e.target.value);
+                      setClipLot((prev) => ({ ...prev, start: e.target.value }));
+                    }
                   }}
                   className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                 />
               </div>
             </div>
+
+            {/* 🌟 조인트 FIXED LH / RH 전용: 4. 부자재 LOT 관리 (Glass / D/V / BRACKET 초·중·종물) */}
+            {processId === "조인트" && (jointType === "FIXED_LH" || jointType === "FIXED_RH") && (
+              <div className="mt-2.5 pt-2.5 border-t border-purple-200 dark:border-purple-800/80 animate-fadeIn">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-600" />
+                    <span>부자재 LOT 관리 — Glass / D/V / BRACKET (초물 · 중물 · 종물)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950 px-2 py-0.5 rounded-full border border-purple-300 dark:border-purple-800">
+                    FIXED {jointType === "FIXED_LH" ? "LH" : "RH"} 일보 필수항목
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Glass */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
+                      <span>🪟</span> <span>1. Glass (글라스) LOT</span>
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
+                        <input
+                          type="text"
+                          placeholder="초물 LOT"
+                          value={subMaterialsLot.glass?.start || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            glass: { ...(prev.glass || {}), start: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
+                        <input
+                          type="text"
+                          placeholder="중물 LOT"
+                          value={subMaterialsLot.glass?.mid || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            glass: { ...(prev.glass || {}), mid: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
+                        <input
+                          type="text"
+                          placeholder="종물 LOT"
+                          value={subMaterialsLot.glass?.end || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            glass: { ...(prev.glass || {}), end: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* D/V */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
+                      <span>⚙️</span> <span>2. D/V LOT</span>
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
+                        <input
+                          type="text"
+                          placeholder="초물 LOT"
+                          value={subMaterialsLot.dv?.start || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            dv: { ...(prev.dv || {}), start: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
+                        <input
+                          type="text"
+                          placeholder="중물 LOT"
+                          value={subMaterialsLot.dv?.mid || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            dv: { ...(prev.dv || {}), mid: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
+                        <input
+                          type="text"
+                          placeholder="종물 LOT"
+                          value={subMaterialsLot.dv?.end || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            dv: { ...(prev.dv || {}), end: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BRACKET */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
+                      <span>🔩</span> <span>3. BRACKET (브라켓) LOT</span>
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
+                        <input
+                          type="text"
+                          placeholder="초물 LOT"
+                          value={subMaterialsLot.bracket?.start || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            bracket: { ...(prev.bracket || {}), start: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
+                        <input
+                          type="text"
+                          placeholder="중물 LOT"
+                          value={subMaterialsLot.bracket?.mid || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            bracket: { ...(prev.bracket || {}), mid: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
+                        <input
+                          type="text"
+                          placeholder="종물 LOT"
+                          value={subMaterialsLot.bracket?.end || ""}
+                          onChange={(e) => setSubMaterialsLot((prev) => ({
+                            ...prev,
+                            bracket: { ...(prev.bracket || {}), end: e.target.value }
+                          }))}
+                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* B. 생산 수량 및 실시간 KPI (정품 / 불량 / 리워크 / 양품률) */}
@@ -892,6 +1194,11 @@ export const HanulWorkReportModal = ({
                     <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
                       {processId === "소재준비" && subProcess === "단컷팅"
                         ? "LH (좌측: FRT 83mm / RR 68mm)"
+                        : processId === "조인트"
+                        ? (jointType === "FRT" ? "🚗 FRT LH (2호기/3호기)"
+                          : jointType === "FIXED_LH" ? "📐 LH (1호기) 생산구분"
+                          : jointType === "FIXED_RH" ? "📐 RH (1호기) 생산구분"
+                          : "⚡ RR LH (2호기/3호기)")
                         : "LH (좌측) / A구간"}
                     </span>
                     <span className="text-[10px] text-slate-400 font-bold">
@@ -944,6 +1251,11 @@ export const HanulWorkReportModal = ({
                     <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
                       {processId === "소재준비" && subProcess === "단컷팅"
                         ? "RH (우측: FRT 83mm / RR 67mm)"
+                        : processId === "조인트"
+                        ? (jointType === "FRT" ? "🚗 FRT RH (2호기/3호기)"
+                          : jointType === "FIXED_LH" ? "📐 LH (2호기) 생산구분"
+                          : jointType === "FIXED_RH" ? "📐 RH (2호기) 생산구분"
+                          : "⚡ RR RH (2호기/3호기)")
                         : "RH (우측) / B구간"}
                     </span>
                     <span className="text-[10px] text-slate-400 font-bold">
@@ -1125,89 +1437,225 @@ export const HanulWorkReportModal = ({
                 <span className="font-black text-xs sm:text-sm text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
                   <Thermometer className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>
-                    {project === "9BQC" ? "3. 사출 성형 조건 및 사출온도" : "3. 프레스 가류조건 (상/하판 200±20℃, 90±30s)"}
+                    {project === "9BQC" ? (
+                      processId === "조인트"
+                        ? `3. 사출 조건 및 사출온도 (${
+                            jointType === "FRT" ? "직각 Machine / 둔각 Machine" :
+                            jointType === "FIXED_LH" ? "LH 좌측 / 우측 Machine" :
+                            jointType === "FIXED_RH" ? "RH 좌측 / 우측 Machine" :
+                            "2호기 / 3호기 Machine"
+                          })`
+                        : "3. 사출 성형 조건 및 사출온도"
+                    ) : "3. 프레스 가류조건 (상/하판 200±20℃, 90±30s)"}
                   </span>
                 </span>
                 <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold">
-                  {project === "9BQC" ? "노즐/실린더1~3" : "고무: W60664$OS"}
+                  {project === "9BQC" ? `원재료: ${jointGradeName || "SJ-4004B"}` : "고무: W60664$OS"}
                 </span>
               </div>
 
               {project === "9BQC" ? (
-                /* 9BQC 사출온도 4개존 */
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
-                    <span className="text-[10px] font-bold text-slate-500 block mb-1">노즐 (Nozzle)</span>
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        type="text"
-                        value={conditions.nozzleTempSet}
-                        onChange={(e) => setConditions((c) => ({ ...c, nozzleTempSet: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
-                        title="설정치"
-                      />
-                      <span className="text-xs text-slate-400">/</span>
-                      <input
-                        type="text"
-                        value={conditions.nozzleTempAct}
-                        onChange={(e) => setConditions((c) => ({ ...c, nozzleTempAct: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
-                        title="실측치"
-                      />
+                /* 9BQC 사출온도 4개존 + 성형조건 */
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">노즐 (Nozzle)</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="text"
+                          value={conditions.nozzleTempSet}
+                          onChange={(e) => setConditions((c) => ({ ...c, nozzleTempSet: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
+                          title="설정치"
+                        />
+                        <span className="text-xs text-slate-400">/</span>
+                        <input
+                          type="text"
+                          value={conditions.nozzleTempAct}
+                          onChange={(e) => setConditions((c) => ({ ...c, nozzleTempAct: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
+                          title="실측치"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 1 (H1)</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="text"
+                          value={conditions.cyl1TempSet}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl1TempSet: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
+                        />
+                        <span className="text-xs text-slate-400">/</span>
+                        <input
+                          type="text"
+                          value={conditions.cyl1TempAct}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl1TempAct: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 2 (H2)</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="text"
+                          value={conditions.cyl2TempSet}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl2TempSet: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
+                        />
+                        <span className="text-xs text-slate-400">/</span>
+                        <input
+                          type="text"
+                          value={conditions.cyl2TempAct}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl2TempAct: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 3 (H3)</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <input
+                          type="text"
+                          value={conditions.cyl3TempSet}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl3TempSet: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
+                        />
+                        <span className="text-xs text-slate-400">/</span>
+                        <input
+                          type="text"
+                          value={conditions.cyl3TempAct}
+                          onChange={(e) => setConditions((c) => ({ ...c, cyl3TempAct: e.target.value }))}
+                          className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
-                    <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 1 (H1)</span>
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        type="text"
-                        value={conditions.cyl1TempSet}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl1TempSet: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
-                      />
-                      <span className="text-xs text-slate-400">/</span>
-                      <input
-                        type="text"
-                        value={conditions.cyl1TempAct}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl1TempAct: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
-                      />
+
+                  {/* 사출조건: 거리, 속도, 압력 (초물 / 중물 / 종물) */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-950 dark:text-amber-200">
+                        사출 성형 조건 (초물 / 중물 / 종물)
+                      </span>
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">
+                        거리(mm) • 속도(mm/s) • 압력(bar)
+                      </span>
                     </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
-                    <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 2 (H2)</span>
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        type="text"
-                        value={conditions.cyl2TempSet}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl2TempSet: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
-                      />
-                      <span className="text-xs text-slate-400">/</span>
-                      <input
-                        type="text"
-                        value={conditions.cyl2TempAct}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl2TempAct: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/80 text-center">
-                    <span className="text-[10px] font-bold text-slate-500 block mb-1">실린더 3 (H3)</span>
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        type="text"
-                        value={conditions.cyl3TempSet}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl3TempSet: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border text-xs font-bold text-center"
-                      />
-                      <span className="text-xs text-slate-400">/</span>
-                      <input
-                        type="text"
-                        value={conditions.cyl3TempAct}
-                        onChange={(e) => setConditions((c) => ({ ...c, cyl3TempAct: e.target.value }))}
-                        className="w-14 px-1 py-1 rounded border border-amber-400 text-xs font-bold text-center text-amber-600"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/70 text-center">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                          거리 (Distance)
+                        </span>
+                        <div className="grid grid-cols-3 gap-1">
+                          <input
+                            type="text"
+                            placeholder="초물"
+                            value={conditions.distance?.start || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              distance: { ...(c.distance || {}), start: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="중물"
+                            value={conditions.distance?.mid || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              distance: { ...(c.distance || {}), mid: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="종물"
+                            value={conditions.distance?.end || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              distance: { ...(c.distance || {}), end: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/70 text-center">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                          속도 (Speed)
+                        </span>
+                        <div className="grid grid-cols-3 gap-1">
+                          <input
+                            type="text"
+                            placeholder="초물"
+                            value={conditions.speed?.start || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              speed: { ...(c.speed || {}), start: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="중물"
+                            value={conditions.speed?.mid || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              speed: { ...(c.speed || {}), mid: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="종물"
+                            value={conditions.speed?.end || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              speed: { ...(c.speed || {}), end: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/70 text-center">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                          압력 (Pressure)
+                        </span>
+                        <div className="grid grid-cols-3 gap-1">
+                          <input
+                            type="text"
+                            placeholder="초물"
+                            value={conditions.pressure?.start || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              pressure: { ...(c.pressure || {}), start: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="중물"
+                            value={conditions.pressure?.mid || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              pressure: { ...(c.pressure || {}), mid: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="종물"
+                            value={conditions.pressure?.end || ""}
+                            onChange={(e) => setConditions((c) => ({
+                              ...c,
+                              pressure: { ...(c.pressure || {}), end: e.target.value }
+                            }))}
+                            className="px-1 py-1 rounded border text-xs text-center font-bold bg-white dark:bg-slate-900"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

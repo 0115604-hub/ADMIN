@@ -25,18 +25,26 @@ export const HANUL_PROJECTS = [
 
 export const HANUL_PROCESSES = {
   "9BQC": [
-    { id: "소재준비", name: "소재준비", subTitle: "정재단, 단컷팅" },
-    { id: "조인트", name: "조인트", subTitle: "사출 성형, 조인트 작업" },
+    { id: "소재준비", name: "소재준비", subTitle: "정치절단, 단컷팅" },
+    { id: "조인트", name: "조인트", subTitle: "FRT, FIXED LH/RH, RR (4종)" },
     { id: "본드로봇", name: "본드로봇", subTitle: "로봇 본딩 및 도포 작업" },
     { id: "검사", name: "검사", subTitle: "완제품, 단면 확인 및 최종검사" }
   ],
   "LQ2A": [
-    { id: "소재준비", name: "소재준비", subTitle: "정재단, 단컷팅" },
+    { id: "소재준비", name: "소재준비", subTitle: "정치절단, 단컷팅" },
     { id: "조인트", name: "조인트", subTitle: "조인트 프레스 및 가류 작업" },
     { id: "본드로봇", name: "본드로봇", subTitle: "본딩 및 클립/후가공 조립" },
     { id: "검사", name: "검사", subTitle: "완제품 치수 및 최종검사" }
   ]
 };
+
+// 🌟 9BQC 조인트 세부 4대 작업일보 양식 정의
+export const HANUL_JOINT_TYPES = [
+  { id: "FRT", label: "G/RUN FRT (2/3호기)", shortName: "FRT", partName: "G/RUN FRT (2호기 / 3호기)", desc: "직각/둔각 사출 성형 (FRT A/B/C)" },
+  { id: "FIXED_LH", label: "G/RUN FIXED (LH)", shortName: "FIXED LH", partName: "G/RUN FIXED LH", desc: "Glass, D/V, Bracket 부자재 조립 (RR A/B)" },
+  { id: "FIXED_RH", label: "G/RUN FIXED (RH)", shortName: "FIXED RH", partName: "G/RUN FIXED RH", desc: "Glass, D/V, Bracket 부자재 조립 (RR A/B)" },
+  { id: "RR", label: "G/RUN RR (2/3호기)", shortName: "RR", partName: "G/RUN RR", desc: "2호기/3호기 사출 성형 (RR A/B)" }
+];
 
 // Master list of 26 Hanul workers (1~22: 9BQC, 23~26: LQ2)
 export const HANUL_WORKERS_MASTER = [
@@ -156,6 +164,11 @@ export const DEFAULT_DEFECT_CATEGORIES = {
   "9BQC_소재준비_정치절단": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "공정간_길이", "기타"],
   "9BQC_소재준비_단컷팅": ["스코치", "외면흠", "오염", "공정간_단컷팅", "기타"],
   "9BQC_소재준비": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "단컷팅불량", "기타"],
+  // 🌟 조인트 4대 작업일보 세부 불량 내역 (업로드 서식 100% 일치)
+  "9BQC_조인트_FRT": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "삽입불량", "수축", "기타"],
+  "9BQC_조인트_FIXED_LH": ["떨어짐", "DV떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "글라스파손", "삽입불량", "수축", "단컷팅불량", "기타"],
+  "9BQC_조인트_FIXED_RH": ["떨어짐", "DV떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "글라스파손", "삽입불량", "수축", "단컷팅불량", "기타"],
+  "9BQC_조인트_RR": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
   "9BQC_조인트": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
   "9BQC_본드로봇": ["곡률", "스크래치", "도트불량", "면취불량", "조개피(유리깨짐)", "노즐막힘", "기타"],
   "9BQC_검사": ["단차", "수축", "크랙", "씹힘", "이탈", "단면불량", "사상불량", "외관불량", "기타"],
@@ -294,13 +307,32 @@ export const exportHanulReportToExcel = (report) => {
   if (!report) return;
   const wb = XLSX.utils.book_new();
 
-  const subName = report.subProcess ? ` (${report.subProcess})` : "";
+  const subDetail = report.subProcess || report.jointType || "";
+  const subName = subDetail ? ` (${subDetail})` : "";
   const titleRow = [`${report.projectName || report.project} - ${report.processName || report.processId}${subName} 작업일보`];
   const metaRows = [
     ["작업일자", report.date || "", "근무구분", report.shift || "주간", "작업자", report.worker || "한울"],
     ["시작시간", report.startTime || "", "종료시간", report.endTime || "", "공정명", `${report.processName || report.processId}${subName}`],
     ["설비호기", report.machineNo || "-", "칼날교체시간", report.bladeChangeTime || "-", "설비이상조치", report.machineTrouble || "-"]
   ];
+
+  if (report.processId === "조인트") {
+    metaRows.push([
+      "조인트재료명", report.jointGradeName || "-",
+      "재료일자/LOT", report.jointGradeLot || "-",
+      "조인트유형", report.jointType || "-"
+    ]);
+    if (report.subMaterialsLot) {
+      const gLot = [report.subMaterialsLot.glass?.start, report.subMaterialsLot.glass?.mid, report.subMaterialsLot.glass?.end].filter(Boolean).join(" / ");
+      const dvLot = [report.subMaterialsLot.dv?.start, report.subMaterialsLot.dv?.mid, report.subMaterialsLot.dv?.end].filter(Boolean).join(" / ");
+      const brkLot = [report.subMaterialsLot.bracket?.start, report.subMaterialsLot.bracket?.mid, report.subMaterialsLot.bracket?.end].filter(Boolean).join(" / ");
+      metaRows.push([
+        "부자재 Glass LOT", gLot || "-",
+        "부자재 D/V LOT", dvLot || "-",
+        "부자재 BRACKET LOT", brkLot || "-"
+      ]);
+    }
+  }
 
   const prodRows = [
     ["[생산 수량]"],
@@ -352,7 +384,7 @@ export const exportHanulReportToExcel = (report) => {
   const ws = XLSX.utils.aoa_to_sheet(allRows);
   XLSX.utils.book_append_sheet(wb, ws, "작업일보");
 
-  const subSlug = report.subProcess ? `_${report.subProcess}` : "";
+  const subSlug = subDetail ? `_${subDetail}` : "";
   const fileName = `한울_${report.project}_${report.processId}${subSlug}_${report.date || "일보"}.xlsx`;
   XLSX.writeFile(wb, fileName);
 };
