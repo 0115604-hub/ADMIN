@@ -961,27 +961,10 @@ export const WorkerPinModal = ({
     };
   }, []);
 
+  // 🔒 Direct Authoritative Matrix: Use official ledger without report re-synthesis
   const unifiedPinMatrix = useMemo(() => {
-    const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
-    if (!overtimeReports || overtimeReports.length === 0) return rawMatrix;
-    const reportMatrix = buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth);
-    return reportMatrix.map((w, idx) => {
-      const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
-      const liveDaily = liveW?.daily || {};
-      const reportDaily = w.daily || {};
-      const combinedDaily = { ...reportDaily };
-      Object.keys(liveDaily).forEach((key) => {
-        const val = liveDaily[key];
-        if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-          combinedDaily[key] = val;
-        }
-      });
-      return {
-        ...w,
-        daily: combinedDaily
-      };
-    });
-  }, [smartOvertimeData, overtimeReports, todayYear, todayMonth]);
+    return smartOvertimeData?.attendanceMatrix || [];
+  }, [smartOvertimeData]);
 
   const dailyOvertimeSummary = useMemo(() => {
     if (!unifiedPinMatrix || unifiedPinMatrix.length === 0) return null;

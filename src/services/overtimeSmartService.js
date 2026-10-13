@@ -758,66 +758,22 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
             let rawCode = it.attendanceCode || it.code || it.attendance || it.status || it.category || "";
             const codeStr = String(rawCode || "").trim();
             const contentStr = `${it.workContent || ""} ${it.workDetails || ""} ${it.note || ""}`;
-            let code = "";
-
-            if (codeStr === "결근" || codeStr.includes("결근") || contentStr.includes("결근")) {
-              code = isWeekend ? "-" : "결근";
-            } else if (codeStr === "병결" || codeStr.includes("병결") || contentStr.includes("병결")) {
-              code = isWeekend ? "-" : "병결";
-            } else if (codeStr === "사결" || codeStr.includes("사결") || contentStr.includes("사결")) {
-              code = isWeekend ? "-" : "사결";
-            } else if (codeStr === "공결" || codeStr.includes("공결") || contentStr.includes("공결")) {
-              code = isWeekend ? "-" : "공결";
-            } else if (codeStr === "병가" || codeStr.includes("병가") || contentStr.includes("병가")) {
-              code = isWeekend ? "-" : "병가";
-            } else if (codeStr === "연차" || codeStr.includes("연차") || contentStr.includes("연차")) {
-              code = isWeekend ? "-" : "연차";
-            } else if (codeStr === "휴가" || codeStr.includes("휴가") || contentStr.includes("휴가")) {
-              code = isWeekend ? "-" : "휴가";
-            } else if (codeStr === "반차" || codeStr.includes("반차") || contentStr.includes("반차")) {
-              code = isWeekend ? "-" : "반차";
-            } else if (codeStr === "휴무" || codeStr === "-" || codeStr === "미출근" || codeStr.includes("미출근")) {
-              code = "-";
-            } else if (codeStr === "야간" || codeStr.includes("야간") || contentStr.includes("야간")) {
-              code = "야간";
-            } else if (codeStr === "주야" || codeStr.includes("주야") || contentStr.includes("주야")) {
-              code = "주야";
-            } else if (codeStr === "19" || codeStr === "19시" || codeStr.includes("19") || (it.endTime && it.endTime.includes("19:00")) || it.hours === 10) {
-              code = "19";
-            } else if (codeStr === "21" || codeStr === "21시" || codeStr.includes("21") || (it.endTime && it.endTime.includes("21:00")) || it.hours === 12) {
-              code = "21";
-            } else if (codeStr === "22" || codeStr === "22시" || codeStr.includes("22") || (it.endTime && it.endTime.includes("22:00")) || it.hours === 13) {
-              code = "22";
-            } else if (codeStr === "특근" || codeStr.includes("특근") || codeStr === "주말특근") {
-              if (isWeekend) {
-                code = "특근";
-              } else {
-                if (it.hours >= 13) code = "22";
-                else if (it.hours >= 12) code = "21";
-                else if (it.hours >= 10) code = "19";
-                else code = "🟢";
-              }
-            } else if (codeStr === "🟢" || codeStr === "정시" || codeStr.includes("정시") || codeStr.includes("🟢") || codeStr === "17" || codeStr === "출근") {
-              code = isWeekend ? "특근" : "🟢";
-            } else if (it.hours === 0 && (it.startTime === "-" || it.endTime === "-" || !it.hours)) {
-              const existingVal = targetW.daily[day] || targetW.daily[String(day)];
-              if (existingVal && existingVal !== "-" && existingVal !== "미입력" && existingVal !== "undefined" && existingVal !== "null") {
-                code = isWeekend && existingVal === "결근" ? "-" : existingVal;
-              } else {
-                code = isWeekend ? "-" : "결근";
-              }
-            } else if (it.hours >= 13 || it.endTime === "22:00") {
-              code = "22";
-            } else if (it.hours >= 12 || it.endTime === "21:00") {
-              code = "21";
-            } else if (it.hours >= 10 || it.endTime === "19:00") {
-              code = "19";
-            } else if (it.hours === 4 || it.startTime?.includes("반차")) {
-              code = isWeekend ? "특근" : "반차";
-            } else if (it.hours > 0) {
-              code = isWeekend ? "특근" : "🟢";
-            } else {
-              code = isWeekend ? "-" : "결근";
+            // 🔒 100% Strict Preservation: Honor the exact attendance code registered by worker/manager
+            let code = codeStr;
+            if (!code) {
+              if (contentStr.includes("결근")) code = "결근";
+              else if (contentStr.includes("병결")) code = "병결";
+              else if (contentStr.includes("사결")) code = "사결";
+              else if (contentStr.includes("공결")) code = "공결";
+              else if (contentStr.includes("연차")) code = "연차";
+              else if (contentStr.includes("휴가")) code = "휴가";
+              else if (contentStr.includes("반차")) code = "반차";
+              else if (contentStr.includes("야간")) code = "야간";
+              else if (it.hours >= 13 || it.endTime === "22:00") code = "22";
+              else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
+              else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
+              else if (it.hours > 0) code = isWeekend ? "특근" : "🟢";
+              else code = isWeekend ? "-" : "결근";
             }
 
             targetW.daily[day] = code;
@@ -839,11 +795,14 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
 
             if (targetW) {
               hasAppliedAnyItem = true;
-              let code = "🟢";
-              if (it.hours >= 13) code = "22";
-              else if (it.hours >= 12) code = "21";
-              else if (it.hours >= 10) code = "19";
-              else code = isWeekend ? "특근" : "🟢";
+              let rawCode = it.attendanceCode || it.code || it.attendance || it.status || "";
+              let code = String(rawCode || "").trim();
+              if (!code) {
+                if (it.hours >= 13) code = "22";
+                else if (it.hours >= 12) code = "21";
+                else if (it.hours >= 10) code = "19";
+                else code = isWeekend ? "특근" : "🟢";
+              }
               targetW.daily[day] = code;
               targetW.daily[String(day)] = code;
             }
@@ -852,19 +811,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       });
     }
 
-    // Case C: Report was registered for company but had no individual items -> set all workers of that company to attended ONLY on regular weekdays
-    // ONLY apply if report explicitly specifies a single company, NOT to composite groups or unverified plants
-    if (!hasAppliedAnyItem && targetCompanies.length === 1 && !isWeekend && !isAllGroup) {
-      matrix.forEach((w) => {
-        if (targetCompanies.some(tc => matchCompany(tc, w.company))) {
-          const defaultCode = "🟢";
-          if (!w.daily[day] || w.daily[day] === "미입력" || w.daily[day] === "-") {
-            w.daily[day] = defaultCode;
-            w.daily[String(day)] = defaultCode;
-          }
-        }
-      });
-    }
+    // 🔒 Case C eliminated: Never auto-fill non-participating workers with "🟢"
   });
 
   return matrix;
@@ -1099,17 +1046,17 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
               const wComp = cleanCompanyName(localW.company);
               const isTargetWorker = isTargetAll || wComp === targetComp;
 
-              const mergedDaily = { ...cloudDaily };
+              let mergedDaily = {};
 
               if (isTargetWorker) {
-                // Authoritative update for target company: accept all local codes and honor deletions
-                Object.keys(localDaily).forEach((d) => {
-                  const val = localDaily[d];
+                // 🔒 100% Authoritative Lock: The worker/manager's live edit is master.
+                mergedDaily = { ...localDaily };
+                // Clean any invalid/empty string keys
+                Object.keys(mergedDaily).forEach((d) => {
+                  const val = mergedDaily[d];
                   if (val === "" || val === "미입력" || val === "undefined" || val === "null") {
                     delete mergedDaily[d];
                     delete mergedDaily[String(d)];
-                  } else if (val !== undefined && val !== null) {
-                    mergedDaily[d] = val;
                   }
                 });
                 if (options.clearedDay) {
@@ -1118,6 +1065,7 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                 }
               } else {
                 // Untargeted companies: preserve cloud daily data, only accept non-empty edits
+                mergedDaily = { ...cloudDaily };
                 Object.keys(localDaily).forEach((d) => {
                   const val = localDaily[d];
                   if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {

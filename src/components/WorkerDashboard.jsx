@@ -619,26 +619,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
     const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
 
-    let matrix = rawMatrix;
-    if (overtimeReports && overtimeReports.length > 0) {
-      const reportMatrix = buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth);
-      matrix = reportMatrix.map((w, idx) => {
-        const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
-        const liveDaily = liveW?.daily || {};
-        const reportDaily = w.daily || {};
-        const combinedDaily = { ...reportDaily };
-        Object.keys(liveDaily).forEach((key) => {
-          const val = liveDaily[key];
-          if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-            combinedDaily[key] = val;
-          }
-        });
-        return {
-          ...w,
-          daily: combinedDaily
-        };
-      });
-    }
+    // 🔒 Direct Authoritative Matrix: Use official ledger without report re-synthesis
+    const matrix = rawMatrix;
 
     const daily = calculateDailySummary(matrix, todayDayNum, todayYear, todayMonth);
     const companyStyles = {

@@ -2078,36 +2078,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // ⭐ Dynamic Effective Matrix: seamlessly merges registered reports with live user edits
-  // Live staging edits and user ledger entries take authoritative precedence over static historical reports
+  // 🔒 Authoritative Master Matrix: The ledger is the single source of truth.
+  // Direct user edits and confirmed registrations in the matrix are 100% authoritative
+  // and must NEVER be overwritten or mutated by historical reports.
   const effectiveMatrix = useMemo(() => {
-    const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
-    if (!legacyReports || legacyReports.length === 0) return rawMatrix;
-
-    // 1. Build base from registered reports
-    const reportMatrix = buildMatrixFromReports(smartData?.masterWorkers || rawMatrix, legacyReports, currentYear, currentMonthNum);
-
-    // 2. Overlay live user edits (rawMatrix) on top of registered reports (reportMatrix)
-    return reportMatrix.map((w, idx) => {
-      const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
-      const liveDaily = liveW?.daily || {};
-      const reportDaily = w.daily || {};
-      
-      // Combine: registered reports as baseline, live user edits override ONLY on non-empty modified days
-      const combinedDaily = { ...reportDaily };
-      Object.keys(liveDaily).forEach((key) => {
-        const val = liveDaily[key];
-        if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-          combinedDaily[key] = val;
-        }
-      });
-
-      return {
-        ...w,
-        daily: combinedDaily
-      };
-    });
-  }, [smartData, legacyReports, currentYear, currentMonthNum]);
+    return smartData?.attendanceMatrix || smartData?.masterWorkers || [];
+  }, [smartData]);
 
   // Calculations & Summaries for 5 Companies (실시간 보고서와 통합된 effectiveMatrix 기준)
   const dailySummary = useMemo(() => {
