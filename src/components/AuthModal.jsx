@@ -1791,7 +1791,7 @@ export const AuthModal = () => {
                     key={worker.id}
                     onClick={() => {
                       setIsExtrusionModalOpen(false);
-                      handleUserClick(worker);
+                      handleUserClick({ ...worker, isFieldWorker: true });
                     }}
                     className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
                       isLead
@@ -1879,7 +1879,8 @@ export const AuthModal = () => {
                           name: worker.name,
                           title: worker.position || "작업원",
                           line: worker.line,
-                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공"
+                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          isFieldWorker: true
                         });
                       }}
                       className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
@@ -1967,7 +1968,8 @@ export const AuthModal = () => {
                         name: worker.name,
                         title: worker.position || "작업원",
                         line: worker.line,
-                        assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공"
+                        assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                        isFieldWorker: true
                       });
                     }}
                     className="min-h-[48px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-teal-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"

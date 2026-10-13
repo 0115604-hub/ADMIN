@@ -267,28 +267,44 @@ export const WorkerPinModal = ({
     );
   }, [selectedUser]);
 
-  const isHanulWorker = useMemo(() => {
+  // 🌟 1. 첫화면 아래 협력업체 대표이사 계정 판별 (유성, 부림텍, 한울 등)
+  const isCompanyRepresentative = useMemo(() => {
     if (!selectedUser) return false;
     return Boolean(
-      selectedUser.company?.includes("한울") ||
-      selectedUser.name === "한울" ||
       selectedUser.id === "hal_hu" ||
+      selectedUser.id === "hal_br" ||
+      selectedUser.id === "sam_ys" ||
+      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_")) ||
+      (!selectedUser.isFieldWorker && (selectedUser.name === "한울" || selectedUser.name === "부림텍" || selectedUser.name === "유성"))
+    );
+  }, [selectedUser]);
+
+  // 🌟 2. 한울 현장 작업자 판별 (상단 포털 버튼으로 접속한 현장 작업자 전용: 박종미, 마이클 등)
+  // ⚠️ 첫화면 아래의 '한울' 대표이사(hal_hu)는 관리자이므로 절대 작업자로 분류되지 않음!
+  const isHanulWorker = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isCompanyRepresentative) return false;
+    if (selectedUser.id === "hal_hu" || selectedUser.name === "한울") return false;
+    return Boolean(
       String(selectedUser.id || "").startsWith("hal_hu_") ||
+      (selectedUser.company?.includes("한울") && selectedUser.isFieldWorker) ||
       selectedUser.line === "9BQC" ||
       selectedUser.line === "LQ2" ||
       [
-        "황수현", "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+        "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
         "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
         "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
         "마이카", "알프레도", "아이린", "에릭", "언"
       ].includes(selectedUser.name)
     );
-  }, [selectedUser]);
+  }, [selectedUser, isCompanyRepresentative]);
 
+  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성, 부림텍, 한울)
   const isAdminUser = useMemo(() => {
     if (!selectedUser) return false;
-    return !isExtrusionWorker && !isHanulWorker;
-  }, [selectedUser, isExtrusionWorker, isHanulWorker]);
+    if (isCompanyRepresentative) return true;
+    return !isExtrusionWorker && !isHanulWorker && !selectedUser.isFieldWorker;
+  }, [selectedUser, isCompanyRepresentative, isExtrusionWorker, isHanulWorker]);
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
@@ -316,18 +332,23 @@ export const WorkerPinModal = ({
   // 협력업체 대표 = 해당 업체만 / 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
   const visibleAttendanceCompanies = useMemo(() => {
     if (!selectedUser) return ["오륙", "유성", "조영", "한울", "부림텍"];
-    if (selectedUser.isPartner || selectedUser.company === "유성" || selectedUser.name === "유성") return ["유성"];
-    if (selectedUser.isPartner || selectedUser.company === "조영" || selectedUser.name === "조영") return ["조영"];
-    if (selectedUser.isPartner || selectedUser.company === "한울" || selectedUser.name === "한울") return ["한울"];
-    if (selectedUser.isPartner || selectedUser.company === "부림텍" || selectedUser.name === "부림텍") return ["부림텍"];
+    if (selectedUser.company === "유성" || selectedUser.name === "유성") return ["유성"];
+    if (selectedUser.company === "조영" || selectedUser.name === "조영") return ["조영"];
+    if (selectedUser.company === "한울" || selectedUser.name === "한울") return ["한울"];
+    if (selectedUser.company === "부림텍" || selectedUser.name === "부림텍") return ["부림텍"];
     if (isSamrangjinManager) return ["오륙", "유성"];
     if (isHallimManager) return ["조영", "한울", "부림텍"];
     return ["오륙", "유성", "조영", "한울", "부림텍"];
   }, [selectedUser, isSamrangjinManager, isHallimManager]);
 
   const isProcessingWorker = useMemo(() => {
-    return false;
-  }, []);
+    if (!selectedUser) return false;
+    if (isCompanyRepresentative) return false;
+    return Boolean(
+      (selectedUser.isFieldWorker && !isHanulWorker && !isExtrusionWorker) ||
+      (selectedUser.assignedProcess?.includes("외주가공") && selectedUser.isFieldWorker)
+    );
+  }, [selectedUser, isCompanyRepresentative, isHanulWorker, isExtrusionWorker]);
 
   const todayKst = getKSTDateString();
 
@@ -987,34 +1008,38 @@ export const WorkerPinModal = ({
 
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <h3 className="font-black text-base sm:text-lg md:text-xl text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : selectedUser.isPartner ? "대표이사" : "관리자")}
+                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : isCompanyRepresentative ? "대표이사" : "작업원")}
                 </h3>
                 <span
                   className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
                     isHeadquarterAdmin
                       ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                      : selectedUser.isPartner
+                      : isCompanyRepresentative
                       ? "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
                       : isSamrangjinManager
                       ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                       : isHallimManager
                       ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      : isExtrusionWorker
+                      : isHanulWorker
                       ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                      : isExtrusionWorker
+                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200"
                   }`}
                 >
                   {isHeadquarterAdmin
                     ? "경영총괄/대표이사"
-                    : selectedUser.isPartner
-                    ? `협력업체 (${selectedUser.name})`
+                    : isCompanyRepresentative
+                    ? `협력업체 (${selectedUser.name} 대표이사)`
                     : isSamrangjinManager
                     ? "삼랑진공장 관리자"
                     : isHallimManager
                     ? "한림공장 관리자"
+                    : isHanulWorker
+                    ? "한울 외주가공 작업자"
                     : isExtrusionWorker
                     ? "압출동 작업자"
-                    : "관리자"}
+                    : "외주가공 작업자"}
                 </span>
 
                 {/* PIN Input Badge */}
@@ -1090,6 +1115,8 @@ export const WorkerPinModal = ({
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isExtrusionWorker
                       ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
+                      : isHanulWorker
+                      ? "인증 시 [중대재해공유판 + 4M 변동점 발생공지 + 일보작성]이 표시됩니다."
                       : isProcessingWorker
                       ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
                       : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 변동점 발생공지 + 근태정보]가 표시됩니다."}
@@ -1505,59 +1532,11 @@ export const WorkerPinModal = ({
                   )}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 2.5: 한울 외주가공 작업자 -> 작업일보 바로가기 + 4M 변동점 */}
+                  {/* CASE 2.5: 한울 외주가공 작업자 -> 4M 변동점 및 안전/품질 공지 */}
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {isHanulWorker && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 작업일보 원클릭 바로가기 카드 */}
-                      <div className="p-4 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-400 dark:border-indigo-600 shadow-md space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
-                            <FileSpreadsheet className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-black text-indigo-950 dark:text-white">
-                              한울 외주가공 작업일보 작성
-                            </h4>
-                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
-                              작성하실 차종 일보를 선택해주세요.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenHanulReport("9BQC")}
-                            className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-98 transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">🚗</span>
-                              <div className="text-left leading-tight">
-                                <span className="block font-black">9BQC G/RUN</span>
-                                <span className="text-[10px] text-indigo-200 font-normal">소재준비/조인트/본드로봇/검사</span>
-                              </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-white shrink-0" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenHanulReport("LQ2A")}
-                            className="p-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-98 transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">⚡</span>
-                              <div className="text-left leading-tight">
-                                <span className="block font-black">LQ2a Hood Side</span>
-                                <span className="text-[10px] text-purple-200 font-normal">소재준비/조인트/본드로봇/검사</span>
-                              </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-white shrink-0" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 2. 4M 변동점 및 안전/품질 공지 (최근 2건) */}
+                      {/* 4M 변동점 및 안전/품질 공지 */}
                       <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1575,13 +1554,13 @@ export const WorkerPinModal = ({
                           </div>
 
                           <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            최근 {recent4MRecords.slice(0, 2).length}건
+                            최근 {recent4MRecords.length}건
                           </span>
                         </div>
 
-                        {recent4MRecords.slice(0, 2).length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {recent4MRecords.slice(0, 2).map((item) => (
+                        {recent4MRecords.length > 0 ? (
+                          <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
+                            {recent4MRecords.map((item) => (
                               <div
                                 key={item.id}
                                 className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
@@ -1607,7 +1586,7 @@ export const WorkerPinModal = ({
                             ))}
                           </div>
                         ) : (
-                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
+                          <div className="py-8 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-indigo-400" />
                             <span>최근 등록된 변동점이 없습니다.</span>
                           </div>
@@ -1639,6 +1618,8 @@ export const WorkerPinModal = ({
                                 <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
                                   {isHeadquarterAdmin
                                     ? "📌 본사 & 사내 공통일정"
+                                    : isCompanyRepresentative
+                                    ? `📌 ${selectedUser.company || selectedUser.name} 대표 일정 및 공지`
                                     : isSamrangjinManager
                                     ? "📌 삼랑진공장 관리자 일정"
                                     : "📌 한림공장 관리자 일정"}
@@ -1653,6 +1634,8 @@ export const WorkerPinModal = ({
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
                                 {isHeadquarterAdmin
                                   ? "본사 및 전사 진행 중인 미완료 일정"
+                                  : isCompanyRepresentative
+                                  ? `${selectedUser.company || selectedUser.name} 및 전사 진행 중인 공통 일정`
                                   : isSamrangjinManager
                                   ? "삼랑진공장 및 개인 미완료 일정"
                                   : "한림공장 및 개인 미완료 일정"}
@@ -1811,7 +1794,9 @@ export const WorkerPinModal = ({
                                 👥 실시간 근태현황정보
                               </span>
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                {isSamrangjinManager
+                                {isCompanyRepresentative
+                                  ? `${selectedUser.company || selectedUser.name} 실시간 근태 현황`
+                                  : isSamrangjinManager
                                   ? "오륙 • 유성 (삼랑진공장)"
                                   : isHallimManager
                                   ? "조영 • 한울 • 부림텍 (한림공장)"
@@ -1826,6 +1811,7 @@ export const WorkerPinModal = ({
                         </div>
 
                         <div className={`grid gap-1.5 text-[10px] ${
+                          visibleAttendanceCompanies.length === 1 ? "grid-cols-1" :
                           visibleAttendanceCompanies.length === 2 ? "grid-cols-2" :
                           visibleAttendanceCompanies.length === 3 ? "grid-cols-3" :
                           "grid-cols-5"
