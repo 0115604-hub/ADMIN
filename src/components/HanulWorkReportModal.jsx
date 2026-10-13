@@ -317,7 +317,6 @@ export const HanulWorkReportModal = ({
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
         if (modalRef.current) modalRef.current.scrollTop = 0;
         if (overlayRef.current) overlayRef.current.scrollTop = 0;
-        window.scrollTo(0, 0);
       };
       resetScroll();
       const t1 = setTimeout(resetScroll, 20);
@@ -580,12 +579,12 @@ export const HanulWorkReportModal = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-0 sm:p-4 overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-4 overflow-hidden sm:overflow-y-auto animate-fadeIn"
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col m-0 sm:my-auto animate-scaleUp text-left"
+        className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col m-0 sm:mt-4 sm:mb-6 sm:mx-auto text-left"
       >
         {/* ========================================================================= */}
         {/* 🌟 1. Modal Header & Project Switcher */}

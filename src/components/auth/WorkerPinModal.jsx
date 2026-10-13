@@ -216,6 +216,19 @@ export const WorkerPinModal = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setSelectedUser]);
 
+  // Ensure modal scroll starts at top on open
+  useEffect(() => {
+    if (selectedUser) {
+      const resetScroll = () => {
+        if (bodyRef.current) bodyRef.current.scrollTop = 0;
+        if (overlayRef.current) overlayRef.current.scrollTop = 0;
+      };
+      resetScroll();
+      const t1 = setTimeout(resetScroll, 20);
+      return () => clearTimeout(t1);
+    }
+  }, [selectedUser]);
+
   // Dismiss virtual keyboard on mobile as soon as PIN is verified & scroll body to top
   useEffect(() => {
     if (isPinVerified) {
@@ -228,11 +241,10 @@ export const WorkerPinModal = ({
       const resetScroll = () => {
         if (bodyRef.current) bodyRef.current.scrollTop = 0;
         if (overlayRef.current) overlayRef.current.scrollTop = 0;
-        window.scrollTo(0, 0);
       };
       resetScroll();
-      const t1 = setTimeout(resetScroll, 30);
-      const t2 = setTimeout(resetScroll, 120);
+      const t1 = setTimeout(resetScroll, 20);
+      const t2 = setTimeout(resetScroll, 100);
       return () => {
         clearTimeout(t1);
         clearTimeout(t2);
@@ -932,11 +944,11 @@ export const WorkerPinModal = ({
       <div
         ref={overlayRef}
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-0 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-3 md:p-4 animate-fadeIn overflow-hidden sm:overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col m-0 sm:my-auto"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden relative flex flex-col m-0 sm:mt-4 sm:mb-6 sm:mx-auto text-left"
         >
           {/* Top Decorative Accent Line */}
           <div
