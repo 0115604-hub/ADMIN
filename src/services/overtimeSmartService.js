@@ -1030,11 +1030,15 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
       const ref = doc(db, "smart_overtime_ledger", docId);
       let mergedMatrix = normalizedData.attendanceMatrix || [];
 
-      // Concurrency protection: merge with remote doc so one company never wipes out another company's attendance
+      const changedAudits = [];
+      let existingAuditLogs = [];
+
+      // Concurrency protection & audit diffing: merge with remote doc so one company never wipes out another company's attendance
       try {
         const cloudSnap = await getDoc(ref);
         if (cloudSnap.exists()) {
           const cloudData = cloudSnap.data();
+          existingAuditLogs = Array.isArray(cloudData?.recentAuditLogs) ? cloudData.recentAuditLogs : [];
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
             mergedMatrix = mergedMatrix.map((localW) => {
               const cloudW = cloudData.attendanceMatrix.find(
@@ -1074,6 +1078,33 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                 });
               }
 
+              // ⭐ Audit Diff Tracking: Detect exact cell changes for forensic accountability
+              if (isTargetWorker) {
+                const comparedDays = new Set([
+                  ...Object.keys(cloudDaily || {}),
+                  ...Object.keys(mergedDaily || {})
+                ]);
+                comparedDays.forEach((d) => {
+                  // Only track integer day keys to avoid duplicate string/number entries
+                  if (isNaN(Number(d))) return;
+                  const beforeVal = String(cloudDaily?.[d] || "").trim();
+                  const afterVal = String(mergedDaily?.[d] || "").trim();
+                  if (beforeVal !== afterVal) {
+                    changedAudits.push({
+                      worker: localW.name,
+                      company: cleanCompanyName(localW.company),
+                      day: Number(d),
+                      before: beforeVal || "(미등록)",
+                      after: afterVal || "(미등록)",
+                      operator: options.auditMeta?.operator || "현장관리자",
+                      source: options.auditMeta?.source || "USER_DIRECT_ACTION",
+                      reason: options.auditMeta?.reason || "",
+                      timestamp: new Date().toISOString()
+                    });
+                  }
+                });
+              }
+
               return {
                 ...cloudW,
                 ...localW,
@@ -1086,6 +1117,12 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
         console.warn("Cloud merge fallback in saveSmartOvertimeData:", mergeErr);
       }
 
+      if (changedAudits.length > 0) {
+        console.log(`📝 [근태 감사 로그] ${changedAudits.length}건 변경 기록:`, changedAudits);
+      }
+
+      const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 100);
+
       await setDoc(
         ref,
         sanitizeForFirestore({
@@ -1093,13 +1130,14 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
           month: normalizedData.month || parseInt(ym.split("-")[1], 10) || 10,
           masterWorkers: normalizedData.masterWorkers || [],
           attendanceMatrix: mergedMatrix,
+          recentAuditLogs: updatedAuditLogs,
           updatedAt: new Date().toISOString()
         }),
         { merge: true }
       );
 
       // Immediately keep local storage & runtime listeners in sync with mergedMatrix
-      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix };
+      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix, recentAuditLogs: updatedAuditLogs };
       localStorage.setItem(key, JSON.stringify(finalData));
       if (ym === "2026-09" || ym === "2026_09") {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
@@ -1386,4 +1424,24 @@ export const importSmartOvertimeFromExcel = async (file) => {
     reader.onerror = (error) => reject(error);
     reader.readAsArrayBuffer(file);
   });
+};
+
+/**
+ * 🔒 Forensic Audit Viewer: Retrieve latest cell-level attendance change audits
+ */
+export const getRecentAttendanceAudits = async (targetYearMonth = null) => {
+  try {
+    const ym = targetYearMonth || "2026-10";
+    const docId = getFirestoreDocIdForMonth(ym);
+    if (!db) return [];
+    const ref = doc(db, "smart_overtime_ledger", docId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      return snap.data()?.recentAuditLogs || [];
+    }
+    return [];
+  } catch (err) {
+    console.warn("Failed to fetch recent attendance audits:", err);
+    return [];
+  }
 };

@@ -392,76 +392,8 @@ export const saveOvertimeReport = async (report) => {
   updatedReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
   saveLocalOvertimeReports(updatedReports);
 
-  // ⭐ Synchronize Matrix Ledger (smart_overtime_ledger) safely without wiping other workers or companies
-  if (cleanReport.workDate) {
-    try {
-      const parts = cleanReport.workDate.split("-");
-      if (parts.length === 3) {
-        const ym = `${parts[0]}-${parts[1]}`;
-        const targetYear = parseInt(parts[0], 10);
-        const targetMonth = parseInt(parts[1], 10);
-        const d = parseInt(parts[2], 10);
-        const currentLedger = getLocalSmartOvertimeData(ym);
-        const matrix = [...(currentLedger.attendanceMatrix || currentLedger.masterWorkers || [])];
-
-        // Safely update only workers contained in this report for day d
-        (cleanReport.items || []).forEach((it) => {
-          if (!it) return;
-          const wName = String(it.workerName || it.name || it.worker || it.empName || it.userName || "").trim();
-          const rawCode = it.attendanceCode || it.code || it.attendance || it.status || it.category || "";
-          let codeStr = String(rawCode || "").trim();
-
-          if (!codeStr) {
-            const h = Number(it.hours || 0);
-            if (h >= 13 || it.endTime === "22:00") codeStr = "22";
-            else if (h >= 12 || it.endTime === "21:00") codeStr = "21";
-            else if (h >= 10 || it.endTime === "19:00") codeStr = "19";
-            else if (h > 0) codeStr = "🟢";
-            else if (it.startTime === "-" || it.endTime === "-") codeStr = "결근";
-          }
-
-          if (wName) {
-            const cleanItName = cleanWorkerNameOnly(wName);
-            const wComp = cleanCompanyName(it.company || cleanReport.company);
-            const target = matrix.find(
-              (w) => ((w.name || "").trim() === wName || (cleanItName && cleanWorkerNameOnly(w.name) === cleanItName)) &&
-                     cleanCompanyName(w.company) === wComp
-            );
-            if (target && codeStr) {
-              if (!target.daily) target.daily = {};
-              target.daily[d] = codeStr;
-              target.daily[String(d)] = codeStr;
-            }
-          } else if (it.names) {
-            const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
-            namesList.forEach((n) => {
-              const cleanN = cleanWorkerNameOnly(n);
-              const wComp = cleanCompanyName(it.company || cleanReport.company);
-              const target = matrix.find(
-                (w) => ((w.name || "").trim() === n || (cleanN && cleanWorkerNameOnly(w.name) === cleanN)) &&
-                       cleanCompanyName(w.company) === wComp
-              );
-              if (target && codeStr) {
-                if (!target.daily) target.daily = {};
-                target.daily[d] = codeStr;
-                target.daily[String(d)] = codeStr;
-              }
-            });
-          }
-        });
-
-        const updatedLedger = {
-          ...currentLedger,
-          year: targetYear,
-          month: targetMonth,
-          attendanceMatrix: matrix
-        };
-        await saveSmartOvertimeData(updatedLedger, ym, { targetCompany: cleanReport.company });
-      }
-    } catch (ledgerSyncErr) {
-      console.warn("Matrix ledger auto-sync error in saveOvertimeReport:", ledgerSyncErr);
-    }
-  }
+  // 🔒 Authoritative Principle: saveOvertimeReport strictly saves the report document.
+  // It NEVER tampers with or overwrites the primary smart_overtime_ledger attendance matrix.
 
   // Sync to Cloud Firestore with recursive sanitization
   try {
@@ -495,60 +427,8 @@ export const deleteOvertimeReport = async (reportId) => {
   saveLocalOvertimeReports(updatedReports);
 
   // ⭐ Synchronize Matrix Ledger on deletion safely without wiping other workers or companies
-  if (deletedRep && deletedRep.workDate) {
-    try {
-      const parts = deletedRep.workDate.split("-");
-      if (parts.length === 3) {
-        const ym = `${parts[0]}-${parts[1]}`;
-        const targetYear = parseInt(parts[0], 10);
-        const targetMonth = parseInt(parts[1], 10);
-        const d = parseInt(parts[2], 10);
-        const currentLedger = getLocalSmartOvertimeData(ym);
-        const matrix = [...(currentLedger.attendanceMatrix || currentLedger.masterWorkers || [])];
-
-        // Clear attendance code for workers in this deleted report for day d
-        (deletedRep.items || []).forEach((it) => {
-          if (!it) return;
-          const wName = String(it.workerName || it.name || it.worker || it.empName || it.userName || "").trim();
-          const cleanItName = cleanWorkerNameOnly(wName);
-          const wComp = cleanCompanyName(it.company || deletedRep.company);
-          if (wName) {
-            const target = matrix.find(
-              (w) => ((w.name || "").trim() === wName || (cleanItName && cleanWorkerNameOnly(w.name) === cleanItName)) &&
-                     cleanCompanyName(w.company) === wComp
-            );
-            if (target && target.daily) {
-              delete target.daily[d];
-              delete target.daily[String(d)];
-            }
-          } else if (it.names) {
-            const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
-            namesList.forEach((n) => {
-              const cleanN = cleanWorkerNameOnly(n);
-              const target = matrix.find(
-                (w) => ((w.name || "").trim() === n || (cleanN && cleanWorkerNameOnly(w.name) === cleanN)) &&
-                       cleanCompanyName(w.company) === wComp
-              );
-              if (target && target.daily) {
-                delete target.daily[d];
-                delete target.daily[String(d)];
-              }
-            });
-          }
-        });
-
-        const updatedLedger = {
-          ...currentLedger,
-          year: targetYear,
-          month: targetMonth,
-          attendanceMatrix: matrix
-        };
-        await saveSmartOvertimeData(updatedLedger, ym, { targetCompany: deletedRep.company, clearedDay: d });
-      }
-    } catch (ledgerDelSyncErr) {
-      console.warn("Matrix ledger auto-sync error in deleteOvertimeReport:", ledgerDelSyncErr);
-    }
-  }
+  // 🔒 Authoritative Principle: Deleting a report document does NOT erase worker attendance in the master ledger.
+  // The primary attendance matrix remains intact unless explicitly edited by an authorized user.
 
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, reportId));

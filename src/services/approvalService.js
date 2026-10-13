@@ -603,12 +603,10 @@ export function subscribeApprovalDocs(onUpdate) {
                 docMap.set(r.id, r);
               } else if (existing.status === "APPROVED" && r.status !== "APPROVED") {
                 docMap.set(r.id, existing);
-                setDoc(doc(db, COLLECTION_NAME, existing.id), sanitizeForFirestore(existing)).catch(() => {});
               } else if (countR > countL) {
                 docMap.set(r.id, r);
               } else if (countL > countR) {
                 docMap.set(r.id, existing);
-                setDoc(doc(db, COLLECTION_NAME, existing.id), sanitizeForFirestore(existing)).catch(() => {});
               } else {
                 const tR = parseSafeTimestamp(r.updatedAt || r.createdAt);
                 const tL = parseSafeTimestamp(existing.updatedAt || existing.createdAt);
@@ -622,13 +620,10 @@ export function subscribeApprovalDocs(onUpdate) {
           }
         });
 
-        // 3. Any local docs missing from Firestore -> asynchronously sync up to Firestore
+        // 3. Keep local fallback in memory without silent cloud writes
         localDocs.forEach((localDoc) => {
-          if (localDoc && localDoc.id) {
-            const inRemote = remoteDocs.some((r) => r.id === localDoc.id);
-            if (!inRemote) {
-              setDoc(doc(db, COLLECTION_NAME, localDoc.id), sanitizeForFirestore(localDoc)).catch(() => {});
-            }
+          if (localDoc && localDoc.id && !docMap.has(localDoc.id)) {
+            docMap.set(localDoc.id, localDoc);
           }
         });
 

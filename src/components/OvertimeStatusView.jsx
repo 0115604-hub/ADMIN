@@ -878,6 +878,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   }, [currentProfile?.name, daysInMonth]);
 
+  // 🔒 Freeze Lock State: Prevent accidental/tampered changes to finalized days
+  const [isDayUnlockedForEdit, setIsDayUnlockedForEdit] = useState(false);
+
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
@@ -991,6 +994,27 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
   }, [selectedMonth, prevYearMonth]);
 
+  useEffect(() => {
+    setIsDayUnlockedForEdit(false);
+  }, [selectedDay, selectedCompanyFilter, selectedMonth]);
+
+  const currentDayApprovedReport = useMemo(() => {
+    const d = selectedDay || 1;
+    const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const cleanComp = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? null : cleanCompanyName(selectedCompanyFilter);
+    return (legacyReports || []).find((r) => {
+      if (!r || r.isSynthesized) return false;
+      const rDateKey = getReportDateSortKey(r);
+      if (rDateKey !== targetDateStr) return false;
+      if (r.status !== "APPROVED") return false;
+      if (!cleanComp) return true;
+      const rComp = cleanCompanyName(r.company || "");
+      return rComp === cleanComp;
+    });
+  }, [legacyReports, selectedDay, currentYear, currentMonthNum, selectedCompanyFilter]);
+
+  const isDayLocked = Boolean(currentDayApprovedReport) && !isDayUnlockedForEdit;
+
   // Sync state to local/cloud (Explicit Save Action)
   const handleSaveLedger = async (updatedData, targetYM = null) => {
     setIsSaving(true);
@@ -1001,7 +1025,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       } else {
         setPrevMonthData(updatedData);
       }
-      await saveSmartOvertimeData(updatedData, ym, { targetCompany: selectedCompanyFilter });
+      await saveSmartOvertimeData(updatedData, ym, {
+        targetCompany: selectedCompanyFilter,
+        auditMeta: {
+          operator: currentProfile?.name || "관리자",
+          source: "MANUAL_SAVE_BUTTON",
+          reason: "관리자 전체 원장 수동 저장"
+        }
+      });
       
       setHasUnsavedChanges(false);
     } catch (err) {
@@ -1013,6 +1044,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
   const handleUpdateWorkerDayAttendance = async (targetWorkerOrIndex, newCode) => {
+    if (isDayLocked) {
+      triggerToast(`🔒 ${currentMonthNum}월 ${selectedDay}일은 전자결재 승인 완료(마감) 상태입니다. 수정을 원하시면 상단 배너의 [마감 일시 해제]를 먼저 눌러주세요.`);
+      return;
+    }
+
     const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
       ? [...effectiveMatrix]
       : (smartData?.attendanceMatrix || []);
@@ -1054,11 +1090,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     const targetComp = updatedMatrix[targetIdx]?.company;
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: targetComp });
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+      targetCompany: targetComp,
+      auditMeta: {
+        operator: currentProfile?.name || "현장관리자",
+        source: "CELL_1CLICK_UPDATE",
+        reason: `${updatedMatrix[targetIdx]?.name} Day ${selectedDay} 근태 변경: ${finalCode || "(미등록)"}`
+      }
+    });
   };
 
   // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day (Excluding Calendar Special Work Days)
   const handleSetAllFilteredWorkersSameAsPrevDay = async () => {
+    if (isDayLocked) {
+      triggerToast(`🔒 ${currentMonthNum}월 ${selectedDay}일은 전자결재 승인 완료(마감) 상태입니다. 수정을 원하시면 상단 배너의 [마감 일시 해제]를 먼저 눌러주세요.`);
+      return;
+    }
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
 
     // 1. [달력기준 특근일 제외 규칙 1] 현재 선택된 날짜가 특근일(주말/공휴일)인 경우 적용 제외
@@ -1186,11 +1233,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const msg = `📋 [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${appliedCount}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+      targetCompany: selectedCompanyFilter,
+      auditMeta: {
+        operator: currentProfile?.name || "현장관리자",
+        source: "BULK_SAME_AS_PREV_DAY",
+        reason: `${currentMonthNum}월 ${selectedDay}일 전일과 동일 일괄 적용 (${appliedCount}명)`
+      }
+    });
   };
 
   // ⭐ 1-Click Set ONLY Unselected / Missing Workers to "🟢 정시" (Preserves existing 19시, 21시, 22시, 야간, 결근, 병결)
   const handleSetMissingWorkersRegular = async () => {
+    if (isDayLocked) {
+      triggerToast(`🔒 ${currentMonthNum}월 ${selectedDay}일은 전자결재 승인 완료(마감) 상태입니다. 수정을 원하시면 상단 배너의 [마감 일시 해제]를 먼저 눌러주세요.`);
+      return;
+    }
     if (!missingAttendanceWorkers || missingAttendanceWorkers.length === 0) {
       triggerToast("ℹ️ 미선택된 근로자가 없습니다. (모든 근로자의 근태가 입력되어 있습니다)");
       return;
@@ -1239,11 +1297,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "전사" : selectedCompanyFilter}] 미입력 ${updatedCount}명이 ${isWk ? "특근(8H)" : "정시(🟢)"}로 채워졌습니다. (기존 잔업/야간/결근/병결 인원 안전 보존)`);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+      targetCompany: selectedCompanyFilter,
+      auditMeta: {
+        operator: currentProfile?.name || "현장관리자",
+        source: "BULK_FILL_MISSING_REGULAR",
+        reason: `${currentMonthNum}월 ${selectedDay}일 미입력 인원 정시 채우기 (${updatedCount}명)`
+      }
+    });
   };
 
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day (Preserves 결근/병결/휴가 사유자)
   const handleSetAllFilteredWorkersRegular = async () => {
+    if (isDayLocked) {
+      triggerToast(`🔒 ${currentMonthNum}월 ${selectedDay}일은 전자결재 승인 완료(마감) 상태입니다. 수정을 원하시면 상단 배너의 [마감 일시 해제]를 먼저 눌러주세요.`);
+      return;
+    }
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
 
     const isWk = isWeekendDay(selectedDay);
@@ -1316,7 +1385,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다. (결근/병결 인원 보존)`);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: selectedCompanyFilter });
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+      targetCompany: selectedCompanyFilter,
+      auditMeta: {
+        operator: currentProfile?.name || "현장관리자",
+        source: "BULK_SET_ALL_REGULAR",
+        reason: `${currentMonthNum}월 ${selectedDay}일 전체 인원 정시 채우기 (${updatedCount}명)`
+      }
+    });
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
@@ -1463,7 +1539,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         attendanceMatrix: currentMatrix
       };
       setSmartData(updatedLedger);
-      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10", { targetCompany: popupCompanyData?.company || selectedCompanyFilter });
+      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10", {
+        targetCompany: popupCompanyData?.company || selectedCompanyFilter,
+        auditMeta: {
+          operator: compMeta.author || "관리자",
+          source: "REPORT_REGISTRATION",
+          reason: `${currentMonthNum}월 ${d}일 보고서 등록 및 저장`
+        }
+      });
       
       // 2. Generate and save company-specific report record
       const reportType = isWk ? "특근보고서" : "근태보고서";
@@ -1491,9 +1574,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
           val = "-";
         }
-        const isOff = val === "결근" || val === "병결" || val === "사결" || val === "공결" || val === "연차" || val === "휴가" || val === "병가" || val === "반차" || val === "-" || val === "휴무" || val === "미출근" || !val;
-        const reasonText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "작업 수행";
-        const detailText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : "생산 및 납품 대응";
+        const isOff = val === "결근" || val === "병결" || val === "사결" || val === "공결" || val === "연차" || val === "휴가" || val === "병가" || val === "반차" || val === "-" || val === "휴무" || val === "미출근";
+        const isBlank = !strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null";
+        const reasonText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : isBlank ? "미등록" : "작업 수행";
+        const detailText = val === "결근" ? "결근" : val === "병결" ? "병결" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : isOff ? "휴무" : isBlank ? "근태 미등록" : "생산 및 납품 대응";
+        const finalAttendanceCode = isWk
+          ? (isOff || isBlank ? "-" : val)
+          : (isBlank ? "-" : val);
+        const finalAttendanceLabel = isWk
+          ? (isOff || isBlank ? "미출근" : val)
+          : (isBlank ? "미등록" : val === "🟢" ? "정시" : val);
+        const startTime = (isOff || isBlank) ? "-" : (val === "야간" ? "20:00" : "08:00");
+        const endTime = (isOff || isBlank) ? "-" : (val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : val === "야간" ? "05:00" : "17:00");
+        const effectiveHours = (isOff || isBlank) ? 0 : (workHours || (isAttended ? 8 : 0));
+        const effectiveOtHours = (isOff || isBlank) ? 0 : ((weekdayOt + weekendOt) || 0);
+
         return {
           id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
@@ -1504,15 +1599,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           category: w.line || normalizeDept(w.dept) || "",
           workerName: (w.name || "").trim(),
           position: w.position || "작업원",
-          attendanceCode: isWk ? (isOff ? "-" : val) : (val || "🟢"),
-          attendanceLabel: isWk ? (isOff ? "미출근" : val) : (val || "정시"),
-          startTime: isOff ? "-" : (val === "야간" ? "20:00" : "08:00"),
-          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : val === "야간" ? "05:00" : (isOff ? "-" : "17:00"),
-          hours: isOff ? 0 : (workHours || (isAttended ? 8 : 0)),
-          otHours: isOff ? 0 : ((weekdayOt + weekendOt) || 0),
-          count: isOff ? 0 : 1,
-          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff ? "미출근" : "특근 투입") : reasonText}`,
-          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff ? "미출근" : "생산 및 납품 대응") : detailText}`
+          attendanceCode: finalAttendanceCode,
+          attendanceLabel: finalAttendanceLabel,
+          startTime,
+          endTime,
+          hours: effectiveHours,
+          otHours: effectiveOtHours,
+          count: (isOff || isBlank) ? 0 : 1,
+          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${isWk ? (isOff || isBlank ? "미출근" : "특근 투입") : reasonText}`,
+          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${isWk ? (isOff || isBlank ? "미출근" : "생산 및 납품 대응") : detailText}`
         };
       });
 
@@ -1641,43 +1736,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
       setLegacyReports(nextReports);
       
-      // ⭐ 삭제 즉시 해당 업체의 해당 일자 근태만 안전하게 초기화 (타 협력사 근태 100% 보존)
-      let delDay = null;
-      if (targetRep && targetRep.workDate) {
-        const parts = targetRep.workDate.split("-");
-        if (parts.length === 3) delDay = parseInt(parts[2], 10);
-      }
-      const repComp = targetRep ? cleanCompanyName(targetRep.company) : null;
-      
+      // 🔒 Authoritative Principle: Deleting a report document does NOT erase worker attendance in the master ledger.
+      // The primary attendance matrix remains intact unless explicitly edited by an authorized user.
       const currentMatrix = smartData.attendanceMatrix || [];
-      const updatedMatrix = currentMatrix.map((w) => {
-        const copyW = { ...w, daily: { ...(w.daily || {}) } };
-        if (delDay && repComp && (repComp === "전체" || cleanCompanyName(w.company) === repComp)) {
-          delete copyW.daily[delDay];
-          delete copyW.daily[String(delDay)];
-        }
-        return copyW;
-      });
-
-      const updatedLedger = {
-        ...smartData,
-        year: currentYear,
-        month: currentMonthNum,
-        attendanceMatrix: updatedMatrix
-      };
-      setSmartData(updatedLedger);
-      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10", {
-        targetCompany: targetRep?.company,
-        clearedDay: delDay
-      });
-
-      // ⭐ 결재함 특근보고서 실시간 재수정/정리
       if (targetRep) {
         await syncPlantOvertimeToApprovalBox({
           plant: targetRep.plant,
           company: targetRep.company,
           workDate: targetRep.workDate,
-          matrix: updatedMatrix,
+          matrix: currentMatrix,
           reports: nextReports,
           isDeleteAction: true
         });
@@ -1958,7 +2025,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       // 3. 로컬 및 클라우드 비동기 저장
       await saveWorkerPersonnelCard(cardKey, updatedCardData);
-      await saveSmartOvertimeData(updatedData, selectedMonth || "2026-10", { targetCompany: cleanComp });
+      await saveSmartOvertimeData(updatedData, selectedMonth || "2026-10", {
+        targetCompany: cleanComp,
+        auditMeta: {
+          operator: currentProfile?.name || "관리자",
+          source: "PERSONNEL_CARD_UPDATE",
+          reason: `[${updatedCardData.company}] ${updatedCardData.name} 인사카드 정보 갱신`
+        }
+      });
 
       triggerToast(`🎉 [${updatedCardData.company}] ${updatedCardData.name}님의 제조현장 인사카드가 저장되었습니다!`);
     } catch (err) {
@@ -2724,6 +2798,59 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
           {/* Interactive Worker Attendance Table (2-Column Side-by-Side Grid) */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+            {Boolean(currentDayApprovedReport) && (
+              <div className={`p-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                isDayLocked 
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
+                  : "bg-rose-500/15 border-rose-500/30 text-rose-200"
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{isDayLocked ? "🔒" : "🔓"}</span>
+                  <div>
+                    <div className="font-black text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>{currentMonthNum}월 {selectedDay}일 전자결재 승인 완료 (마감 관리)</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        isDayLocked ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"
+                      }`}>
+                        {isDayLocked ? "수정 잠금(Read-Only)" : "마감 일시 해제(수정 가능)"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {isDayLocked 
+                        ? "최종 결재가 완료되어 데이터 무단 변조를 방지하기 위해 잠겨 있습니다. 수정이 필요하시면 우측 해제 버튼을 눌러주세요."
+                        : "수정 작업이 끝나면 반드시 '다시 잠금'을 누르거나 보고서를 재등록해 주세요."}
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  {isDayLocked ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`${currentMonthNum}월 ${selectedDay}일은 이미 결재 승인된 일자입니다.\n정말로 마감을 일시 해제하고 수정을 진행하시겠습니까?`)) {
+                          setIsDayUnlockedForEdit(true);
+                          triggerToast("🔓 마감이 일시 해제되었습니다. 수정 후 반드시 보고서를 재등록해 주세요.");
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🔓 마감 일시 해제</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDayUnlockedForEdit(false);
+                        triggerToast("🔒 다시 마감 잠금 상태로 전환되었습니다.");
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black text-xs shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🔒 다시 잠금</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60 dark:bg-slate-900/60">
               <div className="flex items-center gap-2 flex-wrap">
                 <Zap className="w-4 h-4 text-cyan-500" />
@@ -4838,6 +4965,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <button
                     type="button"
                     onClick={async () => {
+                      if (isDayLocked) {
+                        triggerToast(`🔒 ${currentMonthNum}월 ${selectedDay}일은 전자결재 승인 완료(마감) 상태입니다. 수정을 원하시면 상단 배너의 [마감 일시 해제]를 먼저 눌러주세요.`);
+                        return;
+                      }
                       const isWk = isWeekendDay(selectedDay);
                       const targetCode = isWk ? "특근" : "🟢";
                       const cleanComp = cleanCompanyName(popupCompanyData.company);
@@ -4869,7 +5000,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       setSmartData(newLedger);
                       setHasUnsavedChanges(true);
                       triggerToast(`${isWk ? "🌙" : "🟢"} [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(🌙)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
-                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", { targetCompany: popupCompanyData?.company });
+                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+                        targetCompany: popupCompanyData?.company,
+                        auditMeta: {
+                          operator: currentProfile?.name || "현장관리자",
+                          source: "POPUP_SET_ALL_REGULAR",
+                          reason: `[${popupCompanyData?.company}] Day ${selectedDay} 전체 인원 정시 채우기 (${updatedCount}명)`
+                        }
+                      });
                     }}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isWeekendDay(selectedDay) ? "bg-purple-600 hover:bg-purple-500 border-purple-500" : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"} text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ml-1`}
                     title={isWeekendDay(selectedDay) ? "해당 협력사 인원 전체를 오늘 특근(🌙)으로 일괄 선택합니다" : "해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"}
