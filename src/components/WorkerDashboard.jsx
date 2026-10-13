@@ -193,6 +193,7 @@ const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m 
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
 const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal").then(m => ({ default: m.RecentWorkLogsSummaryModal || m.default })));
 import { HanulWorkReportTable } from "./HanulWorkReportTable";
+import { isExcludedFromWorkReport } from "../services/hanulWorkReportService";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -11621,7 +11622,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             onClose={() => setIsHanulWorkReportModalOpen(false)}
             initialProject={hanulReportProject}
             initialProcess={hanulReportProcess}
-            initialWorker={currentProfile?.name || "황수현"}
+            initialWorker={
+              currentProfile?.name && !isExcludedFromWorkReport(currentProfile.name)
+                ? currentProfile.name
+                : "박종미"
+            }
             editReport={hanulReportEditData}
           />
         </Suspense>

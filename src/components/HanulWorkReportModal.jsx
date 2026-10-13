@@ -42,7 +42,8 @@ import {
   HANUL_SPECS,
   DEFAULT_DEFECT_CATEGORIES,
   saveHanulWorkReport,
-  exportHanulReportToExcel
+  exportHanulReportToExcel,
+  isExcludedFromWorkReport
 } from "../services/hanulWorkReportService";
 import { getKSTDateString } from "../utils/dateUtils";
 import { useModalHistory } from "../utils/modalHistory";
@@ -97,7 +98,7 @@ export const HanulWorkReportModal = ({
   }); // 압출소재 LOT NO. (RR A, RR B 초/중/종)
   const [date, setDate] = useState(() => getKSTDateString());
   const [shift, setShift] = useState("주간");
-  const [worker, setWorker] = useState(initialWorker || "황수현");
+  const [worker, setWorker] = useState(() => (initialWorker && !isExcludedFromWorkReport(initialWorker) ? initialWorker : "박종미"));
   const [customWorker, setCustomWorker] = useState("");
   const [startTime, setStartTime] = useState("06:30");
   const [endTime, setEndTime] = useState("17:30");
@@ -244,7 +245,7 @@ export const HanulWorkReportModal = ({
       if (editReport.inspProduction) setInspProduction(editReport.inspProduction);
       setDate(editReport.date || getKSTDateString());
       setShift(editReport.shift || "주간");
-      setWorker(editReport.worker || "황수현");
+      setWorker(editReport.worker && !isExcludedFromWorkReport(editReport.worker) ? editReport.worker : "박종미");
       setStartTime(editReport.startTime || "06:30");
       setEndTime(editReport.endTime || "17:30");
       setMachineNo(editReport.machineNo || "");
@@ -294,7 +295,7 @@ export const HanulWorkReportModal = ({
         col3: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
         col4: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 }
       });
-      if (initialWorker) setWorker(initialWorker);
+      if (initialWorker) setWorker(!isExcludedFromWorkReport(initialWorker) ? initialWorker : "박종미");
       // Reset defects based on categories
       const initDef = {};
       let defKey = `${initialProject}_${initialProcess}`;
@@ -472,6 +473,10 @@ export const HanulWorkReportModal = ({
     const effectiveWorker = customWorker.trim() || worker;
     if (!effectiveWorker) {
       alert("작업자 이름을 선택하거나 입력해 주세요.");
+      return;
+    }
+    if (isExcludedFromWorkReport(effectiveWorker)) {
+      alert(`⚠️ 관리자(${effectiveWorker})는 작업일보 작성 대상이 아니므로 실적에 등록할 수 없습니다. 현장 작업자를 선택해 주세요.`);
       return;
     }
 

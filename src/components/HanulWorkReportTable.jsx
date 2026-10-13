@@ -22,7 +22,8 @@ import {
   exportHanulReportToExcel,
   HANUL_PROJECTS,
   HANUL_PROCESSES,
-  HANUL_WORKERS_MASTER
+  HANUL_WORKERS_MASTER,
+  isExcludedFromWorkReport
 } from "../services/hanulWorkReportService";
 
 export const HanulWorkReportTable = ({
@@ -46,6 +47,8 @@ export const HanulWorkReportTable = ({
   // Filtered reports
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
+      // 🔒 관리자(김동훈, 황수현 등)는 작업일보 작성이 없으므로 실적 집계 및 현황 목록에서 제외
+      if (isExcludedFromWorkReport(r.worker)) return false;
       if (projectFilter !== "all" && r.project !== projectFilter) return false;
       if (processFilter !== "all" && r.processId !== processFilter) return false;
       if (searchWorker.trim()) {

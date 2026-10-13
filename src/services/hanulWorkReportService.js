@@ -82,34 +82,52 @@ export const HANUL_INSPECTION_TYPES = [
   }
 ];
 
-// Master list of 26 Hanul workers (1~22: 9BQC, 23~26: LQ2)
+// 🔒 작업일보 실적 집계 및 작성 대상에서 제외되는 관리자 목록 (대표이사/관리자)
+// 관리자는 작업일보를 작성하지 않으므로 현장 실적 및 작성 대상에서 원천 배제
+export const EXCLUDED_WORK_REPORT_MANAGERS = [
+  "김동훈",
+  "황수현",
+  "권태형",
+  "최미영",
+  "부림텍",
+  "유성",
+  "한울"
+];
+
+export const isExcludedFromWorkReport = (name) => {
+  if (!name) return false;
+  const cleanName = String(name).trim();
+  return EXCLUDED_WORK_REPORT_MANAGERS.some((mgr) => cleanName.includes(mgr));
+};
+
+// Master list of Hanul production workers for daily work reports (25명)
+// ⚠️ 관리자(황수현, 김동훈 등)는 작업일보 작성이 없으므로 현장 실적 및 작성 목록에서 제외
 export const HANUL_WORKERS_MASTER = [
-  { no: 1, name: "황수현", position: "선임", line: "관리부", role: "관리" },
-  { no: 2, name: "박종미", position: "반장/조장", line: "관리부", role: "반장" },
-  { no: 3, name: "마이클", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 4, name: "마크", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 5, name: "로렉스", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 6, name: "무피드", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 7, name: "마틴", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 8, name: "박민정", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 9, name: "지라완", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 10, name: "레이놀드", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 11, name: "맥리", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 12, name: "조제인", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 13, name: "새드릭", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 14, name: "니사낫", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 15, name: "수파따", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 16, name: "와히드", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 17, name: "찬티마", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 18, name: "데이브", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 19, name: "위간", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 20, name: "프랭클린", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 21, name: "에일리", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 22, name: "마이카", position: "작업원", line: "9BQC", role: "작업원" },
-  { no: 23, name: "알프레도", position: "작업원", line: "LQ2", role: "작업원" },
-  { no: 24, name: "아이린", position: "작업원", line: "LQ2", role: "작업원" },
-  { no: 25, name: "에릭", position: "작업원", line: "LQ2", role: "작업원" },
-  { no: 26, name: "언", position: "작업원", line: "LQ2", role: "작업원" }
+  { no: 1, name: "박종미", position: "반장/조장", line: "관리부", role: "반장" },
+  { no: 2, name: "마이클", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 3, name: "마크", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 4, name: "로렉스", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 5, name: "무피드", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 6, name: "마틴", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 7, name: "박민정", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 8, name: "지라완", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 9, name: "레이놀드", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 10, name: "맥리", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 11, name: "조제인", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 12, name: "새드릭", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 13, name: "니사낫", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 14, name: "수파따", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 15, name: "와히드", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 16, name: "찬티마", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 17, name: "데이브", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 18, name: "위간", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 19, name: "프랭클린", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 20, name: "에일리", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 21, name: "마이카", position: "작업원", line: "9BQC", role: "작업원" },
+  { no: 22, name: "알프레도", position: "작업원", line: "LQ2", role: "작업원" },
+  { no: 23, name: "아이린", position: "작업원", line: "LQ2", role: "작업원" },
+  { no: 24, name: "에릭", position: "작업원", line: "LQ2", role: "작업원" },
+  { no: 25, name: "언", position: "작업원", line: "LQ2", role: "작업원" }
 ];
 
 // Specifications extracted directly from desktop Excel files

@@ -86,7 +86,7 @@ export const AuthModal = () => {
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
-  const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("황수현");
+  const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("박종미");
   const [firstPageToast, setFirstPageToast] = useState("");
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -290,10 +290,10 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Hanul master workers list (26명)
+  // Hanul master workers list (관리자 황수현 제외 - 대표이사/관리자 별도 관리)
   const hanulWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company?.includes("한울")
+      (w) => w.company?.includes("한울") && w.name !== "황수현" && w.name !== "김동훈"
     );
   }, []);
 
@@ -315,10 +315,10 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Bulimtech master workers list (6명)
+  // Bulimtech master workers list (관리자 김동훈 제외 - 대표이사/관리자 별도 관리)
   const bulimtechWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company?.includes("부림텍")
+      (w) => w.company?.includes("부림텍") && w.name !== "김동훈" && w.name !== "황수현"
     );
   }, []);
 
@@ -1511,12 +1511,12 @@ export const AuthModal = () => {
                 type="button"
                 onClick={() => setIsHanulModalOpen(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-indigo-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-indigo-400/30"
-                title="한림공장 외주가공 (주)한울 작업자 전용 포털 (26명)"
+                title={`한림공장 외주가공 (주)한울 작업자 전용 포털 (${hanulWorkers.length}명)`}
               >
                 <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-200 animate-pulse" />
                 <span>한울</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 hidden sm:inline">
-                  26명
+                  {hanulWorkers.length}명
                 </span>
               </button>
 
@@ -1524,12 +1524,12 @@ export const AuthModal = () => {
                 type="button"
                 onClick={() => setIsBulimtechModalOpen(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
-                title="한림공장 외주가공 (주)부림텍 작업자 전용 포털 (6명)"
+                title={`한림공장 외주가공 (주)부림텍 작업자 전용 포털 (${bulimtechWorkers.length}명)`}
               >
                 <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
                 <span>부림텍</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-900/80 text-teal-100 hidden sm:inline">
-                  6명
+                  {bulimtechWorkers.length}명
                 </span>
               </button>
             </div>
@@ -1841,7 +1841,7 @@ export const AuthModal = () => {
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
                     <span>한림공장 외주가공 (주)한울</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
-                      총원 26명
+                      총원 {hanulWorkers.length}명
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
@@ -1862,11 +1862,11 @@ export const AuthModal = () => {
               본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 한울 외주가공 및 생산관리 화면으로 바로 연결됩니다.
             </p>
 
-            {/* Scrollable Hanul Workers Grid (26명) */}
+            {/* Scrollable Hanul Workers Grid */}
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                 {hanulWorkers.map((worker, idx) => {
-                  const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "황수현" || worker.name === "박종미";
+                  const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "박종미";
                   return (
                     <button
                       key={worker.no || idx}
@@ -1931,7 +1931,7 @@ export const AuthModal = () => {
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
                     <span>한림공장 외주가공 (주)부림텍</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
-                      총원 6명
+                      총원 {bulimtechWorkers.length}명
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
@@ -1952,7 +1952,7 @@ export const AuthModal = () => {
               본인 이름을 터치하시면 안전알림판과 필수 공지를 확인하신 후 부림텍 외주가공 및 생산관리 화면으로 연결됩니다.
             </p>
 
-            {/* Scrollable Bulimtech Workers Grid (6명) */}
+            {/* Scrollable Bulimtech Workers Grid */}
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {bulimtechWorkers.map((worker, idx) => (

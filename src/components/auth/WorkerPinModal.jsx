@@ -87,6 +87,7 @@ import {
 import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import HanulWorkReportModal from "../HanulWorkReportModal";
+import { isExcludedFromWorkReport } from "../../services/hanulWorkReportService";
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
 export const WorkerPinModal = ({
@@ -2082,7 +2083,11 @@ export const WorkerPinModal = ({
           isOpen={isHanulWorkReportOpen}
           onClose={() => setIsHanulWorkReportOpen(false)}
           initialProject={hanulReportProject}
-          initialWorker={selectedUser?.name || "황수현"}
+          initialWorker={
+            selectedUser?.name && !isExcludedFromWorkReport(selectedUser.name)
+              ? selectedUser.name
+              : "박종미"
+          }
         />
       )}
     </>
