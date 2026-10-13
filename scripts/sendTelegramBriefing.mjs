@@ -303,9 +303,19 @@ function sanitizeTelegramText(text) {
     .replace(/방상국/g, "권태형");
 }
 
+function prepareSafeTelegramText(text, maxChars = 3900) {
+  if (!text) return "";
+  let sanitized = sanitizeTelegramText(text);
+  if (sanitized.length > maxChars) {
+    console.warn(`[Telegram Guard] Message length (${sanitized.length}) exceeds safety limit (${maxChars}). Truncating...`);
+    sanitized = sanitized.slice(0, maxChars) + "\n\n... <i>(내용이 길어 일부 생략됨 - 시스템에서 전체 확인 가능)</i>";
+  }
+  return sanitized;
+}
+
 async function sendTelegramMessage(token, chatId, text) {
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
-  const sanitizedText = sanitizeTelegramText(text);
+  const sanitizedText = prepareSafeTelegramText(text);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -318,7 +328,35 @@ async function sendTelegramMessage(token, chatId, text) {
       })
     });
     const data = await response.json();
-    return { ok: response.ok && data.ok, data };
+    if (response.ok && data.ok) {
+      return { ok: true, data };
+    }
+
+    console.warn(`[Telegram HTML parse failed for chat ${chatId}]:`, data?.description || data);
+
+    // ⭐ Safe Fallback: Strip HTML tags and retry as plain text!
+    const plainText = sanitizedText
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "");
+
+    const fallbackRes = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: plainText.slice(0, 3900),
+        disable_web_page_preview: true
+      })
+    });
+    const fallbackData = await fallbackRes.json();
+    if (fallbackRes.ok && fallbackData.ok) {
+      console.log(`[Telegram Plain-Text Fallback Success for chat ${chatId}]`);
+      return { ok: true, data: fallbackData, fallback: true };
+    }
+
+    console.error(`[Telegram send failed after fallback for chat ${chatId}]:`, fallbackData);
+    return { ok: false, error: fallbackData?.description || data?.description || "API_ERROR", data: fallbackData };
   } catch (err) {
     console.error("Telegram API send error:", err.message);
     return { ok: false, error: err.message };
@@ -326,36 +364,15 @@ async function sendTelegramMessage(token, chatId, text) {
 }
 
 /**
- * Align exact execution to 07:30:00 KST or 17:30:00 KST
+ * Direct execution without queue-blocking sleep delays
  */
 async function alignToExactSchedule() {
   const info = getKSTTimeInfo();
-
-  // 1. Morning window pre-warm (around 07:30 KST)
-  const targetMorning = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
-  if (info.hour === 7 && info.totalSeconds < targetMorning) {
-    const diffMs = (targetMorning - info.totalSeconds) * 1000;
-    if (diffMs <= 360000) {
-      console.log(`[Runner Pre-Warm 07:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
-      await sleep(diffMs);
-      console.log("[Runner Trigger] 07:30:00 KST reached! Dispatching immediately...");
-    }
-  }
-
-  // 2. Evening window pre-warm (around 17:30 KST)
-  const targetClosing = 17 * 3600 + 30 * 60; // 17:30:00 KST (63000 seconds)
-  if ((info.hour === 17 && info.totalSeconds < targetClosing) || (info.hour === 16 && info.totalSeconds < targetClosing)) {
-    const diffMs = (targetClosing - info.totalSeconds) * 1000;
-    if (diffMs <= 360000) {
-      console.log(`[Runner Pre-Warm 17:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 17:30:00 KST...`);
-      await sleep(diffMs);
-      console.log("[Runner Trigger] 17:30:00 KST reached! Dispatching immediately...");
-    }
-  }
+  console.log(`[Runner Immediate Execution] Running briefing at KST ${info.hour}:${String(info.minute).padStart(2, '0')}:${String(info.second).padStart(2, '0')} without delay.`);
 }
 
 export async function runAllBriefings(force = false) {
-  console.log("=== Starting Scheduled Briefings Dispatcher (07:30 / 17:30) ===");
+  console.log("=== Starting Scheduled Briefings Dispatcher ===");
   await alignToExactSchedule();
 
   const config = await getConfig();
@@ -365,14 +382,14 @@ export async function runAllBriefings(force = false) {
   }
 
   const todayStr = getKSTDateString();
-  const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)} 07:30`;
+  const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)}`;
   const customTemplates = await getCustomTemplates();
   const timeInfo = getKSTTimeInfo();
   const curHour = timeInfo.hour;
 
   const isExplicitMorning = process.argv.includes("--morning");
   const isExplicitClosing = process.argv.includes("--closing");
-  const isTimeForMorning = isExplicitMorning || (curHour >= 6 && curHour <= 10);
+  const isTimeForMorning = isExplicitMorning || (curHour >= 6 && curHour <= 11);
   const isTimeForClosing = isExplicitClosing || (curHour >= 16 && curHour <= 21);
 
   // Target Destination Chat IDs: Both 통합방 and 경영방

@@ -2,18 +2,14 @@ name: Scheduled Telegram Briefings
 
 on:
   schedule:
-    # 07:28 KST (22:28 UTC previous day) - Pre-warm trigger for 07:30 Morning Briefings
-    - cron: '28 22 * * *'
-    # 07:30 KST (22:30 UTC previous day) - Exact trigger for 07:30 Morning Briefings
-    - cron: '30 22 * * *'
-    # 07:32 KST (22:32 UTC previous day) - Fallback trigger for 07:30 Morning Briefings
-    - cron: '32 22 * * *'
-    # 17:28 KST (08:28 UTC Mon-Sat) - Pre-warm trigger for 17:30 Daily Closing Briefing
-    - cron: '28 8 * * 1-6'
-    # 17:30 KST (08:30 UTC Mon-Sat) - Exact trigger for 17:30 Daily Closing Briefing
-    - cron: '30 8 * * 1-6'
-    # 17:32 KST (08:32 UTC Mon-Sat) - Fallback trigger for 17:30 Daily Closing Briefing
-    - cron: '32 8 * * 1-6'
+    # 07:25 KST (22:25 UTC previous day) - Optimal traffic minimum trigger for Morning Briefings
+    - cron: '25 22 * * *'
+    # 07:35 KST (22:35 UTC previous day) - Fallback trigger for Morning Briefings
+    - cron: '35 22 * * *'
+    # 17:25 KST (08:25 UTC Mon-Sat) - Optimal traffic minimum trigger for Daily Closing Briefing
+    - cron: '25 8 * * 1-6'
+    # 17:35 KST (08:35 UTC Mon-Sat) - Fallback trigger for Daily Closing Briefing
+    - cron: '35 8 * * 1-6'
   workflow_dispatch:
     inputs:
       briefing_type:

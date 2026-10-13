@@ -322,7 +322,11 @@ export const sendTelegramMessage = async (text, customConfig = null, retryCount 
     return { success: false, skipped: true, reason: "NOT_CONFIGURED" };
   }
 
-  const sanitizedText = sanitizeTelegramMessageText(text);
+  let sanitizedText = sanitizeTelegramMessageText(text);
+  if (sanitizedText && sanitizedText.length > 3900) {
+    console.warn(`[Telegram Guard] Client message length (${sanitizedText.length}) exceeds 3900 chars. Truncating...`);
+    sanitizedText = sanitizedText.slice(0, 3900) + "\n\n... <i>(내용이 길어 일부 생략됨 - 시스템에서 전체 확인 가능)</i>";
+  }
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
 
@@ -1367,9 +1371,9 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 
   const { dateStr: todayStr, totalMinutes } = getKSTTimeInfo();
 
-  // Client auto-trigger window: 07:30 AM ~ 12:00 PM KST (450 ~ 720 minutes)
-  if (totalMinutes < 450 || totalMinutes > 720) {
-    return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
+  // Client auto-trigger window: 07:20 AM ~ 12:00 PM KST (440 ~ 720 minutes)
+  if (totalMinutes < 440 || totalMinutes > 720) {
+    return { skipped: true, reason: "OUTSIDE_07_20_WINDOW" };
   }
 
   if (isCheckingBriefing) {
@@ -1705,9 +1709,9 @@ export const checkAndAutoSendDailyClosingBriefing = async () => {
     return { skipped: true, reason: "SUNDAY_SKIPPED" };
   }
 
-  // Client auto-trigger window: 17:30 PM ~ 23:59 PM KST (1050 ~ 1439 minutes)
-  if (totalMinutes < 1050 || totalMinutes > 1439) {
-    return { skipped: true, reason: "OUTSIDE_17_30_WINDOW" };
+  // Client auto-trigger window: 17:20 PM ~ 23:59 PM KST (1040 ~ 1439 minutes)
+  if (totalMinutes < 1040 || totalMinutes > 1439) {
+    return { skipped: true, reason: "OUTSIDE_17_20_WINDOW" };
   }
 
   if (isCheckingClosingBriefing) {
