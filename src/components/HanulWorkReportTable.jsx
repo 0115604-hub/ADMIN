@@ -329,6 +329,15 @@ export const HanulWorkReportTable = ({
                               : "⚡ RR"}
                           </span>
                         )}
+                        {rep.inspectionType && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            {rep.inspectionType === "LENGTH" ? "📏 길이검사"
+                              : rep.inspectionType === "SQUARE" ? "📐 직각검사"
+                              : rep.inspectionType === "FINAL_PAIR" ? "🏁 최종(LH/RH)"
+                              : rep.inspectionType === "FINAL_LH" ? "🏁 최종(LH)"
+                              : rep.inspectionType}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">

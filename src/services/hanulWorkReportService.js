@@ -46,6 +46,42 @@ export const HANUL_JOINT_TYPES = [
   { id: "RR", label: "G/RUN RR (2/3호기)", shortName: "RR", partName: "G/RUN RR", desc: "2호기/3호기 사출 성형 (RR A/B)" }
 ];
 
+// 🌟 9BQC 검사 세부 4대 작업일보 양식 정의 (길이검사, 직각검사, 최종검사)
+export const HANUL_INSPECTION_TYPES = [
+  {
+    id: "LENGTH",
+    label: "1. 길이검사 일보",
+    shortName: "길이검사",
+    sheetTitle: "길이검사 일보",
+    desc: "RR LH / RR RH (PRIVACY, TINTED) • 부자재 패드 5T • 중요 치수 A/B (482/658mm)",
+    columns: ["RR LH (PRIVACY)", "RR LH (TINTED)", "RR RH (PRIVACY)", "RR RH (TINTED)"]
+  },
+  {
+    id: "SQUARE",
+    label: "2. 직각검사 일보",
+    shortName: "직각검사",
+    sheetTitle: "직각검사 일보",
+    desc: "LH 2호기, LH 3호기, RH 2호기, RH 3호기 (4개 설비호기) • 중요 치수 A/B (482/658mm)",
+    columns: ["LH 2호기", "LH 3호기", "RH 2호기", "RH 3호기"]
+  },
+  {
+    id: "FINAL_PAIR",
+    label: "3. 최종검사 일보 (LH / RH)",
+    shortName: "최종검사 (LH/RH)",
+    sheetTitle: "최종검사 일보",
+    desc: "RR LH / RR RH (PRIVACY, TINTED) • 부자재 D/V • 리워크(DV/직둔각) • 중요 치수 A/B/D 및 패드 5T/7T",
+    columns: ["RR LH (PRIVACY)", "RR LH (TINTED)", "RR RH (PRIVACY)", "RR RH (TINTED)"]
+  },
+  {
+    id: "FINAL_LH",
+    label: "4. 최종검사 일보 (LH 전용)",
+    shortName: "최종검사 (LH)",
+    sheetTitle: "최종 / 검사 일보",
+    desc: "RR LH 1호기 / 2호기 (PRIVACY, TINTED) • 부자재 D/V • 리워크(DV/직둔각) • 중요 치수 A/B/D 및 패드 5T/7T",
+    columns: ["RR LH 1호기 (PRI)", "RR LH 1호기 (TIN)", "RR LH 2호기 (PRI)", "RR LH 2호기 (TIN)"]
+  }
+];
+
 // Master list of 26 Hanul workers (1~22: 9BQC, 23~26: LQ2)
 export const HANUL_WORKERS_MASTER = [
   { no: 1, name: "황수현", position: "선임", line: "관리부", role: "관리" },
@@ -105,6 +141,44 @@ export const HANUL_SPECS = {
     { key: "rrLhCutting", label: "RR LH 단컷팅", spec: "68±3mm", target: 68, tol: 3 },
     { key: "rrRhCutting", label: "RR RH 단컷팅", spec: "67±3mm", target: 67, tol: 3 }
   ],
+  "9BQC_검사_LENGTH": [
+    { key: "rrLhA", label: "RR LH A (길이)", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrLhB", label: "RR LH B (길이)", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "padLh", label: "스폰지패드 규격 (LH)", spec: "5T*5W*60L" },
+    { key: "rrRhA", label: "RR RH A (길이)", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrRhB", label: "RR RH B (길이)", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "padRh", label: "스폰지패드 규격 (RH)", spec: "5T*5W*60L" }
+  ],
+  "9BQC_검사_SQUARE": [
+    { key: "rrLhA", label: "RR LH A (직각)", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrLhB", label: "RR LH B (직각)", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrRhA", label: "RR RH A (직각)", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrRhB", label: "RR RH B (직각)", spec: "658±5mm", target: 658, tol: 5 }
+  ],
+  "9BQC_검사_FINAL_PAIR": [
+    { key: "rrPriA", label: "[PRI] RR LH A", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrPriB", label: "[PRI] RR LH B", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrPriD", label: "[PRI] RR LH D", spec: "418±4mm", target: 418, tol: 4 },
+    { key: "padPri1", label: "[PRI] 패드규격 1", spec: "5T*5W*60L" },
+    { key: "padPri2", label: "[PRI] 패드규격 2", spec: "7T*10W*50L" },
+    { key: "rrTinA", label: "[TIN] RR LH A", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrTinB", label: "[TIN] RR LH B", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrTinD", label: "[TIN] RR LH D", spec: "418±4mm", target: 418, tol: 4 },
+    { key: "padTin1", label: "[TIN] 패드규격 1", spec: "5T*5W*60L" },
+    { key: "padTin2", label: "[TIN] 패드규격 2", spec: "7T*10W*50L" }
+  ],
+  "9BQC_검사_FINAL_LH": [
+    { key: "rrPriA", label: "[PRI] RR LH A", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrPriB", label: "[PRI] RR LH B", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrPriD", label: "[PRI] RR LH D", spec: "418±4mm", target: 418, tol: 4 },
+    { key: "padPri1", label: "[PRI] 패드규격 1", spec: "5T*5W*60L" },
+    { key: "padPri2", label: "[PRI] 패드규격 2", spec: "7T*10W*50L" },
+    { key: "rrTinA", label: "[TIN] RR LH A", spec: "482±3mm", target: 482, tol: 3 },
+    { key: "rrTinB", label: "[TIN] RR LH B", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrTinD", label: "[TIN] RR LH D", spec: "418±4mm", target: 418, tol: 4 },
+    { key: "padTin1", label: "[TIN] 패드규격 1", spec: "5T*5W*60L" },
+    { key: "padTin2", label: "[TIN] 패드규격 2", spec: "7T*10W*50L" }
+  ],
   "9BQC_검사": [
     { key: "frtA", label: "FRT 완제품 치수", spec: "완제품 공차" },
     { key: "rrA", label: "RR 완제품 치수", spec: "완제품 공차" },
@@ -158,6 +232,23 @@ export const HANUL_SPECS = {
   ]
 };
 
+// 🌟 검사 3대 불량 영역 분류 마스터 (압출소재, 조인트, 후가공)
+export const HANUL_INSPECTION_DEFECT_GROUPS = {
+  BASIC: {
+    extrusion: ["압출_스코치", "압출_외면흠", "압출_오염", "압출_코팅불량", "압출_단면불량", "압출_기타"],
+    joint: ["조인트_떨어짐", "조인트_양부족", "조인트_밀림", "조인트_단차", "조인트_기포", "조인트_씹힘", "조인트_삽입불량", "조인트_수축", "조인트_기타"],
+    post: ["후가공_길이불량", "후가공_외면오염", "후가공_과사상", "후가공_미사상", "후가공_마킹누락", "후가공_PAD누락", "후가공_FILM누락", "후가공_본드오염", "후가공_기타"]
+  },
+  FINAL: {
+    extrusion: ["압출_스코치", "압출_외면흠", "압출_오염", "압출_코팅불량", "압출_단면불량", "압출_기타"],
+    joint: [
+      "조인트_떨어짐(직각)", "조인트_떨어짐(둔각)", "조인트_DV떨어짐", "조인트_글라스기스", "조인트_찢어짐",
+      "조인트_외면흠", "조인트_양부족", "조인트_밀림", "조인트_단차", "조인트_기포", "조인트_씹힘", "조인트_삽입불량", "조인트_수축", "조인트_기타"
+    ],
+    post: ["후가공_길이불량", "후가공_외면오염", "후가공_과사상", "후가공_미사상", "후가공_마킹누락", "후가공_PAD누락", "후가공_FILM누락", "후가공_본드오염", "후가공_기타"]
+  }
+};
+
 // Common initial defect categories by process
 export const DEFAULT_DEFECT_CATEGORIES = {
   // 🌟 단순화 4개 공정 (소재준비: 정치절단 / 단컷팅 세부 분기, 조인트, 본드로봇, 검사)
@@ -171,7 +262,32 @@ export const DEFAULT_DEFECT_CATEGORIES = {
   "9BQC_조인트_RR": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
   "9BQC_조인트": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
   "9BQC_본드로봇": ["곡률", "스크래치", "도트불량", "면취불량", "조개피(유리깨짐)", "노즐막힘", "기타"],
-  "9BQC_검사": ["단차", "수축", "크랙", "씹힘", "이탈", "단면불량", "사상불량", "외관불량", "기타"],
+  // 🌟 9BQC 검사 4대 작업일보 세부 불량 내역 (업로드 서식 100% 일치)
+  "9BQC_검사_LENGTH": [
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.extrusion,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.joint,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.post
+  ],
+  "9BQC_검사_SQUARE": [
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.extrusion,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.joint,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.post
+  ],
+  "9BQC_검사_FINAL_PAIR": [
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.extrusion,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.joint,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.post
+  ],
+  "9BQC_검사_FINAL_LH": [
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.extrusion,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.joint,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.FINAL.post
+  ],
+  "9BQC_검사": [
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.extrusion,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.joint,
+    ...HANUL_INSPECTION_DEFECT_GROUPS.BASIC.post
+  ],
 
   "LQ2A_소재준비_정치절단": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "공정간_길이", "기타"],
   "LQ2A_소재준비_단컷팅": ["스코치", "외면흠", "오염", "공정간_단컷팅", "기타"],
@@ -307,7 +423,7 @@ export const exportHanulReportToExcel = (report) => {
   if (!report) return;
   const wb = XLSX.utils.book_new();
 
-  const subDetail = report.subProcess || report.jointType || "";
+  const subDetail = report.subProcess || report.jointType || report.inspectionType || "";
   const subName = subDetail ? ` (${subDetail})` : "";
   const titleRow = [`${report.projectName || report.project} - ${report.processName || report.processId}${subName} 작업일보`];
   const metaRows = [
@@ -334,34 +450,67 @@ export const exportHanulReportToExcel = (report) => {
     }
   }
 
-  const prodRows = [
-    ["[생산 수량]"],
-    ["구분", "정품(EA)", "불량(EA)", "리워크/재조인트(EA)", "총생산(EA)", "달성률"],
-    [
-      "LH / A",
-      report.production?.genuineLH ?? report.production?.genuineA ?? report.production?.genuine ?? 0,
-      report.production?.badLH ?? report.production?.badA ?? report.production?.bad ?? 0,
-      report.production?.reworkLH ?? report.production?.reworkA ?? report.production?.rework ?? 0,
-      (Number(report.production?.genuineLH || report.production?.genuineA || 0) + Number(report.production?.badLH || report.production?.badA || 0)),
-      "-"
-    ],
-    [
-      "RH / B",
-      report.production?.genuineRH ?? report.production?.genuineB ?? 0,
-      report.production?.badRH ?? report.production?.badB ?? 0,
-      report.production?.reworkRH ?? report.production?.reworkB ?? 0,
-      (Number(report.production?.genuineRH || report.production?.genuineB || 0) + Number(report.production?.badRH || report.production?.badB || 0)),
-      "-"
-    ],
-    [
-      "Section C (정치절단)",
-      report.production?.genuineC ?? 0,
-      report.production?.badC ?? 0,
-      0,
-      (Number(report.production?.genuineC || 0) + Number(report.production?.badC || 0)),
-      "-"
-    ]
-  ];
+  if (report.processId === "검사") {
+    metaRows.push([
+      "검사일보유형", report.inspectionType || "길이검사",
+      "부자재LOT", report.padLot || report.dvInspLot || "-",
+      "압출소재LOT", `${report.materialLot?.start || "-"} / ${report.materialLot?.mid || "-"}`
+    ]);
+  }
+
+  let prodRows = [];
+  if (report.processId === "검사" && report.inspProduction) {
+    const isFinal = (report.inspectionType || "").includes("FINAL");
+    prodRows.push(["[검사 생산 실적]"]);
+    if (isFinal) {
+      prodRows.push(["구분", "검사수량(EA)", "정품(EA)", "리워크 D/V", "리워크 직/둔각", "폐기불량(EA)"]);
+    } else {
+      prodRows.push(["구분", "검사수량(EA)", "정품(EA)", "리워크(EA)", "폐기불량(EA)"]);
+    }
+    const cols = report.inspectionType === "SQUARE"
+      ? [["LH 2호기", "col1"], ["LH 3호기", "col2"], ["RH 2호기", "col3"], ["RH 3호기", "col4"]]
+      : report.inspectionType === "FINAL_LH"
+      ? [["LH 1호기(PRI)", "col1"], ["LH 1호기(TIN)", "col2"], ["LH 2호기(PRI)", "col3"], ["LH 2호기(TIN)", "col4"]]
+      : [["RR LH (PRI)", "col1"], ["RR LH (TIN)", "col2"], ["RR RH (PRI)", "col3"], ["RR RH (TIN)", "col4"]];
+
+    cols.forEach(([label, key]) => {
+      const d = report.inspProduction[key] || {};
+      if (isFinal) {
+        prodRows.push([label, d.insp || 0, d.genuine || 0, d.reworkDv || 0, d.reworkAngle || 0, d.scrap || 0]);
+      } else {
+        prodRows.push([label, d.insp || 0, d.genuine || 0, d.rework || 0, d.scrap || 0]);
+      }
+    });
+  } else {
+    prodRows = [
+      ["[생산 수량]"],
+      ["구분", "정품(EA)", "불량(EA)", "리워크/재조인트(EA)", "총생산(EA)", "달성률"],
+      [
+        "LH / A",
+        report.production?.genuineLH ?? report.production?.genuineA ?? report.production?.genuine ?? 0,
+        report.production?.badLH ?? report.production?.badA ?? report.production?.bad ?? 0,
+        report.production?.reworkLH ?? report.production?.reworkA ?? report.production?.rework ?? 0,
+        (Number(report.production?.genuineLH || report.production?.genuineA || 0) + Number(report.production?.badLH || report.production?.badA || 0)),
+        "-"
+      ],
+      [
+        "RH / B",
+        report.production?.genuineRH ?? report.production?.genuineB ?? 0,
+        report.production?.badRH ?? report.production?.badB ?? 0,
+        report.production?.reworkRH ?? report.production?.reworkB ?? 0,
+        (Number(report.production?.genuineRH || report.production?.genuineB || 0) + Number(report.production?.badRH || report.production?.badB || 0)),
+        "-"
+      ],
+      [
+        "Section C (정치절단)",
+        report.production?.genuineC ?? 0,
+        report.production?.badC ?? 0,
+        0,
+        (Number(report.production?.genuineC || 0) + Number(report.production?.badC || 0)),
+        "-"
+      ]
+    ];
+  }
 
   const defectRows = [
     ["[불량 내역]"],

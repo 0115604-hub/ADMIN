@@ -36,6 +36,8 @@ import {
   HANUL_PROJECTS,
   HANUL_PROCESSES,
   HANUL_JOINT_TYPES,
+  HANUL_INSPECTION_TYPES,
+  HANUL_INSPECTION_DEFECT_GROUPS,
   HANUL_WORKERS_MASTER,
   HANUL_SPECS,
   DEFAULT_DEFECT_CATEGORIES,
@@ -57,6 +59,7 @@ export const HanulWorkReportModal = ({
   const [processId, setProcessId] = useState(initialProcess);
   const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
   const [jointType, setJointType] = useState("FRT"); // For "조인트": "FRT" | "FIXED_LH" | "FIXED_RH" | "RR"
+  const [inspectionType, setInspectionType] = useState("LENGTH"); // For "검사": "LENGTH" | "SQUARE" | "FINAL_PAIR" | "FINAL_LH"
   const [bladeChangeTime, setBladeChangeTime] = useState(""); // 칼날교체시간 (정치절단 전용)
   const [machineTrouble, setMachineTrouble] = useState(""); // 설비 이상 조치사항
   const [jointGradeName, setJointGradeName] = useState("W60664$OS"); // 조인트 재료명
@@ -65,7 +68,13 @@ export const HanulWorkReportModal = ({
     glass: { start: "", mid: "", end: "" },
     dv: { start: "", mid: "", end: "" },
     bracket: { start: "", mid: "", end: "" }
-  }); // 부자재 LOT (FIXED LH/RH 전용)
+  }); // 부자재 LOT (조인트 FIXED LH/RH 전용)
+  const [padLot, setPadLot] = useState(""); // 부자재 LOT (검사 패드 5T 전용)
+  const [dvInspLot, setDvInspLot] = useState({ start: "", mid: "", end: "" }); // 부자재 LOT (최종검사 D/V 전용)
+  const [rrExtLot, setRrExtLot] = useState({
+    a: { start: "", mid: "", end: "" },
+    b: { start: "", mid: "", end: "" }
+  }); // 압출소재 LOT NO. (RR A, RR B 초/중/종)
   const [date, setDate] = useState(() => getKSTDateString());
   const [shift, setShift] = useState("주간");
   const [worker, setWorker] = useState(initialWorker || "황수현");
@@ -97,6 +106,14 @@ export const HanulWorkReportModal = ({
     badC: 0
   });
 
+  // 🌟 검사 전용 4개 컬럼 생산 수량 (검사/정품/리워크/폐기)
+  const [inspProduction, setInspProduction] = useState({
+    col1: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+    col2: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+    col3: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+    col4: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 }
+  });
+
   // Dynamic Defects (matching sheet categories)
   const currentDefectKeys = useMemo(() => {
     let key;
@@ -104,27 +121,36 @@ export const HanulWorkReportModal = ({
       key = `${project}_소재준비_${subProcess}`;
     } else if (processId === "조인트") {
       key = `${project}_조인트_${jointType}`;
+    } else if (processId === "검사") {
+      key = `${project}_검사_${inspectionType}`;
     } else {
       key = `${project}_${processId}`;
     }
     return (
       DEFAULT_DEFECT_CATEGORIES[key] ||
       DEFAULT_DEFECT_CATEGORIES[`${project}_${processId}`] ||
+      DEFAULT_DEFECT_CATEGORIES["9BQC_검사"] ||
       DEFAULT_DEFECT_CATEGORIES["9BQC_조인트"] ||
-      DEFAULT_DEFECT_CATEGORIES["9BQC_정재단"] ||
       []
     );
-  }, [project, processId, subProcess, jointType]);
+  }, [project, processId, subProcess, jointType, inspectionType]);
 
   const [defects, setDefects] = useState({});
 
   // Measurements by spec
   const currentSpecs = useMemo(() => {
-    const key = processId === "소재준비"
-      ? `${project}_소재준비_${subProcess}`
-      : `${project}_${processId}`;
+    let key;
+    if (processId === "소재준비") {
+      key = `${project}_소재준비_${subProcess}`;
+    } else if (processId === "조인트") {
+      key = `${project}_조인트_${jointType}`;
+    } else if (processId === "검사") {
+      key = `${project}_검사_${inspectionType}`;
+    } else {
+      key = `${project}_${processId}`;
+    }
     return HANUL_SPECS[key] || HANUL_SPECS[`${project}_${processId}`] || [];
-  }, [project, processId, subProcess]);
+  }, [project, processId, subProcess, jointType, inspectionType]);
 
   const [measurements, setMeasurements] = useState({});
 
@@ -182,11 +208,16 @@ export const HanulWorkReportModal = ({
       setProcessId(editReport.processId || "소재준비");
       if (editReport.subProcess) setSubProcess(editReport.subProcess);
       if (editReport.jointType) setJointType(editReport.jointType);
+      if (editReport.inspectionType) setInspectionType(editReport.inspectionType);
       if (editReport.bladeChangeTime) setBladeChangeTime(editReport.bladeChangeTime);
       if (editReport.machineTrouble) setMachineTrouble(editReport.machineTrouble);
       if (editReport.jointGradeName) setJointGradeName(editReport.jointGradeName);
       if (editReport.jointGradeLot) setJointGradeLot(editReport.jointGradeLot);
       if (editReport.subMaterialsLot) setSubMaterialsLot(editReport.subMaterialsLot);
+      if (editReport.padLot) setPadLot(editReport.padLot);
+      if (editReport.dvInspLot) setDvInspLot(editReport.dvInspLot);
+      if (editReport.rrExtLot) setRrExtLot(editReport.rrExtLot);
+      if (editReport.inspProduction) setInspProduction(editReport.inspProduction);
       setDate(editReport.date || getKSTDateString());
       setShift(editReport.shift || "주간");
       setWorker(editReport.worker || "황수현");
@@ -209,14 +240,28 @@ export const HanulWorkReportModal = ({
       setProcessId(initialProcess);
       setSubProcess("정치절단");
       setJointType("FRT");
+      setInspectionType("LENGTH");
       setBladeChangeTime("");
       setMachineTrouble("");
+      setPadLot("");
+      setDvInspLot({ start: "", mid: "", end: "" });
+      setRrExtLot({
+        a: { start: "", mid: "", end: "" },
+        b: { start: "", mid: "", end: "" }
+      });
+      setInspProduction({
+        col1: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+        col2: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+        col3: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
+        col4: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 }
+      });
       if (initialWorker) setWorker(initialWorker);
       // Reset defects based on categories
       const initDef = {};
       let defKey = `${initialProject}_${initialProcess}`;
       if (initialProcess === "소재준비") defKey = `${initialProject}_소재준비_정치절단`;
       if (initialProcess === "조인트") defKey = `${initialProject}_조인트_FRT`;
+      if (initialProcess === "검사") defKey = `${initialProject}_검사_LENGTH`;
       const defKeys = DEFAULT_DEFECT_CATEGORIES[defKey] || DEFAULT_DEFECT_CATEGORIES[`${initialProject}_${initialProcess}`] || [];
       defKeys.forEach((k) => { initDef[k] = 0; });
       setDefects(initDef);
@@ -250,6 +295,26 @@ export const HanulWorkReportModal = ({
     let bad = 0;
     let rework = 0;
 
+    if (processId === "검사") {
+      const cols = Object.values(inspProduction);
+      genuine = cols.reduce((acc, c) => acc + (Number(c.genuine) || 0), 0);
+      const scrap = cols.reduce((acc, c) => acc + (Number(c.scrap) || 0), 0);
+      rework = cols.reduce((acc, c) => {
+        if (inspectionType.includes("FINAL")) {
+          return acc + (Number(c.reworkDv) || 0) + (Number(c.reworkAngle) || 0);
+        }
+        return acc + (Number(c.rework) || 0);
+      }, 0);
+      const inspTotal = cols.reduce((acc, c) => acc + (Number(c.insp) || 0), 0);
+      const defectSum = Object.values(defects).reduce((acc, v) => acc + (Number(v) || 0), 0);
+      const finalBad = Math.max(scrap, defectSum);
+      const gross = inspTotal > 0 ? inspTotal : (genuine + finalBad);
+      const yieldRate = gross > 0 ? ((genuine / gross) * 100).toFixed(1) : "100.0";
+      const defectRate = gross > 0 ? ((finalBad / gross) * 100).toFixed(1) : "0.0";
+
+      return { genuine, bad: finalBad, rework, gross, yieldRate, defectRate, defectSum, scrap };
+    }
+
     const lhGenuine = (Number(production.genuineLH) || 0) + (Number(production.genuineRH) || 0);
     const lhBad = (Number(production.badLH) || 0) + (Number(production.badRH) || 0);
     const lhRework = (Number(production.reworkLH) || 0) + (Number(production.reworkRH) || 0);
@@ -268,7 +333,7 @@ export const HanulWorkReportModal = ({
         rework = lhRework;
       }
     } else {
-      // In other processes (단컷팅, 조인트, 본드로봇, 검사), prefer LH/RH
+      // In other processes (단컷팅, 조인트, 본드로봇), prefer LH/RH
       if (lhGenuine > 0 || lhBad > 0 || abcGenuine === 0) {
         genuine = lhGenuine;
         bad = lhBad;
@@ -287,7 +352,7 @@ export const HanulWorkReportModal = ({
     const defectRate = gross > 0 ? ((finalBad / gross) * 100).toFixed(1) : "0.0";
 
     return { genuine, bad: finalBad, rework, gross, yieldRate, defectRate, defectSum };
-  }, [production, defects, processId, subProcess, project]);
+  }, [production, defects, processId, subProcess, project, inspProduction, inspectionType]);
 
   if (!isOpen) return null;
 
@@ -307,6 +372,42 @@ export const HanulWorkReportModal = ({
     setDefects((prev) => ({ ...prev, [k]: num }));
   };
 
+  const updateInspProd = (colKey, field, val) => {
+    setInspProduction((prev) => ({
+      ...prev,
+      [colKey]: {
+        ...(prev[colKey] || {}),
+        [field]: parseInt(val, 10) || 0
+      }
+    }));
+  };
+
+  const inspColumns = useMemo(() => {
+    if (inspectionType === "SQUARE") {
+      return [
+        { key: "col1", title: "LH 2호기", sub: "RR LH" },
+        { key: "col2", title: "LH 3호기", sub: "RR LH" },
+        { key: "col3", title: "RH 2호기", sub: "RR RH" },
+        { key: "col4", title: "RH 3호기", sub: "RR RH" }
+      ];
+    }
+    if (inspectionType === "FINAL_LH") {
+      return [
+        { key: "col1", title: "LH 1호기 (PRI)", sub: "RR LH" },
+        { key: "col2", title: "LH 1호기 (TIN)", sub: "RR LH" },
+        { key: "col3", title: "LH 2호기 (PRI)", sub: "RR LH" },
+        { key: "col4", title: "LH 2호기 (TIN)", sub: "RR LH" }
+      ];
+    }
+    // LENGTH and FINAL_PAIR
+    return [
+      { key: "col1", title: "RR LH (PRI)", sub: "PRIVACY" },
+      { key: "col2", title: "RR LH (TIN)", sub: "TINTED" },
+      { key: "col3", title: "RR RH (PRI)", sub: "PRIVACY" },
+      { key: "col4", title: "RR RH (TIN)", sub: "TINTED" }
+    ];
+  }, [inspectionType]);
+
   const handleSave = async () => {
     const effectiveWorker = customWorker.trim() || worker;
     if (!effectiveWorker) {
@@ -317,7 +418,10 @@ export const HanulWorkReportModal = ({
     setIsSaving(true);
     try {
       const selectedJointObj = HANUL_JOINT_TYPES.find((j) => j.id === jointType) || HANUL_JOINT_TYPES[0];
-      const effectivePartName = processId === "조인트" ? selectedJointObj.partName : currentProjectObj.partName;
+      const selectedInspObj = HANUL_INSPECTION_TYPES.find((j) => j.id === inspectionType) || HANUL_INSPECTION_TYPES[0];
+      let effectivePartName = currentProjectObj.partName;
+      if (processId === "조인트") effectivePartName = selectedJointObj.partName;
+      if (processId === "검사") effectivePartName = selectedInspObj.partName;
 
       const reportPayload = {
         id: editReport?.id,
@@ -332,6 +436,11 @@ export const HanulWorkReportModal = ({
         jointGradeName: processId === "조인트" ? jointGradeName : "",
         jointGradeLot: processId === "조인트" ? jointGradeLot : "",
         subMaterialsLot: processId === "조인트" ? subMaterialsLot : null,
+        inspectionType: processId === "검사" ? inspectionType : "",
+        padLot: (processId === "검사" && inspectionType === "LENGTH") ? padLot : "",
+        dvInspLot: (processId === "검사" && inspectionType.includes("FINAL")) ? dvInspLot : null,
+        rrExtLot: processId === "검사" ? rrExtLot : null,
+        inspProduction: processId === "검사" ? inspProduction : null,
         date,
         shift,
         worker: effectiveWorker,
@@ -378,6 +487,11 @@ export const HanulWorkReportModal = ({
       processName: currentProcessObj.name,
       subProcess: processId === "소재준비" ? subProcess : "",
       jointType: processId === "조인트" ? jointType : "",
+      inspectionType: processId === "검사" ? inspectionType : "",
+      padLot: (processId === "검사" && inspectionType === "LENGTH") ? padLot : "",
+      dvInspLot: (processId === "검사" && inspectionType.includes("FINAL")) ? dvInspLot : null,
+      rrExtLot: processId === "검사" ? rrExtLot : null,
+      inspProduction: processId === "검사" ? inspProduction : null,
       bladeChangeTime,
       machineTrouble,
       date,
@@ -556,6 +670,27 @@ export const HanulWorkReportModal = ({
                 </div>
               </div>
             )}
+            {/* 🌟 검사 공정일 때 드롭다운 선택기 (4가지 검사 일보) */}
+            {processId === "검사" && (
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/90 px-3 py-1 rounded-xl border-2 border-emerald-500 shadow-xs animate-fadeIn">
+                <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1 shrink-0">
+                  <span>📄 검사 일보:</span>
+                </span>
+                <div className="relative">
+                  <select
+                    value={inspectionType}
+                    onChange={(e) => setInspectionType(e.target.value)}
+                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-emerald-600 text-emerald-950 dark:text-emerald-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                  >
+                    <option value="LENGTH">1. 길이검사 일보</option>
+                    <option value="SQUARE">2. 직각검사 일보</option>
+                    <option value="FINAL_PAIR">3. 최종검사 일보 (LH / RH)</option>
+                    <option value="FINAL_LH">4. 최종검사 일보 (LH 전용)</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -692,6 +827,86 @@ export const HanulWorkReportModal = ({
                   }`}
                 >
                   4. RR
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 🌟 검사 공정일 때: 4가지 검사 일보 상단 안내 배너 & 4대 퀵 전환 탭 */}
+          {processId === "검사" && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-emerald-950/50 border-2 border-emerald-400 dark:border-emerald-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-md shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-black text-sm sm:text-base text-emerald-950 dark:text-white">
+                      검사 일보 (G/RUN RR) — {
+                        inspectionType === "LENGTH" ? "📏 1. 길이검사 일보 (부자재 패드 5T)" :
+                        inspectionType === "SQUARE" ? "📐 2. 직각검사 일보 (4대 설비호기)" :
+                        inspectionType === "FINAL_PAIR" ? "🏁 3. 최종검사 일보 (LH / RH)" :
+                        "🏁 4. 최종검사 일보 (LH 1호기 / 2호기)"
+                      }
+                    </h4>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                      4대 검사 서식
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    {inspectionType === "LENGTH" && "기록시간(09:00/13:30/17:00) • 부자재 패드 5T • RR LH/RH (PRI, TIN) • 압출/조인트/후가공 3대 불량 집계"}
+                    {inspectionType === "SQUARE" && "기록시간(09:00/13:30/17:00) • LH 2/3호기, RH 2/3호기 • 중요 치수 A/B (482/658mm) • 3대 불량 집계"}
+                    {inspectionType === "FINAL_PAIR" && "기록시간(초/중/종) • RR LH/RH (PRI, TIN) • D/V 부자재 LOT • 리워크(DV, 직/둔각) • 중요치수 및 패드 5T/7T"}
+                    {inspectionType === "FINAL_LH" && "기록시간(초/중/종) • RR LH 1호기/2호기 (PRI, TIN) • D/V 부자재 LOT • 리워크(DV, 직/둔각) • 패드 5T/7T"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 4 Segmented Quick Toggle Buttons */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-emerald-200 dark:border-emerald-800 shrink-0 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setInspectionType("LENGTH")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    inspectionType === "LENGTH"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300"
+                  }`}
+                >
+                  1. 길이검사
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectionType("SQUARE")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    inspectionType === "SQUARE"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300"
+                  }`}
+                >
+                  2. 직각검사
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectionType("FINAL_PAIR")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    inspectionType === "FINAL_PAIR"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300"
+                  }`}
+                >
+                  3. 최종 (LH/RH)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectionType("FINAL_LH")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    inspectionType === "FINAL_LH"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300"
+                  }`}
+                >
+                  4. 최종 (LH 전용)
                 </button>
               </div>
             </div>
@@ -1049,6 +1264,141 @@ export const HanulWorkReportModal = ({
                 </div>
               </div>
             )}
+
+            {/* 🌟 검사 공정 전용: 압출소재 LOT (RR A, RR B 초/중/종) 및 부자재 LOT (패드 5T / D/V) */}
+            {processId === "검사" && (
+              <div className="mt-2.5 pt-2.5 border-t border-emerald-200 dark:border-emerald-800/80 animate-fadeIn space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-black text-xs text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>검사 LOT 관리 — 압출소재(RR A/B) 및 부자재 (기록시간: 초 09:00 / 중 13:30 / 종 17:00)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                    {inspectionType === "LENGTH" ? "부자재: 패드 5T" : inspectionType.includes("FINAL") ? "부자재: D/V" : "압출소재: RR A/B"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* 압출소재 RR A */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
+                      🧱 압출소재 RR A (초/중/종)
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      <input
+                        type="text"
+                        placeholder="초물"
+                        value={rrExtLot.a?.start || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          a: { ...(prev.a || {}), start: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                      <input
+                        type="text"
+                        placeholder="중물"
+                        value={rrExtLot.a?.mid || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          a: { ...(prev.a || {}), mid: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                      <input
+                        type="text"
+                        placeholder="종물"
+                        value={rrExtLot.a?.end || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          a: { ...(prev.a || {}), end: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 압출소재 RR B */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
+                      🧱 압출소재 RR B (초/중/종)
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      <input
+                        type="text"
+                        placeholder="초물"
+                        value={rrExtLot.b?.start || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          b: { ...(prev.b || {}), start: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                      <input
+                        type="text"
+                        placeholder="중물"
+                        value={rrExtLot.b?.mid || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          b: { ...(prev.b || {}), mid: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                      <input
+                        type="text"
+                        placeholder="종물"
+                        value={rrExtLot.b?.end || ""}
+                        onChange={(e) => setRrExtLot((prev) => ({
+                          ...prev,
+                          b: { ...(prev.b || {}), end: e.target.value }
+                        }))}
+                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 부자재 LOT (패드 5T 또는 D/V) */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
+                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
+                      {inspectionType === "LENGTH" ? "📦 부자재 LOT (패드 5T)" : inspectionType.includes("FINAL") ? "⚙️ 부자재 LOT (D/V)" : "📦 기타 부자재 LOT"}
+                    </span>
+                    {inspectionType.includes("FINAL") ? (
+                      <div className="grid grid-cols-3 gap-1">
+                        <input
+                          type="text"
+                          placeholder="초물 D/V"
+                          value={dvInspLot.start || ""}
+                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, start: e.target.value }))}
+                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                        />
+                        <input
+                          type="text"
+                          placeholder="중물 D/V"
+                          value={dvInspLot.mid || ""}
+                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, mid: e.target.value }))}
+                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                        />
+                        <input
+                          type="text"
+                          placeholder="종물 D/V"
+                          value={dvInspLot.end || ""}
+                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, end: e.target.value }))}
+                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder={inspectionType === "LENGTH" ? "예: 패드 5T LOT (24.09.12)" : "부자재 LOT 입력"}
+                        value={padLot}
+                        onChange={(e) => setPadLot(e.target.value)}
+                        className="w-full px-2 py-1 text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* B. 생산 수량 및 실시간 KPI (정품 / 불량 / 리워크 / 양품률) */}
@@ -1068,8 +1418,124 @@ export const HanulWorkReportModal = ({
               </div>
             </div>
 
-            {/* 🌟 생산 수량 입력: 정치절단 (A / B / C 단면) vs 단컷팅 및 기타 (LH / RH) */}
-            {processId === "소재준비" && subProcess === "정치절단" ? (
+            {/* 🌟 생산 수량 입력: 검사 (4대 일보 전용 4열 매트릭스) vs 정치절단 (A / B / C 단면) vs 단컷팅 및 기타 (LH / RH) */}
+            {processId === "검사" ? (
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {inspColumns.map((col) => {
+                    const data = inspProduction[col.key] || { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 };
+                    const isFinal = inspectionType.includes("FINAL");
+                    const colTotal = isFinal
+                      ? (Number(data.genuine) || 0) + (Number(data.reworkDv) || 0) + (Number(data.reworkAngle) || 0) + (Number(data.scrap) || 0)
+                      : (Number(data.genuine) || 0) + (Number(data.rework) || 0) + (Number(data.scrap) || 0);
+
+                    return (
+                      <div
+                        key={col.key}
+                        className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-900/60 shadow-xs space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between border-b border-emerald-100 dark:border-emerald-950/60 pb-1.5">
+                          <div>
+                            <span className="font-black text-xs text-emerald-950 dark:text-emerald-200 block">
+                              {col.title}
+                            </span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              {col.sub}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-bold">
+                            실적계: {colTotal.toLocaleString()} EA
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">
+                              검사수량 (EA)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={data.insp}
+                              onChange={(e) => updateInspProd(col.key, "insp", e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white text-center"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                              정품 (EA)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={data.genuine}
+                              onChange={(e) => updateInspProd(col.key, "genuine", e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                            />
+                          </div>
+
+                          {isFinal ? (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                                  리워크 D/V
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={data.reworkDv}
+                                  onChange={(e) => updateInspProd(col.key, "reworkDv", e.target.value)}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-amber-700 dark:text-amber-300 block mb-0.5">
+                                  리워크 직/둔각
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={data.reworkAngle}
+                                  onChange={(e) => updateInspProd(col.key, "reworkAngle", e.target.value)}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div className="col-span-1">
+                              <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                                리워크 (EA)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={data.rework}
+                                onChange={(e) => updateInspProd(col.key, "rework", e.target.value)}
+                                className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
+                              />
+                            </div>
+                          )}
+
+                          <div className={isFinal ? "col-span-2" : "col-span-1"}>
+                            <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                              폐기불량 (EA)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={data.scrap}
+                              onChange={(e) => updateInspProd(col.key, "scrap", e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : processId === "소재준비" && subProcess === "정치절단" ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Section A */}
                 <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
@@ -1730,7 +2196,7 @@ export const HanulWorkReportModal = ({
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                 <span className="font-black text-xs sm:text-sm text-rose-950 dark:text-rose-200">
-                  4. 불량 유형별 세부 집계
+                  {processId === "검사" ? "4. 검사 3대 불량 세부 집계 (압출소재 / 조인트 / 후가공)" : "4. 불량 유형별 세부 집계"}
                 </span>
               </div>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-600 text-white font-black">
@@ -1738,46 +2204,145 @@ export const HanulWorkReportModal = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {currentDefectKeys.map((k) => {
-                const count = Number(defects[k]) || 0;
-                return (
-                  <div
-                    key={k}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-1 transition-all ${
-                      count > 0
-                        ? "bg-rose-100/80 dark:bg-rose-950/60 border-rose-400 text-rose-950 dark:text-rose-100 shadow-xs"
-                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <span className="text-xs font-bold truncate">{k}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleDefectChange(k, -1)}
-                        className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-200 flex items-center justify-center font-black active:scale-95 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        value={count}
-                        onChange={(e) => handleDefectInput(k, e.target.value)}
-                        className="w-10 text-center text-xs font-black bg-transparent border-0 focus:ring-0 p-0 text-slate-900 dark:text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDefectChange(k, 1)}
-                        className="w-6 h-6 rounded-lg bg-rose-600 text-white hover:bg-rose-500 flex items-center justify-center font-black active:scale-95 cursor-pointer shadow-2xs"
-                      >
-                        +
-                      </button>
+            {processId === "검사" ? (
+              /* 검사 3대 불량 분류 (압출소재, 조인트, 후가공) 그룹핑 뷰 */
+              <div className="space-y-3.5">
+                {[
+                  {
+                    title: "1. 압출소재 불량",
+                    prefix: "압출_",
+                    icon: "🧱",
+                    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                  },
+                  {
+                    title: "2. 조인트 불량",
+                    prefix: "조인트_",
+                    icon: "⚙️",
+                    badgeColor: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                  },
+                  {
+                    title: "3. 후가공 불량",
+                    prefix: "후가공_",
+                    icon: "✂️",
+                    badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                  }
+                ].map((grp) => {
+                  const grpKeys = currentDefectKeys.filter((k) => k.startsWith(grp.prefix));
+                  if (grpKeys.length === 0) return null;
+                  const grpTotal = grpKeys.reduce((acc, k) => acc + (Number(defects[k]) || 0), 0);
+
+                  return (
+                    <div
+                      key={grp.prefix}
+                      className="p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1.5">
+                        <span className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>{grp.icon}</span>
+                          <span>{grp.title}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${grp.badgeColor}`}>
+                            {grpKeys.length}개 항목
+                          </span>
+                        </span>
+                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
+                          grpTotal > 0
+                            ? "bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 font-black"
+                            : "text-slate-400"
+                        }`}>
+                          소계: {grpTotal.toLocaleString()} EA
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {grpKeys.map((k) => {
+                          const count = Number(defects[k]) || 0;
+                          const displayName = k.replace(grp.prefix, "");
+                          return (
+                            <div
+                              key={k}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-1 transition-all ${
+                                count > 0
+                                  ? "bg-rose-100/80 dark:bg-rose-950/60 border-rose-400 text-rose-950 dark:text-rose-100 shadow-xs"
+                                  : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300"
+                              }`}
+                            >
+                              <span className="text-xs font-bold truncate" title={displayName}>
+                                {displayName}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDefectChange(k, -1)}
+                                  className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-200 flex items-center justify-center font-black active:scale-95 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={count}
+                                  onChange={(e) => handleDefectInput(k, e.target.value)}
+                                  className="w-10 text-center text-xs font-black bg-transparent border-0 focus:ring-0 p-0 text-slate-900 dark:text-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleDefectChange(k, 1)}
+                                  className="w-6 h-6 rounded-lg bg-rose-600 text-white hover:bg-rose-500 flex items-center justify-center font-black active:scale-95 cursor-pointer shadow-2xs"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* 기존 일반 공정 불량 그리드 */
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {currentDefectKeys.map((k) => {
+                  const count = Number(defects[k]) || 0;
+                  return (
+                    <div
+                      key={k}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-1 transition-all ${
+                        count > 0
+                          ? "bg-rose-100/80 dark:bg-rose-950/60 border-rose-400 text-rose-950 dark:text-rose-100 shadow-xs"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <span className="text-xs font-bold truncate">{k}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleDefectChange(k, -1)}
+                          className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-200 flex items-center justify-center font-black active:scale-95 cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={count}
+                          onChange={(e) => handleDefectInput(k, e.target.value)}
+                          className="w-10 text-center text-xs font-black bg-transparent border-0 focus:ring-0 p-0 text-slate-900 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDefectChange(k, 1)}
+                          className="w-6 h-6 rounded-lg bg-rose-600 text-white hover:bg-rose-500 flex items-center justify-center font-black active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* F. 특기사항 및 설비 이상 조치 */}
