@@ -352,8 +352,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "name": "김현희",
       "position": "작업원",
       "employmentType": "정규직",
-      "status": "재직",
-      "note": ""
+      "status": "퇴사",
+      "note": "퇴사자"
     },
     {
       "no": 33,
@@ -1854,15 +1854,6 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김윤자",
-      "position": "작업원",
-      "daily": {}
-    },
-    {
-      "no": 32,
-      "company": "오륙",
-      "dept": "가공동",
-      "line": "NX4",
-      "name": "김현희",
       "position": "작업원",
       "daily": {}
     },
