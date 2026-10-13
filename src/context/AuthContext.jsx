@@ -88,7 +88,7 @@ export const ALL_DESIGNATED_USERS = [
   ...EXTRUSION_WORKERS
 ];
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -132,23 +132,27 @@ export const AuthProvider = ({ children }) => {
 
     if (savedProfile) {
       try {
-        const targetId = savedProfile.id || savedProfile.name;
-        const matched = ALL_DESIGNATED_USERS.find(
-          (u) => u.id === targetId || u.name === targetId || u.id === savedProfile.id || u.name === savedProfile.name
-        );
-        if (matched) {
-          const titleStr = matched.title ? ` ${matched.title}` : "";
-          const refreshed = {
-            ...matched,
-            displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name}${titleStr}`.trim(),
-            roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name}${titleStr}`.trim()
-          };
-          setCurrentProfile(refreshed);
-          try {
-            sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
-          } catch (e) {}
-        } else {
+        if (savedProfile.isFieldWorker) {
           setCurrentProfile(savedProfile);
+        } else {
+          const targetId = savedProfile.id || savedProfile.name;
+          const matched = ALL_DESIGNATED_USERS.find(
+            (u) => u.id === targetId || (u.name === targetId && (u.plant === savedProfile.plant || !savedProfile.plant))
+          );
+          if (matched) {
+            const titleStr = matched.title ? ` ${matched.title}` : "";
+            const refreshed = {
+              ...matched,
+              displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name}${titleStr}`.trim(),
+              roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name}${titleStr}`.trim()
+            };
+            setCurrentProfile(refreshed);
+            try {
+              sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
+            } catch (e) {}
+          } else {
+            setCurrentProfile(savedProfile);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -248,8 +252,8 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  const isOperator = currentProfile?.role === "OPERATOR";
   const isAdmin = currentProfile?.role === "ADMIN";
+  const isOperator = !!currentProfile && !isAdmin;
 
   return (
     <AuthContext.Provider

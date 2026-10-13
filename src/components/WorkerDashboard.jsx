@@ -536,7 +536,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return getWorkerPersonnelCard(currentProfile || {});
   }, [currentProfile]);
 
-  const isPartnerProfile = currentProfile?.isPartner || currentProfile?.name === "유성" || currentProfile?.name === "한울" || currentProfile?.name === "부림텍" || currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍";
+  const isPartnerProfile = !currentProfile?.isFieldWorker && (
+    currentProfile?.isPartner ||
+    currentProfile?.name === "유성" ||
+    currentProfile?.name === "한울" ||
+    currentProfile?.name === "부림텍" ||
+    (!String(currentProfile?.id || "").includes("_") && (currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍"))
+  );
   const isJaeyulWorker = isJaeyul || currentProfile?.name === "전재율" || currentProfile?.assignedProcess === "설비보전";
   const isHeadquarterUser = isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영" || currentProfile?.plant === "본사";
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
@@ -552,7 +558,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     : (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : (workerCard?.dept || "생산팀"));
   const workerPosition = isPartnerProfile
     ? "대표이사"
-    : (officialTitle || workerCard?.position || "선임");
+    : (officialTitle || workerCard?.position || "작업원");
   const isManagerOrAdmin =
     isGeneralManager ||
     isAdmin ||

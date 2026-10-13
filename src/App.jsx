@@ -354,7 +354,11 @@ export const App = () => {
   }
 
   if (!isAuthenticated) {
-    return <AuthModal />;
+    return (
+      <ErrorBoundary inline title="로그인 화면">
+        <AuthModal />
+      </ErrorBoundary>
+    );
   }
 
   return (
@@ -419,7 +423,7 @@ export const App = () => {
               {/* OPERATOR VIEWS (Full-Width Single-Page Experience) */}
               {isOperator && (
                 <>
-                  {activeTab === "worker_dashboard" && (
+                  {(activeTab === "worker_dashboard" || !["electronic_approval", "vehicle_sales", "sales_purchase_analysis", "hanul_tax_invoice", "extrusion_downtime", "daily_quality", "overtime_status", "operator_workspace"].includes(activeTab)) && (
                     <ErrorBoundary inline title="일일생산정보현황">
                       <WorkerDashboard
                         onBulkUpload={handleBulkUpload}

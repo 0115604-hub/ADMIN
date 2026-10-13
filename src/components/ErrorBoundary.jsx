@@ -5,7 +5,7 @@ import { OryukLogo } from "./OryukLogo";
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -14,6 +14,7 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    this.setState({ errorInfo });
   }
 
   handleReset = () => {
@@ -134,12 +135,13 @@ export class ErrorBoundary extends React.Component {
             </div>
 
             {this.state.error && (
-              <details className="mt-6 text-left w-full">
-                <summary className="text-[11px] text-slate-500 cursor-pointer hover:text-slate-400">
-                  오류 내용 확인
+              <details open className="mt-6 text-left w-full">
+                <summary className="text-[11px] text-slate-400 font-bold cursor-pointer hover:text-slate-300 mb-1">
+                  오류 내용 및 상세 스택 (디버깅)
                 </summary>
-                <pre className="mt-2 p-2.5 rounded-lg bg-slate-950 text-[10px] text-rose-400 overflow-x-auto font-mono max-h-32">
-                  {String(this.state.error?.message || this.state.error)}
+                <pre className="mt-1 p-2.5 rounded-lg bg-slate-950 text-[10px] text-rose-400 overflow-x-auto font-mono max-h-48 border border-rose-900/50 whitespace-pre-wrap">
+                  {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+                  {this.state.errorInfo?.componentStack && `\n\nComponent Stack:\n${this.state.errorInfo.componentStack}`}
                 </pre>
               </details>
             )}

@@ -3,6 +3,7 @@ import { Factory, Calendar, Cpu, Layers, Sparkles, Zap, ShieldAlert, AlertTriang
 import { ADMIN_USERS, PLANTS, EXTRUSION_WORKERS } from "../../context/AuthContext";
 import { getUserLeaveStatus } from "../../services/annualLeaveService";
 import { WorkerPinModal } from "./WorkerPinModal";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 export const WorkerLoginSection = ({
   selectedUser,
@@ -271,13 +272,15 @@ export const WorkerLoginSection = ({
 
         {/* 🌟 작업자 이름 탭 시 뜨는 전용 모달 팝업창 */}
         {selectedUser && (
-          <WorkerPinModal
-            selectedUser={selectedUser}
-            setSelectedUser={setSelectedUser}
-            annualLeaves={annualLeaves}
-            activeIssues={activeIssues}
-            urgentIssues={urgentIssues}
-          />
+          <ErrorBoundary inline title="작업자 확인">
+            <WorkerPinModal
+              selectedUser={selectedUser}
+              setSelectedUser={setSelectedUser}
+              annualLeaves={annualLeaves}
+              activeIssues={activeIssues}
+              urgentIssues={urgentIssues}
+            />
+          </ErrorBoundary>
         )}
       </div>
     );

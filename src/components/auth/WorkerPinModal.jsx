@@ -431,7 +431,7 @@ export const WorkerPinModal = ({
         content: issue.content || issue.details || "",
         actionResult: issue.actionResult || "",
         date: issue.date || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(issue.isResolved || (issue.actionResult && issue.actionResult.trim())),
+        isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim())),
         isExtrusion: isExt
       });
     });
@@ -751,7 +751,7 @@ export const WorkerPinModal = ({
         author: issue.author || issue.registeredBy || "관리자",
         authorTitle: issue.authorTitle || "",
         date: issue.date || issue.startDate || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(issue.isResolved || (issue.actionResult && issue.actionResult.trim())),
+        isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim())),
         images: Array.isArray(issue.images) ? issue.images : []
       });
     });
@@ -784,7 +784,7 @@ export const WorkerPinModal = ({
         author: rec.registeredBy || rec.writer || "관리자",
         authorTitle: "",
         date: rec.date || (rec.registeredAt ? String(rec.registeredAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(rec.isResolved || (rec.actionResult && rec.actionResult.trim())),
+        isResolved: Boolean(rec.isResolved || (rec.actionResult && String(rec.actionResult).trim())),
         images: Array.isArray(rec.images) ? rec.images : []
       });
     });
@@ -1713,75 +1713,84 @@ export const WorkerPinModal = ({
 
                           {adminRegisteredIssues.length > 0 ? (
                             <div className="space-y-2.5 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                              {adminRegisteredIssues.map((issue) => (
-                                <div
-                                  key={issue.id}
-                                  className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-2 text-xs shadow-2xs hover:border-rose-400 transition-colors"
-                                >
-                                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                                        issue.category === "품질경보" ? "bg-rose-600 text-white" :
-                                        issue.category.includes("공지") ? "bg-blue-600 text-white" :
-                                        issue.category.includes("품질") || issue.category.includes("이슈") ? "bg-amber-500 text-white" :
-                                        "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-                                      }`}>
-                                        {issue.category}
-                                      </span>
-                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                        {issue.plant?.replace("공장", "") || "전사"}
-                                      </span>
-                                      {issue.author && (
-                                        <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-400">
-                                          {issue.author} {issue.authorTitle || ""}
+                              {adminRegisteredIssues.map((issue) => {
+                                const catStr = String(issue.category || "");
+                                const isQualityAlert = catStr === "품질경보" || catStr.includes("품질경보");
+                                const isNotice = catStr.includes("공지");
+                                const isQualityIssue = catStr.includes("품질") || catStr.includes("이슈");
+                                const badgeClass = isQualityAlert
+                                  ? "bg-rose-600 text-white"
+                                  : isNotice
+                                  ? "bg-blue-600 text-white"
+                                  : isQualityIssue
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900";
+
+                                return (
+                                  <div
+                                    key={issue.id}
+                                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-2 text-xs shadow-2xs hover:border-rose-400 transition-colors"
+                                  >
+                                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${badgeClass}`}>
+                                          {catStr || "공지"}
                                         </span>
-                                      )}
+                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                          {issue.plant ? String(issue.plant).replace("공장", "") : "전사"}
+                                        </span>
+                                        {issue.author && (
+                                          <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-400">
+                                            {String(issue.author)} {issue.authorTitle ? String(issue.authorTitle) : ""}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 font-mono">{issue.date ? String(issue.date) : ""}</span>
                                     </div>
-                                    <span className="text-[10px] text-slate-400 font-mono">{issue.date}</span>
+
+                                    <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm leading-snug">
+                                      {typeof issue.title === "string" ? issue.title : String(issue.title || "")}
+                                    </h5>
+
+                                    {issue.content && issue.content !== issue.title && (
+                                      <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                        {typeof issue.content === "string" ? issue.content : String(issue.content || "")}
+                                      </p>
+                                    )}
+
+                                    {/* 첨부 이미지 썸네일 */}
+                                    {Array.isArray(issue.images) && issue.images.length > 0 && (
+                                      <div className="flex gap-2 overflow-x-auto py-1">
+                                        {issue.images.slice(0, 4).map((img, imgIdx) => {
+                                          const imgUrl = typeof img === "object" ? (img.url || img.dataUrl) : img;
+                                          if (!imgUrl) return null;
+                                          return (
+                                            <div
+                                              key={imgIdx}
+                                              onClick={() => setPreviewImage({
+                                                list: issue.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: String(issue.title || "") })),
+                                                index: imgIdx,
+                                                url: imgUrl,
+                                                name: String(issue.title || "")
+                                              })}
+                                              className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                                            >
+                                              <img src={imgUrl} alt="첨부" className="w-full h-full object-cover" />
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
+                                    {/* 조치 내용 / 조치 결과 */}
+                                    {issue.actionResult && (
+                                      <div className="text-[10.5px] sm:text-[11px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-2 rounded-xl border border-teal-200 dark:border-teal-800 leading-relaxed">
+                                        ↳ 🟢 <b>[조치사항]</b> {typeof issue.actionResult === "string" ? issue.actionResult : String(issue.actionResult || "")}
+                                      </div>
+                                    )}
                                   </div>
-
-                                  <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm leading-snug">
-                                    {issue.title}
-                                  </h5>
-
-                                  {issue.content && issue.content !== issue.title && (
-                                    <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
-                                      {issue.content}
-                                    </p>
-                                  )}
-
-                                  {/* 첨부 이미지 썸네일 */}
-                                  {Array.isArray(issue.images) && issue.images.length > 0 && (
-                                    <div className="flex gap-2 overflow-x-auto py-1">
-                                      {issue.images.slice(0, 4).map((img, imgIdx) => {
-                                        const imgUrl = typeof img === "object" ? (img.url || img.dataUrl) : img;
-                                        if (!imgUrl) return null;
-                                        return (
-                                          <div
-                                            key={imgIdx}
-                                            onClick={() => setPreviewImage({
-                                              list: issue.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: issue.title })),
-                                              index: imgIdx,
-                                              url: imgUrl,
-                                              name: issue.title
-                                            })}
-                                            className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-                                          >
-                                            <img src={imgUrl} alt="첨부" className="w-full h-full object-cover" />
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {/* 조치 내용 / 조치 결과 */}
-                                  {issue.actionResult && (
-                                    <div className="text-[10.5px] sm:text-[11px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-2 rounded-xl border border-teal-200 dark:border-teal-800 leading-relaxed">
-                                      ↳ 🟢 <b>[조치사항]</b> {issue.actionResult}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="py-16 text-center text-xs sm:text-sm text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800/60 flex flex-col items-center justify-center space-y-1.5 my-auto">
