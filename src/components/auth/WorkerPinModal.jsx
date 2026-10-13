@@ -267,44 +267,83 @@ export const WorkerPinModal = ({
     );
   }, [selectedUser]);
 
-  // 🌟 1. 첫화면 아래 협력업체 대표이사 계정 판별 (유성, 부림텍, 한울 등)
-  const isCompanyRepresentative = useMemo(() => {
+  // 🌟 1. 한울 및 부림텍 전체 계정 판별 (협력사 대표 타일 + 상단 포털 작업자 전체)
+  // 압출동과 마찬가지로 핀입력 후 재해(좌측) + 관리자가 등록한 이슈(우측)만 단독 표시 대상
+  const isHanulOrBurim = useMemo(() => {
     if (!selectedUser) return false;
-    return Boolean(
-      selectedUser.id === "hal_hu" ||
-      selectedUser.id === "hal_br" ||
-      selectedUser.id === "sam_ys" ||
-      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_")) ||
-      (!selectedUser.isFieldWorker && (selectedUser.name === "한울" || selectedUser.name === "부림텍" || selectedUser.name === "유성"))
-    );
-  }, [selectedUser]);
+    const comp = String(selectedUser.company || "");
+    const name = String(selectedUser.name || "");
+    const id = String(selectedUser.id || "");
 
-  // 🌟 2. 한울 현장 작업자 판별 (상단 포털 버튼으로 접속한 현장 작업자 전용: 박종미, 마이클 등)
-  // ⚠️ 첫화면 아래의 '한울' 대표이사(hal_hu)는 관리자이므로 절대 작업자로 분류되지 않음!
-  const isHanulWorker = useMemo(() => {
-    if (!selectedUser) return false;
-    if (isCompanyRepresentative) return false;
-    if (selectedUser.id === "hal_hu" || selectedUser.name === "한울") return false;
     return Boolean(
-      String(selectedUser.id || "").startsWith("hal_hu_") ||
-      (selectedUser.company?.includes("한울") && selectedUser.isFieldWorker) ||
+      comp.includes("한울") ||
+      comp.includes("부림") ||
+      name === "한울" ||
+      name === "부림텍" ||
+      id === "hal_hu" ||
+      id === "hal_br" ||
+      id.startsWith("hal_hu_") ||
+      id.startsWith("hal_br_") ||
       selectedUser.line === "9BQC" ||
       selectedUser.line === "LQ2" ||
+      selectedUser.line === "LQ2a" ||
       [
         "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
         "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
         "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
         "마이카", "알프레도", "아이린", "에릭", "언"
-      ].includes(selectedUser.name)
+      ].includes(name)
     );
-  }, [selectedUser, isCompanyRepresentative]);
+  }, [selectedUser]);
 
-  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성, 부림텍, 한울)
+  const isHanul = useMemo(() => {
+    if (!isHanulOrBurim) return false;
+    const comp = String(selectedUser?.company || "");
+    const name = String(selectedUser?.name || "");
+    const id = String(selectedUser?.id || "");
+    return Boolean(
+      comp.includes("한울") ||
+      name === "한울" ||
+      id === "hal_hu" ||
+      id.startsWith("hal_hu_") ||
+      selectedUser?.line === "9BQC" ||
+      selectedUser?.line === "LQ2" ||
+      selectedUser?.line === "LQ2a" ||
+      [
+        "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+        "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+        "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+        "마이카", "알프레도", "아이린", "에릭", "언"
+      ].includes(name)
+    );
+  }, [selectedUser, isHanulOrBurim]);
+
+  const isBurimtech = useMemo(() => {
+    if (!isHanulOrBurim) return false;
+    return !isHanul;
+  }, [isHanulOrBurim, isHanul]);
+
+  // Backward compatibility alias for Hanul worker checks
+  const isHanulWorker = isHanul;
+
+  // 🌟 2. 첫화면 아래 협력업체 대표이사 계정 판별 (유성 등 관리자급 협력사, 한울/부림텍은 isHanulOrBurim으로 전용 처리)
+  const isCompanyRepresentative = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isHanulOrBurim) return false;
+    return Boolean(
+      selectedUser.id === "sam_ys" ||
+      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_")) ||
+      (!selectedUser.isFieldWorker && selectedUser.name === "유성")
+    );
+  }, [selectedUser, isHanulOrBurim]);
+
+  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성)
   const isAdminUser = useMemo(() => {
     if (!selectedUser) return false;
+    if (isHanulOrBurim) return false;
     if (isCompanyRepresentative) return true;
     return !isExtrusionWorker && !isHanulWorker && !selectedUser.isFieldWorker;
-  }, [selectedUser, isCompanyRepresentative, isExtrusionWorker, isHanulWorker]);
+  }, [selectedUser, isHanulOrBurim, isCompanyRepresentative, isExtrusionWorker, isHanulWorker]);
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
@@ -343,12 +382,13 @@ export const WorkerPinModal = ({
 
   const isProcessingWorker = useMemo(() => {
     if (!selectedUser) return false;
+    if (isHanulOrBurim) return false;
     if (isCompanyRepresentative) return false;
     return Boolean(
-      (selectedUser.isFieldWorker && !isHanulWorker && !isExtrusionWorker) ||
+      (selectedUser.isFieldWorker && !isExtrusionWorker) ||
       (selectedUser.assignedProcess?.includes("외주가공") && selectedUser.isFieldWorker)
     );
-  }, [selectedUser, isCompanyRepresentative, isHanulWorker, isExtrusionWorker]);
+  }, [selectedUser, isHanulOrBurim, isCompanyRepresentative, isExtrusionWorker]);
 
   const todayKst = getKSTDateString();
 
@@ -645,6 +685,112 @@ export const WorkerPinModal = ({
       return cat === "품질경보" || cat === "품질 경보" || cat === "품질이슈" || cat.includes("품질");
     }).slice(0, 4);
   }, [urgentIssues, localUrgentIssues]);
+
+  // 2-3. 한울 & 부림텍 전용: 관리자가 등록한 이슈만 엄선 (재해 + 관리자가 등록한 이슈만 표시)
+  // 🌟 출근부 결근/근태 자동생성, 비가동/TPM 자동 로그 등 현장 잡음은 완전 배제하고,
+  // 관리자가 등록한 품질경보, 긴급이슈, 사내공지, 공식 4M 대장 등록 건만 직관적으로 표시
+  const adminRegisteredIssues = useMemo(() => {
+    const list = [];
+    const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
+    const seenIds = new Set();
+
+    // 1. urgentIssues (관리자가 직접 등록한 품질경보, 공지사항, 품질안건, 오픈이슈)
+    (sourceIssues || []).forEach((issue) => {
+      if (!issue || issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
+      if (isMeetingExpired(issue, 0)) return; // 기한 지난 회의 제외
+      if ((issue.category === "공지사항" || issue.category === "사내공지") && issue.expireDate && issue.expireDate < todayKst && !issue.isManuallyRestored) {
+        return; // 기한 지난 일반 공지 제외
+      }
+
+      const cat = String(issue.category || "").trim();
+      const title = String(issue.title || "").trim();
+      const content = String(issue.content || "").trim();
+      const plant = String(issue.plant || "").trim();
+      const target = String(issue.target || "").trim();
+      const company = String(issue.company || "").trim();
+      const lineStr = String(issue.line || issue.process || "").trim();
+
+      // 타 공장 전용 라인 비가동/트러블(예: 삼랑진 압출 1~8호기) 이슈는 제외
+      const isExtrusionExclusive =
+        (plant === "삼랑진공장" && (lineStr.includes("압출") || title.includes("압출") || content.includes("압출")) && !title.includes("전사") && !title.includes("공통")) ||
+        (lineStr.includes("압출") && !title.includes("전사") && !title.includes("공통") && !cat.includes("경보"));
+
+      // 한울/부림텍 관련 또는 전사 공통 여부
+      const isRelevant =
+        plant === "한림공장" ||
+        plant === "전체" ||
+        plant === "공통" ||
+        plant === "전사" ||
+        plant === "본사" ||
+        !plant ||
+        company.includes("한울") ||
+        company.includes("부림") ||
+        target.includes("한울") ||
+        target.includes("부림") ||
+        target.includes("한림") ||
+        cat.includes("품질") ||
+        cat.includes("경보") ||
+        cat.includes("공지") ||
+        cat.includes("안전");
+
+      if (isExtrusionExclusive && !isRelevant) return;
+
+      const issueId = `urg_${issue.id || issue._docId || Math.random()}`;
+      if (seenIds.has(issueId)) return;
+      seenIds.add(issueId);
+
+      list.push({
+        id: issueId,
+        rawId: issue.id || issue._docId,
+        category: cat || "품질경보",
+        plant: plant || "한림공장",
+        line: lineStr,
+        title: title || content || "(관리자 등록 공지)",
+        content: content || title || "",
+        actionResult: issue.actionResult || issue.actionGuide || "",
+        author: issue.author || issue.registeredBy || "관리자",
+        authorTitle: issue.authorTitle || "",
+        date: issue.date || issue.startDate || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
+        isResolved: Boolean(issue.isResolved || (issue.actionResult && issue.actionResult.trim())),
+        images: Array.isArray(issue.images) ? issue.images : []
+      });
+    });
+
+    // 2. fourMLedgerRecords (관리자가 4M 종합상황실에서 공식 '대장 등록'한 핵심 이슈)
+    (fourMLedgerRecords || []).forEach((rec) => {
+      if (!rec || !rec.isOfficialLedger) return;
+      const plant = String(rec.plant || "").trim();
+      const comp = String(rec.company || "").trim();
+      const lineStr = String(rec.line || "").trim();
+
+      // 삼랑진 압출동 전용 건 제외
+      if (plant === "삼랑진공장" && !comp.includes("한울") && !comp.includes("부림") && lineStr.includes("압출")) {
+        return;
+      }
+
+      const recId = `fourm_ledger_${rec.id || rec.originalId || Math.random()}`;
+      if (seenIds.has(recId)) return;
+      seenIds.add(recId);
+
+      list.push({
+        id: recId,
+        rawId: rec.id || rec.originalId,
+        category: rec.category || rec.fourM || "4M대장",
+        plant: plant || "한림공장",
+        line: lineStr,
+        title: rec.title || rec.content || "4M 공식 대장 등록 이슈",
+        content: rec.content || rec.title || "",
+        actionResult: rec.actionResult || "",
+        author: rec.registeredBy || rec.writer || "관리자",
+        authorTitle: "",
+        date: rec.date || (rec.registeredAt ? String(rec.registeredAt).slice(0, 10) : todayKst),
+        isResolved: Boolean(rec.isResolved || (rec.actionResult && rec.actionResult.trim())),
+        images: Array.isArray(rec.images) ? rec.images : []
+      });
+    });
+
+    return list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, todayKst]);
 
   // =========================================================================
   // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)
@@ -1020,8 +1166,10 @@ export const WorkerPinModal = ({
                       ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                       : isHallimManager
                       ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      : isHanulWorker
+                      : isHanul
                       ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                      : isBurimtech
+                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
                       : isExtrusionWorker
                       ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200"
@@ -1035,8 +1183,10 @@ export const WorkerPinModal = ({
                     ? "삼랑진공장 관리자"
                     : isHallimManager
                     ? "한림공장 관리자"
-                    : isHanulWorker
-                    ? "한울 외주가공 작업자"
+                    : isHanul
+                    ? "한울 외주가공"
+                    : isBurimtech
+                    ? "부림텍 외주가공"
                     : isExtrusionWorker
                     ? "압출동 작업자"
                     : "외주가공 작업자"}
@@ -1110,13 +1260,15 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || ""}님, <br className="hidden sm:inline" />
-                    중대재해공유판, 품질이슈 및 4M 변동점 발생공지를 확인바랍니다.
+                    {isHanulOrBurim
+                      ? "중대재해공유판 및 관리자 등록 이슈를 확인바랍니다."
+                      : "중대재해공유판, 품질이슈 및 4M 변동점 발생공지를 확인바랍니다."}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isExtrusionWorker
                       ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
-                      : isHanulWorker
-                      ? "인증 시 [중대재해공유판 + 4M 변동점 발생공지 + 일보작성]이 표시됩니다."
+                      : isHanulOrBurim
+                      ? `인증 시 [중대재해공유판 + 관리자 등록 이슈]가 표시됩니다.`
                       : isProcessingWorker
                       ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
                       : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 변동점 발생공지 + 근태정보]가 표시됩니다."}
@@ -1532,65 +1684,117 @@ export const WorkerPinModal = ({
                   )}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 2.5: 한울 외주가공 작업자 -> 4M 변동점 및 안전/품질 공지 */}
+                  {/* CASE 2: 한울 및 부림텍 -> 압출동과 마찬가지로 재해(좌측) + 관리자가 등록한 이슈만(우측) */}
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {isHanulWorker && (
+                  {isHanulOrBurim && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 4M 변동점 및 안전/품질 공지 */}
-                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                              <Activity className="w-4 h-4" />
+                      <div className="p-4 sm:p-5 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm flex flex-col justify-between space-y-3 h-full">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
+                                <AlertTriangle className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm md:text-base font-black text-slate-900 dark:text-white block leading-tight">
+                                  🚨 관리자 등록 이슈 및 공지사항
+                                </span>
+                                <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
+                                  {isHanul ? "한울 외주가공" : isBurimtech ? "부림텍 외주가공" : (selectedUser?.company || "한림공장")} • 관리자 공지 및 품질경보
+                                </span>
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                🔔 최근 4M 변동점 및 공지사항
-                              </span>
-                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                안전/품질 주의 항목
-                              </span>
-                            </div>
+
+                            <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
+                              {adminRegisteredIssues.length}건 등록됨
+                            </span>
                           </div>
 
-                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            최근 {recent4MRecords.length}건
-                          </span>
+                          {adminRegisteredIssues.length > 0 ? (
+                            <div className="space-y-2.5 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                              {adminRegisteredIssues.map((issue) => (
+                                <div
+                                  key={issue.id}
+                                  className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-2 text-xs shadow-2xs hover:border-rose-400 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                        issue.category === "품질경보" ? "bg-rose-600 text-white" :
+                                        issue.category.includes("공지") ? "bg-blue-600 text-white" :
+                                        issue.category.includes("품질") || issue.category.includes("이슈") ? "bg-amber-500 text-white" :
+                                        "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
+                                      }`}>
+                                        {issue.category}
+                                      </span>
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                        {issue.plant?.replace("공장", "") || "전사"}
+                                      </span>
+                                      {issue.author && (
+                                        <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-400">
+                                          {issue.author} {issue.authorTitle || ""}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono">{issue.date}</span>
+                                  </div>
+
+                                  <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm leading-snug">
+                                    {issue.title}
+                                  </h5>
+
+                                  {issue.content && issue.content !== issue.title && (
+                                    <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                      {issue.content}
+                                    </p>
+                                  )}
+
+                                  {/* 첨부 이미지 썸네일 */}
+                                  {Array.isArray(issue.images) && issue.images.length > 0 && (
+                                    <div className="flex gap-2 overflow-x-auto py-1">
+                                      {issue.images.slice(0, 4).map((img, imgIdx) => {
+                                        const imgUrl = typeof img === "object" ? (img.url || img.dataUrl) : img;
+                                        if (!imgUrl) return null;
+                                        return (
+                                          <div
+                                            key={imgIdx}
+                                            onClick={() => setPreviewImage({
+                                              list: issue.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: issue.title })),
+                                              index: imgIdx,
+                                              url: imgUrl,
+                                              name: issue.title
+                                            })}
+                                            className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                                          >
+                                            <img src={imgUrl} alt="첨부" className="w-full h-full object-cover" />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* 조치 내용 / 조치 결과 */}
+                                  {issue.actionResult && (
+                                    <div className="text-[10.5px] sm:text-[11px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-2 rounded-xl border border-teal-200 dark:border-teal-800 leading-relaxed">
+                                      ↳ 🟢 <b>[조치사항]</b> {issue.actionResult}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-16 text-center text-xs sm:text-sm text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800/60 flex flex-col items-center justify-center space-y-1.5 my-auto">
+                              <CheckCircle2 className="w-8 h-8 text-rose-400" />
+                              <span>현재 등록된 관리자 이슈 및 공지사항이 없습니다.</span>
+                              <span className="text-[11px] text-slate-500 font-medium">안전하고 원활한 작업을 진행해 주시기 바랍니다.</span>
+                            </div>
+                          )}
                         </div>
 
-                        {recent4MRecords.length > 0 ? (
-                          <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
-                            {recent4MRecords.map((item) => (
-                              <div
-                                key={item.id}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-300">
-                                      {item.origin || "변동점"}
-                                    </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
-                                      {item.plant?.replace("공장", "")} • {item.line}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
-                                </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
-                                {item.content && item.content !== item.title && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                                    {item.content}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-8 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                            <span>최근 등록된 변동점이 없습니다.</span>
-                          </div>
-                        )}
+                        <div className="pt-2.5 border-t border-rose-200 dark:border-rose-900/50 flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                          <span>관리자 공지 및 품질 관리 연동</span>
+                          <span>최신순 정렬</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1844,32 +2048,62 @@ export const WorkerPinModal = ({
             )}
           </div>
 
-          {/* 🌟 3. Footer: 한울 작업자는 확인완료 뱃지 없이 9BQC / LQ2a 일보 작성 버튼만 직관적으로 제공 */}
+          {/* 🌟 3. Footer: 한울(일보작성) / 부림텍(작업개시) / 관리자·압출(작업개시) 맞춤 제공 */}
           <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
-            {isHanulWorker ? (
+            {isHanul ? (
               isPinVerified ? (
-                /* 한울 전용: 복잡한 '확인완료 작업개시' 뱃지 제거, 9BQC / LQ2a 일보 작성 2개 버튼만 깔끔하게 제공 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("9BQC")}
-                    className="py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>🚗 9BQC G/RUN 일보 작성</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("LQ2A")}
-                    className="py-3 px-4 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>⚡ LQ2a Hood Side 일보 작성</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                /* 한울 전용: 9BQC / LQ2a 일보 작성 2개 버튼 제공 (+ 대표 계정 hal_hu의 경우 대시보드 입장도 지원) */
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenHanulReport("9BQC")}
+                      className="py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer"
+                    >
+                      <span>🚗 9BQC G/RUN 일보 작성</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenHanulReport("LQ2A")}
+                      className="py-3 px-4 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer"
+                    >
+                      <span>⚡ LQ2a Hood Side 일보 작성</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {(selectedUser.id === "hal_hu" || selectedUser.name === "한울") && (
+                    <button
+                      type="button"
+                      onClick={handleLogin}
+                      disabled={isLoggingIn}
+                      className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all cursor-pointer"
+                    >
+                      <span>한울 대시보드 입장 (확인완료)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="py-2.5 text-center text-xs font-bold text-slate-400 dark:text-slate-500">
                   🔒 상단에 PIN(4자리)을 입력하시면 작업일보 작성 버튼이 활성화됩니다.
+                </div>
+              )
+            ) : isBurimtech ? (
+              /* 부림텍 전용: 확인완료 작업개시 */
+              isPinVerified ? (
+                <button
+                  type="button"
+                  onClick={handleLogin}
+                  disabled={isLoggingIn}
+                  className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-teal-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <span>확인완료 작업개시</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              ) : (
+                <div className="py-2.5 text-center text-xs font-bold text-slate-400 dark:text-slate-500">
+                  🔒 상단에 PIN(4자리)을 입력하시면 작업개시 버튼이 활성화됩니다.
                 </div>
               )
             ) : (
