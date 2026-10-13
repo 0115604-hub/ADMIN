@@ -220,6 +220,7 @@ export const HanulWorkReportModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const modalRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   // Sync when editReport provided or opened
   useEffect(() => {
@@ -257,6 +258,9 @@ export const HanulWorkReportModal = ({
       if (editReport.conditions) setConditions(editReport.conditions);
       if (editReport.cleaningTimes) setCleaningTimes(editReport.cleaningTimes);
       if (editReport.notes) setNotes(editReport.notes);
+      setTimeout(() => {
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+      }, 50);
     } else if (isOpen) {
       setProject(initialProject);
       setProcessId(initialProcess);
@@ -299,6 +303,9 @@ export const HanulWorkReportModal = ({
       const defKeys = DEFAULT_DEFECT_CATEGORIES[defKey] || DEFAULT_DEFECT_CATEGORIES[`${initialProject}_${initialProcess}`] || [];
       defKeys.forEach((k) => { initDef[k] = 0; });
       setDefects(initDef);
+      setTimeout(() => {
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+      }, 50);
     }
   }, [editReport, isOpen, initialProject, initialProcess, initialWorker]);
 
@@ -552,12 +559,12 @@ export const HanulWorkReportModal = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-start sm:items-center justify-center p-1.5 sm:p-3 md:p-4 overflow-hidden overscroll-contain animate-fadeIn"
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp text-left"
+        className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-2xl sm:rounded-3xl border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col h-[96dvh] sm:h-auto sm:max-h-[92dvh] my-auto animate-scaleUp text-left"
       >
         {/* ========================================================================= */}
         {/* 🌟 1. Modal Header & Project Switcher */}
@@ -736,7 +743,7 @@ export const HanulWorkReportModal = ({
         {/* ========================================================================= */}
         {/* 🌟 3. Scrollable Form Body */}
         {/* ========================================================================= */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 space-y-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-3.5 sm:p-5 space-y-4">
           {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 */}
           {processId === "소재준비" && (
             <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
