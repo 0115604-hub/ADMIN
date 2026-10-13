@@ -354,11 +354,7 @@ export const App = () => {
   }
 
   if (!isAuthenticated) {
-    return (
-      <ErrorBoundary inline title="로그인 화면">
-        <AuthModal />
-      </ErrorBoundary>
-    );
+    return <AuthModal />;
   }
 
   return (

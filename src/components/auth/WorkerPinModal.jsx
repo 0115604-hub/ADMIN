@@ -82,7 +82,8 @@ import {
 } from "../../services/workLogService";
 import {
   subscribeUrgentIssues,
-  getLocalUrgentIssues
+  getLocalUrgentIssues,
+  isMeetingExpired
 } from "../../services/urgentIssueService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
@@ -1467,7 +1468,7 @@ export const WorkerPinModal = ({
                                 )}
                                 {(issue.actionResult || issue.actionGuide) && (
                                   <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
-                                    ↳ 🟢 <b>[조치]</b> {issue.actionResult || issue.actionGuide}
+                                    ↳ 🟢 <b>[조치]</b> {typeof (issue.actionResult || issue.actionGuide) === "string" ? (issue.actionResult || issue.actionGuide) : String(issue.actionResult || issue.actionGuide || "")}
                                   </div>
                                 )}
                               </div>
@@ -1534,7 +1535,7 @@ export const WorkerPinModal = ({
                                 )}
                                 {item.actionResult && (
                                   <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치]</b> {item.actionResult}
+                                    ↳ 🟢 <b>[조치]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
                                   </div>
                                 )}
                               </div>
@@ -1601,7 +1602,7 @@ export const WorkerPinModal = ({
                                 )}
                                 {issue.actionResult && (
                                   <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
-                                    ↳ 🟢 <b>[조치]</b> {issue.actionResult}
+                                    ↳ 🟢 <b>[조치]</b> {typeof issue.actionResult === "string" ? issue.actionResult : String(issue.actionResult || "")}
                                   </div>
                                 )}
                               </div>
@@ -1668,7 +1669,7 @@ export const WorkerPinModal = ({
                                 )}
                                 {item.actionResult && (
                                   <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치]</b> {item.actionResult}
+                                    ↳ 🟢 <b>[조치]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
                                   </div>
                                 )}
                               </div>
