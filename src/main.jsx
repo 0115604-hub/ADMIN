@@ -6,7 +6,11 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { MonthProvider } from "./context/MonthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { initGlobalCrashGuard } from "./utils/crashGuard";
 import "./index.css";
+
+// 🛡️ Activate global crash guard immediately upon app initialization
+initGlobalCrashGuard();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

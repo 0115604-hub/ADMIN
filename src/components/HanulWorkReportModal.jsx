@@ -606,9 +606,6 @@ export const HanulWorkReportModal = ({
     });
     return { okCount, ngCount, ngList, total: okCount + ngCount };
   }, [tpmChecks]);
-
-  if (!isOpen) return null;
-
   const currentProjectObj = HANUL_PROJECTS.find((p) => p.id === project) || HANUL_PROJECTS[0];
   const currentProcessObj = (HANUL_PROCESSES[project] || []).find((p) => p.id === processId) || { name: processId };
 

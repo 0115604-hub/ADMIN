@@ -89,8 +89,8 @@ export const HanulTaxInvoiceView = () => {
         (e) => e.partName === defItem.partName || (e.partNumber && e.partNumber === defItem.partNumber)
       );
       if (match) {
-        const q = Number(match.qty) !== undefined && !isNaN(match.qty) ? Number(match.qty) : defItem.qty;
-        const p = Number(match.unitPrice) !== undefined && !isNaN(match.unitPrice) ? Number(match.unitPrice) : defItem.unitPrice;
+        const q = match.qty !== undefined && !isNaN(Number(match.qty)) ? Number(match.qty) : defItem.qty;
+        const p = match.unitPrice !== undefined && !isNaN(Number(match.unitPrice)) ? Number(match.unitPrice) : defItem.unitPrice;
         const amt = Number(match.amount) || (q * p);
         return {
           ...defItem,

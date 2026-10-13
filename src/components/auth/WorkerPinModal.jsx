@@ -169,6 +169,7 @@ export const WorkerPinModal = ({
       if (unsubDisaster) unsubDisaster();
       if (unsubSched) unsubSched();
       if (unsubOvertime) unsubOvertime();
+      if (unsubReports) unsubReports();
       if (unsubAbsence) unsubAbsence();
       if (unsubExtQual) unsubExtQual();
       if (unsub4M) unsub4M();
