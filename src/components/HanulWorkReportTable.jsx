@@ -223,6 +223,19 @@ export const HanulWorkReportTable = ({
           </button>
         </div>
 
+        {/* Process Filter */}
+        <select
+          value={processFilter}
+          onChange={(e) => setProcessFilter(e.target.value)}
+          className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs"
+        >
+          <option value="all">전체 공정</option>
+          <option value="소재준비">소재준비 (정치절단/단컷팅)</option>
+          <option value="조인트">조인트</option>
+          <option value="본드로봇">본드로봇</option>
+          <option value="검사">검사</option>
+        </select>
+
         {/* Date Filter */}
         <input
           type="date"
@@ -301,7 +314,14 @@ export const HanulWorkReportTable = ({
                       </span>
                     </td>
                     <td className="p-3 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                      {rep.processName || rep.processId}
+                      <div className="flex items-center gap-1.5">
+                        <span>{rep.processName || rep.processId}</span>
+                        {rep.subProcess && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            {rep.subProcess === "정치절단" ? "✂️ 정치절단" : "📐 단컷팅"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {rep.worker}

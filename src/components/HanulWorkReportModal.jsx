@@ -48,12 +48,15 @@ export const HanulWorkReportModal = ({
   isOpen,
   onClose,
   initialProject = "9BQC",
-  initialProcess = "정재단",
+  initialProcess = "소재준비",
   initialWorker = "",
   editReport = null
 }) => {
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
+  const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
+  const [bladeChangeTime, setBladeChangeTime] = useState(""); // 칼날교체시간 (정치절단 전용)
+  const [machineTrouble, setMachineTrouble] = useState(""); // 설비 이상 조치사항
   const [date, setDate] = useState(() => getKSTDateString());
   const [shift, setShift] = useState("주간");
   const [worker, setWorker] = useState(initialWorker || "황수현");
@@ -87,17 +90,26 @@ export const HanulWorkReportModal = ({
 
   // Dynamic Defects (matching sheet categories)
   const currentDefectKeys = useMemo(() => {
-    const key = `${project}_${processId}`;
-    return DEFAULT_DEFECT_CATEGORIES[key] || DEFAULT_DEFECT_CATEGORIES["9BQC_정재단"];
-  }, [project, processId]);
+    const key = processId === "소재준비"
+      ? `${project}_소재준비_${subProcess}`
+      : `${project}_${processId}`;
+    return (
+      DEFAULT_DEFECT_CATEGORIES[key] ||
+      DEFAULT_DEFECT_CATEGORIES[`${project}_${processId}`] ||
+      DEFAULT_DEFECT_CATEGORIES["9BQC_정재단"] ||
+      []
+    );
+  }, [project, processId, subProcess]);
 
   const [defects, setDefects] = useState({});
 
   // Measurements by spec
   const currentSpecs = useMemo(() => {
-    const key = `${project}_${processId}`;
-    return HANUL_SPECS[key] || [];
-  }, [project, processId]);
+    const key = processId === "소재준비"
+      ? `${project}_소재준비_${subProcess}`
+      : `${project}_${processId}`;
+    return HANUL_SPECS[key] || HANUL_SPECS[`${project}_${processId}`] || [];
+  }, [project, processId, subProcess]);
 
   const [measurements, setMeasurements] = useState({});
 
@@ -152,7 +164,10 @@ export const HanulWorkReportModal = ({
   useEffect(() => {
     if (editReport) {
       setProject(editReport.project || "9BQC");
-      setProcessId(editReport.processId || "정재단");
+      setProcessId(editReport.processId || "소재준비");
+      if (editReport.subProcess) setSubProcess(editReport.subProcess);
+      if (editReport.bladeChangeTime) setBladeChangeTime(editReport.bladeChangeTime);
+      if (editReport.machineTrouble) setMachineTrouble(editReport.machineTrouble);
       setDate(editReport.date || getKSTDateString());
       setShift(editReport.shift || "주간");
       setWorker(editReport.worker || "황수현");
@@ -173,10 +188,16 @@ export const HanulWorkReportModal = ({
     } else if (isOpen) {
       setProject(initialProject);
       setProcessId(initialProcess);
+      setSubProcess("정치절단");
+      setBladeChangeTime("");
+      setMachineTrouble("");
       if (initialWorker) setWorker(initialWorker);
       // Reset defects based on categories
       const initDef = {};
-      const defKeys = DEFAULT_DEFECT_CATEGORIES[`${initialProject}_${initialProcess}`] || [];
+      const defKey = initialProcess === "소재준비"
+        ? `${initialProject}_소재준비_정치절단`
+        : `${initialProject}_${initialProcess}`;
+      const defKeys = DEFAULT_DEFECT_CATEGORIES[defKey] || DEFAULT_DEFECT_CATEGORIES[`${initialProject}_${initialProcess}`] || [];
       defKeys.forEach((k) => { initDef[k] = 0; });
       setDefects(initDef);
     }
@@ -186,11 +207,11 @@ export const HanulWorkReportModal = ({
   useEffect(() => {
     const validProcesses = HANUL_PROCESSES[project] || [];
     if (!validProcesses.some((p) => p.id === processId)) {
-      setProcessId(validProcesses[0]?.id || "정재단");
+      setProcessId(validProcesses[0]?.id || "소재준비");
     }
   }, [project, processId]);
 
-  // When process changes, refresh default defects
+  // When process or subProcess changes, refresh default defects
   useEffect(() => {
     setDefects((prev) => {
       const next = { ...prev };
@@ -205,18 +226,37 @@ export const HanulWorkReportModal = ({
 
   // Sum calculations
   const totals = useMemo(() => {
-    const isLH_RH = ["조인트", "단컷팅", "사상가공", "완제품_체크", "후가공", "최종검사"].includes(processId) || project === "LQ2A";
     let genuine = 0;
     let bad = 0;
     let rework = 0;
 
-    if (isLH_RH) {
-      genuine = (Number(production.genuineLH) || 0) + (Number(production.genuineRH) || 0);
-      bad = (Number(production.badLH) || 0) + (Number(production.badRH) || 0);
-      rework = (Number(production.reworkLH) || 0) + (Number(production.reworkRH) || 0);
+    const lhGenuine = (Number(production.genuineLH) || 0) + (Number(production.genuineRH) || 0);
+    const lhBad = (Number(production.badLH) || 0) + (Number(production.badRH) || 0);
+    const lhRework = (Number(production.reworkLH) || 0) + (Number(production.reworkRH) || 0);
+
+    const abcGenuine = (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (Number(production.genuineC) || 0);
+    const abcBad = (Number(production.badA) || 0) + (Number(production.badB) || 0) + (Number(production.badC) || 0);
+
+    if (processId === "소재준비" && subProcess === "정치절단") {
+      // In 정치절단, prefer ABC sections if entered, else LH/RH
+      if (abcGenuine > 0 || abcBad > 0 || lhGenuine === 0) {
+        genuine = abcGenuine;
+        bad = abcBad;
+      } else {
+        genuine = lhGenuine;
+        bad = lhBad;
+        rework = lhRework;
+      }
     } else {
-      genuine = (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (Number(production.genuineC) || 0);
-      bad = (Number(production.badA) || 0) + (Number(production.badB) || 0) + (Number(production.badC) || 0);
+      // In other processes (단컷팅, 조인트, 본드로봇, 검사), prefer LH/RH
+      if (lhGenuine > 0 || lhBad > 0 || abcGenuine === 0) {
+        genuine = lhGenuine;
+        bad = lhBad;
+        rework = lhRework;
+      } else {
+        genuine = abcGenuine;
+        bad = abcBad;
+      }
     }
 
     // Defect sums from breakdown
@@ -227,7 +267,7 @@ export const HanulWorkReportModal = ({
     const defectRate = gross > 0 ? ((finalBad / gross) * 100).toFixed(1) : "0.0";
 
     return { genuine, bad: finalBad, rework, gross, yieldRate, defectRate, defectSum };
-  }, [production, defects, processId, project]);
+  }, [production, defects, processId, subProcess, project]);
 
   if (!isOpen) return null;
 
@@ -264,6 +304,7 @@ export const HanulWorkReportModal = ({
         partName: currentProjectObj.partName,
         processId,
         processName: currentProcessObj.name,
+        subProcess: processId === "소재준비" ? subProcess : "",
         date,
         shift,
         worker: effectiveWorker,
@@ -275,6 +316,8 @@ export const HanulWorkReportModal = ({
         clipLot,
         dollyNo,
         extTimeRange,
+        bladeChangeTime: (processId === "소재준비" && subProcess === "정치절단") ? bladeChangeTime : "",
+        machineTrouble,
         production,
         totals,
         defects,
@@ -306,6 +349,9 @@ export const HanulWorkReportModal = ({
       projectName: currentProjectObj.name,
       processId,
       processName: currentProcessObj.name,
+      subProcess: processId === "소재준비" ? subProcess : "",
+      bladeChangeTime,
+      machineTrouble,
       date,
       shift,
       worker: effectiveWorker,
@@ -351,7 +397,7 @@ export const HanulWorkReportModal = ({
                   </span>
                 </div>
                 <p className="text-xs text-indigo-200 truncate mt-0.5">
-                  9BQC G/RUN 및 LQ2a Hood Side 12개 세부 공정 작업일보 양식 지원
+                  9BQC G/RUN 및 LQ2a Hood Side 4대 핵심 공정 (소재준비 • 조인트 • 본드로봇 • 검사)
                 </p>
               </div>
             </div>
@@ -411,32 +457,55 @@ export const HanulWorkReportModal = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* 🌟 2. Process Tabs (공정 선택 탭) */}
+        {/* ========================================================================= */}
+        {/* 🌟 2. Process Tabs (공정 선택 탭) + 소재준비 세부일보 드롭다운 */}
         {/* ========================================================================= */}
         <div className="px-3 sm:px-5 py-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0 overflow-x-auto custom-scrollbar">
-          <div className="flex items-center gap-1.5 min-w-max">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5" />
-              <span>공정선택:</span>
-            </span>
-            {(HANUL_PROCESSES[project] || []).map((proc, idx) => {
-              const isSelected = processId === proc.id;
-              return (
-                <button
-                  key={proc.id}
-                  type="button"
-                  onClick={() => setProcessId(proc.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                    isSelected
-                      ? "bg-indigo-600 text-white shadow-xs scale-102"
-                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <span className="opacity-70 text-[10px]">{idx + 1}.</span>
-                  <span>{proc.id}</span>
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between gap-3 min-w-max">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5" />
+                <span>공정선택:</span>
+              </span>
+              {(HANUL_PROCESSES[project] || []).map((proc, idx) => {
+                const isSelected = processId === proc.id;
+                return (
+                  <button
+                    key={proc.id}
+                    type="button"
+                    onClick={() => setProcessId(proc.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                      isSelected
+                        ? "bg-indigo-600 text-white shadow-xs scale-102"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    }`}
+                  >
+                    <span className="opacity-70 text-[10px]">{idx + 1}.</span>
+                    <span>{proc.id}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 🌟 소재준비 공정일 때 드롭다운 선택기 (정치절단 / 단컷팅) */}
+            {processId === "소재준비" && (
+              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/90 px-3 py-1 rounded-xl border-2 border-indigo-500 shadow-xs animate-fadeIn">
+                <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1 shrink-0">
+                  <span>📄 일보 선택:</span>
+                </span>
+                <div className="relative">
+                  <select
+                    value={subProcess}
+                    onChange={(e) => setSubProcess(e.target.value)}
+                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-indigo-600 text-indigo-950 dark:text-indigo-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                  >
+                    <option value="정치절단">✂️ 정치절단 작업일보</option>
+                    <option value="단컷팅">📐 단컷팅 작업일보</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-indigo-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -444,6 +513,59 @@ export const HanulWorkReportModal = ({
         {/* 🌟 3. Scrollable Form Body */}
         {/* ========================================================================= */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 space-y-4">
+          {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 */}
+          {processId === "소재준비" && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shrink-0">
+                  {subProcess === "정치절단" ? <Scissors className="w-5 h-5" /> : <Layers className="w-5 h-5" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-black text-sm sm:text-base text-indigo-950 dark:text-white">
+                      소재 준비 작업 일보 (G/RUN) — {subProcess === "정치절단" ? "✂️ 정치 절단 일보" : "📐 단컷팅 일보"}
+                    </h4>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-2xs">
+                      적용 중
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5">
+                    {subProcess === "정치절단"
+                      ? "정치절단 치수 규격 (FRT A/B/C, RR A/B) • 압출/공정간 불량 집계 • 칼날교체시간"
+                      : "단컷팅 치수 규격 (FRT LH/RH 83mm, RR LH 68mm, RR RH 67mm) • 단컷팅 불량 집계"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Segmented Quick Toggle Buttons */}
+              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1 rounded-xl border border-indigo-200 dark:border-indigo-800 shrink-0 self-start sm:self-auto shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setSubProcess("정치절단")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                    subProcess === "정치절단"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+                  }`}
+                >
+                  <Scissors className="w-3.5 h-3.5" />
+                  <span>정치절단 일보</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubProcess("단컷팅")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                    subProcess === "단컷팅"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>단컷팅 일보</span>
+                </button>
+              </div>
+            </div>
+          )}
           {/* A. 기본 정보 (일자, 주야, 작업자, 시간, 설비호기) */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2">
@@ -644,108 +766,231 @@ export const HanulWorkReportModal = ({
               </div>
             </div>
 
-            {/* LH / RH or Section Split Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* LH / A Section */}
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
-                    LH (좌측) / A구간
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    합계: {(Number(production.genuineLH) || 0) + (Number(production.badLH) || 0)} EA
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                      정품 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.genuineLH}
-                      onChange={(e) => setProduction((p) => ({ ...p, genuineLH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
-                    />
+            {/* 🌟 생산 수량 입력: 정치절단 (A / B / C 단면) vs 단컷팅 및 기타 (LH / RH) */}
+            {processId === "소재준비" && subProcess === "정치절단" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Section A */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
+                      Section "A" (FRT A / RR A 가절단)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      계: {(Number(production.genuineA) || 0) + (Number(production.badA) || 0)} EA
+                    </span>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
-                      불량 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.badLH}
-                      onChange={(e) => setProduction((p) => ({ ...p, badLH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
-                      리워크 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.reworkLH}
-                      onChange={(e) => setProduction((p) => ({ ...p, reworkLH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        정품 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.genuineA}
+                        onChange={(e) => setProduction((p) => ({ ...p, genuineA: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                        불량 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.badA}
+                        onChange={(e) => setProduction((p) => ({ ...p, badA: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* RH / B Section */}
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
-                    RH (우측) / B구간
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    합계: {(Number(production.genuineRH) || 0) + (Number(production.badRH) || 0)} EA
-                  </span>
+                {/* Section B */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
+                      Section "B" (FRT B / RR B)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      계: {(Number(production.genuineB) || 0) + (Number(production.badB) || 0)} EA
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        정품 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.genuineB}
+                        onChange={(e) => setProduction((p) => ({ ...p, genuineB: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                        불량 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.badB}
+                        onChange={(e) => setProduction((p) => ({ ...p, badB: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                      정품 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.genuineRH}
-                      onChange={(e) => setProduction((p) => ({ ...p, genuineRH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
-                    />
+
+                {/* Section C */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
+                      Section "C" (FRT C)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      계: {(Number(production.genuineC) || 0) + (Number(production.badC) || 0)} EA
+                    </span>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
-                      불량 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.badRH}
-                      onChange={(e) => setProduction((p) => ({ ...p, badRH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
-                      리워크 (EA)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={production.reworkRH}
-                      onChange={(e) => setProduction((p) => ({ ...p, reworkRH: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        정품 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.genuineC}
+                        onChange={(e) => setProduction((p) => ({ ...p, genuineC: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                        불량 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.badC}
+                        onChange={(e) => setProduction((p) => ({ ...p, badC: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* LH / RH Inputs for 단컷팅, 조인트, 본드로봇, 검사 */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* LH */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
+                      {processId === "소재준비" && subProcess === "단컷팅"
+                        ? "LH (좌측: FRT 83mm / RR 68mm)"
+                        : "LH (좌측) / A구간"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      합계: {(Number(production.genuineLH) || 0) + (Number(production.badLH) || 0)} EA
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        정품 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.genuineLH}
+                        onChange={(e) => setProduction((p) => ({ ...p, genuineLH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                        불량 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.badLH}
+                        onChange={(e) => setProduction((p) => ({ ...p, badLH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                        리워크 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.reworkLH}
+                        onChange={(e) => setProduction((p) => ({ ...p, reworkLH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* RH */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
+                      {processId === "소재준비" && subProcess === "단컷팅"
+                        ? "RH (우측: FRT 83mm / RR 67mm)"
+                        : "RH (우측) / B구간"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      합계: {(Number(production.genuineRH) || 0) + (Number(production.badRH) || 0)} EA
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                        정품 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.genuineRH}
+                        onChange={(e) => setProduction((p) => ({ ...p, genuineRH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
+                        불량 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.badRH}
+                        onChange={(e) => setProduction((p) => ({ ...p, badRH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-0.5">
+                        리워크 (EA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={production.reworkRH}
+                        onChange={(e) => setProduction((p) => ({ ...p, reworkRH: parseInt(e.target.value, 10) || 0 }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-black text-amber-900 dark:text-amber-200 text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-4 gap-2 pt-1 text-center">
@@ -1088,18 +1333,66 @@ export const HanulWorkReportModal = ({
           </div>
 
           {/* F. 특기사항 및 설비 이상 조치 */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
-            <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <Wrench className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>5. 특기사항 및 설비 이상 발생 조치사항</span>
-            </span>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="칼날 교체, 금형 세척, 사출 압력 변동 조치, 부자재 입고 LOT 이상 등 특이사항을 상세히 기록해 주십시오."
-              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-            />
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2">
+              <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Wrench className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>5. 설비 조치 및 특기사항</span>
+              </span>
+              {processId === "소재준비" && subProcess === "정치절단" && (
+                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                  ✂️ 칼날교체시간 기록 항목 지원
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 칼날교체 시간 (정치절단 일보 고유 항목) */}
+              {processId === "소재준비" && subProcess === "정치절단" && (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 mb-1">
+                    <Clock className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>칼날교체 시간 (Blade Change Time)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 08:30 (1차 교체), 13:40 (2차 교체)"
+                    value={bladeChangeTime}
+                    onChange={(e) => setBladeChangeTime(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
+
+              {/* 설비 이상 조치사항 (두 일보 공통) */}
+              <div className={processId === "소재준비" && subProcess === "정치절단" ? "" : "sm:col-span-2"}>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 mb-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  <span>설비 이상 조치사항</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="설비 이상 및 트러블 발생 시 내용 및 조치사항 기록"
+                  value={machineTrouble}
+                  onChange={(e) => setMachineTrouble(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* 특기사항 및 건의사항 */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                특기 사항 및 건의 사항
+              </label>
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="칼날 교체, 금형 세척, 사출 압력 변동 조치, 부자재 입고 LOT 이상 등 특이사항을 상세히 기록해 주십시오."
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
         </div>
 

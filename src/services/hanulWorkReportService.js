@@ -25,20 +25,16 @@ export const HANUL_PROJECTS = [
 
 export const HANUL_PROCESSES = {
   "9BQC": [
-    { id: "정재단", name: "소재준비 - 정재단 (정치절단)", subTitle: "FRT A/B/C, RR A/B 절단 및 길이검사" },
-    { id: "단컷팅", name: "소재준비 - 단컷팅", subTitle: "FRT LH/RH, RR LH/RH 단컷팅(83/68/67mm)" },
-    { id: "조인트", name: "조인트 작업일보 (FRT/RR/FIXED)", subTitle: "사출 성형, 온도·조건 및 조인트 불량 관리" },
-    { id: "본드_로봇", name: "로봇 본딩 작업일보", subTitle: "PRI / TIN / 9BQB 로봇 본딩, 팁 교환주기" },
-    { id: "사상가공", name: "사상 및 후가공 작업일보", subTitle: "사상마무리, DV가공, 과사상/미사상 불량" },
-    { id: "완제품_체크", name: "완제품 체크시트 (FRT / RR)", subTitle: "단면LOT, 치수측정, 외관, CF검사" },
-    { id: "단면_체크", name: "단면 확인 체크시트", subTitle: "대차번호, 압출시간대, 실도어 장착 이탈유무" },
-    { id: "최종검사", name: "최종 검사일보", subTitle: "정품, 불량, 리워크 및 전수 검사" }
+    { id: "소재준비", name: "소재준비", subTitle: "정재단, 단컷팅" },
+    { id: "조인트", name: "조인트", subTitle: "사출 성형, 조인트 작업" },
+    { id: "본드로봇", name: "본드로봇", subTitle: "로봇 본딩 및 도포 작업" },
+    { id: "검사", name: "검사", subTitle: "완제품, 단면 확인 및 최종검사" }
   ],
   "LQ2A": [
-    { id: "정재단", name: "소재준비 - 정재단 (정치절단)", subTitle: "LH / RH 전장길이 X1~X4, Y1~Y3 측정" },
-    { id: "조인트", name: "조인트 프레스 작업일보", subTitle: "W60664$OS, 가류온도 200℃, 가류시간 90s" },
-    { id: "후가공", name: "후가공 작업일보 (클립)", subTitle: "Hood Side LH/RH, 클립 2T000 WH/BW" },
-    { id: "최종검사", name: "최종 검사일보", subTitle: "규격 732mm±2, X/Y부 치수 및 최종 불량" }
+    { id: "소재준비", name: "소재준비", subTitle: "정재단, 단컷팅" },
+    { id: "조인트", name: "조인트", subTitle: "조인트 프레스 및 가류 작업" },
+    { id: "본드로봇", name: "본드로봇", subTitle: "본딩 및 클립/후가공 조립" },
+    { id: "검사", name: "검사", subTitle: "완제품 치수 및 최종검사" }
   ]
 };
 
@@ -74,6 +70,66 @@ export const HANUL_WORKERS_MASTER = [
 
 // Specifications extracted directly from desktop Excel files
 export const HANUL_SPECS = {
+  "9BQC_소재준비_정치절단": [
+    { key: "frtA", label: "FRT A단면 (정치절단)", spec: "881±3mm", target: 881, tol: 3 },
+    { key: "frtB", label: "FRT B단면 (정치절단)", spec: "608±5mm", target: 608, tol: 5 },
+    { key: "frtC", label: "FRT C단면 (정치절단)", spec: "582±5mm", target: 582, tol: 5 },
+    { key: "rrA", label: "RR A단면 (가절단)", spec: "488±3mm", target: 488, tol: 3 },
+    { key: "rrB", label: "RR B단면 (정치절단)", spec: "658±5mm", target: 658, tol: 5 }
+  ],
+  "9BQC_소재준비_단컷팅": [
+    { key: "frtLhA", label: "FRT LH - A", spec: "83mm", target: 83, tol: 2 },
+    { key: "frtLhB", label: "FRT LH - B", spec: "83mm", target: 83, tol: 2 },
+    { key: "frtRhA", label: "FRT RH - A", spec: "83mm", target: 83, tol: 2 },
+    { key: "frtRhB", label: "FRT RH - B", spec: "83mm", target: 83, tol: 2 },
+    { key: "rrLhA", label: "RR LH - A", spec: "68mm", target: 68, tol: 2 },
+    { key: "rrLhB", label: "RR LH - B", spec: "67mm", target: 67, tol: 2 },
+    { key: "rrRhA", label: "RR RH - A", spec: "68mm", target: 68, tol: 2 },
+    { key: "rrRhB", label: "RR RH - B", spec: "67mm", target: 67, tol: 2 }
+  ],
+  "9BQC_소재준비": [
+    { key: "frtA", label: "FRT A단면 (정재단)", spec: "881±3mm", target: 881, tol: 3 },
+    { key: "frtB", label: "FRT B단면 (정재단)", spec: "608±5mm", target: 608, tol: 5 },
+    { key: "frtC", label: "FRT C단면 (정재단)", spec: "582±5mm", target: 582, tol: 5 },
+    { key: "rrA", label: "RR A단면 (정재단)", spec: "488±3mm", target: 488, tol: 3 },
+    { key: "rrB", label: "RR B단면 (정재단)", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "frtCutting", label: "FRT LH/RH 단컷팅", spec: "83±3mm", target: 83, tol: 3 },
+    { key: "rrLhCutting", label: "RR LH 단컷팅", spec: "68±3mm", target: 68, tol: 3 },
+    { key: "rrRhCutting", label: "RR RH 단컷팅", spec: "67±3mm", target: 67, tol: 3 }
+  ],
+  "9BQC_검사": [
+    { key: "frtA", label: "FRT 완제품 치수", spec: "완제품 공차" },
+    { key: "rrA", label: "RR 완제품 치수", spec: "완제품 공차" },
+    { key: "crossSection", label: "단면 상태 (이탈유무)", spec: "양호" }
+  ],
+  "LQ2A_소재준비_정치절단": [
+    { key: "totalLength", label: "전장 길이", spec: "732±2mm", target: 732, tol: 2 },
+    { key: "x1", label: "X1 치수", spec: "단차/위치" },
+    { key: "x2", label: "X2 치수", spec: "단차/위치" }
+  ],
+  "LQ2A_소재준비_단컷팅": [
+    { key: "totalLength", label: "단컷팅 길이", spec: "규격공차" },
+    { key: "cutLh", label: "LH 단컷팅", spec: "정치/초중종" },
+    { key: "cutRh", label: "RH 단컷팅", spec: "정치/초중종" }
+  ],
+  "LQ2A_소재준비": [
+    { key: "totalLength", label: "전장 길이", spec: "732±2mm", target: 732, tol: 2 },
+    { key: "x1", label: "X1 치수", spec: "단차/위치" },
+    { key: "x2", label: "X2 치수", spec: "단차/위치" },
+    { key: "x3", label: "X3 치수", spec: "단차/위치" },
+    { key: "x4", label: "X4 치수", spec: "단차/위치" },
+    { key: "y1", label: "Y1 치수", spec: "단차/위치" },
+    { key: "y2", label: "Y2 치수", spec: "단차/위치" },
+    { key: "y3", label: "Y3 치수", spec: "단차/위치" }
+  ],
+  "LQ2A_검사": [
+    { key: "totalLength", label: "전장 길이 전수검사", spec: "732±2mm", target: 732, tol: 2 },
+    { key: "x1", label: "X1 (LH/RH)", spec: "초/중/종" },
+    { key: "x2", label: "X2 (LH/RH)", spec: "초/중/종" },
+    { key: "x3", label: "X3 (LH/RH)", spec: "초/중/종" },
+    { key: "x4", label: "X4 (LH/RH)", spec: "초/중/종" }
+  ],
+  // Fallbacks for legacy process IDs
   "9BQC_정재단": [
     { key: "frtA", label: "FRT A단면", spec: "881±3mm", target: 881, tol: 3 },
     { key: "frtB", label: "FRT B단면", spec: "608±5mm", target: 608, tol: 5 },
@@ -87,40 +143,39 @@ export const HANUL_SPECS = {
     { key: "rrRhCutting", label: "RR RH 단컷팅", spec: "67±3mm", target: 67, tol: 3 }
   ],
   "LQ2A_정재단": [
-    { key: "totalLength", label: "전장 길이", spec: "732±2mm", target: 732, tol: 2 },
-    { key: "x1", label: "X1 치수", spec: "단차/위치" },
-    { key: "x2", label: "X2 치수", spec: "단차/위치" },
-    { key: "x3", label: "X3 치수", spec: "단차/위치" },
-    { key: "x4", label: "X4 치수", spec: "단차/위치" },
-    { key: "y1", label: "Y1 치수", spec: "단차/위치" },
-    { key: "y2", label: "Y2 치수", spec: "단차/위치" },
-    { key: "y3", label: "Y3 치수", spec: "단차/위치" }
+    { key: "totalLength", label: "전장 길이", spec: "732±2mm", target: 732, tol: 2 }
   ],
   "LQ2A_최종검사": [
-    { key: "totalLength", label: "전장 길이 전수검사", spec: "732±2mm", target: 732, tol: 2 },
-    { key: "x1", label: "X1 (LH/RH)", spec: "초/중/종" },
-    { key: "x2", label: "X2 (LH/RH)", spec: "초/중/종" },
-    { key: "x3", label: "X3 (LH/RH)", spec: "초/중/종" },
-    { key: "x4", label: "X4 (LH/RH)", spec: "초/중/종" },
-    { key: "y1", label: "Y1 (LH/RH)", spec: "초/중/종" },
-    { key: "y2", label: "Y2 (LH/RH)", spec: "초/중/종" },
-    { key: "y3", label: "Y3 (LH/RH)", spec: "초/중/종" }
+    { key: "totalLength", label: "전장 길이 전수검사", spec: "732±2mm", target: 732, tol: 2 }
   ]
 };
 
 // Common initial defect categories by process
 export const DEFAULT_DEFECT_CATEGORIES = {
+  // 🌟 단순화 4개 공정 (소재준비: 정치절단 / 단컷팅 세부 분기, 조인트, 본드로봇, 검사)
+  "9BQC_소재준비_정치절단": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "공정간_길이", "기타"],
+  "9BQC_소재준비_단컷팅": ["스코치", "외면흠", "오염", "공정간_단컷팅", "기타"],
+  "9BQC_소재준비": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "단컷팅불량", "기타"],
+  "9BQC_조인트": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
+  "9BQC_본드로봇": ["곡률", "스크래치", "도트불량", "면취불량", "조개피(유리깨짐)", "노즐막힘", "기타"],
+  "9BQC_검사": ["단차", "수축", "크랙", "씹힘", "이탈", "단면불량", "사상불량", "외관불량", "기타"],
+
+  "LQ2A_소재준비_정치절단": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "공정간_길이", "기타"],
+  "LQ2A_소재준비_단컷팅": ["스코치", "외면흠", "오염", "공정간_단컷팅", "기타"],
+  "LQ2A_소재준비": ["스코치", "외면흠", "오염", "길이미달", "단면이상", "컷팅불량", "기타"],
+  "LQ2A_조인트": ["떨어짐", "밀림", "양부족", "넘침", "기포", "오염", "찢어짐", "단차", "삽입불량", "씹힘", "수축", "기타"],
+  "LQ2A_본드로봇": ["압출스코치", "오염", "조인트떨어짐", "클립좌우혼입", "단차", "밀림", "기타"],
+  "LQ2A_검사": ["조인트불량", "사상불량", "오염", "클립좌우혼입", "넘침", "밀림", "스코치", "미성형", "단차", "길이불량", "기타"],
+
+  // Fallbacks for legacy process IDs
   "9BQC_정재단": ["스코치", "외면흠", "오염", "길이미달", "와이어노출", "단컷팅", "기타"],
   "9BQC_단컷팅": ["스코치", "외면흠", "오염", "단컷팅", "기타"],
-  "9BQC_조인트": ["떨어짐", "양부족", "밀림", "단차", "기포", "씹힘", "오염", "꼬임", "삽입불량", "수축", "기타"],
   "9BQC_본드_로봇": ["곡률", "스크래치", "도트불량", "면취불량", "조개피(유리깨짐)", "기타"],
   "9BQC_사상가공": ["과사상", "미사상", "마킹누락", "PAD누락", "본드오염", "스코치", "외면흠", "기타"],
   "9BQC_완제품_체크": ["단차", "수축", "크랙", "씹힘", "PAD누락", "마킹누락", "기타"],
   "9BQC_단면_체크": ["이탈", "단면불량", "치수이상", "기타"],
   "9BQC_최종검사": ["조인트불량", "사상불량", "오염", "수축", "단차", "기타"],
-
   "LQ2A_정재단": ["스코치", "외면흠", "오염", "길이미달", "단면이상", "컷팅", "기타"],
-  "LQ2A_조인트": ["떨어짐", "밀림", "양부족", "넘침", "기포", "오염", "찢어짐", "단차", "삽입불량", "씹힘", "수축", "기타"],
   "LQ2A_후가공": ["압출스코치", "오염", "조인트떨어짐", "양부족", "단차", "밀림", "씹힘", "수축", "사상불량", "기타"],
   "LQ2A_최종검사": ["조인트불량", "사상불량", "오염", "클립좌우혼입", "넘침", "밀림", "스코치", "미성형", "단차", "길이불량", "기타"]
 };
@@ -239,10 +294,12 @@ export const exportHanulReportToExcel = (report) => {
   if (!report) return;
   const wb = XLSX.utils.book_new();
 
-  const titleRow = [`${report.projectName || report.project} - ${report.processName || report.processId} 작업일보`];
+  const subName = report.subProcess ? ` (${report.subProcess})` : "";
+  const titleRow = [`${report.projectName || report.project} - ${report.processName || report.processId}${subName} 작업일보`];
   const metaRows = [
     ["작업일자", report.date || "", "근무구분", report.shift || "주간", "작업자", report.worker || "한울"],
-    ["시작시간", report.startTime || "", "종료시간", report.endTime || "", "공정명", report.processName || ""]
+    ["시작시간", report.startTime || "", "종료시간", report.endTime || "", "공정명", `${report.processName || report.processId}${subName}`],
+    ["설비호기", report.machineNo || "-", "칼날교체시간", report.bladeChangeTime || "-", "설비이상조치", report.machineTrouble || "-"]
   ];
 
   const prodRows = [
@@ -250,18 +307,26 @@ export const exportHanulReportToExcel = (report) => {
     ["구분", "정품(EA)", "불량(EA)", "리워크/재조인트(EA)", "총생산(EA)", "달성률"],
     [
       "LH / A",
-      report.production?.genuineLH ?? report.production?.genuine ?? 0,
-      report.production?.badLH ?? report.production?.bad ?? 0,
-      report.production?.reworkLH ?? report.production?.rework ?? 0,
-      (Number(report.production?.genuineLH || 0) + Number(report.production?.badLH || 0)),
+      report.production?.genuineLH ?? report.production?.genuineA ?? report.production?.genuine ?? 0,
+      report.production?.badLH ?? report.production?.badA ?? report.production?.bad ?? 0,
+      report.production?.reworkLH ?? report.production?.reworkA ?? report.production?.rework ?? 0,
+      (Number(report.production?.genuineLH || report.production?.genuineA || 0) + Number(report.production?.badLH || report.production?.badA || 0)),
       "-"
     ],
     [
       "RH / B",
-      report.production?.genuineRH ?? 0,
-      report.production?.badRH ?? 0,
-      report.production?.reworkRH ?? 0,
-      (Number(report.production?.genuineRH || 0) + Number(report.production?.badRH || 0)),
+      report.production?.genuineRH ?? report.production?.genuineB ?? 0,
+      report.production?.badRH ?? report.production?.badB ?? 0,
+      report.production?.reworkRH ?? report.production?.reworkB ?? 0,
+      (Number(report.production?.genuineRH || report.production?.genuineB || 0) + Number(report.production?.badRH || report.production?.badB || 0)),
+      "-"
+    ],
+    [
+      "Section C (정치절단)",
+      report.production?.genuineC ?? 0,
+      report.production?.badC ?? 0,
+      0,
+      (Number(report.production?.genuineC || 0) + Number(report.production?.badC || 0)),
       "-"
     ]
   ];
@@ -278,13 +343,16 @@ export const exportHanulReportToExcel = (report) => {
 
   const noteRows = [
     ["[특기사항 및 설비 이상 조치]"],
-    [report.notes || "특이사항 없음"]
+    ["설비이상조치", report.machineTrouble || "특이사항 없음"],
+    ["칼날교체시간", report.bladeChangeTime || "-"],
+    ["특기사항", report.notes || "특이사항 없음"]
   ];
 
   const allRows = [titleRow, [], ...metaRows, [], ...prodRows, [], ...defectRows, [], ...noteRows];
   const ws = XLSX.utils.aoa_to_sheet(allRows);
   XLSX.utils.book_append_sheet(wb, ws, "작업일보");
 
-  const fileName = `한울_${report.project}_${report.processId}_${report.date || "일보"}.xlsx`;
+  const subSlug = report.subProcess ? `_${report.subProcess}` : "";
+  const fileName = `한울_${report.project}_${report.processId}${subSlug}_${report.date || "일보"}.xlsx`;
   XLSX.writeFile(wb, fileName);
 };

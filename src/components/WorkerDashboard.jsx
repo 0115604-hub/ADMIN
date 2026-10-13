@@ -516,14 +516,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [hanulReportProject, setHanulReportProject] = useState("9BQC");
-  const [hanulReportProcess, setHanulReportProcess] = useState("정재단");
+  const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
   const [hanulReportEditData, setHanulReportEditData] = useState(null);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
   useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
   useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "workerDashboardHanulReportModal");
   useModalHistory(isWorkLogsSummaryModalOpen, () => setIsWorkLogsSummaryModalOpen(false), "workerDashboardWorkLogsSummaryModal");
 
-  const handleOpenHanulReport = (proj = "9BQC", proc = "정재단", editData = null) => {
+  const handleOpenHanulReport = (proj = "9BQC", proc = "소재준비", editData = null) => {
     setHanulReportProject(proj);
     setHanulReportProcess(proc);
     setHanulReportEditData(editData);
