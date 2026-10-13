@@ -358,7 +358,7 @@ export const App = () => {
   }
 
   return (
-    <div className="flex min-h-screen max-w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="flex min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 mobile-pan-free">
       {/* ⚡ Real-time Version & Cache Sync Banner */}
       {updateAvailable && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40 animate-bounce">
@@ -383,7 +383,7 @@ export const App = () => {
       )}
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 w-full mobile-pan-free">
         <Header
           title={getTabTitle()}
           activeTab={activeTab}
@@ -406,7 +406,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-2 sm:p-4 lg:p-5 flex-1 min-w-0 max-w-full overflow-x-hidden">
+        <main className="p-2 sm:p-4 lg:p-5 flex-1 min-w-0 w-full overflow-x-auto mobile-pan-free">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">

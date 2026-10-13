@@ -42,6 +42,9 @@ import {
   HANUL_WORKERS_MASTER,
   HANUL_SPECS,
   DEFAULT_DEFECT_CATEGORIES,
+  HANUL_TPM_MACHINES,
+  HANUL_TPM_CHECK_ITEMS,
+  createDefaultHanulTpmChecks,
   saveHanulWorkReport,
   exportHanulReportToExcel,
   isExcludedFromWorkReport,
@@ -240,12 +243,63 @@ export const HanulWorkReportModal = ({
   });
   const [isBladeTestMode, setIsBladeTestMode] = useState(false);
 
+  // 🌟 9BQC 소재준비 설비일상 점검 시트 (TPM) 2단계 프로세스 상태 및 헬퍼
+  const isHanulTpmAlreadyDone = (targetDate, targetWorker) => {
+    if (!targetDate || !targetWorker) return false;
+    try {
+      const cleanW = String(targetWorker).trim();
+      const key = `hanul_tpm_done_${targetDate}_${cleanW}`;
+      if (typeof window !== "undefined" && window.localStorage && localStorage.getItem(key) === "true") return true;
+      if (editReport && editReport.tpmStatus === "완료") return true;
+      if (Array.isArray(allReports) && allReports.length > 0) {
+        const found = allReports.some(
+          (r) => r && r.date === targetDate && String(r.worker || "").includes(cleanW) && r.tpmStatus === "완료"
+        );
+        if (found) return true;
+      }
+    } catch (e) {
+      console.warn("isHanulTpmAlreadyDone error:", e);
+    }
+    return false;
+  };
+
+  const [currentStep, setCurrentStep] = useState("report");
+  const [tpmChecks, setTpmChecks] = useState(() => createDefaultHanulTpmChecks());
+  const [tpmActionNote, setTpmActionNote] = useState("");
+  const [isHanulTpmDone, setIsHanulTpmDone] = useState(false);
+
   useEffect(() => {
     const unsub = subscribeHanulWorkReports((list) => {
       setAllReports(list || []);
     });
     return () => unsub();
   }, []);
+
+  // Sync when editReport provided or opened
+  useEffect(() => {
+    if (isOpen) {
+      const effectiveW = editReport?.worker || initialWorker || "박종미";
+      const targetD = editReport?.date || getKSTDateString();
+      const alreadyDone = isHanulTpmAlreadyDone(targetD, effectiveW);
+      setIsHanulTpmDone(alreadyDone);
+
+      if (editReport) {
+        setCurrentStep("report");
+        if (editReport.tpmChecks) setTpmChecks(editReport.tpmChecks);
+        else setTpmChecks(createDefaultHanulTpmChecks());
+        setTpmActionNote(editReport.tpmActionNote || "");
+      } else {
+        const isSojae = (initialProcess || processId) === "소재준비";
+        if (isSojae && !alreadyDone) {
+          setCurrentStep("tpm");
+        } else {
+          setCurrentStep("report");
+        }
+        setTpmChecks(createDefaultHanulTpmChecks());
+        setTpmActionNote("");
+      }
+    }
+  }, [isOpen, editReport, initialProcess, initialWorker]);
 
   // Sync when editReport provided or opened
   useEffect(() => {
@@ -491,6 +545,68 @@ export const HanulWorkReportModal = ({
     } catch (e) {}
   };
 
+  // 🌟 TPM 점검 이벤트 핸들러 및 요약 통계
+  const handleToggleTpmCheck = (machineId, itemNo) => {
+    setTpmChecks((prev) => {
+      const cur = prev[machineId]?.[itemNo] || "OK";
+      const nextVal = cur === "OK" ? "NG" : "OK";
+      return {
+        ...prev,
+        [machineId]: {
+          ...(prev[machineId] || {}),
+          [itemNo]: nextVal
+        }
+      };
+    });
+  };
+
+  const handleSetAllTpmOk = () => {
+    setTpmChecks(createDefaultHanulTpmChecks());
+  };
+
+  const handleSetMachineAllOk = (machineId) => {
+    setTpmChecks((prev) => {
+      const machineChecks = {};
+      HANUL_TPM_CHECK_ITEMS.forEach((it) => {
+        machineChecks[it.no] = "OK";
+      });
+      return {
+        ...prev,
+        [machineId]: machineChecks
+      };
+    });
+  };
+
+  const handleProceedToReport = () => {
+    const effectiveWorkerName = (customWorker.trim() || worker).trim();
+    const key = `hanul_tpm_done_${date}_${effectiveWorkerName}`;
+    try {
+      localStorage.setItem(key, "true");
+    } catch (e) {}
+    setIsHanulTpmDone(true);
+    setCurrentStep("report");
+    setTimeout(() => {
+      if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+    }, 50);
+  };
+
+  const tpmSummary = useMemo(() => {
+    let okCount = 0;
+    let ngCount = 0;
+    const ngList = [];
+    HANUL_TPM_MACHINES.forEach((m) => {
+      HANUL_TPM_CHECK_ITEMS.forEach((it) => {
+        const st = tpmChecks[m.id]?.[it.no] || "OK";
+        if (st === "OK") okCount++;
+        else {
+          ngCount++;
+          ngList.push({ machine: m.shortName, machineName: m.name, item: it.content, itemNo: it.no, method: it.method });
+        }
+      });
+    });
+    return { okCount, ngCount, ngList, total: okCount + ngCount };
+  }, [tpmChecks]);
+
   if (!isOpen) return null;
 
   const currentProjectObj = HANUL_PROJECTS.find((p) => p.id === project) || HANUL_PROJECTS[0];
@@ -604,11 +720,22 @@ export const HanulWorkReportModal = ({
         conditions,
         cleaningTimes,
         notes,
+        tpmStatus: processId === "소재준비" ? (isHanulTpmDone ? "완료" : "완료") : "미해당",
+        tpmChecks: processId === "소재준비" ? tpmChecks : null,
+        tpmActionNote: processId === "소재준비" ? tpmActionNote : "",
         createdAt: editReport?.createdAt || new Date().toISOString()
       };
 
       await saveHanulWorkReport(reportPayload);
-      setToastMessage("✅ 작업일보가 실시간 저장되었습니다!");
+
+      if (processId === "소재준비") {
+        try {
+          const key = `hanul_tpm_done_${date}_${effectiveWorker}`;
+          localStorage.setItem(key, "true");
+        } catch (e) {}
+      }
+
+      setToastMessage("✅ 작업일보 및 TPM 점검시트가 실시간 저장되었습니다!");
       setTimeout(() => {
         setToastMessage("");
         onClose();
@@ -660,12 +787,12 @@ export const HanulWorkReportModal = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-4 overflow-hidden sm:overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-4 overflow-y-auto overflow-x-auto mobile-pan-free animate-fadeIn"
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col m-0 sm:mt-4 sm:mb-6 sm:mx-auto text-left"
+        className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[100dvh] sm:h-auto sm:max-h-[94dvh] rounded-none sm:rounded-3xl border-0 sm:border-2 border-indigo-500/60 shadow-2xl flex flex-col m-0 sm:mt-3 sm:mb-6 sm:mx-auto text-left mobile-pan-free"
       >
         {/* ========================================================================= */}
         {/* 🌟 1. Modal Header & Project Switcher */}
@@ -681,12 +808,26 @@ export const HanulWorkReportModal = ({
                   <h3 className="font-black text-sm sm:text-xl tracking-tight truncate">
                     한울 외주가공 작업일보
                   </h3>
-                  <span className="text-[9px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
-                    실시간 동기화
-                  </span>
+                  {processId === "소재준비" ? (
+                    <span className={`text-[9px] sm:text-xs px-2 py-0.5 rounded-full font-bold border ${
+                      isHanulTpmDone
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
+                        : "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                    }`}>
+                      {isHanulTpmDone ? "✓ TPM 점검완료" : "TPM 점검필요"}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
+                      실시간 동기화
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-indigo-200 truncate mt-0.5 hidden sm:block">
-                  9BQC G/RUN 및 LQ2a Hood Side 4대 핵심 공정 (소재준비 • 조인트 • 본드로봇 • 검사)
+                  {processId === "소재준비"
+                    ? (currentStep === "tpm"
+                        ? "1단계: 9BQC 소재준비 설비일상 점검 시트 (TPM 7대 항목 점검)"
+                        : "2단계: 9BQC 소재준비 일일 작업일보 작성 (정치절단 / 단컷팅)")
+                    : "9BQC G/RUN 및 LQ2a Hood Side 4대 핵심 공정 (소재준비 • 조인트 • 본드로봇 • 검사)"}
                 </p>
               </div>
             </div>
@@ -842,9 +983,337 @@ export const HanulWorkReportModal = ({
         </div>
 
         {/* ========================================================================= */}
+        {/* 🌟 2-1. 소재준비 공정일 때: TPM 점검 ➔ 작업일보 2단계 진행 탭 바 (압출과 동일) */}
+        {/* ========================================================================= */}
+        {processId === "소재준비" && (
+          <div className="bg-slate-100 dark:bg-slate-800/90 px-3 sm:px-5 py-2 border-b border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentStep("tpm")}
+                className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                  currentStep === "tpm"
+                    ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>1단계: 설비일상 점검 시트 (TPM)</span>
+                {isHanulTpmDone ? (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-xs" />
+                ) : (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+              </button>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setCurrentStep("report")}
+                className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                  currentStep === "report"
+                    ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>2단계: 작업일보 작성 ({subProcess})</span>
+              </button>
+            </div>
+
+            {currentStep === "tpm" ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSetAllTpmOk}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>⚡ 6대 설비 전체 양호(○) 일괄 체크</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep("tpm")}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>TPM 점검표 다시보기</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* 🌟 3. Scrollable Form Body */}
         {/* ========================================================================= */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-2.5 sm:p-5 space-y-3 sm:space-y-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar p-2.5 sm:p-5 space-y-3 sm:space-y-4 mobile-pan-free">
+          {/* ========================================================================= */}
+          {/* 🌟 STEP 1: 설비일상 점검 시트 (TPM 자주보전 7대 항목 × 6대 설비 점검) */}
+          {/* ========================================================================= */}
+          {processId === "소재준비" && currentStep === "tpm" ? (
+            <div className="space-y-4 animate-fadeIn">
+              {/* 서식 메인 헤더 박스: (주)오룩 설비일상 점검 시트 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md border border-indigo-900/60">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 text-white shadow-md shrink-0">
+                      <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-[10px] font-black tracking-wider">
+                          ㈜오룩 삼랑진공장
+                        </span>
+                        <h3 className="text-base sm:text-xl font-black tracking-tight">
+                          설비일상 점검 시트 (TPM)
+                        </h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
+                          개정일자: 2024.10.01
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-200 mt-0.5">
+                        9BQC 소재준비 라인 6대 절단/단컷팅 설비 7대 일상점검 (작업 전 필수 점검)
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 결재 정보 블록 (서식 우측 상단 박스 100% 재현) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white/10 p-2 rounded-xl text-center text-xs border border-white/15 shrink-0">
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg">
+                      <span className="text-[10px] text-indigo-300 block">라인명</span>
+                      <strong className="text-xs text-white">9BQC 소재준비</strong>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg">
+                      <span className="text-[10px] text-indigo-300 block">점검일자</span>
+                      <strong className="text-xs text-white">{date}</strong>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg">
+                      <span className="text-[10px] text-indigo-300 block">점검자(작업자)</span>
+                      <strong className="text-xs text-emerald-300 truncate block">{customWorker.trim() || worker}</strong>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg">
+                      <span className="text-[10px] text-indigo-300 block">관리자 확인</span>
+                      <strong className="text-xs text-indigo-200">확인 대기</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6대 설비 현황 카드 바 (사진 안내 및 원클릭 설비별 일괄체크) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {HANUL_TPM_MACHINES.map((m) => {
+                  const mChecks = tpmChecks[m.id] || {};
+                  const isAllOk = HANUL_TPM_CHECK_ITEMS.every((it) => (mChecks[it.no] || "OK") === "OK");
+                  const ngCount = HANUL_TPM_CHECK_ITEMS.filter((it) => mChecks[it.no] === "NG").length;
+
+                  return (
+                    <div
+                      key={m.id}
+                      className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
+                        !isAllOk
+                          ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 shadow-xs"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <span className="text-base">{m.icon}</span>
+                        {isAllOk ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                            7개 양호
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                            이상 {ngCount}건
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-black text-xs text-slate-900 dark:text-white truncate mb-2">
+                        {m.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSetMachineAllOk(m.id)}
+                        className="w-full py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-700 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer active:scale-95"
+                      >
+                        ✓ 설비 양호
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 🌟 설비일상 점검 시트 본문 테이블 (서식 매트릭스 100% 일치) */}
+              <div className="rounded-2xl border-2 border-indigo-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto mobile-pan-free">
+                  <table className="w-full text-xs text-left border-collapse min-w-[760px]">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-b-2 border-slate-300 dark:border-slate-700">
+                        <th className="py-2.5 px-2 text-center w-12 font-black border-r border-slate-200 dark:border-slate-700">
+                          순번
+                        </th>
+                        <th className="py-2.5 px-3 font-black border-r border-slate-200 dark:border-slate-700 min-w-[190px]">
+                          설비별 점검 내용
+                        </th>
+                        <th className="py-2.5 px-2 text-center w-16 font-black border-r border-slate-200 dark:border-slate-700">
+                          방법
+                        </th>
+                        {HANUL_TPM_MACHINES.map((m) => (
+                          <th
+                            key={m.id}
+                            className="py-2.5 px-1.5 text-center font-black text-[11px] border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-w-[85px]"
+                          >
+                            <span className="block leading-tight">{m.shortName}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
+                      {HANUL_TPM_CHECK_ITEMS.map((item) => (
+                        <tr
+                          key={item.no}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                        >
+                          <td className="py-2 px-2 text-center font-black text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
+                            {item.no}
+                          </td>
+                          <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                            <div className="font-black text-slate-900 dark:text-white text-xs">
+                              {item.content}
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {item.desc}
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {item.method}
+                            </span>
+                          </td>
+                          {HANUL_TPM_MACHINES.map((m) => {
+                            const isOk = (tpmChecks[m.id]?.[item.no] || "OK") === "OK";
+                            return (
+                              <td
+                                key={m.id}
+                                className="py-1 px-1.5 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleTpmCheck(m.id, item.no)}
+                                  className={`w-full py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1 ${
+                                    isOk
+                                      ? "bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700"
+                                      : "bg-rose-600 hover:bg-rose-700 text-white animate-pulse border border-rose-500 shadow-md"
+                                  }`}
+                                  title={`${m.name} - ${item.content} (탭하여 양호/이상 전환)`}
+                                >
+                                  <span>{isOk ? "○" : "×"}</span>
+                                  <span className="text-[10.5px]">{isOk ? "양호" : "이상"}</span>
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 이상 발생시 조치사항 입력란 & 하단 보고 절차 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/80 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                      이상 발생시 조치사항 (Abnormality Action Note)
+                    </span>
+                  </div>
+                  {tpmSummary.ngCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-600 text-white animate-pulse">
+                      🚨 이상 {tpmSummary.ngCount}건 발생 - 조치 보고 필수
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                      ✓ 현재 6대 설비 전 항목 양호 상태
+                    </span>
+                  )}
+                </div>
+
+                <textarea
+                  rows={2}
+                  value={tpmActionNote}
+                  onChange={(e) => setTpmActionNote(e.target.value)}
+                  placeholder="설비 이상(작동 불량, 칼날 마모, 비상버튼 미작동, 컷팅면 불량 등) 발생 시 발견 내용 및 조치결과를 기록해 주십시오."
+                  className="w-full p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+
+                {/* ※ 이상 발생시 조치 절차 (서식 하단 절차 100% 재현) */}
+                <div className="pt-2 border-t border-amber-200 dark:border-amber-800/80">
+                  <div className="text-[11px] font-black text-rose-600 dark:text-rose-400 mb-1.5 flex items-center gap-1">
+                    <span>※ 이상 발생시 조치 절차</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-amber-400 text-slate-950 font-black border border-amber-500 shadow-2xs">
+                      <div>1. 작업자</div>
+                      <div className="text-[10px] font-medium text-amber-950">이상발생 내용보고</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-yellow-300 text-slate-950 font-black border border-yellow-400 shadow-2xs">
+                      <div>2. 대리</div>
+                      <div className="text-[10px] font-medium text-yellow-950">내용 확인 및 보고</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-lime-300 text-slate-950 font-black border border-lime-400 shadow-2xs">
+                      <div>3. 과장</div>
+                      <div className="text-[10px] font-medium text-lime-950">기계수리의뢰 조치보고</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-amber-500 text-white font-black border border-amber-600 shadow-2xs">
+                      <div>4. 부서장 확인</div>
+                      <div className="text-[10px] font-medium text-amber-100">최종 조치 확인</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 점검 완료 & 다음 단계(작업일보 작성) 진행 버튼 바 */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-indigo-600 text-white">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white">
+                      점검 결과: 양호 {tpmSummary.okCount}건 / 이상 {tpmSummary.ngCount}건 (총 42개 검사)
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      TPM 설비일상점검 완료 후 [작업일보 작성 진행] 버튼을 눌러 일보를 작성하십시오.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleSetAllTpmOk}
+                    className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>전체 양호(○)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleProceedToReport}
+                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white text-xs sm:text-sm font-black shadow-md shadow-indigo-600/30 transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>TPM 점검 완료 ➔ 작업일보 작성 진행</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
           {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 (모바일에서는 간소화) */}
           {processId === "소재준비" && (
             <div className="hidden sm:flex p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
@@ -3013,6 +3482,8 @@ export const HanulWorkReportModal = ({
               />
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* ========================================================================= */}
@@ -3025,9 +3496,25 @@ export const HanulWorkReportModal = ({
                 {toastMessage}
               </span>
             )}
+            {processId === "소재준비" && currentStep === "tpm" && (
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 hidden sm:inline">
+                점검완료: {tpmSummary.okCount} / 42 양호
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
+            {processId === "소재준비" && currentStep === "report" && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep("tpm")}
+                className="px-3 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-black hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>⬅️ TPM 점검표 다시보기</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onClose}
@@ -3035,15 +3522,27 @@ export const HanulWorkReportModal = ({
             >
               닫기
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? "저장 중..." : "작업일보 실시간 저장"}</span>
-            </button>
+
+            {processId === "소재준비" && currentStep === "tpm" ? (
+              <button
+                type="button"
+                onClick={handleProceedToReport}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer"
+              >
+                <span>TPM 점검 완료 ➔ 작업일보 작성 진행</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? "저장 중..." : "작업일보 실시간 저장"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

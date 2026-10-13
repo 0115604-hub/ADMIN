@@ -5,7 +5,8 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -15,7 +16,8 @@
   body {
     font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
     width: 100%;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
   }
   #root {
@@ -23,6 +25,15 @@
     min-height: 100vh;
   }
 }
+
+/* 🌟 모바일 화면 손가락 확대 시 상하좌우(2D) 자유 이동 및 부드러운 스크롤 */
+.mobile-pan-free,
+.overflow-touch {
+  touch-action: pan-x pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: auto !important;
+}
+
 
 /* GPU Hardware Acceleration Helpers for Smooth Mobile Rendering */
 .gpu-accelerated {

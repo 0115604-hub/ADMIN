@@ -250,6 +250,38 @@ export const HANUL_SPECS = {
   ]
 };
 
+// 🌟 9BQC 소재준비 설비일상 점검 시트 (TPM) 마스터 데이터 (오룩 2024.10.01 개정 서식 100% 반영)
+export const HANUL_TPM_MACHINES = [
+  { id: "cut_a", name: "1. 정치 절단기(A단면)", shortName: "정치절단기(A)", icon: "✂️" },
+  { id: "cut_b", name: "2. 정치 절단기(B단면)", shortName: "정치절단기(B)", icon: "✂️" },
+  { id: "edge_frt_a", name: "3. 단컷팅_FRT A", shortName: "단컷팅(FRT A)", icon: "📐" },
+  { id: "edge_frt_b", name: "4. 단컷팅_FRT B", shortName: "단컷팅(FRT B)", icon: "📐" },
+  { id: "edge_rr_b", name: "5. 단컷팅_RR B", shortName: "단컷팅(RR B)", icon: "📐" },
+  { id: "edge_rr_a", name: "6. 단컷팅_RR A", shortName: "단컷팅(RR A)", icon: "📐" }
+];
+
+export const HANUL_TPM_CHECK_ITEMS = [
+  { no: 1, content: "작동상태는 양호한가?", method: "육안", desc: "설비 구동 모터, 실린더, 스위치 정상 작동 여부" },
+  { no: 2, content: "칼날 교환 주기 확인", method: "설비기록", desc: "누적 5만개 초과 여부 및 절단면 마모 상태 점검" },
+  { no: 3, content: "제단판 상태는 청결한가?", method: "육안", desc: "작업대 및 절단 가이드 이물질, 분진 청소 상태" },
+  { no: 4, content: "비상버튼은 제대로 작동하는가?", method: "육안", desc: "비상 정지 버튼(E-Stop) 즉시 반응 여부" },
+  { no: 5, content: "안전장치는 제대로 작동하는가?", method: "육안", desc: "안전 커버, 센서 및 인터록 정상 가동 여부" },
+  { no: 6, content: "컷팅 면은 깨끗한가?", method: "육안", desc: "절단면 뜯김, 버(Burr), 경사각 이상 유무" },
+  { no: 7, content: "치수확인 지그와 일치하는가?", method: "전용지그", desc: "전용 측정 지그 대비 치수 및 공차 일치 여부" }
+];
+
+export const createDefaultHanulTpmChecks = () => {
+  const result = {};
+  HANUL_TPM_MACHINES.forEach((m) => {
+    result[m.id] = {};
+    HANUL_TPM_CHECK_ITEMS.forEach((it) => {
+      result[m.id][it.no] = "OK"; // "OK" (○) | "NG" (×)
+    });
+  });
+  return result;
+};
+
+
 // 🌟 검사 3대 불량 영역 분류 마스터 (압출소재, 조인트, 후가공)
 export const HANUL_INSPECTION_DEFECT_GROUPS = {
   BASIC: {
