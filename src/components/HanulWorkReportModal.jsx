@@ -47,6 +47,14 @@ import {
 import { getKSTDateString } from "../utils/dateUtils";
 import { useModalHistory } from "../utils/modalHistory";
 
+// 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
+const isDimOk = (val, target, tol) => {
+  if (val === undefined || val === null || val === "") return true;
+  const num = parseFloat(val);
+  if (isNaN(num)) return true;
+  return num >= (target - tol) && num <= (target + tol);
+};
+
 export const HanulWorkReportModal = ({
   isOpen,
   onClose,
@@ -58,6 +66,18 @@ export const HanulWorkReportModal = ({
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
   const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
+  const [cuttingPart, setCuttingPart] = useState("FRT"); // 정치절단 전용: "FRT" (A/B/C) | "RR" (A/B)
+  const [cuttingLot, setCuttingLot] = useState({
+    FRT: {
+      a: { start: "", mid: "", end: "" },
+      b: { start: "", mid: "", end: "" },
+      c: { start: "", mid: "", end: "" }
+    },
+    RR: {
+      a: { start: "", mid: "", end: "" },
+      b: { start: "", mid: "", end: "" }
+    }
+  }); // 정치절단 전용 단면별 투입 압출 LOT
   const [jointType, setJointType] = useState("FRT"); // For "조인트": "FRT" | "FIXED_LH" | "FIXED_RH" | "RR"
   const [inspectionType, setInspectionType] = useState("LENGTH"); // For "검사": "LENGTH" | "SQUARE" | "FINAL_PAIR" | "FINAL_LH"
   const [bladeChangeTime, setBladeChangeTime] = useState(""); // 칼날교체시간 (정치절단 전용)
@@ -208,6 +228,8 @@ export const HanulWorkReportModal = ({
       setProcessId(editReport.processId || "소재준비");
       if (editReport.subProcess) setSubProcess(editReport.subProcess);
       if (editReport.jointType) setJointType(editReport.jointType);
+      if (editReport.cuttingPart) setCuttingPart(editReport.cuttingPart);
+      if (editReport.cuttingLot) setCuttingLot(editReport.cuttingLot);
       if (editReport.inspectionType) setInspectionType(editReport.inspectionType);
       if (editReport.bladeChangeTime) setBladeChangeTime(editReport.bladeChangeTime);
       if (editReport.machineTrouble) setMachineTrouble(editReport.machineTrouble);
@@ -239,6 +261,18 @@ export const HanulWorkReportModal = ({
       setProject(initialProject);
       setProcessId(initialProcess);
       setSubProcess("정치절단");
+      setCuttingPart("FRT");
+      setCuttingLot({
+        FRT: {
+          a: { start: "", mid: "", end: "" },
+          b: { start: "", mid: "", end: "" },
+          c: { start: "", mid: "", end: "" }
+        },
+        RR: {
+          a: { start: "", mid: "", end: "" },
+          b: { start: "", mid: "", end: "" }
+        }
+      });
       setJointType("FRT");
       setInspectionType("LENGTH");
       setBladeChangeTime("");
@@ -319,19 +353,19 @@ export const HanulWorkReportModal = ({
     const lhBad = (Number(production.badLH) || 0) + (Number(production.badRH) || 0);
     const lhRework = (Number(production.reworkLH) || 0) + (Number(production.reworkRH) || 0);
 
+    const cuttingGenuine = cuttingPart === "RR"
+      ? (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0)
+      : (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (Number(production.genuineC) || 0);
+    const cuttingBad = cuttingPart === "RR"
+      ? (Number(production.badA) || 0) + (Number(production.badB) || 0)
+      : (Number(production.badA) || 0) + (Number(production.badB) || 0) + (Number(production.badC) || 0);
+
     const abcGenuine = (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (Number(production.genuineC) || 0);
     const abcBad = (Number(production.badA) || 0) + (Number(production.badB) || 0) + (Number(production.badC) || 0);
 
     if (processId === "소재준비" && subProcess === "정치절단") {
-      // In 정치절단, prefer ABC sections if entered, else LH/RH
-      if (abcGenuine > 0 || abcBad > 0 || lhGenuine === 0) {
-        genuine = abcGenuine;
-        bad = abcBad;
-      } else {
-        genuine = lhGenuine;
-        bad = lhBad;
-        rework = lhRework;
-      }
+      genuine = cuttingGenuine;
+      bad = cuttingBad;
     } else {
       // In other processes (단컷팅, 조인트, 본드로봇), prefer LH/RH
       if (lhGenuine > 0 || lhBad > 0 || abcGenuine === 0) {
@@ -432,6 +466,8 @@ export const HanulWorkReportModal = ({
         processId,
         processName: currentProcessObj.name,
         subProcess: processId === "소재준비" ? subProcess : "",
+        cuttingPart: (processId === "소재준비" && subProcess === "정치절단") ? cuttingPart : "",
+        cuttingLot: (processId === "소재준비" && subProcess === "정치절단") ? cuttingLot : null,
         jointType: processId === "조인트" ? jointType : "",
         jointGradeName: processId === "조인트" ? jointGradeName : "",
         jointGradeLot: processId === "조인트" ? jointGradeLot : "",
@@ -486,6 +522,8 @@ export const HanulWorkReportModal = ({
       processId,
       processName: currentProcessObj.name,
       subProcess: processId === "소재준비" ? subProcess : "",
+      cuttingPart: (processId === "소재준비" && subProcess === "정치절단") ? cuttingPart : "",
+      cuttingLot: (processId === "소재준비" && subProcess === "정치절단") ? cuttingLot : null,
       jointType: processId === "조인트" ? jointType : "",
       inspectionType: processId === "검사" ? inspectionType : "",
       padLot: (processId === "검사" && inspectionType === "LENGTH") ? padLot : "",
@@ -502,6 +540,7 @@ export const HanulWorkReportModal = ({
       production,
       totals,
       defects,
+      measurements,
       notes
     });
   };
@@ -1052,41 +1091,88 @@ export const HanulWorkReportModal = ({
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  {processId === "조인트"
+                  {processId === "소재준비" && subProcess === "정치절단"
+                    ? "절단 부품 구분"
+                    : processId === "조인트"
                     ? (jointType === "FRT" ? "압출소재 LOT (FRT A/B/C)" : "압출소재 LOT (RR A/B)")
                     : "압출소재 LOT (초/중/종)"}
                 </label>
-                <input
-                  type="text"
-                  placeholder={processId === "조인트" ? (jointType === "FRT" ? "A:09.12 / B:09.12" : "RR A:09.12 / B:09.12") : "초:09.12 / 종:09.12"}
-                  value={materialLot.start || ""}
-                  onChange={(e) => setMaterialLot((prev) => ({ ...prev, start: e.target.value }))}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                />
+                {processId === "소재준비" && subProcess === "정치절단" ? (
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                    <button
+                      type="button"
+                      onClick={() => setCuttingPart("FRT")}
+                      className={`flex-1 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
+                        cuttingPart === "FRT"
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-indigo-600"
+                      }`}
+                    >
+                      <span>🚗 FRT (A/B/C)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCuttingPart("RR")}
+                      className={`flex-1 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
+                        cuttingPart === "RR"
+                          ? "bg-purple-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-purple-600"
+                      }`}
+                    >
+                      <span>⚡ RR (A/B)</span>
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder={processId === "조인트" ? (jointType === "FRT" ? "A:09.12 / B:09.12" : "RR A:09.12 / B:09.12") : "초:09.12 / 종:09.12"}
+                    value={materialLot.start || ""}
+                    onChange={(e) => setMaterialLot((prev) => ({ ...prev, start: e.target.value }))}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
+                  />
+                )}
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  {processId === "조인트" ? "조인트 재료명 (Grade)" : "조인트/원재료 LOT"}
+                  {processId === "소재준비" && subProcess === "정치절단"
+                    ? "칼날교체시간"
+                    : processId === "조인트"
+                    ? "조인트 재료명 (Grade)"
+                    : "조인트/원재료 LOT"}
                 </label>
-                <input
-                  type="text"
-                  placeholder={processId === "조인트" ? "예: SJ-4004B, W60664$OS" : "W60664$OS 등"}
-                  value={processId === "조인트" ? jointGradeName : jointLot}
-                  onChange={(e) => {
-                    if (processId === "조인트") {
-                      setJointGradeName(e.target.value);
-                    } else {
-                      setJointLot(e.target.value);
-                    }
-                  }}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                />
+                {processId === "소재준비" && subProcess === "정치절단" ? (
+                  <input
+                    type="text"
+                    placeholder="예: 09:30, 14:00"
+                    value={bladeChangeTime}
+                    onChange={(e) => setBladeChangeTime(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-bold"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder={processId === "조인트" ? "예: SJ-4004B, W60664$OS" : "W60664$OS 등"}
+                    value={processId === "조인트" ? jointGradeName : jointLot}
+                    onChange={(e) => {
+                      if (processId === "조인트") {
+                        setJointGradeName(e.target.value);
+                      } else {
+                        setJointLot(e.target.value);
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
+                  />
+                )}
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                  {processId === "조인트" ? "조인트 재료일자 (LOT)" : "대차번호 / 클립 LOT"}
+                  {processId === "소재준비" && subProcess === "정치절단"
+                    ? "대차번호"
+                    : processId === "조인트"
+                    ? "조인트 재료일자 (LOT)"
+                    : "대차번호 / 클립 LOT"}
                 </label>
                 <input
                   type="text"
@@ -1536,118 +1622,372 @@ export const HanulWorkReportModal = ({
                 </div>
               </div>
             ) : processId === "소재준비" && subProcess === "정치절단" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Section A */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
-                      Section "A" (FRT A / RR A 가절단)
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      계: {(Number(production.genuineA) || 0) + (Number(production.badA) || 0)} EA
-                    </span>
+              <div className="space-y-3.5">
+                {/* 🌟 1. 정치절단 부품 선택 (FRT vs RR) & 압출소재 투입 LOT 카드 */}
+                <div className="p-3 sm:p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border-2 border-indigo-200 dark:border-indigo-800/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-200/80 dark:border-indigo-800/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-2xs">
+                        <Scissors className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <h5 className="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                          <span>🏷️ 투입 압출소재 LOT NO.</span>
+                          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                            ({cuttingPart === "FRT" ? "FRT A / B / C 3단면" : "RR A / B 2단면"})
+                          </span>
+                        </h5>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          📱 칸을 누르면 휴대폰에 <b>큼직한 숫자 키패드</b>가 바로 뜹니다 (영문 입력 불필요)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* FRT / RR Switcher */}
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-indigo-300 dark:border-indigo-700 shadow-2xs self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setCuttingPart("FRT")}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                          cuttingPart === "FRT"
+                            ? "bg-indigo-600 text-white shadow-xs"
+                            : "text-slate-600 dark:text-slate-400 hover:text-indigo-600"
+                        }`}
+                      >
+                        <span>🚗 FRT (3단면)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCuttingPart("RR")}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                          cuttingPart === "RR"
+                            ? "bg-purple-600 text-white shadow-xs"
+                            : "text-slate-600 dark:text-slate-400 hover:text-purple-600"
+                        }`}
+                      >
+                        <span>⚡ RR (2단면)</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                        정품 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.genuineA}
-                        onChange={(e) => setProduction((p) => ({ ...p, genuineA: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
-                        불량 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.badA}
-                        onChange={(e) => setProduction((p) => ({ ...p, badA: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
-                      />
-                    </div>
+
+                  {/* LOT 입력 줄들: FRT는 A,B,C 3줄 / RR은 A,B 2줄 */}
+                  <div className="space-y-2">
+                    {(cuttingPart === "FRT"
+                      ? [
+                          { key: "a", name: "A단면", spec: "881±3mm", border: "border-indigo-200 dark:border-indigo-800" },
+                          { key: "b", name: "B단면", spec: "608±5mm", border: "border-indigo-200 dark:border-indigo-800" },
+                          { key: "c", name: "C단면", spec: "582±5mm", border: "border-indigo-200 dark:border-indigo-800" }
+                        ]
+                      : [
+                          { key: "a", name: "A단면", spec: "488±3mm", border: "border-purple-200 dark:border-purple-800" },
+                          { key: "b", name: "B단면", spec: "658±5mm", border: "border-purple-200 dark:border-purple-800" }
+                        ]
+                    ).map((sec) => {
+                      const currentLots = cuttingLot[cuttingPart]?.[sec.key] || { start: "", mid: "", end: "" };
+                      return (
+                        <div
+                          key={sec.key}
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 p-2 px-3 rounded-xl border bg-white dark:bg-slate-900 ${sec.border} shadow-2xs`}
+                        >
+                          <div className="flex items-center gap-2 sm:w-44 shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            <span className="font-black text-xs text-slate-900 dark:text-white">
+                              {cuttingPart} {sec.name}
+                            </span>
+                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                              ({sec.spec})
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5 flex-1">
+                            <div>
+                              <input
+                                type="text"
+                                inputMode="tel"
+                                placeholder="초물 숫자 (예: 1013-1)"
+                                value={currentLots.start}
+                                onChange={(e) =>
+                                  setCuttingLot((prev) => ({
+                                    ...prev,
+                                    [cuttingPart]: {
+                                      ...prev[cuttingPart],
+                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), start: e.target.value }
+                                    }
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
+                              />
+                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 LOT</span>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                inputMode="tel"
+                                placeholder="중물 숫자"
+                                value={currentLots.mid}
+                                onChange={(e) =>
+                                  setCuttingLot((prev) => ({
+                                    ...prev,
+                                    [cuttingPart]: {
+                                      ...prev[cuttingPart],
+                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), mid: e.target.value }
+                                    }
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
+                              />
+                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 LOT</span>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                inputMode="tel"
+                                placeholder="종물 숫자"
+                                value={currentLots.end}
+                                onChange={(e) =>
+                                  setCuttingLot((prev) => ({
+                                    ...prev,
+                                    [cuttingPart]: {
+                                      ...prev[cuttingPart],
+                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), end: e.target.value }
+                                    }
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
+                              />
+                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 LOT</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Section B */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
-                      Section "B" (FRT B / RR B)
+                {/* 🌟 2. 절단 작업량 & 초·중·종 치수(Dim's) 일체형 실측 표 */}
+                <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-800/80 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                  <div className="bg-slate-100 dark:bg-slate-800/80 px-3.5 py-2.5 flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/60">
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>📊</span>
+                      <span>절단 작업량 및 초·중·종 치수(Dim's) 검사 실측</span>
                     </span>
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      계: {(Number(production.genuineB) || 0) + (Number(production.badB) || 0)} EA
+                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                      단위: 수량(EA) / 치수(mm)
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                        정품 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.genuineB}
-                        onChange={(e) => setProduction((p) => ({ ...p, genuineB: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
-                        불량 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.badB}
-                        onChange={(e) => setProduction((p) => ({ ...p, badB: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
-                      />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Section C */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs text-indigo-900 dark:text-indigo-300">
-                      Section "C" (FRT C)
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      계: {(Number(production.genuineC) || 0) + (Number(production.badC) || 0)} EA
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                        정품 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.genuineC}
-                        onChange={(e) => setProduction((p) => ({ ...p, genuineC: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-black text-emerald-900 dark:text-emerald-200 text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-0.5">
-                        불량 (EA)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={production.badC}
-                        onChange={(e) => setProduction((p) => ({ ...p, badC: parseInt(e.target.value, 10) || 0 }))}
-                        className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-black text-rose-900 dark:text-rose-200 text-center"
-                      />
-                    </div>
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-xs text-left border-collapse min-w-[620px]">
+                      <thead>
+                        <tr className="bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-black">
+                          <th className="p-2.5 text-center bg-slate-200/50 dark:bg-slate-700/50">단면</th>
+                          <th className="p-2.5 text-center">절단 규격</th>
+                          <th className="p-2.5 text-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 border-l border-emerald-200 dark:border-emerald-800">
+                            정품 (EA)
+                          </th>
+                          <th className="p-2.5 text-center bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 border-r border-emerald-200 dark:border-emerald-800">
+                            불량 (EA)
+                          </th>
+                          <th className="p-2.5 text-center bg-amber-50/70 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200" colSpan={3}>
+                            초 / 중 / 종 치수(Dim's) 실측
+                          </th>
+                          <th className="p-2.5 text-center">판정</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {(cuttingPart === "FRT"
+                          ? [
+                              { key: "frtA", name: "A단면", spec: "881±3", target: 881, tol: 3, genKey: "genuineA", badKey: "badA" },
+                              { key: "frtB", name: "B단면", spec: "608±5", target: 608, tol: 5, genKey: "genuineB", badKey: "badB" },
+                              { key: "frtC", name: "C단면", spec: "582±5", target: 582, tol: 5, genKey: "genuineC", badKey: "badC" }
+                            ]
+                          : [
+                              { key: "rrA", name: "A단면", spec: "488±3", target: 488, tol: 3, genKey: "genuineA", badKey: "badA" },
+                              { key: "rrB", name: "B단면", spec: "658±5", target: 658, tol: 5, genKey: "genuineB", badKey: "badB" }
+                            ]
+                        ).map((row) => {
+                          const curDims = measurements[row.key] || { start: "", mid: "", end: "" };
+                          const sOk = isDimOk(curDims.start, row.target, row.tol);
+                          const mOk = isDimOk(curDims.mid, row.target, row.tol);
+                          const eOk = isDimOk(curDims.end, row.target, row.tol);
+                          const rowVerdict = sOk && mOk && eOk;
+
+                          return (
+                            <tr key={row.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                              <td className="p-2.5 text-center font-black text-slate-900 dark:text-white bg-slate-50/50 dark:bg-slate-800/30 whitespace-nowrap">
+                                {cuttingPart} {row.name}
+                              </td>
+                              <td className="p-2.5 text-center font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                                {row.spec}mm
+                              </td>
+                              {/* 정품 수량 (inputmode="numeric") */}
+                              <td className="p-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 border-l border-emerald-100 dark:border-emerald-900/40">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  inputMode="numeric"
+                                  value={production[row.genKey] || 0}
+                                  onChange={(e) =>
+                                    setProduction((p) => ({
+                                      ...p,
+                                      [row.genKey]: parseInt(e.target.value, 10) || 0
+                                    }))
+                                  }
+                                  className="w-20 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500"
+                                />
+                              </td>
+                              {/* 불량 수량 (inputmode="numeric") */}
+                              <td className="p-2 text-center bg-rose-50/40 dark:bg-rose-950/20 border-r border-emerald-100 dark:border-emerald-900/40">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  inputMode="numeric"
+                                  value={production[row.badKey] || 0}
+                                  onChange={(e) =>
+                                    setProduction((p) => ({
+                                      ...p,
+                                      [row.badKey]: parseInt(e.target.value, 10) || 0
+                                    }))
+                                  }
+                                  className="w-16 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-900 dark:text-rose-200 focus:ring-2 focus:ring-rose-500"
+                                />
+                              </td>
+                              {/* 초물 Dim's (inputmode="decimal") */}
+                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="초물"
+                                  value={curDims.start}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMeasurements((m) => ({
+                                      ...m,
+                                      [row.key]: { ...(m[row.key] || {}), start: val }
+                                    }));
+                                  }}
+                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
+                                    sOk
+                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
+                                  }`}
+                                />
+                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 (06:50)</span>
+                              </td>
+                              {/* 중물 Dim's (inputmode="decimal") */}
+                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="중물"
+                                  value={curDims.mid}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMeasurements((m) => ({
+                                      ...m,
+                                      [row.key]: { ...(m[row.key] || {}), mid: val }
+                                    }));
+                                  }}
+                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
+                                    mOk
+                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
+                                  }`}
+                                />
+                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 (11:50)</span>
+                              </td>
+                              {/* 종물 Dim's (inputmode="decimal") */}
+                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="종물"
+                                  value={curDims.end}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMeasurements((m) => ({
+                                      ...m,
+                                      [row.key]: { ...(m[row.key] || {}), end: val }
+                                    }));
+                                  }}
+                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
+                                    eOk
+                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
+                                  }`}
+                                />
+                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 (18:50)</span>
+                              </td>
+                              {/* 판정 (OK / NG) */}
+                              <td className="p-2 text-center whitespace-nowrap">
+                                <span
+                                  className={`text-[11px] px-2.5 py-1 rounded-full font-black inline-flex items-center gap-1 ${
+                                    rowVerdict
+                                      ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                                      : "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 animate-pulse"
+                                  }`}
+                                >
+                                  {rowVerdict ? "✅ OK" : "❌ NG"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        {(() => {
+                          const isFrt = cuttingPart === "FRT";
+                          const genSum = (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (isFrt ? (Number(production.genuineC) || 0) : 0);
+                          const badSum = (Number(production.badA) || 0) + (Number(production.badB) || 0) + (isFrt ? (Number(production.badC) || 0) : 0);
+                          const grossSum = genSum + badSum;
+                          const yieldRate = grossSum > 0 ? ((genSum / grossSum) * 100).toFixed(1) : "100.0";
+
+                          const rowsToCheck = isFrt
+                            ? [
+                                { key: "frtA", target: 881, tol: 3 },
+                                { key: "frtB", target: 608, tol: 5 },
+                                { key: "frtC", target: 582, tol: 5 }
+                              ]
+                            : [
+                                { key: "rrA", target: 488, tol: 3 },
+                                { key: "rrB", target: 658, tol: 5 }
+                              ];
+
+                          let overallOk = true;
+                          rowsToCheck.forEach((r) => {
+                            const m = measurements[r.key] || {};
+                            if (!isDimOk(m.start, r.target, r.tol) || !isDimOk(m.mid, r.target, r.tol) || !isDimOk(m.end, r.target, r.tol)) {
+                              overallOk = false;
+                            }
+                          });
+
+                          return (
+                            <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-indigo-400">
+                              <td className="p-3 text-center">실적계</td>
+                              <td className="p-3 text-center text-slate-400">-</td>
+                              <td className="p-3 text-center text-emerald-300 font-black text-sm">
+                                {genSum.toLocaleString()} EA
+                              </td>
+                              <td className="p-3 text-center text-rose-300 font-black text-sm">
+                                {badSum.toLocaleString()} EA
+                              </td>
+                              <td className="p-3 text-center text-amber-300" colSpan={3}>
+                                총 절단량: <span className="text-white font-black">{grossSum.toLocaleString()} EA</span>{" "}
+                                (양품률: <span className="text-emerald-400 font-black">{yieldRate}%</span>)
+                              </td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`text-xs px-2.5 py-1 rounded-full font-black ${
+                                    overallOk ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse"
+                                  }`}
+                                >
+                                  {overallOk ? "전체 OK" : "공차 NG"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                      </tfoot>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -1808,7 +2148,7 @@ export const HanulWorkReportModal = ({
           </div>
 
           {/* C. 공정별 치수측정 & 조건 기록 (초물 / 중물 / 종물) */}
-          {currentSpecs.length > 0 && (
+          {currentSpecs.length > 0 && !(processId === "소재준비" && subProcess === "정치절단") && (
             <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2">
                 <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">

@@ -450,6 +450,15 @@ export const exportHanulReportToExcel = (report) => {
     }
   }
 
+  if (report.processId === "소재준비" && report.subProcess === "정치절단") {
+    const part = report.cuttingPart || "FRT";
+    metaRows.push([
+      "절단구분", part === "FRT" ? "FRT (A/B/C 3단면)" : "RR (A/B 2단면)",
+      "칼날교체시간", report.bladeChangeTime || "-",
+      "설비이상조치", report.machineTrouble || "-"
+    ]);
+  }
+
   if (report.processId === "검사") {
     metaRows.push([
       "검사일보유형", report.inspectionType || "길이검사",
@@ -459,7 +468,71 @@ export const exportHanulReportToExcel = (report) => {
   }
 
   let prodRows = [];
-  if (report.processId === "검사" && report.inspProduction) {
+  if (report.processId === "소재준비" && report.subProcess === "정치절단") {
+    const part = report.cuttingPart || "FRT";
+    const specs = part === "FRT" ? [
+      { name: "A단면", spec: "881±3mm", target: 881, tol: 3, genKey: "genuineA", badKey: "badA", lotKey: "a", dimKey: "frtA" },
+      { name: "B단면", spec: "608±5mm", target: 608, tol: 5, genKey: "genuineB", badKey: "badB", lotKey: "b", dimKey: "frtB" },
+      { name: "C단면", spec: "582±5mm", target: 582, tol: 5, genKey: "genuineC", badKey: "badC", lotKey: "c", dimKey: "frtC" }
+    ] : [
+      { name: "A단면", spec: "488±3mm", target: 488, tol: 3, genKey: "genuineA", badKey: "badA", lotKey: "a", dimKey: "rrA" },
+      { name: "B단면", spec: "658±5mm", target: 658, tol: 5, genKey: "genuineB", badKey: "badB", lotKey: "b", dimKey: "rrB" }
+    ];
+
+    prodRows.push([`[정치절단 생산 실적 및 치수 검사 (${part})]`]);
+    prodRows.push(["단면", "규격", "투입압출 LOT(초/중/종)", "정품(EA)", "불량(EA)", "총절단(EA)", "초물실측(mm)", "중물실측(mm)", "종물실측(mm)", "판정"]);
+
+    let totGen = 0;
+    let totBad = 0;
+    let allOk = true;
+
+    specs.forEach((s) => {
+      const g = Number(report.production?.[s.genKey]) || 0;
+      const b = Number(report.production?.[s.badKey]) || 0;
+      totGen += g;
+      totBad += b;
+
+      const lots = report.cuttingLot?.[part]?.[s.lotKey] || {};
+      const lotStr = [lots.start, lots.mid, lots.end].filter(Boolean).join(" / ") || "-";
+
+      const dims = report.measurements?.[s.dimKey] || {};
+      const checkOk = (v) => {
+        if (!v || v === "") return true;
+        const n = parseFloat(v);
+        return !isNaN(n) && n >= (s.target - s.tol) && n <= (s.target + s.tol);
+      };
+      const rowOk = checkOk(dims.start) && checkOk(dims.mid) && checkOk(dims.end);
+      if (!rowOk) allOk = false;
+
+      prodRows.push([
+        s.name,
+        s.spec,
+        lotStr,
+        g,
+        b,
+        g + b,
+        dims.start || "-",
+        dims.mid || "-",
+        dims.end || "-",
+        rowOk ? "OK" : "NG"
+      ]);
+    });
+
+    const totGross = totGen + totBad;
+    const totYield = totGross > 0 ? ((totGen / totGross) * 100).toFixed(1) + "%" : "100.0%";
+    prodRows.push([
+      "실적계",
+      "-",
+      "-",
+      totGen,
+      totBad,
+      totGross,
+      `양품률: ${totYield}`,
+      "-",
+      "-",
+      allOk ? "OK" : "NG"
+    ]);
+  } else if (report.processId === "검사" && report.inspProduction) {
     const isFinal = (report.inspectionType || "").includes("FINAL");
     prodRows.push(["[검사 생산 실적]"]);
     if (isFinal) {
