@@ -221,6 +221,7 @@ export const HanulWorkReportModal = ({
   const [toastMessage, setToastMessage] = useState("");
   const modalRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const overlayRef = useRef(null);
 
   // Sync when editReport provided or opened
   useEffect(() => {
@@ -308,6 +309,25 @@ export const HanulWorkReportModal = ({
       }, 50);
     }
   }, [editReport, isOpen, initialProject, initialProcess, initialWorker]);
+
+  // Mobile & Desktop Scroll Reset Guarantee
+  useEffect(() => {
+    if (isOpen) {
+      const resetScroll = () => {
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+        if (modalRef.current) modalRef.current.scrollTop = 0;
+        if (overlayRef.current) overlayRef.current.scrollTop = 0;
+        window.scrollTo(0, 0);
+      };
+      resetScroll();
+      const t1 = setTimeout(resetScroll, 20);
+      const t2 = setTimeout(resetScroll, 100);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [isOpen, project, processId, subProcess]);
 
   // When project changes, adjust processId if not applicable
   useEffect(() => {
@@ -556,35 +576,36 @@ export const HanulWorkReportModal = ({
 
   return (
     <div
+      ref={overlayRef}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-start sm:items-center justify-center p-1.5 sm:p-3 md:p-4 overflow-hidden overscroll-contain animate-fadeIn"
+      className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-0 sm:p-4 overflow-y-auto animate-fadeIn"
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-2xl sm:rounded-3xl border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col h-[96dvh] sm:h-auto sm:max-h-[92dvh] my-auto animate-scaleUp text-left"
+        className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border-2 border-indigo-500/60 shadow-2xl overflow-hidden flex flex-col m-0 sm:my-auto animate-scaleUp text-left"
       >
         {/* ========================================================================= */}
         {/* 🌟 1. Modal Header & Project Switcher */}
         {/* ========================================================================= */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-2 sm:p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shrink-0">
-                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="p-2.5 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shrink-0">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 sm:p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shrink-0">
+                <FileSpreadsheet className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-black text-base sm:text-xl tracking-tight truncate">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-black text-sm sm:text-xl tracking-tight truncate">
                     한울 외주가공 작업일보
                   </h3>
-                  <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
-                    실시간 클라우드 동기화
+                  <span className="text-[9px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
+                    실시간 동기화
                   </span>
                 </div>
-                <p className="text-xs text-indigo-200 truncate mt-0.5">
+                <p className="text-[11px] text-indigo-200 truncate mt-0.5 hidden sm:block">
                   9BQC G/RUN 및 LQ2a Hood Side 4대 핵심 공정 (소재준비 • 조인트 • 본드로봇 • 검사)
                 </p>
               </div>
@@ -603,7 +624,7 @@ export const HanulWorkReportModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
                 title="닫기 (ESC)"
               >
                 <X className="w-5 h-5" />
@@ -612,7 +633,7 @@ export const HanulWorkReportModal = ({
           </div>
 
           {/* Project Switcher Bar */}
-          <div className="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-indigo-900/60">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 sm:mt-3.5 pt-2 sm:pt-3 border-t border-indigo-900/60">
             {HANUL_PROJECTS.map((p) => {
               const isActive = project === p.id;
               return (
@@ -620,24 +641,24 @@ export const HanulWorkReportModal = ({
                   key={p.id}
                   type="button"
                   onClick={() => setProject(p.id)}
-                  className={`p-2.5 sm:p-3 rounded-2xl flex items-center justify-between border-2 transition-all cursor-pointer ${
+                  className={`p-1.5 sm:p-3 rounded-xl sm:rounded-2xl flex items-center justify-between border-2 transition-all cursor-pointer ${
                     isActive
                       ? "bg-indigo-600/90 border-indigo-300 text-white shadow-md shadow-indigo-950/50 scale-[1.01]"
                       : "bg-white/5 border-slate-700/80 text-slate-300 hover:bg-white/10 hover:border-slate-500"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-lg">{p.id === "9BQC" ? "🚗" : "⚡"}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="text-base sm:text-lg">{p.id === "9BQC" ? "🚗" : "⚡"}</span>
                     <div className="text-left min-w-0">
                       <span className="font-black text-xs sm:text-sm block truncate leading-tight">
                         {p.name}
                       </span>
-                      <span className="text-[10px] text-indigo-200 block truncate">
+                      <span className="text-[10px] text-indigo-200 hidden sm:block truncate">
                         {p.carModel} • {p.partName}
                       </span>
                     </div>
                   </div>
-                  {isActive && <Check className="w-4 h-4 text-white shrink-0" />}
+                  {isActive && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />}
                 </button>
               );
             })}
@@ -648,12 +669,12 @@ export const HanulWorkReportModal = ({
         {/* ========================================================================= */}
         {/* 🌟 2. Process Tabs (공정 선택 탭) + 소재준비 세부일보 드롭다운 */}
         {/* ========================================================================= */}
-        <div className="px-3 sm:px-5 py-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0 overflow-x-auto custom-scrollbar">
-          <div className="flex items-center justify-between gap-3 min-w-max">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
+        <div className="px-2.5 sm:px-5 py-1.5 sm:py-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0 overflow-x-auto custom-scrollbar">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 min-w-max">
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
                 <Layers className="w-3.5 h-3.5" />
-                <span>공정선택:</span>
+                <span className="hidden sm:inline">공정선택:</span>
               </span>
               {(HANUL_PROCESSES[project] || []).map((proc, idx) => {
                 const isSelected = processId === proc.id;
@@ -662,13 +683,13 @@ export const HanulWorkReportModal = ({
                     key={proc.id}
                     type="button"
                     onClick={() => setProcessId(proc.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 sm:gap-1.5 ${
                       isSelected
                         ? "bg-indigo-600 text-white shadow-xs scale-102"
                         : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <span className="opacity-70 text-[10px]">{idx + 1}.</span>
+                    <span className="opacity-70 text-[9px] sm:text-[10px]">{idx + 1}.</span>
                     <span>{proc.id}</span>
                   </button>
                 );
@@ -677,18 +698,18 @@ export const HanulWorkReportModal = ({
 
             {/* 🌟 소재준비 공정일 때 드롭다운 선택기 (정치절단 / 단컷팅) */}
             {processId === "소재준비" && (
-              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/90 px-3 py-1 rounded-xl border-2 border-indigo-500 shadow-xs animate-fadeIn">
-                <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1 shrink-0">
-                  <span>📄 일보 선택:</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-indigo-50 dark:bg-indigo-950/90 px-2 sm:px-3 py-0.5 sm:py-1 rounded-xl border-2 border-indigo-500 shadow-xs animate-fadeIn">
+                <span className="text-[10.5px] sm:text-[11px] font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1 shrink-0">
+                  <span className="hidden sm:inline">📄 일보:</span>
                 </span>
                 <div className="relative">
                   <select
                     value={subProcess}
                     onChange={(e) => setSubProcess(e.target.value)}
-                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-indigo-600 text-indigo-950 dark:text-indigo-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-indigo-600 text-indigo-950 dark:text-indigo-100 font-black text-[11px] sm:text-xs rounded-lg pl-2 sm:pl-3 pr-6 sm:pr-7 py-0.5 sm:py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
                   >
-                    <option value="정치절단">✂️ 정치절단 작업일보</option>
-                    <option value="단컷팅">📐 단컷팅 작업일보</option>
+                    <option value="정치절단">✂️ 정치절단 일보</option>
+                    <option value="단컷팅">📐 단컷팅 일보</option>
                   </select>
                   <ChevronDown className="w-3.5 h-3.5 text-indigo-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -743,10 +764,10 @@ export const HanulWorkReportModal = ({
         {/* ========================================================================= */}
         {/* 🌟 3. Scrollable Form Body */}
         {/* ========================================================================= */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-3.5 sm:p-5 space-y-4">
-          {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-2.5 sm:p-5 space-y-3 sm:space-y-4">
+          {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 (모바일에서는 간소화) */}
           {processId === "소재준비" && (
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div className="hidden sm:flex p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shrink-0">
                   {subProcess === "정치절단" ? <Scissors className="w-5 h-5" /> : <Layers className="w-5 h-5" />}
@@ -800,7 +821,7 @@ export const HanulWorkReportModal = ({
 
           {/* 🌟 조인트 공정일 때: 4가지 조인트 일보 상단 안내 배너 & 4대 퀵 전환 탭 */}
           {processId === "조인트" && (
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-purple-950/50 border-2 border-purple-400 dark:border-purple-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
+            <div className="hidden sm:flex p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-purple-950/50 border-2 border-purple-400 dark:border-purple-700 shadow-sm flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-purple-600 text-white shadow-md shrink-0">
                   <Layers className="w-5 h-5" />
@@ -880,7 +901,7 @@ export const HanulWorkReportModal = ({
 
           {/* 🌟 검사 공정일 때: 4가지 검사 일보 상단 안내 배너 & 4대 퀵 전환 탭 */}
           {processId === "검사" && (
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-emerald-950/50 border-2 border-emerald-400 dark:border-emerald-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
+            <div className="hidden sm:flex p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-emerald-950/50 border-2 border-emerald-400 dark:border-emerald-700 shadow-sm flex-col md:flex-row md:items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-md shrink-0">
                   <ShieldCheck className="w-5 h-5" />
@@ -958,7 +979,7 @@ export const HanulWorkReportModal = ({
             </div>
           )}
           {/* A. 기본 정보 (일자, 주야, 작업자, 시간, 설비호기) */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="p-2.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2.5 sm:space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2">
               <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />

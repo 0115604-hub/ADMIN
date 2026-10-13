@@ -225,9 +225,18 @@ export const WorkerPinModal = ({
       if (document.activeElement && typeof document.activeElement.blur === "function") {
         document.activeElement.blur();
       }
-      if (bodyRef.current) {
-        bodyRef.current.scrollTop = 0;
-      }
+      const resetScroll = () => {
+        if (bodyRef.current) bodyRef.current.scrollTop = 0;
+        if (overlayRef.current) overlayRef.current.scrollTop = 0;
+        window.scrollTo(0, 0);
+      };
+      resetScroll();
+      const t1 = setTimeout(resetScroll, 30);
+      const t2 = setTimeout(resetScroll, 120);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [isPinVerified]);
 
@@ -265,8 +274,8 @@ export const WorkerPinModal = ({
 
   const isAdminUser = useMemo(() => {
     if (!selectedUser) return false;
-    return !isExtrusionWorker;
-  }, [selectedUser, isExtrusionWorker]);
+    return !isExtrusionWorker && !isHanulWorker;
+  }, [selectedUser, isExtrusionWorker, isHanulWorker]);
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
@@ -923,11 +932,11 @@ export const WorkerPinModal = ({
       <div
         ref={overlayRef}
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-start sm:items-center justify-center p-1.5 sm:p-3 md:p-4 animate-fadeIn overflow-hidden overscroll-contain"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-0 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[92dvh] my-auto"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col m-0 sm:my-auto"
         >
           {/* Top Decorative Accent Line */}
           <div
@@ -1509,6 +1518,118 @@ export const WorkerPinModal = ({
                                   <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
                                     ↳ 🟢 <b>[조치]</b> {item.actionResult}
                                   </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                            <span>최근 등록된 변동점이 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {/* CASE 2.5: 한울 외주가공 작업자 -> 작업일보 바로가기 + 4M 변동점 */}
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {isHanulWorker && (
+                    <div className="space-y-3.5 flex flex-col justify-between h-full">
+                      {/* 1. 작업일보 원클릭 바로가기 카드 */}
+                      <div className="p-4 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-400 dark:border-indigo-600 shadow-md space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
+                            <FileSpreadsheet className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-indigo-950 dark:text-white">
+                              한울 외주가공 작업일보 작성
+                            </h4>
+                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
+                              작성하실 차종 일보를 선택해주세요.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenHanulReport("9BQC")}
+                            className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-98 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">🚗</span>
+                              <div className="text-left leading-tight">
+                                <span className="block font-black">9BQC G/RUN</span>
+                                <span className="text-[10px] text-indigo-200 font-normal">소재준비/조인트/본드로봇/검사</span>
+                              </div>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-white shrink-0" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenHanulReport("LQ2A")}
+                            className="p-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-98 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">⚡</span>
+                              <div className="text-left leading-tight">
+                                <span className="block font-black">LQ2a Hood Side</span>
+                                <span className="text-[10px] text-purple-200 font-normal">소재준비/조인트/본드로봇/검사</span>
+                              </div>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-white shrink-0" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2. 4M 변동점 및 안전/품질 공지 (최근 2건) */}
+                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                🔔 최근 4M 변동점 및 공지사항
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                안전/품질 주의 항목
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
+                            최근 {recent4MRecords.slice(0, 2).length}건
+                          </span>
+                        </div>
+
+                        {recent4MRecords.slice(0, 2).length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {recent4MRecords.slice(0, 2).map((item) => (
+                              <div
+                                key={item.id}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                      {item.origin || "변동점"}
+                                    </span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                                      {item.plant?.replace("공장", "")} • {item.line}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                </div>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.content && item.content !== item.title && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                  </p>
                                 )}
                               </div>
                             ))}
