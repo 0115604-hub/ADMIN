@@ -82,10 +82,8 @@ export const AuthModal = () => {
   const [isSevereDisasterModalOpen, setIsSevereDisasterModalOpen] = useState(false);
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
   const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
-  const [isMachiningModalOpen, setIsMachiningModalOpen] = useState(false);
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
-  const [isYuseongModalOpen, setIsYuseongModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
   const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("박종미");
@@ -324,41 +322,6 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Yuseong partner user definition (삼랑진공장 외주가공 대표 계정)
-  const yuseongUser = useMemo(() => {
-    return (
-      PLANTS[0]?.workers?.find((w) => w.name === "유성" || w.id === "sam_ys") || {
-        id: "sam_ys",
-        name: "유성",
-        title: "대표이사",
-        plant: "삼랑진공장",
-        company: "유성",
-        assignedProcess: "외주가공",
-        role: "OPERATOR",
-        avatar: "유",
-        pin: "11",
-        isPartner: true
-      }
-    );
-  }, []);
-
-  // Yuseong master workers list (14명 현장작업자)
-  const yuseongWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company?.includes("유성") && w.name !== "유성"
-    );
-  }, []);
-
-  // Machining master workers list (오륙 가공동 31명 현장작업자, 퇴사자 제외)
-  const machiningWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) =>
-        w.company === "오륙" &&
-        w.dept === "가공동" &&
-        w.status !== "퇴사" &&
-        !w.note?.includes("퇴사")
-    );
-  }, []);
 
   // Category drafts for clean draft switching
   const createEmptyCategoryDraft = (catName, currentPlant = "삼랑진공장", author = "", authorTitle = "") => ({
@@ -1505,10 +1468,8 @@ export const AuthModal = () => {
   useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
-  useModalHistory(isMachiningModalOpen, () => setIsMachiningModalOpen(false), "machiningModal");
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
-  useModalHistory(isYuseongModalOpen, () => setIsYuseongModalOpen(false), "yuseongModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
@@ -1568,83 +1529,62 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Right: 👷 현장작업자 전용 접속 (외주가공·압출·가공 5개 부문) */}
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                <span className="text-[10.5px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hidden md:inline-flex items-center gap-1">
-                  <span>👷 현장작업자 접속:</span>
+            {/* Right: Badges: [압출동] & [가공동] & [한울] & [부림텍] */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsExtrusionModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
+                title="삼랑진공장 압출동 작업자 전용 포털 (공영국 외 10명)"
+              >
+                <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
+                <span>압출동</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-800/80 text-teal-100 hidden sm:inline">
+                  11명
                 </span>
+              </button>
 
-                {/* 1. 압출동 (11명) */}
-                <button
-                  type="button"
-                  onClick={() => setIsExtrusionModalOpen(true)}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-black text-xs shadow-md border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-1 ring-teal-400/30"
-                  title="삼랑진공장 압출동 작업자 전용 포털 (11명)"
-                >
-                  <Cpu className="w-3.5 h-3.5 text-teal-200 animate-pulse" />
-                  <span>압출동</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-800/80 text-teal-100 hidden sm:inline">
-                    11명
-                  </span>
-                </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("worker-login-section-root");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="삼랑진·한림공장 가공동 작업자 (15명)"
+              >
+                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
+                <span>가공동</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hidden sm:inline">
+                  삼랑진·한림
+                </span>
+              </button>
 
-                {/* 2. 가공동 (31명) */}
-                <button
-                  type="button"
-                  onClick={() => setIsMachiningModalOpen(true)}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-black text-xs shadow-md border border-amber-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-1 ring-amber-400/30"
-                  title={`삼랑진·한림공장 가공동 작업자 전용 포털 (${machiningWorkers.length}명)`}
-                >
-                  <Factory className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
-                  <span>가공동</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-800/80 text-amber-100 hidden sm:inline">
-                    {machiningWorkers.length}명
-                  </span>
-                </button>
+              <button
+                type="button"
+                onClick={() => setIsHanulModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-indigo-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-indigo-400/30"
+                title={`한림공장 외주가공 (주)한울 작업자 전용 포털 (${hanulWorkers.length}명)`}
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-200 animate-pulse" />
+                <span>한울</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 hidden sm:inline">
+                  {hanulWorkers.length}명
+                </span>
+              </button>
 
-                {/* 3. 한울 (25명) */}
-                <button
-                  type="button"
-                  onClick={() => setIsHanulModalOpen(true)}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs shadow-md border border-indigo-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-1 ring-indigo-400/30"
-                  title={`한림공장 외주가공 (주)한울 작업자 전용 포털 (${hanulWorkers.length}명)`}
-                >
-                  <Building2 className="w-3.5 h-3.5 text-indigo-200 animate-pulse" />
-                  <span>한울</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-indigo-100 hidden sm:inline">
-                    {hanulWorkers.length}명
-                  </span>
-                </button>
-
-                {/* 4. 부림텍 (6명) */}
-                <button
-                  type="button"
-                  onClick={() => setIsBulimtechModalOpen(true)}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs shadow-md border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-1 ring-teal-400/30"
-                  title={`한림공장 외주가공 (주)부림텍 작업자 전용 포털 (${bulimtechWorkers.length}명)`}
-                >
-                  <Building2 className="w-3.5 h-3.5 text-teal-200 animate-pulse" />
-                  <span>부림텍</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-900/80 text-teal-100 hidden sm:inline">
-                    {bulimtechWorkers.length}명
-                  </span>
-                </button>
-
-                {/* 5. 유성 (14명) */}
-                <button
-                  type="button"
-                  onClick={() => setIsYuseongModalOpen(true)}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md border border-blue-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-1 ring-blue-400/30"
-                  title={`삼랑진공장 외주가공 (주)유성 작업자 전용 포털 (${yuseongWorkers.length}명)`}
-                >
-                  <Building2 className="w-3.5 h-3.5 text-blue-200 animate-pulse" />
-                  <span>유성</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-900/80 text-blue-100 hidden sm:inline">
-                    {yuseongWorkers.length}명
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsBulimtechModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
+                title={`한림공장 외주가공 (주)부림텍 작업자 전용 포털 (${bulimtechWorkers.length}명)`}
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
+                <span>부림텍</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-900/80 text-teal-100 hidden sm:inline">
+                  {bulimtechWorkers.length}명
+                </span>
+              </button>
             </div>
           </div>
 
@@ -1934,87 +1874,6 @@ export const AuthModal = () => {
         </div>
       )}
 
-      {/* ⚙️ 삼랑진·한림공장 가공동 작업자 전용 팝업 선택 모달 */}
-      {isMachiningModalOpen && (
-        <div
-          onClick={() => setIsMachiningModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border-2 border-amber-400 dark:border-amber-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-600 text-white shadow-xs">
-                  <Factory className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>삼랑진·한림공장 가공동 작업자</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
-                      총원 {machiningWorkers.length}명
-                    </span>
-                  </h3>
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    비밀번호: 11 • 안전·품질 확인 후 가공 현장관리 입장
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMachiningModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
-              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 가공 생산관리 화면으로 바로 연결됩니다.
-            </p>
-
-            {/* Scrollable Machining Workers Grid */}
-            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {machiningWorkers.map((worker, idx) => (
-                  <button
-                    key={worker.no || idx}
-                    type="button"
-                    onClick={() => {
-                      setIsMachiningModalOpen(false);
-                      handleUserClick({
-                        id: `mach_${worker.no || idx}`,
-                        name: worker.name,
-                        title: worker.position || "작업원",
-                        position: worker.position || "작업원",
-                        plant: "삼랑진공장",
-                        building: "가공동",
-                        line: worker.line,
-                        assignedProcess: worker.line ? `${worker.line} 가공` : "가공동",
-                        role: "OPERATOR",
-                        avatar: worker.name.charAt(0),
-                        pin: "11",
-                        isFieldWorker: true
-                      });
-                    }}
-                    className="min-h-[44px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-amber-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
-                  >
-                    <div className="w-[50%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
-                      <span className="font-black text-xs tracking-tight truncate">
-                        {worker.name}
-                      </span>
-                    </div>
-                    <div className="w-[50%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-300">
-                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "가공"}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 🏢 한림공장 한울 외주가공 전용 팝업 선택 모달 */}
       {isHanulModalOpen && (
@@ -2189,84 +2048,6 @@ export const AuthModal = () => {
         </div>
       )}
 
-      {/* 🏢 삼랑진공장 유성 외주가공 전용 팝업 선택 모달 */}
-      {isYuseongModalOpen && (
-        <div
-          onClick={() => setIsYuseongModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border-2 border-blue-400 dark:border-blue-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>삼랑진공장 외주가공 (주)유성</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
-                      총원 {yuseongWorkers.length}명
-                    </span>
-                  </h3>
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                    비밀번호: 11 • 안전·품질 확인 후 유성 외주가공 및 생산관리 입장
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsYuseongModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
-              본인 이름을 터치하시면 안전알림판과 필수 공지를 확인하신 후 유성 외주가공 및 생산관리 화면으로 연결됩니다.
-            </p>
-
-            {/* Scrollable Yuseong Workers Grid */}
-            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {yuseongWorkers.map((worker, idx) => (
-                  <button
-                    key={worker.no || idx}
-                    type="button"
-                    onClick={() => {
-                      setIsYuseongModalOpen(false);
-                      handleUserClick({
-                        ...yuseongUser,
-                        id: `sam_ys_${worker.no || idx}`,
-                        name: worker.name,
-                        title: worker.position || "작업원",
-                        position: worker.position || "작업원",
-                        line: worker.line,
-                        assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
-                        isFieldWorker: true,
-                        isPartner: false
-                      });
-                    }}
-                    className="min-h-[46px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-blue-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
-                  >
-                    <div className="w-[50%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
-                      <span className="font-black text-xs tracking-tight truncate">
-                        {worker.name}
-                      </span>
-                    </div>
-                    <div className="w-[50%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-300">
-                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "작업원"}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 🚨 중대재해 안전보건 공유 모달 */}
       {isSevereDisasterModalOpen && (

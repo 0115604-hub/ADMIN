@@ -276,48 +276,34 @@ export const WorkerPinModal = ({
     );
   }, [selectedUser]);
 
-  // 🌟 1. 협력업체 대표이사 계정 판별 (하단 협력업체 대표 카드 클릭 시: isFieldWorker !== true)
-  const isCompanyRepresentative = useMemo(() => {
-    if (!selectedUser) return false;
-    if (selectedUser.isFieldWorker) return false;
-    return Boolean(
-      selectedUser.id === "sam_ys" ||
-      selectedUser.id === "hal_hu" ||
-      selectedUser.id === "hal_br" ||
-      (selectedUser.title === "대표이사" && ["유성", "한울", "부림텍"].includes(selectedUser.name)) ||
-      (selectedUser.isPartner && ["유성", "한울", "부림텍"].includes(selectedUser.name)) ||
-      (!selectedUser.isFieldWorker && ["유성", "한울", "부림텍"].includes(selectedUser.company))
-    );
-  }, [selectedUser]);
-
-  // 🌟 2. 한울 및 부림텍 현장 작업자 판별 (상단 포털에서 진입한 작업자: isFieldWorker === true)
+  // 🌟 1. 한울 및 부림텍 전체 계정 판별 (협력사 대표 타일 + 상단 포털 작업자 전체)
+  // 압출동과 마찬가지로 핀입력 후 재해(좌측) + 관리자가 등록한 이슈(우측)만 단독 표시 대상
   const isHanulOrBurim = useMemo(() => {
     if (!selectedUser) return false;
-    if (isCompanyRepresentative) return false;
     const comp = String(selectedUser.company || "");
     const name = String(selectedUser.name || "");
     const id = String(selectedUser.id || "");
 
     return Boolean(
-      selectedUser.isFieldWorker && (
-        comp.includes("한울") ||
-        comp.includes("부림") ||
-        name === "한울" ||
-        name === "부림텍" ||
-        id.startsWith("hal_hu_") ||
-        id.startsWith("hal_br_") ||
-        selectedUser.line === "9BQC" ||
-        selectedUser.line === "LQ2" ||
-        selectedUser.line === "LQ2a" ||
-        [
-          "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
-          "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
-          "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
-          "마이카", "알프레도", "아이린", "에릭", "언"
-        ].includes(name)
-      )
+      comp.includes("한울") ||
+      comp.includes("부림") ||
+      name === "한울" ||
+      name === "부림텍" ||
+      id === "hal_hu" ||
+      id === "hal_br" ||
+      id.startsWith("hal_hu_") ||
+      id.startsWith("hal_br_") ||
+      selectedUser.line === "9BQC" ||
+      selectedUser.line === "LQ2" ||
+      selectedUser.line === "LQ2a" ||
+      [
+        "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+        "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+        "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+        "마이카", "알프레도", "아이린", "에릭", "언"
+      ].includes(name)
     );
-  }, [selectedUser, isCompanyRepresentative]);
+  }, [selectedUser]);
 
   const isHanul = useMemo(() => {
     if (!isHanulOrBurim) return false;
@@ -327,6 +313,7 @@ export const WorkerPinModal = ({
     return Boolean(
       comp.includes("한울") ||
       name === "한울" ||
+      id === "hal_hu" ||
       id.startsWith("hal_hu_") ||
       selectedUser?.line === "9BQC" ||
       selectedUser?.line === "LQ2" ||
@@ -348,25 +335,34 @@ export const WorkerPinModal = ({
   // Backward compatibility alias for Hanul worker checks
   const isHanulWorker = isHanul;
 
-  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(한울/부림텍/유성)
+  // 🌟 2. 첫화면 아래 협력업체 대표이사 계정 판별 (유성 등 관리자급 협력사, 한울/부림텍은 isHanulOrBurim으로 전용 처리)
+  const isCompanyRepresentative = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isHanulOrBurim) return false;
+    return Boolean(
+      selectedUser.id === "sam_ys" ||
+      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_")) ||
+      (!selectedUser.isFieldWorker && selectedUser.name === "유성")
+    );
+  }, [selectedUser, isHanulOrBurim]);
+
+  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성)
   const isAdminUser = useMemo(() => {
     if (!selectedUser) return false;
-    if (isCompanyRepresentative) return true;
     if (isHanulOrBurim) return false;
+    if (isCompanyRepresentative) return true;
     return !isExtrusionWorker && !isHanulWorker && !selectedUser.isFieldWorker;
   }, [selectedUser, isHanulOrBurim, isCompanyRepresentative, isExtrusionWorker, isHanulWorker]);
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
-    if (isCompanyRepresentative) return false;
-    return (selectedUser.plant === "삼랑진공장" || String(selectedUser.id || "").startsWith("sam_")) && !selectedUser.isFieldWorker;
-  }, [selectedUser, isCompanyRepresentative]);
+    return selectedUser.plant === "삼랑진공장" || String(selectedUser.id || "").startsWith("sam_");
+  }, [selectedUser]);
 
   const isHallimManager = useMemo(() => {
     if (!selectedUser) return false;
-    if (isCompanyRepresentative) return false;
-    return (selectedUser.plant === "한림공장" || String(selectedUser.id || "").startsWith("hal_")) && !selectedUser.isFieldWorker;
-  }, [selectedUser, isCompanyRepresentative]);
+    return selectedUser.plant === "한림공장" || String(selectedUser.id || "").startsWith("hal_");
+  }, [selectedUser]);
 
   const isHeadquarterAdmin = useMemo(() => {
     if (!selectedUser) return false;
@@ -384,11 +380,6 @@ export const WorkerPinModal = ({
   // 협력업체 대표 = 해당 업체만 / 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
   const visibleAttendanceCompanies = useMemo(() => {
     if (!selectedUser) return ["오륙", "유성", "조영", "한울", "부림텍"];
-    if (isCompanyRepresentative) {
-      if (selectedUser.name === "한울" || selectedUser.company === "한울" || selectedUser.id === "hal_hu") return ["한울"];
-      if (selectedUser.name === "부림텍" || selectedUser.company === "부림텍" || selectedUser.id === "hal_br") return ["부림텍"];
-      if (selectedUser.name === "유성" || selectedUser.company === "유성" || selectedUser.id === "sam_ys") return ["유성"];
-    }
     if (selectedUser.company === "유성" || selectedUser.name === "유성") return ["유성"];
     if (selectedUser.company === "조영" || selectedUser.name === "조영") return ["조영"];
     if (selectedUser.company === "한울" || selectedUser.name === "한울") return ["한울"];
@@ -396,7 +387,7 @@ export const WorkerPinModal = ({
     if (isSamrangjinManager) return ["오륙", "유성"];
     if (isHallimManager) return ["조영", "한울", "부림텍"];
     return ["오륙", "유성", "조영", "한울", "부림텍"];
-  }, [selectedUser, isCompanyRepresentative, isSamrangjinManager, isHallimManager]);
+  }, [selectedUser, isSamrangjinManager, isHallimManager]);
 
   const isProcessingWorker = useMemo(() => {
     if (!selectedUser) return false;
@@ -2099,21 +2090,10 @@ export const WorkerPinModal = ({
             )}
           </div>
 
-          {/* 🌟 3. Footer: 협력업체 대표(업체관리) / 한울(일보작성) / 부림텍(작업개시) / 관리자(관리자모드) 맞춤 제공 */}
+          {/* 🌟 3. Footer: 한울(일보작성) / 부림텍(작업개시) / 관리자·압출(작업개시) 맞춤 제공 */}
           <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
-            {isCompanyRepresentative ? (
-              /* 협력업체 대표 전용: 확인완료 [업체명] 업체관리 시작 */
-              <button
-                type="button"
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-purple-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span>확인완료 {selectedUser.name} 업체관리 시작</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            ) : isHanul ? (
-              /* 한울 현장작업자 전용: 확인완료 작업개시 (작업자모드 진입) + 9BQC/LQ2a 간편 일보 작성 버튼 동시 제공 */
+            {isHanul ? (
+              /* 한울 전용: 확인완료 작업개시 (작업자모드 진입) + 9BQC/LQ2a 간편 일보 작성 버튼 동시 제공 */
               <div className="space-y-2">
                 <button
                   type="button"
@@ -2144,7 +2124,7 @@ export const WorkerPinModal = ({
                 </div>
               </div>
             ) : isBurimtech ? (
-              /* 부림텍 현장작업자 전용: 확인완료 작업개시 */
+              /* 부림텍 전용: 확인완료 작업개시 */
               <button
                 type="button"
                 onClick={handleLogin}
@@ -2154,24 +2134,13 @@ export const WorkerPinModal = ({
                 <span>확인완료 작업개시</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
-            ) : isAdminUser ? (
-              /* 공장 관리자: 관리자 모드 시작 */
+            ) : (
+              /* 일반 관리자/압출동 작업자: 대시보드 로그인 버튼 */
               <button
                 type="button"
                 onClick={handleLogin}
                 disabled={isLoggingIn}
                 className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span>확인완료 관리자 모드 시작</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            ) : (
-              /* 일반 현장작업자: 작업개시 */
-              <button
-                type="button"
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-700 hover:from-teal-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-teal-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <span>확인완료 작업개시</span>
                 <ArrowRight className="w-5 h-5" />
