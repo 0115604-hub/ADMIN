@@ -373,7 +373,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
-                  한울 품질경보 및 이슈 공지 관리
+                  한울 품질이슈 및 긴급공지
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white shadow-2xs">
                   한울 외주가공 전담
@@ -438,7 +438,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    {editingIssueId ? "한울 품질경보 수정" : "새 한울 품질경보 등록 및 현장 전파"}
+                    {editingIssueId ? "한울 품질이슈 수정" : "품질이슈 등록 및 현장전파"}
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     발생원인 사진과 조치결과 사진을 분리하여 촬영·등록할 수 있습니다.

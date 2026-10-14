@@ -351,7 +351,7 @@ export const ExtrusionQualityIssueTab = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                압출동 품질이슈 공지 및 조치 관리
+                압출동 품질이슈 및 긴급공지
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
                 설유철 책임 전담
@@ -391,7 +391,7 @@ export const ExtrusionQualityIssueTab = () => {
             </div>
             <div>
               <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                {editingIssueId ? "압출 품질이슈 수정" : "새 압출 품질이슈 등록 및 현장 전파"}
+                {editingIssueId ? "압출 품질이슈 수정" : "품질이슈 등록 및 현장전파"}
               </h3>
               <p className="text-[11px] text-slate-400">
                 발생원인 사진과 조치결과 사진을 분리하여 촬영·등록할 수 있습니다.
