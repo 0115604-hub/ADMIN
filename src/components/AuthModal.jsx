@@ -442,25 +442,50 @@ export const AuthModal = () => {
       return false;
     }
 
-    // 2. 출처(source) 플래그가 개별 관리자 대시보드인 경우 제외
+    // 2. 작성자(author) 또는 회사(company)가 한울/부림텍/유성 등 개별 협력사이거나 외주가공인 경우 완전 제외
+    const author = String(item.author || item.registeredBy || item.writer || "").trim();
+    const company = String(item.company || "").trim();
+    if (
+      author === "한울" ||
+      author.includes("한울") ||
+      company === "한울" ||
+      company.includes("한울") ||
+      author === "부림텍" ||
+      company === "부림텍" ||
+      author === "유성" ||
+      company === "유성"
+    ) {
+      return false;
+    }
+
+    // 3. 출처(source) 플래그가 개별 관리자 대시보드인 경우 제외
     const source = String(item.source || "").toLowerCase();
     if (source === "hanul" || source === "extrusion" || source === "partner" || source === "bulim" || source === "yuseong") {
       return false;
     }
 
-    // 3. 명시적 첫 화면 제외 플래그
+    // 4. 명시적 첫 화면 제외 플래그
     if (item.isFirstScreenOrigin === false) return false;
 
-    // 4. 개별 공정/외주사 전용 태그 또는 제목 필터링
+    // 5. 제목(title) 또는 라인(line)에 한울/외주가공/압출 단독 이슈가 포함된 경우 제외
     const title = String(item.title || "");
-    if (title.includes("[한울품질경보]") || title.includes("[압출품질이슈]")) {
+    const line = String(item.line || item.process || "");
+    if (
+      title.includes("[한울품질경보]") ||
+      title.includes("[한울]") ||
+      title.includes("[압출품질이슈]") ||
+      title.includes("9BQC") ||
+      title.includes("LQ2") ||
+      line.includes("9BQC") ||
+      line.includes("LQ2") ||
+      line.includes("외주가공")
+    ) {
       return false;
     }
 
-    // 5. 외주사 단독 타겟 및 회사 설정 건 제외
-    const company = String(item.company || "");
+    // 6. 대상(target)이 한울/부림텍/외주가공 등 특정 외주사에 국한된 경우 제외
     const target = String(item.target || "");
-    if (company === "한울" && (target === "한울 외주가공" || target === "한울")) {
+    if (target.includes("한울") || target.includes("부림") || target.includes("외주가공")) {
       return false;
     }
 

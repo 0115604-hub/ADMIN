@@ -125,7 +125,28 @@ export const sanitizeUrgentIssueItem = (item) => {
   return updated;
 };
 
-// Helper: Read local storage (종결삭제관리 조회를 위해 isDeleted 항목도 함께 보존)
+// Helper: 판별 - 한울 외주가공 개별 관리 이슈 여부 (첫 화면 및 전사 긴급이슈에서 완전 분리/배제 대상)
+export const isHanulManagedIssue = (item) => {
+  if (!item) return false;
+  const id = String(item.id || item._docId || item.customId || "");
+  if (id.startsWith("urg_hanul_") || id.startsWith("hanul_")) return true;
+
+  const author = String(item.author || item.registeredBy || item.writer || "").trim();
+  const company = String(item.company || "").trim();
+  const target = String(item.target || "").trim();
+  const title = String(item.title || "").trim();
+  const line = String(item.line || item.process || "").trim();
+
+  if (author === "한울" || author.includes("한울")) return true;
+  if (company === "한울" || company.includes("한울")) return true;
+  if (target.includes("한울") || target.includes("외주가공")) return true;
+  if (title.includes("[한울") || title.includes("9BQC") || title.includes("LQ2")) return true;
+  if (line.includes("9BQC") || line.includes("LQ2") || line.includes("외주가공")) return true;
+
+  return false;
+};
+
+// Helper: Read local storage
 export const getLocalUrgentIssues = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -135,14 +156,14 @@ export const getLocalUrgentIssues = () => {
     }
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((item) => {
-        if (!item) return false;
-        const id = String(item.id || item._docId || item.customId || "");
-        if (id.startsWith("urg_hanul_qual_") || id.startsWith("hanul_qual_") || (item.company === "한울" && item.target === "한울 외주가공")) return false;
-        return true;
-      })
+    const clean = parsed
+      .filter((item) => !isHanulManagedIssue(item))
       .map(sanitizeUrgentIssueItem);
+
+    if (clean.length !== parsed.length) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(clean));
+    }
+    return clean;
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
     return [];
@@ -235,14 +256,8 @@ export const subscribeUrgentIssues = (onUpdate) => {
         snapshot.forEach((d) => {
           const data = d.data();
           if (!data) return;
-          // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 정리
-          if (
-            d.id.startsWith("urg_hanul_qual_") ||
-            d.id.startsWith("hanul_qual_") ||
-            data.id?.startsWith("urg_hanul_qual_") ||
-            (data.company === "한울" && data.target === "한울 외주가공") ||
-            String(data.title || "").includes("[한울품질경보]")
-          ) {
+          // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 Firestore 삭제
+          if (isHanulManagedIssue({ id: d.id, ...data })) {
             deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
             return;
           }
