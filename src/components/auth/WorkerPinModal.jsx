@@ -41,6 +41,10 @@ import {
   isExtrusionWorkerProfile
 } from "../../services/extrusionQualityIssueService";
 import {
+  subscribeHanulQualityIssues,
+  getLocalHanulQualityIssues
+} from "../../services/hanulQualityIssueService";
+import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
   isScheduleExpired,
@@ -127,6 +131,7 @@ export const WorkerPinModal = ({
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
   const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
+  const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
@@ -146,6 +151,7 @@ export const WorkerPinModal = ({
     const unsubReports = subscribeOvertimeReports((reps) => { if (reps) setOvertimeReports(reps); });
     const unsubAbsence = subscribe4MAbsenceLogs((logs) => { if (logs) setAbsenceLogsMap(logs); });
     const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
+    const unsubHanulQual = subscribeHanulQualityIssues((list) => setHanulQualityIssues(list || []));
     const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
     const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
     const unsubLogs = subscribeWorkLogs((logs) => setWorkLogs(logs || []));
@@ -172,6 +178,7 @@ export const WorkerPinModal = ({
       if (unsubReports) unsubReports();
       if (unsubAbsence) unsubAbsence();
       if (unsubExtQual) unsubExtQual();
+      if (unsubHanulQual) unsubHanulQual();
       if (unsub4M) unsub4M();
       if (unsubExtRep) unsubExtRep();
       if (unsubLogs) unsubLogs();
@@ -791,8 +798,38 @@ export const WorkerPinModal = ({
       });
     });
 
+    // 3. hanulQualityIssues (한울 전용 품질경보 실시간 등록 건)
+    (hanulQualityIssues || []).forEach((item) => {
+      if (!item || item.status === "RESOLVED") return;
+      const issueId = `hanul_qual_${item.id}`;
+      if (seenIds.has(issueId)) return;
+      seenIds.add(issueId);
+
+      const causeImgs = Array.isArray(item.causeImages) ? item.causeImages : [];
+      const actionImgs = Array.isArray(item.actionImages) ? item.actionImages : [];
+      const allImgs = [...causeImgs, ...actionImgs]
+        .map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img))
+        .filter(Boolean);
+
+      list.push({
+        id: issueId,
+        rawId: item.id,
+        category: "품질경보",
+        plant: "한림공장",
+        line: item.line || "9BQC (G/RUN)",
+        title: item.title || "한울 품질경보",
+        content: item.content || item.title || "",
+        actionResult: item.actionResult || "",
+        author: item.author || "한울",
+        authorTitle: item.authorTitle || "작업원",
+        date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
+        isResolved: item.status === "RESOLVED",
+        images: allImgs
+      });
+    });
+
     return list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, todayKst]);
+  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, hanulQualityIssues, todayKst]);
 
   // =========================================================================
   // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)

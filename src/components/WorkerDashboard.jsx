@@ -55,7 +55,8 @@ import {
   MessageCircle,
   RotateCcw,
   Receipt,
-  Cpu
+  Cpu,
+  ShieldAlert
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -191,9 +192,14 @@ import { getWorkerPersonnelCard } from "../services/personnelCardService";
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
+const HanulQualityIssueModal = lazy(() => import("./hanul/HanulQualityIssueModal").then(m => ({ default: m.HanulQualityIssueModal || m.default })));
 const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal").then(m => ({ default: m.RecentWorkLogsSummaryModal || m.default })));
 import { HanulWorkReportTable } from "./HanulWorkReportTable";
 import { isExcludedFromWorkReport } from "../services/hanulWorkReportService";
+import {
+  subscribeHanulQualityIssues,
+  getLocalHanulQualityIssues
+} from "../services/hanulQualityIssueService";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -516,13 +522,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
+  const [isHanulQualityIssueModalOpen, setIsHanulQualityIssueModalOpen] = useState(false);
+  const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
   const [hanulReportProject, setHanulReportProject] = useState("9BQC");
   const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
   const [hanulReportEditData, setHanulReportEditData] = useState(null);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
   useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
   useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "workerDashboardHanulReportModal");
+  useModalHistory(isHanulQualityIssueModalOpen, () => setIsHanulQualityIssueModalOpen(false), "workerDashboardHanulQualityModal");
   useModalHistory(isWorkLogsSummaryModalOpen, () => setIsWorkLogsSummaryModalOpen(false), "workerDashboardWorkLogsSummaryModal");
+
+  useEffect(() => {
+    const unsub = subscribeHanulQualityIssues((list) => {
+      setHanulQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
+  const activeHanulQualityCount = useMemo(() => {
+    return (hanulQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
+  }, [hanulQualityIssues]);
 
   const handleOpenHanulReport = (proj = "9BQC", proc = "소재준비", editData = null) => {
     setHanulReportProject(proj);
@@ -4465,26 +4485,42 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 한울 전용 외주가공 작업일보 (9BQC / LQ2a) 배너 & 실시간 관리 */}
+      {/* 🌟 한울 전용 외주가공 품질경보 등록 & 작업일보 (9BQC / LQ2a) 실시간 관리 */}
       {/* ========================================================================= */}
       {(isHanul || isAdmin) && (
         <div className="space-y-3">
           <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-indigo-500/60 shadow-md shadow-indigo-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
-              <div className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 text-white shadow-xs shrink-0 flex items-center justify-center">
-                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-100" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white shadow-xs shrink-0 flex items-center justify-center animate-pulse">
+                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
               </div>
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span className="font-black text-xs sm:text-sm text-white tracking-tight">
-                  한울 외주가공 작업일보
+                  한울품질경보등록
                 </span>
-                <span className="hidden sm:inline text-[11px] text-indigo-300 font-semibold truncate">
-                  (9BQC G/RUN 8개 공정 & LQ2a Hood Side 4개 공정 실시간 작성 및 관리)
+                <span className="hidden sm:inline text-[11px] text-purple-300 font-semibold truncate">
+                  (9BQC G/RUN & LQ2a Hood Side 품질경보 및 외주가공 실시간 관리)
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {/* 🚨 품질경보 입력 뱃지 */}
+              <button
+                type="button"
+                onClick={() => setIsHanulQualityIssueModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black shadow-md shadow-rose-950/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap animate-pulse"
+                title="한울 품질경보 및 품질이슈 등록/관리"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>🚨 품질경보 입력</span>
+                {activeHanulQualityCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
+                    {activeHanulQualityCount}
+                  </span>
+                )}
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleOpenHanulReport("9BQC")}
@@ -11616,6 +11652,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 : "박종미"
             }
             editReport={hanulReportEditData}
+          />
+        </Suspense>
+      )}
+
+      {/* 🌟 한울 품질경보 등록/관리 모달 (압출동 품질이슈 등록과 100% 동일한 기능 & 양식) */}
+      {isHanulQualityIssueModalOpen && (
+        <Suspense fallback={null}>
+          <HanulQualityIssueModal
+            isOpen={isHanulQualityIssueModalOpen}
+            onClose={() => setIsHanulQualityIssueModalOpen(false)}
           />
         </Suspense>
       )}
