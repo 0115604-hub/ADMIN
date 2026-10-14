@@ -423,10 +423,16 @@ export const AuthModal = () => {
 
   // 🌟 첫 화면 등록 여부 판별 헬퍼 (첫 화면에서 직접 등록된 이슈만 첫 화면에 노출 및 합산 허용)
   // 관리자들이 개별 로그인해서 올린 품질이슈 또는 경보는 관리자가 관리하는 인원에 한하여 공지되며 첫 화면 노출/합산 완전 제외
+  // 🌟 한울 대표 등이 첫 화면에서 올린 공식 품질경보는 첫 화면에 보존됨
   const isFirstScreenIssue = (item) => {
     if (!item) return false;
 
-    // 1. 개별 공정/외주사 관리자가 등록한 이슈 제외 (ID 접두사)
+    // 1. 첫 화면 공식 등록 건은 작성자(한울 대표, 공장 관리자, 임원 등)에 관계없이 첫 화면 노출 보장
+    if (item.isFirstScreenOrigin === true || item.origin === "FIRST_SCREEN") {
+      return true;
+    }
+
+    // 2. 개별 공정/외주사 관리자가 내부에서 등록한 이슈 제외 (ID 접두사: hanul_qual_, urg_hanul_qual_, ext_qual_ 등)
     const id = String(item.id || item._docId || item.customId || "");
     if (
       id.startsWith("hanul_") ||
@@ -442,23 +448,7 @@ export const AuthModal = () => {
       return false;
     }
 
-    // 2. 작성자(author) 또는 회사(company)가 한울/부림텍/유성 등 개별 협력사이거나 외주가공인 경우 완전 제외
-    const author = String(item.author || item.registeredBy || item.writer || "").trim();
-    const company = String(item.company || "").trim();
-    if (
-      author === "한울" ||
-      author.includes("한울") ||
-      company === "한울" ||
-      company.includes("한울") ||
-      author === "부림텍" ||
-      company === "부림텍" ||
-      author === "유성" ||
-      company === "유성"
-    ) {
-      return false;
-    }
-
-    // 3. 출처(source) 플래그가 개별 관리자 대시보드인 경우 제외
+    // 3. 출처(source) 플래그가 개별 관리자 내부 대시보드인 경우 제외
     const source = String(item.source || "").toLowerCase();
     if (source === "hanul" || source === "extrusion" || source === "partner" || source === "bulim" || source === "yuseong") {
       return false;
@@ -467,26 +457,15 @@ export const AuthModal = () => {
     // 4. 명시적 첫 화면 제외 플래그
     if (item.isFirstScreenOrigin === false) return false;
 
-    // 5. 제목(title) 또는 라인(line)에 한울/외주가공/압출 단독 이슈가 포함된 경우 제외
+    // 5. 개별 관리자 내부 등록 전용 태그
     const title = String(item.title || "");
-    const line = String(item.line || item.process || "");
-    if (
-      title.includes("[한울품질경보]") ||
-      title.includes("[한울]") ||
-      title.includes("[압출품질이슈]") ||
-      title.includes("9BQC") ||
-      title.includes("LQ2") ||
-      line.includes("9BQC") ||
-      line.includes("LQ2") ||
-      line.includes("외주가공")
-    ) {
+    if (title.startsWith("[한울품질경보]") || title.startsWith("[압출품질이슈]")) {
       return false;
     }
 
-    // 6. 대상(target)이 한울/부림텍/외주가공 등 특정 외주사에 국한된 경우 제외
-    const target = String(item.target || "");
-    if (target.includes("한울") || target.includes("부림") || target.includes("외주가공")) {
-      return false;
+    // 6. 첫 화면 기본 ID 패턴(issue_...)인 경우 첫 화면 등록 건으로 유지 (한울 대표가 첫 화면에서 등록한 건 포함)
+    if (id.startsWith("issue_")) {
+      return true;
     }
 
     return true;

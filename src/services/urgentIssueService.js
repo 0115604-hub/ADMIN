@@ -125,23 +125,22 @@ export const sanitizeUrgentIssueItem = (item) => {
   return updated;
 };
 
-// Helper: 판별 - 한울 외주가공 개별 관리 이슈 여부 (첫 화면 및 전사 긴급이슈에서 완전 분리/배제 대상)
+// Helper: 판별 - 개별 외주사/공정 내부 관리 이슈 여부 (첫 화면 및 전사 긴급이슈 컬렉션에서 완전 분리/배제 대상)
+// 🌟 첫 화면에서 등록된 이슈(한울 대표 등록 건 포함)는 첫 화면 보존 대상이므로 제외하지 않음
 export const isHanulManagedIssue = (item) => {
   if (!item) return false;
+
+  // 첫 화면 공식 등록 건은 절대 배제하지 않고 첫 화면에 온전히 유지
+  if (item.isFirstScreenOrigin === true || item.origin === "FIRST_SCREEN") return false;
+
   const id = String(item.id || item._docId || item.customId || "");
-  if (id.startsWith("urg_hanul_") || id.startsWith("hanul_")) return true;
+  if (id.startsWith("urg_hanul_") || id.startsWith("hanul_qual_") || id.startsWith("hanul_issue_")) return true;
 
-  const author = String(item.author || item.registeredBy || item.writer || "").trim();
-  const company = String(item.company || "").trim();
-  const target = String(item.target || "").trim();
+  const source = String(item.source || "").toLowerCase();
+  if (source === "hanul") return true;
+
   const title = String(item.title || "").trim();
-  const line = String(item.line || item.process || "").trim();
-
-  if (author === "한울" || author.includes("한울")) return true;
-  if (company === "한울" || company.includes("한울")) return true;
-  if (target.includes("한울") || target.includes("외주가공")) return true;
-  if (title.includes("[한울") || title.includes("9BQC") || title.includes("LQ2")) return true;
-  if (line.includes("9BQC") || line.includes("LQ2") || line.includes("외주가공")) return true;
+  if (title.startsWith("[한울품질경보]")) return true;
 
   return false;
 };
