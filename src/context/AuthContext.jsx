@@ -174,10 +174,13 @@ export const AuthProvider = ({ children }) => {
     let effectiveRememberMe = rememberMe !== false;
 
     if (typeof userOrId === "object" && userOrId !== null) {
-      target =
+      const found =
         ALL_DESIGNATED_USERS.find((u) => u.id === userOrId.id) ||
-        ALL_DESIGNATED_USERS.find((u) => u.name === userOrId.name && (u.plant === userOrId.plant || !userOrId.plant)) ||
-        userOrId;
+        ALL_DESIGNATED_USERS.find((u) => u.name === userOrId.name && (u.plant === userOrId.plant || !userOrId.plant));
+      target = {
+        ...(found || {}),
+        ...userOrId
+      };
       if (typeof inputPin === "boolean") {
         effectiveRememberMe = inputPin;
       }
