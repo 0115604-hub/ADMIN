@@ -753,6 +753,10 @@ export const WorkerPinModal = ({
 
       if (isExtrusionExclusive && !isRelevant) return;
 
+      // 🌟 업체별 격리: 한울 작업자에게는 부림텍 전용 제외, 부림텍 작업자에게는 한울 전용 제외
+      if (isHanul && (company.includes("부림") || target.includes("부림")) && !company.includes("한울") && !target.includes("한울")) return;
+      if (isBurimtech && (company.includes("한울") || target.includes("한울")) && !company.includes("부림") && !target.includes("부림")) return;
+
       const issueId = `urg_${issue.id || issue._docId || Math.random()}`;
       if (seenIds.has(issueId)) return;
       seenIds.add(issueId);
@@ -786,6 +790,10 @@ export const WorkerPinModal = ({
         return;
       }
 
+      // 업체별 상호 격리
+      if (isHanul && comp.includes("부림") && !comp.includes("한울")) return;
+      if (isBurimtech && comp.includes("한울") && !comp.includes("부림")) return;
+
       const recId = `fourm_ledger_${rec.id || rec.originalId || Math.random()}`;
       if (seenIds.has(recId)) return;
       seenIds.add(recId);
@@ -807,38 +815,40 @@ export const WorkerPinModal = ({
       });
     });
 
-    // 3. hanulQualityIssues (한울 전용 품질경보 실시간 등록 건)
-    (hanulQualityIssues || []).forEach((item) => {
-      if (!item || item.status === "RESOLVED") return;
-      const issueId = `hanul_qual_${item.id}`;
-      if (seenIds.has(issueId)) return;
-      seenIds.add(issueId);
+    // 3. hanulQualityIssues (한울 전용 품질경보 실시간 등록 건) - 🌟 한울 소속 작업자(25명)에게만 엄격 한정 공지!
+    if (isHanul) {
+      (hanulQualityIssues || []).forEach((item) => {
+        if (!item || item.status === "RESOLVED") return;
+        const issueId = `hanul_qual_${item.id}`;
+        if (seenIds.has(issueId)) return;
+        seenIds.add(issueId);
 
-      const causeImgs = Array.isArray(item.causeImages) ? item.causeImages : [];
-      const actionImgs = Array.isArray(item.actionImages) ? item.actionImages : [];
-      const allImgs = [...causeImgs, ...actionImgs]
-        .map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img))
-        .filter(Boolean);
+        const causeImgs = Array.isArray(item.causeImages) ? item.causeImages : [];
+        const actionImgs = Array.isArray(item.actionImages) ? item.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs]
+          .map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img))
+          .filter(Boolean);
 
-      list.push({
-        id: issueId,
-        rawId: item.id,
-        category: "품질경보",
-        plant: "한림공장",
-        line: item.line || "9BQC (G/RUN)",
-        title: item.title || "한울 품질경보",
-        content: item.content || item.title || "",
-        actionResult: item.actionResult || "",
-        author: item.author || "한울",
-        authorTitle: item.authorTitle || "작업원",
-        date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
-        isResolved: item.status === "RESOLVED",
-        images: allImgs
+        list.push({
+          id: issueId,
+          rawId: item.id,
+          category: "품질경보",
+          plant: "한림공장",
+          line: item.line || "9BQC (G/RUN)",
+          title: item.title || "한울 품질경보",
+          content: item.content || item.title || "",
+          actionResult: item.actionResult || "",
+          author: item.author || "한울",
+          authorTitle: item.authorTitle || "대표",
+          date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
+          isResolved: item.status === "RESOLVED",
+          images: allImgs
+        });
       });
-    });
+    }
 
     return list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, hanulQualityIssues, todayKst]);
+  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, hanulQualityIssues, todayKst, isHanul, isBurimtech]);
 
   // =========================================================================
   // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)

@@ -135,7 +135,14 @@ export const getLocalUrgentIssues = () => {
     }
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(sanitizeUrgentIssueItem);
+    return parsed
+      .filter((item) => {
+        if (!item) return false;
+        const id = String(item.id || item._docId || item.customId || "");
+        if (id.startsWith("urg_hanul_qual_") || id.startsWith("hanul_qual_") || (item.company === "한울" && item.target === "한울 외주가공")) return false;
+        return true;
+      })
+      .map(sanitizeUrgentIssueItem);
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
     return [];
@@ -228,6 +235,17 @@ export const subscribeUrgentIssues = (onUpdate) => {
         snapshot.forEach((d) => {
           const data = d.data();
           if (!data) return;
+          // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 정리
+          if (
+            d.id.startsWith("urg_hanul_qual_") ||
+            d.id.startsWith("hanul_qual_") ||
+            data.id?.startsWith("urg_hanul_qual_") ||
+            (data.company === "한울" && data.target === "한울 외주가공") ||
+            String(data.title || "").includes("[한울품질경보]")
+          ) {
+            deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+            return;
+          }
           const isDel = Boolean(data.isDeleted === true || data.deleted === true || data.isDeleted === "true" || data.deleted === "true");
           const item = { ...data, id: d.id, _docId: d.id, customId: data.id, isDeleted: isDel };
           list.push(sanitizeUrgentIssueItem(item));

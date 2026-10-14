@@ -8,10 +8,6 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { getKSTDateString } from "../utils/dateUtils";
-import {
-  saveUrgentIssue,
-  deleteUrgentIssue
-} from "./urgentIssueService";
 
 const COLLECTION_NAME = "hanul_quality_issues";
 const LOCAL_STORAGE_KEY = "factory_hanul_quality_issues_v2";
@@ -168,39 +164,7 @@ export const saveHanulQualityIssue = async (issueData) => {
     console.warn("Firestore saveHanulQualityIssue fallback to local:", e);
   }
 
-  // Dual-sync to urgentIssueService so that PIN modal and company-wide feeds show it immediately
-  try {
-    const allImages = [
-      ...causeImgs.map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)),
-      ...actionImgs.map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img))
-    ].filter(Boolean);
-
-    await saveUrgentIssue({
-      id: `urg_${id}`,
-      customId: `urg_${id}`,
-      category: "품질경보",
-      plant: "한림공장",
-      company: "한울",
-      target: "한울 외주가공",
-      line: fullItem.line,
-      title: `[한울품질경보] ${fullItem.title}`,
-      content: fullItem.content,
-      actionResult: fullItem.actionResult,
-      author: fullItem.author,
-      authorTitle: fullItem.authorTitle,
-      images: allImages,
-      causeImages: fullItem.causeImages,
-      actionImages: fullItem.actionImages,
-      defectType: fullItem.defectType,
-      isResolved: fullItem.status === "RESOLVED",
-      startDate: fullItem.date || todayStr,
-      expireDate: fullItem.date || todayStr,
-      createdAt: fullItem.createdAt
-    });
-  } catch (err) {
-    console.warn("Sync to urgentIssueService warning:", err);
-  }
-
+  // Dual-sync to urgentIssueService removed: 한울 품질경보는 한울 관리자 및 소속 인원에 한하여 공지되며 첫 화면 노출/합산에서 완전 분리
   return fullItem;
 };
 
@@ -238,20 +202,6 @@ export const resolveHanulQualityIssue = async (id, resolutionNote, resolverName 
     console.warn("Firestore resolveHanulQualityIssue fallback:", e);
   }
 
-  // Update synchronized urgentIssue
-  try {
-    await saveUrgentIssue({
-      id: `urg_${id}`,
-      customId: `urg_${id}`,
-      actionResult: updatedItem.actionResult,
-      actionAuthor: resolverName,
-      actionAt: nowKst,
-      isResolved: true
-    });
-  } catch (err) {
-    console.warn("Sync resolve to urgentIssueService warning:", err);
-  }
-
   return updatedItem;
 };
 
@@ -267,10 +217,10 @@ export const deleteHanulQualityIssue = async (id) => {
     console.warn("Firestore deleteHanulQualityIssue fallback:", e);
   }
 
-  // Also remove from urgentIssues
+  // Also remove from legacy urgentIssues if any was previously synced
   try {
-    await deleteUrgentIssue(`urg_${id}`);
+    await deleteDoc(doc(db, "urgent_issues", `urg_${id}`));
   } catch (err) {
-    console.warn("Delete synced urgentIssue warning:", err);
+    // ignore
   }
 };

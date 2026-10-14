@@ -421,10 +421,56 @@ export const AuthModal = () => {
   const isCatNotice = (cat) => cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat === "notice" || (typeof cat === "string" && cat.includes("공지"));
   const isCatOpenIssue = (cat) => cat === "오픈이슈" || cat === "오픈 이슈" || cat === "품질이슈" || cat === "open_issue" || (!isCatQualityAlert(cat) && !isCatMeeting(cat) && !isCatNotice(cat));
 
-  // Active issues calculation (첫 화면 표시용 활성 이슈)
+  // 🌟 첫 화면 등록 여부 판별 헬퍼 (첫 화면에서 직접 등록된 이슈만 첫 화면에 노출 및 합산 허용)
+  // 관리자들이 개별 로그인해서 올린 품질이슈 또는 경보는 관리자가 관리하는 인원에 한하여 공지되며 첫 화면 노출/합산 완전 제외
+  const isFirstScreenIssue = (item) => {
+    if (!item) return false;
+
+    // 1. 개별 공정/외주사 관리자가 등록한 이슈 제외 (ID 접두사)
+    const id = String(item.id || item._docId || item.customId || "");
+    if (
+      id.startsWith("hanul_") ||
+      id.startsWith("urg_hanul_") ||
+      id.startsWith("ext_") ||
+      id.startsWith("urg_ext_") ||
+      id.startsWith("bulim_") ||
+      id.startsWith("urg_bulim_") ||
+      id.startsWith("yuseong_") ||
+      id.startsWith("urg_yuseong_") ||
+      id.startsWith("partner_")
+    ) {
+      return false;
+    }
+
+    // 2. 출처(source) 플래그가 개별 관리자 대시보드인 경우 제외
+    const source = String(item.source || "").toLowerCase();
+    if (source === "hanul" || source === "extrusion" || source === "partner" || source === "bulim" || source === "yuseong") {
+      return false;
+    }
+
+    // 3. 명시적 첫 화면 제외 플래그
+    if (item.isFirstScreenOrigin === false) return false;
+
+    // 4. 개별 공정/외주사 전용 태그 또는 제목 필터링
+    const title = String(item.title || "");
+    if (title.includes("[한울품질경보]") || title.includes("[압출품질이슈]")) {
+      return false;
+    }
+
+    // 5. 외주사 단독 타겟 및 회사 설정 건 제외
+    const company = String(item.company || "");
+    const target = String(item.target || "");
+    if (company === "한울" && (target === "한울 외주가공" || target === "한울")) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Active issues calculation (첫 화면 표시용 활성 이슈 - 첫 화면 등록 건만 한정!)
   const activeIssues = useMemo(() => {
     return urgentIssues.filter((item) => {
-      if (!item || item.isDeleted) return false;
+      if (!item || item.isDeleted || !isFirstScreenIssue(item)) return false;
 
       // 1. 회의일정: 회의 시작 시간 경과 시 첫 화면에서 자동 만료/제외 -> 종결삭제관리로 이동
       if (isCatMeeting(item.category)) {
@@ -464,14 +510,14 @@ export const AuthModal = () => {
     return activeIssues;
   }, [activeIssues, openIssueCategoryFilter]);
 
-  // Ledger categories (최신순 정렬 적용)
-  const allQualityAlerts = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatQualityAlert(i.category))), [urgentIssues]);
-  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatMeeting(i.category) && !isMeetingExpired(i, 0))), [urgentIssues, todayDateStr, currentKstTimeStr]);
-  const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatOpenIssue(i.category))), [urgentIssues]);
-  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatNotice(i.category) && (!i.expireDate || i.expireDate >= todayDateStr || i.isManuallyRestored))), [urgentIssues, todayDateStr]);
+  // Ledger categories (최신순 정렬 적용 - 첫 화면 등록 건만 한정!)
+  const allQualityAlerts = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatQualityAlert(i.category))), [urgentIssues]);
+  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatMeeting(i.category) && !isMeetingExpired(i, 0))), [urgentIssues, todayDateStr, currentKstTimeStr]);
+  const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatOpenIssue(i.category))), [urgentIssues]);
+  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatNotice(i.category) && (!i.expireDate || i.expireDate >= todayDateStr || i.isManuallyRestored))), [urgentIssues, todayDateStr]);
   const allClosedDeletedIssues = useMemo(() => {
     const list = urgentIssues.filter((i) => {
-      if (!i) return false;
+      if (!i || !isFirstScreenIssue(i)) return false;
       if (i.isDeleted) return true;
       if (isCatMeeting(i.category)) {
         return isMeetingExpired(i, 0);
@@ -484,9 +530,9 @@ export const AuthModal = () => {
     return sortIssuesByLatest(list);
   }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
-  // Filtered issues for ledger modal (최신순 정렬 보장)
+  // Filtered issues for ledger modal (최신순 정렬 보장 - 첫 화면 등록 건만 한정!)
   const filteredIssues = useMemo(() => {
-    let list = urgentIssues;
+    let list = urgentIssues.filter(isFirstScreenIssue);
     if (ledgerCategoryTab === "quality_alert") {
       list = allQualityAlerts;
     } else if (ledgerCategoryTab === "meeting") {
@@ -715,7 +761,9 @@ export const AuthModal = () => {
         isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
         deletedBy: "",
         deletedAt: "",
-        isManuallyRestored: Boolean(editingIssue?.isManuallyRestored)
+        isManuallyRestored: Boolean(editingIssue?.isManuallyRestored),
+        isFirstScreenOrigin: true, // 🌟 첫 화면에서 등록된 공식 이슈임을 명시
+        origin: "FIRST_SCREEN"
       };
       if (editingIssue?.createdAt) {
         itemToSave.createdAt = editingIssue.createdAt;
@@ -1668,7 +1716,7 @@ export const AuthModal = () => {
               setIsListModalOpen(false);
               setSelectedListItem(null);
             }}
-            urgentIssues={urgentIssues}
+            urgentIssues={urgentIssues.filter(isFirstScreenIssue)}
             filteredIssues={filteredIssues}
             restoreToast={restoreToast}
             setRestoreToast={setRestoreToast}
