@@ -335,24 +335,47 @@ export const WorkerPinModal = ({
   // Backward compatibility alias for Hanul worker checks
   const isHanulWorker = isHanul;
 
+  // 🌟 가공동 작업자 판별 (상단 가공동 31명 포털 및 가공 현장 인원)
+  const isMachiningWorker = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isExtrusionWorker || isHanulOrBurim) return false;
+    return Boolean(
+      selectedUser.isFieldWorker ||
+      selectedUser.building === "가공동" ||
+      selectedUser.dept === "가공동" ||
+      String(selectedUser.id || "").startsWith("mach_") ||
+      (selectedUser.company === "오륙" && (selectedUser.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(selectedUser.line)))
+    );
+  }, [selectedUser, isExtrusionWorker, isHanulOrBurim]);
+
+  // 🌟 4대 현장 작업자 (압출동, 가공동, 한울, 부림텍) 통합 판별
+  const isFieldWorker = useMemo(() => {
+    return Boolean(
+      isExtrusionWorker ||
+      isHanulOrBurim ||
+      isMachiningWorker ||
+      selectedUser?.isFieldWorker
+    );
+  }, [isExtrusionWorker, isHanulOrBurim, isMachiningWorker, selectedUser]);
+
   // 🌟 2. 첫화면 아래 협력업체 대표이사 계정 판별 (유성 등 관리자급 협력사, 한울/부림텍은 isHanulOrBurim으로 전용 처리)
   const isCompanyRepresentative = useMemo(() => {
     if (!selectedUser) return false;
-    if (isHanulOrBurim) return false;
+    if (isHanulOrBurim || isFieldWorker) return false;
     return Boolean(
       selectedUser.id === "sam_ys" ||
-      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_")) ||
+      (selectedUser.title === "대표이사" && !String(selectedUser.id || "").includes("_") && !selectedUser.isFieldWorker) ||
       (!selectedUser.isFieldWorker && selectedUser.name === "유성")
     );
-  }, [selectedUser, isHanulOrBurim]);
+  }, [selectedUser, isHanulOrBurim, isFieldWorker]);
 
-  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성)
+  // 🌟 3. 관리자 화면 표시 대상: 본사 임원, 공장 관리자, 협력사 대표이사(유성) - 현장 작업자는 완전 배제
   const isAdminUser = useMemo(() => {
     if (!selectedUser) return false;
-    if (isHanulOrBurim) return false;
+    if (isFieldWorker) return false;
     if (isCompanyRepresentative) return true;
-    return !isExtrusionWorker && !isHanulWorker && !selectedUser.isFieldWorker;
-  }, [selectedUser, isHanulOrBurim, isCompanyRepresentative, isExtrusionWorker, isHanulWorker]);
+    return true;
+  }, [selectedUser, isFieldWorker, isCompanyRepresentative]);
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
@@ -678,168 +701,222 @@ export const WorkerPinModal = ({
   }, [fourMLedgerRecords, allUnified4MRecords]);
 
   // =========================================================================
-  // 🌟 2. 역할별 품질이슈 및 공지 데이터
+  // 🌟 2. 현장 작업자 전용 2개 패널 데이터 (소속 관리자 이슈 + 첫화면 품질경보/당일공지)
   // =========================================================================
-  // 2-1. 압출동 품질이슈 (설유철 책임 등록)
-  const activeExtrusionIssues = useMemo(() => {
-    return (extrusionQualityIssues || []).filter((it) => it && it.status === "ACTIVE");
-  }, [extrusionQualityIssues]);
-
-  // 2-2. 가공동 품질이슈 (품질경보 및 긴급 품질안건)
-  const processingQualityIssues = useMemo(() => {
-    const list = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
-    return (list || []).filter((it) => {
-      if (!it || it.isDeleted) return false;
-      const cat = String(it.category || "").trim();
-      return cat === "품질경보" || cat === "품질 경보" || cat === "품질이슈" || cat.includes("품질");
-    }).slice(0, 4);
-  }, [urgentIssues, localUrgentIssues]);
-
-  // 2-3. 한울 & 부림텍 전용: 관리자가 등록한 이슈만 엄선 (재해 + 관리자가 등록한 이슈만 표시)
-  // 🌟 출근부 결근/근태 자동생성, 비가동/TPM 자동 로그 등 현장 잡음은 완전 배제하고,
-  // 관리자가 등록한 품질경보, 긴급이슈, 사내공지, 공식 4M 대장 등록 건만 직관적으로 표시
-  const adminRegisteredIssues = useMemo(() => {
-    const list = [];
+  // 2-1. [패널 2] 뱃지 소속 관리자가 올리는 품질이슈 또는 긴급공지
+  const managerQualitySection = useMemo(() => {
+    let sectorName = "가공동";
+    let managerName = "윤경수 책임";
+    let subText = "윤경수 책임 공지 • 가공 라인별 품질이슈 및 긴급공지";
+    const issues = [];
     const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
-    const seenIds = new Set();
 
-    // 1. urgentIssues (관리자가 직접 등록한 품질경보, 공지사항, 품질안건, 오픈이슈)
-    (sourceIssues || []).forEach((issue) => {
-      if (!issue || issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
-      if (isMeetingExpired(issue, 0)) return; // 기한 지난 회의 제외
-      if ((issue.category === "공지사항" || issue.category === "사내공지") && issue.expireDate && issue.expireDate < todayKst && !issue.isManuallyRestored) {
-        return; // 기한 지난 일반 공지 제외
-      }
+    if (isExtrusionWorker) {
+      sectorName = "압출동";
+      managerName = "설유철 책임";
+      subText = "설유철 책임 공지 • 압출 라인별 불량 원인 및 조치";
 
-      const cat = String(issue.category || "").trim();
-      const title = String(issue.title || "").trim();
-      const content = String(issue.content || "").trim();
-      const plant = String(issue.plant || "").trim();
-      const target = String(issue.target || "").trim();
-      const company = String(issue.company || "").trim();
-      const lineStr = String(issue.line || issue.process || "").trim();
-
-      // 타 공장 전용 라인 비가동/트러블(예: 삼랑진 압출 1~8호기) 이슈는 제외
-      const isExtrusionExclusive =
-        (plant === "삼랑진공장" && (lineStr.includes("압출") || title.includes("압출") || content.includes("압출")) && !title.includes("전사") && !title.includes("공통")) ||
-        (lineStr.includes("압출") && !title.includes("전사") && !title.includes("공통") && !cat.includes("경보"));
-
-      // 한울/부림텍 관련 또는 전사 공통 여부
-      const isRelevant =
-        plant === "한림공장" ||
-        plant === "전체" ||
-        plant === "공통" ||
-        plant === "전사" ||
-        plant === "본사" ||
-        !plant ||
-        company.includes("한울") ||
-        company.includes("부림") ||
-        target.includes("한울") ||
-        target.includes("부림") ||
-        target.includes("한림") ||
-        cat.includes("품질") ||
-        cat.includes("경보") ||
-        cat.includes("공지") ||
-        cat.includes("안전");
-
-      if (isExtrusionExclusive && !isRelevant) return;
-
-      // 🌟 업체별 격리: 한울 작업자에게는 부림텍 전용 제외, 부림텍 작업자에게는 한울 전용 제외
-      if (isHanul && (company.includes("부림") || target.includes("부림")) && !company.includes("한울") && !target.includes("한울")) return;
-      if (isBurimtech && (company.includes("한울") || target.includes("한울")) && !company.includes("부림") && !target.includes("부림")) return;
-
-      const issueId = `urg_${issue.id || issue._docId || Math.random()}`;
-      if (seenIds.has(issueId)) return;
-      seenIds.add(issueId);
-
-      list.push({
-        id: issueId,
-        rawId: issue.id || issue._docId,
-        category: cat || "품질경보",
-        plant: plant || "한림공장",
-        line: lineStr,
-        title: title || content || "(관리자 등록 공지)",
-        content: content || title || "",
-        actionResult: issue.actionResult || issue.actionGuide || "",
-        author: issue.author || issue.registeredBy || "관리자",
-        authorTitle: issue.authorTitle || "",
-        date: issue.date || issue.startDate || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim())),
-        images: Array.isArray(issue.images) ? issue.images : []
-      });
-    });
-
-    // 2. fourMLedgerRecords (관리자가 4M 종합상황실에서 공식 '대장 등록'한 핵심 이슈)
-    (fourMLedgerRecords || []).forEach((rec) => {
-      if (!rec || !rec.isOfficialLedger) return;
-      const plant = String(rec.plant || "").trim();
-      const comp = String(rec.company || "").trim();
-      const lineStr = String(rec.line || "").trim();
-
-      // 삼랑진 압출동 전용 건 제외
-      if (plant === "삼랑진공장" && !comp.includes("한울") && !comp.includes("부림") && lineStr.includes("압출")) {
-        return;
-      }
-
-      // 업체별 상호 격리
-      if (isHanul && comp.includes("부림") && !comp.includes("한울")) return;
-      if (isBurimtech && comp.includes("한울") && !comp.includes("부림")) return;
-
-      const recId = `fourm_ledger_${rec.id || rec.originalId || Math.random()}`;
-      if (seenIds.has(recId)) return;
-      seenIds.add(recId);
-
-      list.push({
-        id: recId,
-        rawId: rec.id || rec.originalId,
-        category: rec.category || rec.fourM || "4M대장",
-        plant: plant || "한림공장",
-        line: lineStr,
-        title: rec.title || rec.content || "4M 공식 대장 등록 이슈",
-        content: rec.content || rec.title || "",
-        actionResult: rec.actionResult || "",
-        author: rec.registeredBy || rec.writer || "관리자",
-        authorTitle: "",
-        date: rec.date || (rec.registeredAt ? String(rec.registeredAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(rec.isResolved || (rec.actionResult && String(rec.actionResult).trim())),
-        images: Array.isArray(rec.images) ? rec.images : []
-      });
-    });
-
-    // 3. hanulQualityIssues (한울 전용 품질경보 실시간 등록 건) - 🌟 한울 소속 작업자(25명)에게만 엄격 한정 공지!
-    if (isHanul) {
-      (hanulQualityIssues || []).forEach((item) => {
-        if (!item || item.status === "RESOLVED") return;
-        const issueId = `hanul_qual_${item.id}`;
-        if (seenIds.has(issueId)) return;
-        seenIds.add(issueId);
-
-        const causeImgs = Array.isArray(item.causeImages) ? item.causeImages : [];
-        const actionImgs = Array.isArray(item.actionImages) ? item.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs]
-          .map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img))
-          .filter(Boolean);
-
-        list.push({
-          id: issueId,
-          rawId: item.id,
-          category: "품질경보",
-          plant: "한림공장",
-          line: item.line || "9BQC (G/RUN)",
-          title: item.title || "한울 품질경보",
-          content: item.content || item.title || "",
-          actionResult: item.actionResult || "",
-          author: item.author || "한울",
-          authorTitle: item.authorTitle || "대표",
-          date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
-          isResolved: item.status === "RESOLVED",
-          images: allImgs
+      (extrusionQualityIssues || []).forEach((eq) => {
+        if (!eq || eq.status === "RESOLVED") return;
+        issues.push({
+          id: `ext_q_${eq.id}`,
+          title: eq.title,
+          content: eq.content,
+          line: eq.line,
+          defectType: eq.defectType,
+          actionResult: eq.actionResult || eq.actionGuide,
+          images: eq.images || [],
+          date: eq.date || (eq.createdAt ? String(eq.createdAt).slice(0, 10) : todayKst),
+          author: "설유철 책임"
         });
+      });
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const isSeol = u.author === "설유철" || String(u.author).includes("설유철");
+        const isExt = String(u.plant || u.line || "").includes("압출") && !String(u.id || "").startsWith("ext_q_");
+        if (isSeol || (isExt && String(u.category || "").includes("품질"))) {
+          issues.push({
+            id: `urg_ext_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "압출",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author ? `${u.author} ${u.authorTitle || ""}` : "설유철 책임"
+          });
+        }
+      });
+    } else if (isHanul) {
+      sectorName = "(주)한울";
+      managerName = "한울 관리자";
+      subText = "한울 관리자 공지 • 9BQC / LQ2 외주가공 품질이슈 및 공지";
+
+      (hanulQualityIssues || []).forEach((hq) => {
+        if (!hq || hq.status === "RESOLVED") return;
+        const causeImgs = Array.isArray(hq.causeImages) ? hq.causeImages : [];
+        const actionImgs = Array.isArray(hq.actionImages) ? hq.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+        issues.push({
+          id: `hq_${hq.id}`,
+          title: hq.title,
+          content: hq.defectDescription || hq.content,
+          line: hq.line || "9BQC/LQ2",
+          defectType: hq.defectType,
+          actionResult: hq.actionPlan || hq.actionResult,
+          images: allImgs,
+          date: hq.date || todayKst,
+          author: "한울 관리자"
+        });
+      });
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const comp = String(u.company || "");
+        const target = String(u.target || "");
+        const author = String(u.author || "");
+        if (comp.includes("한울") || target.includes("한울") || author.includes("한울") || author === "황수현") {
+          issues.push({
+            id: `urg_hu_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "한울",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author || "한울 관리자"
+          });
+        }
+      });
+    } else if (isBurimtech) {
+      sectorName = "(주)부림텍";
+      managerName = "부림텍 관리자";
+      subText = "부림텍 관리자 공지 • 부림텍 외주가공 품질이슈 및 공지";
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const comp = String(u.company || "");
+        const target = String(u.target || "");
+        const author = String(u.author || "");
+        if (comp.includes("부림") || target.includes("부림") || author.includes("부림") || author === "김동훈") {
+          issues.push({
+            id: `urg_br_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "부림텍",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author || "부림텍 관리자"
+          });
+        }
+      });
+    } else {
+      // 가공동 (윤경수 책임)
+      sectorName = "가공동";
+      managerName = "윤경수 책임";
+      subText = "윤경수 책임 공지 • 가공 라인별 품질이슈 및 긴급공지";
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수");
+        const isMach = (String(u.line || u.plant || u.target || "").includes("가공") || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(u.line)) && !String(u.line || "").includes("외주");
+        if (isYoon || isMach) {
+          issues.push({
+            id: `urg_mach_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "가공",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author ? `${u.author} ${u.authorTitle || ""}` : "윤경수 책임"
+          });
+        }
       });
     }
 
+    const seen = new Set();
+    const dedupedIssues = [];
+    issues.forEach((it) => {
+      const key = `${it.title}_${it.date}`;
+      if (!seen.has(key) && !seen.has(it.id)) {
+        seen.add(key);
+        seen.add(it.id);
+        dedupedIssues.push(it);
+      }
+    });
+
+    return {
+      sectorName,
+      managerName,
+      subText,
+      issues: dedupedIssues.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    };
+  }, [isExtrusionWorker, isHanul, isBurimtech, extrusionQualityIssues, hanulQualityIssues, urgentIssues, localUrgentIssues, todayKst]);
+
+  // 2-2. [패널 3] 첫화면 품질경보 & 당일 사내공지 (사내공지 당일 1일 한정 노출)
+  const firstScreenQualityAndNotices = useMemo(() => {
+    const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
+    const list = [];
+    const seenIds = new Set();
+
+    (sourceIssues || []).forEach((item) => {
+      if (!item || item.isDeleted === true || item.deleted === true) return;
+
+      const id = String(item.id || item._docId || "");
+      if (
+        id.startsWith("hanul_qual_") ||
+        id.startsWith("urg_hanul_") ||
+        id.startsWith("ext_qual_") ||
+        id.startsWith("urg_ext_")
+      ) {
+        return;
+      }
+      if (item.isFirstScreenOrigin === false) return;
+
+      const cat = String(item.category || "").trim();
+      const isQualityAlert = cat === "품질경보" || cat === "품질 경보" || cat === "quality_alert" || cat.includes("품질경보");
+      const isNotice = cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat === "notice" || cat.includes("공지");
+
+      if (!isQualityAlert && !isNotice) return;
+
+      // 🌟 사내공지 1일 한정 룰:
+      // "혹 첫화면에 사내공지가 뜨면 하루에 한해서 보여지도록 구성하고싶음."
+      if (isNotice) {
+        const noticeDate = item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : "");
+        if (noticeDate !== todayKst) {
+          return;
+        }
+      }
+
+      const uniqueKey = item.id || item._docId || Math.random();
+      if (seenIds.has(uniqueKey)) return;
+      seenIds.add(uniqueKey);
+
+      list.push({
+        id: uniqueKey,
+        category: isQualityAlert ? "품질경보" : "사내공지",
+        isQualityAlert,
+        isNotice,
+        plant: item.plant || "전사",
+        title: item.title || item.content || "(공지)",
+        content: item.content || item.title || "",
+        actionResult: item.actionResult || item.actionGuide || "",
+        author: item.author || item.registeredBy || "",
+        date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
+        images: Array.isArray(item.images) ? item.images : []
+      });
+    });
+
     return list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, fourMLedgerRecords, hanulQualityIssues, todayKst, isHanul, isBurimtech]);
+  }, [urgentIssues, localUrgentIssues, todayKst]);
 
   // =========================================================================
   // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)
@@ -1293,17 +1370,13 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || ""}님, <br className="hidden sm:inline" />
-                    {isHanulOrBurim
-                      ? "중대재해공유판 및 관리자 등록 이슈를 확인바랍니다."
-                      : "중대재해공유판, 품질이슈 및 4M 변동점 발생공지를 확인바랍니다."}
+                    {isFieldWorker
+                      ? "안전·품질 확인을 위해 비밀번호(11)를 입력해 주세요."
+                      : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    {isExtrusionWorker
-                      ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
-                      : isHanulOrBurim
-                      ? `인증 시 [중대재해공유판 + 관리자 등록 이슈]가 표시됩니다.`
-                      : isProcessingWorker
-                      ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
+                    {isFieldWorker
+                      ? "인증 시 [중대재해공유판 + 소속 관리자 품질이슈/긴급공지 + 첫화면 품질경보]가 표시됩니다."
                       : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 변동점 발생공지 + 근태정보]가 표시됩니다."}
                   </p>
                 </div>
@@ -1447,365 +1520,188 @@ export const WorkerPinModal = ({
                   {/* ===================================================================== */}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 1: 압출동 작업자 -> 압출 품질이슈 + 압출 변동점 발생상황 */}
+                  {/* 현장 작업자 통합 뷰 (압출동 / 가공동 / 한울 / 부림텍 4개 포털 100% 동일 형식) */}
+                  {/* [패널 2: 소속 관리자 품질이슈/긴급공지] + [패널 3: 첫화면 품질경보 & 당일 공지] */}
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {isExtrusionWorker && (
+                  {!isAdminUser && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 압출동 품질이슈 */}
-                      <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
-                              <AlertTriangle className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                🚨 압출동 품질이슈
-                              </span>
-                              <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
-                                설유철 책임 공지 • 라인별 불량 원인 및 조치
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
-                            {activeExtrusionIssues.length}건 진행중
-                          </span>
-                        </div>
-
-                        {activeExtrusionIssues.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {activeExtrusionIssues.map((issue) => (
-                              <div
-                                key={issue.id}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                                      {issue.line}
-                                    </span>
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                                      {issue.defectType}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{issue.date || issue.createdAt?.slice(0, 10)}</span>
-                                </div>
-                                <h5 className="font-black text-slate-900 dark:text-white text-xs">{issue.title}</h5>
-                                {issue.content && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
-                                    {issue.content}
-                                  </p>
-                                )}
-                                {(issue.actionResult || issue.actionGuide) && (
-                                  <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
-                                    ↳ 🟢 <b>[조치]</b> {typeof (issue.actionResult || issue.actionGuide) === "string" ? (issue.actionResult || issue.actionGuide) : String(issue.actionResult || issue.actionGuide || "")}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-4 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-rose-400" />
-                            <span>현재 진행 중인 압출 품질이슈가 없습니다.</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 2. 4M 변동점 발생공지 (동일 내용 최근 2건) */}
-                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                              <Activity className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 4M 변동점 발생공지
-                              </span>
-                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            최근 {recent4MRecords.length}건
-                          </span>
-                        </div>
-
-                        {recent4MRecords.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {recent4MRecords.map((item) => (
-                              <div
-                                key={item.id}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
-                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
-                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
-                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
-                                      "bg-rose-100 text-rose-800 border border-rose-300"
-                                    }`}>
-                                      {item.origin}
-                                    </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
-                                      {item.plant?.replace("공장", "")} • {item.line}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
-                                </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
-                                {item.content && item.content !== item.title && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                                    {item.content}
-                                  </p>
-                                )}
-                                {item.actionResult && (
-                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                            <span>최근 등록된 변동점이 없습니다.</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 2: 가공동 작업자 -> 가공 품질이슈 + 4M 변동점 발생공지 */}
-                  {/* ───────────────────────────────────────────────────────────────── */}
-                  {isProcessingWorker && (
-                    <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 가공동 품질이슈 */}
-                      <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
-                              <AlertTriangle className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                🚨 가공동 품질이슈 & 품질경보
-                              </span>
-                              <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
-                                {selectedUser.plant || "가공동"} 품질경보 및 중점 불량 관리
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
-                            {processingQualityIssues.length}건 발령중
-                          </span>
-                        </div>
-
-                        {processingQualityIssues.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {processingQualityIssues.map((issue) => (
-                              <div
-                                key={issue.id || issue._docId}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
-                                      {issue.category || "품질경보"}
-                                    </span>
-                                    <span className="text-slate-500 font-bold text-[10.5px]">{issue.plant}</span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{issue.date || issue.startDate || todayKst}</span>
-                                </div>
-                                <h5 className="font-black text-slate-900 dark:text-white text-xs">{issue.title}</h5>
-                                {issue.content && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
-                                    {issue.content}
-                                  </p>
-                                )}
-                                {issue.actionResult && (
-                                  <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
-                                    ↳ 🟢 <b>[조치]</b> {typeof issue.actionResult === "string" ? issue.actionResult : String(issue.actionResult || "")}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-4 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-rose-400" />
-                            <span>현재 진행 중인 가공 품질이슈가 없습니다.</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 2. 4M 변동점 발생공지 */}
-                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                              <Activity className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 4M 변동점 발생공지
-                              </span>
-                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            최근 {recent4MRecords.length}건
-                          </span>
-                        </div>
-
-                        {recent4MRecords.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {recent4MRecords.map((item) => (
-                              <div
-                                key={item.id}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
-                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
-                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
-                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
-                                      "bg-rose-100 text-rose-800 border border-rose-300"
-                                    }`}>
-                                      {item.origin}
-                                    </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
-                                      {item.plant?.replace("공장", "")} • {item.line}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
-                                </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
-                                {item.content && item.content !== item.title && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                                    {item.content}
-                                  </p>
-                                )}
-                                {item.actionResult && (
-                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                            <span>최근 등록된 변동점이 없습니다.</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 2: 한울 및 부림텍 -> 압출동과 마찬가지로 재해(좌측) + 관리자가 등록한 이슈만(우측) */}
-                  {/* ───────────────────────────────────────────────────────────────── */}
-                  {isHanulOrBurim && (
-                    <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      <div className="p-4 sm:p-5 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm flex flex-col justify-between space-y-3 h-full">
-                        <div className="space-y-3">
+                      {/* =============================================================== */}
+                      {/* [패널 2] 소속 관리자 품질이슈 또는 긴급공지 */}
+                      {/* =============================================================== */}
+                      <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5 flex-1 flex flex-col justify-between">
+                        <div className="space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
                                 <AlertTriangle className="w-4 h-4" />
                               </div>
                               <div>
-                                <span className="text-sm md:text-base font-black text-slate-900 dark:text-white block leading-tight">
-                                  🚨 관리자 등록 이슈 및 공지사항
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  🚨 [{managerQualitySection.sectorName}] {managerQualitySection.managerName} 품질이슈 및 긴급공지
                                 </span>
                                 <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
-                                  {isHanul ? "한울 외주가공" : isBurimtech ? "부림텍 외주가공" : (selectedUser?.company || "한림공장")} • 관리자 공지 및 품질경보
+                                  {managerQualitySection.subText}
                                 </span>
                               </div>
                             </div>
 
-                            <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
-                              {adminRegisteredIssues.length}건 등록됨
+                            <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700 shrink-0">
+                              {managerQualitySection.issues.length}건 등록됨
                             </span>
                           </div>
 
-                          {adminRegisteredIssues.length > 0 ? (
-                            <div className="space-y-2.5 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                              {adminRegisteredIssues.map((issue) => {
-                                const catStr = String(issue.category || "");
-                                const isQualityAlert = catStr === "품질경보" || catStr.includes("품질경보");
-                                const isNotice = catStr.includes("공지");
-                                const isQualityIssue = catStr.includes("품질") || catStr.includes("이슈");
-                                const badgeClass = isQualityAlert
-                                  ? "bg-rose-600 text-white"
-                                  : isNotice
-                                  ? "bg-blue-600 text-white"
-                                  : isQualityIssue
-                                  ? "bg-amber-500 text-white"
-                                  : "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900";
+                          {managerQualitySection.issues.length > 0 ? (
+                            <div className="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
+                              {managerQualitySection.issues.map((issue) => (
+                                <div
+                                  key={issue.id}
+                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1 text-xs shadow-2xs hover:border-rose-400 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-1">
+                                      {issue.line && (
+                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                                          {issue.line}
+                                        </span>
+                                      )}
+                                      {issue.defectType && (
+                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                          {issue.defectType}
+                                        </span>
+                                      )}
+                                      {issue.author && (
+                                        <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                          {issue.author}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono">{issue.date}</span>
+                                  </div>
+                                  <h5 className="font-black text-slate-900 dark:text-white text-xs">{issue.title}</h5>
+                                  {issue.content && issue.content !== issue.title && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                      {issue.content}
+                                    </p>
+                                  )}
+                                  {/* 첨부 이미지 썸네일 */}
+                                  {Array.isArray(issue.images) && issue.images.length > 0 && (
+                                    <div className="flex gap-1.5 overflow-x-auto py-1">
+                                      {issue.images.slice(0, 4).map((img, imgIdx) => {
+                                        const imgUrl = typeof img === "object" ? (img.url || img.dataUrl) : img;
+                                        if (!imgUrl) return null;
+                                        return (
+                                          <div
+                                            key={imgIdx}
+                                            onClick={() => setPreviewImage({
+                                              list: issue.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: String(issue.title || "") })),
+                                              index: imgIdx,
+                                              url: imgUrl,
+                                              name: String(issue.title || "")
+                                            })}
+                                            className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                                          >
+                                            <img src={imgUrl} alt="첨부" className="w-full h-full object-cover" />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {issue.actionResult && (
+                                    <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
+                                      ↳ 🟢 <b>[조치사항]</b> {typeof issue.actionResult === "string" ? issue.actionResult : String(issue.actionResult || "")}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-6 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-rose-400" />
+                              <span>현재 진행 중인 {managerQualitySection.managerName} 품질이슈 및 긴급공지가 없습니다.</span>
+                            </div>
+                          )}
+                        </div>
 
+                        <div className="pt-2 border-t border-rose-200 dark:border-rose-900/50 flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                          <span>게시 관리: {managerQualitySection.managerName}</span>
+                          <span>최신순 정렬</span>
+                        </div>
+                      </div>
+
+                      {/* =============================================================== */}
+                      {/* [패널 3] 첫화면 품질경보 & 당일 사내공지 (사내공지 당일 1일 한정 노출) */}
+                      {/* =============================================================== */}
+                      <div className="p-4 rounded-3xl bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-800/80 shadow-sm space-y-2.5 flex-1 flex flex-col justify-between">
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
+                                <Megaphone className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  📢 첫화면 품질경보 & 당일 공지
+                                </span>
+                                <span className="text-[10.5px] font-bold text-amber-700 dark:text-amber-300">
+                                  전사 품질경보 발령건 • 사내공지는 등록 당일(1일간) 한정 노출
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-xs font-black text-amber-900 dark:text-amber-200 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 shrink-0">
+                              {firstScreenQualityAndNotices.length}건 발령중
+                            </span>
+                          </div>
+
+                          {firstScreenQualityAndNotices.length > 0 ? (
+                            <div className="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
+                              {firstScreenQualityAndNotices.map((item) => {
+                                const isNotice = item.isNotice;
                                 return (
                                   <div
-                                    key={issue.id}
-                                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-2 text-xs shadow-2xs hover:border-rose-400 transition-colors"
+                                    key={item.id}
+                                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 space-y-1 text-xs shadow-2xs hover:border-amber-400 transition-colors"
                                   >
                                     <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${badgeClass}`}>
-                                          {catStr || "공지"}
+                                      <div className="flex items-center gap-1">
+                                        <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                                          isNotice ? "bg-blue-600 text-white" : "bg-rose-600 text-white"
+                                        }`}>
+                                          {item.category}
                                         </span>
-                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                          {issue.plant ? String(issue.plant).replace("공장", "") : "전사"}
-                                        </span>
-                                        {issue.author && (
-                                          <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-400">
-                                            {String(issue.author)} {issue.authorTitle ? String(issue.authorTitle) : ""}
+                                        {isNotice && (
+                                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+                                            당일공지
                                           </span>
                                         )}
+                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                          {item.plant} {item.author ? `• ${item.author}` : ""}
+                                        </span>
                                       </div>
-                                      <span className="text-[10px] text-slate-400 font-mono">{issue.date ? String(issue.date) : ""}</span>
+                                      <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
                                     </div>
-
-                                    <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm leading-snug">
-                                      {typeof issue.title === "string" ? issue.title : String(issue.title || "")}
-                                    </h5>
-
-                                    {issue.content && issue.content !== issue.title && (
-                                      <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
-                                        {typeof issue.content === "string" ? issue.content : String(issue.content || "")}
+                                    <h5 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h5>
+                                    {item.content && item.content !== item.title && (
+                                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                        {item.content}
                                       </p>
                                     )}
-
                                     {/* 첨부 이미지 썸네일 */}
-                                    {Array.isArray(issue.images) && issue.images.length > 0 && (
-                                      <div className="flex gap-2 overflow-x-auto py-1">
-                                        {issue.images.slice(0, 4).map((img, imgIdx) => {
+                                    {Array.isArray(item.images) && item.images.length > 0 && (
+                                      <div className="flex gap-1.5 overflow-x-auto py-1">
+                                        {item.images.slice(0, 4).map((img, imgIdx) => {
                                           const imgUrl = typeof img === "object" ? (img.url || img.dataUrl) : img;
                                           if (!imgUrl) return null;
                                           return (
                                             <div
                                               key={imgIdx}
                                               onClick={() => setPreviewImage({
-                                                list: issue.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: String(issue.title || "") })),
+                                                list: item.images.map((im) => ({ url: typeof im === "object" ? (im.url || im.dataUrl) : im, name: String(item.title || "") })),
                                                 index: imgIdx,
                                                 url: imgUrl,
-                                                name: String(issue.title || "")
+                                                name: String(item.title || "")
                                               })}
-                                              className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                                              className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
                                             >
                                               <img src={imgUrl} alt="첨부" className="w-full h-full object-cover" />
                                             </div>
@@ -1813,11 +1709,9 @@ export const WorkerPinModal = ({
                                         })}
                                       </div>
                                     )}
-
-                                    {/* 조치 내용 / 조치 결과 */}
-                                    {issue.actionResult && (
-                                      <div className="text-[10.5px] sm:text-[11px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-2 rounded-xl border border-teal-200 dark:border-teal-800 leading-relaxed">
-                                        ↳ 🟢 <b>[조치사항]</b> {typeof issue.actionResult === "string" ? issue.actionResult : String(issue.actionResult || "")}
+                                    {item.actionResult && (
+                                      <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
+                                        ↳ 🟢 <b>[조치사항]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
                                       </div>
                                     )}
                                   </div>
@@ -1825,17 +1719,16 @@ export const WorkerPinModal = ({
                               })}
                             </div>
                           ) : (
-                            <div className="py-16 text-center text-xs sm:text-sm text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800/60 flex flex-col items-center justify-center space-y-1.5 my-auto">
-                              <CheckCircle2 className="w-8 h-8 text-rose-400" />
-                              <span>현재 등록된 관리자 이슈 및 공지사항이 없습니다.</span>
-                              <span className="text-[11px] text-slate-500 font-medium">안전하고 원활한 작업을 진행해 주시기 바랍니다.</span>
+                            <div className="py-6 text-center text-xs text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-amber-300 flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                              <span>첫화면에 등록된 품질경보 또는 당일 공지사항이 없습니다.</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="pt-2.5 border-t border-rose-200 dark:border-rose-900/50 flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
-                          <span>관리자 공지 및 품질 관리 연동</span>
-                          <span>최신순 정렬</span>
+                        <div className="pt-2 border-t border-amber-200 dark:border-amber-900/50 flex items-center justify-between text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                          <span>첫화면 품질경보 실시간 연동</span>
+                          <span>공지는 등록 당일만 표시</span>
                         </div>
                       </div>
                     </div>

@@ -82,6 +82,7 @@ export const AuthModal = () => {
   const [isSevereDisasterModalOpen, setIsSevereDisasterModalOpen] = useState(false);
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
   const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
+  const [isMachiningModalOpen, setIsMachiningModalOpen] = useState(false);
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
@@ -319,6 +320,13 @@ export const AuthModal = () => {
   const bulimtechWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
       (w) => w.company?.includes("부림텍") && w.name !== "김동훈" && w.name !== "황수현"
+    );
+  }, []);
+
+  // Machining master workers list (오륙 가공동 31명 - 퇴사자 제외)
+  const machiningWorkers = useMemo(() => {
+    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
+      (w) => w.company === "오륙" && w.dept === "가공동" && w.status !== "퇴사"
     );
   }, []);
 
@@ -1468,6 +1476,7 @@ export const AuthModal = () => {
   useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
+  useModalHistory(isMachiningModalOpen, () => setIsMachiningModalOpen(false), "machiningModal");
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
 
@@ -1546,17 +1555,14 @@ export const AuthModal = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  const el = document.getElementById("worker-login-section-root");
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                title="삼랑진·한림공장 가공동 작업자 (15명)"
+                onClick={() => setIsMachiningModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-amber-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-amber-400/30"
+                title={`삼랑진공장 가공동 작업자 전용 포털 (${machiningWorkers.length}명)`}
               >
-                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
+                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200 animate-pulse" />
                 <span>가공동</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hidden sm:inline">
-                  삼랑진·한림
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-900/80 text-amber-100 hidden sm:inline">
+                  {machiningWorkers.length}명
                 </span>
               </button>
 
@@ -1874,6 +1880,87 @@ export const AuthModal = () => {
         </div>
       )}
 
+      {/* 🏭 삼랑진공장 가공동 작업자 전용 팝업 선택 모달 */}
+      {isMachiningModalOpen && (
+        <div
+          onClick={() => setIsMachiningModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border-2 border-amber-400 dark:border-amber-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-600 text-white shadow-xs">
+                  <Factory className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                    <span>삼랑진공장 가공동 작업자</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
+                      총원 {machiningWorkers.length}명
+                    </span>
+                  </h3>
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                    비밀번호: 11 • 안전·품질 확인 후 가공 생산관리 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMachiningModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 가공 생산관리 화면으로 바로 연결됩니다.
+            </p>
+
+            {/* Scrollable Machining Workers Grid */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {machiningWorkers.map((worker, idx) => (
+                  <button
+                    key={worker.no || idx}
+                    type="button"
+                    onClick={() => {
+                      setIsMachiningModalOpen(false);
+                      handleUserClick({
+                        id: `mach_${worker.no || idx}`,
+                        name: worker.name,
+                        title: worker.position || "작업원",
+                        position: worker.position || "작업원",
+                        dept: worker.dept || "가공동",
+                        building: "가공동",
+                        plant: "삼랑진공장",
+                        company: "오륙",
+                        line: worker.line,
+                        assignedProcess: worker.line ? `${worker.line} 가공` : "가공",
+                        isFieldWorker: true
+                      });
+                    }}
+                    className="min-h-[44px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs hover:border-amber-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
+                  >
+                    <div className="w-[55%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
+                      <span className="font-black text-xs tracking-tight truncate">
+                        {worker.name}
+                      </span>
+                    </div>
+                    <div className="w-[45%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "가공"}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🏢 한림공장 한울 외주가공 전용 팝업 선택 모달 */}
       {isHanulModalOpen && (
