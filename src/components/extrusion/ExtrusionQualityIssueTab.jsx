@@ -662,7 +662,7 @@ export const ExtrusionQualityIssueTab = () => {
               }`}
             >
               {editingIssueId ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-              <span>{editingIssueId ? "품질이슈 수정 완료" : "🚨 압출동 품질이슈 등록 및 현장 전파"}</span>
+              <span>{editingIssueId ? "품질이슈 수정 완료" : "🚨 품질이슈 등록 및 현장전파"}</span>
             </button>
           </div>
         </form>

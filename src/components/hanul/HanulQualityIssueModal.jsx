@@ -707,7 +707,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   }`}
                 >
                   {editingIssueId ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                  <span>{editingIssueId ? "품질경보 수정 완료" : "🚨 한울 품질경보 등록 및 현장 전파"}</span>
+                  <span>{editingIssueId ? "품질이슈 수정 완료" : "🚨 품질이슈 등록 및 현장전파"}</span>
                 </button>
               </div>
             </form>
@@ -724,7 +724,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    한울 품질경보 및 이슈 목록
+                    한울 품질이슈 및 긴급공지 목록
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     총 {issues.length}건 등록됨 (현재 조건: {filteredIssues.length}건)
