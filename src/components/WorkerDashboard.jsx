@@ -3528,8 +3528,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     );
   }
 
-  // 🌟 한울 외주가공 현장작업자 로그인 시: 압출동과 동일한 형식(중대재해 + 사내공지 + 한울 9BQC/LQ2 품질이슈 공유판 + 9BQC/LQ2 작업일보 작성)
+  // 🌟 한울 외주가공 현장작업자 (상단 포털을 통해 로그인한 현장작업자만 해당)
+  // 첫 화면 아래쪽 한울 뱃지(대표이사)는 관리자이므로 기존 관리자 화면을 유지함
   const isHanulOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
     isHanulWorkerProfile(currentProfile) &&
     !isAdmin;
 

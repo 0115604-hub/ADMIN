@@ -239,21 +239,22 @@ export const acknowledgeHanulQualityIssue = async (id, workerName) => {
 // Check if worker belongs to Hanul (외주가공 작업자 또는 뱃지)
 export const isHanulWorkerProfile = (profile) => {
   if (!profile) return false;
+  // 🌟 첫 화면 아래쪽 한울 뱃지(대표이사 hal_hu)는 관리자이므로 일반 작업자 전용 모드에서 제외 (기존 관리자 화면 보존)
+  if (!profile.isFieldWorker && (profile.id === "hal_hu" || profile.name === "한울" || profile.title === "대표이사")) {
+    return false;
+  }
+  if (profile.name === "황수현" || profile.id === "hal_sh" || profile.id === "sam_sh") {
+    return false;
+  }
   const name = String(profile.name || "");
   const id = String(profile.id || "");
   const comp = String(profile.company || "");
   const line = String(profile.line || "");
 
-  // 🌟 황수현 선임은 한울 관리자이므로 일반 작업자 전용 모드에서 제외
-  if (name === "황수현" || id === "hal_sh" || id === "sam_sh") {
-    return false;
-  }
-
   return Boolean(
     comp.includes("한울") ||
     name === "한울" ||
-    id === "hal_hu" ||
-    id.startsWith("hal_hu_") ||
+    id.startsWith("hal_hu") ||
     line === "9BQC" ||
     line === "LQ2" ||
     line === "LQ2a" ||
