@@ -131,6 +131,154 @@ export const getInspectorGradeMeta = (grade) => {
   );
 };
 
+// ⭐ 현장 지정 관리자 기본 명단
+// - 압출동: 공영국(대리), 심임대(반장), 이상은(반장), 설유철(책임)
+// - 한울: 박종미(반장)
+// - 부림텍: 최현영(반장)
+export const FIELD_MANAGERS_LIST = [
+  "공영국",
+  "심임대",
+  "이상은",
+  "설유철",
+  "박종미",
+  "최현영"
+];
+
+// ⭐ 공장별 및 본사 관리자 (첫화면 아래 타일 인원: 정현규, 이상기 포함 전원 관리자)
+export const PLANT_MANAGERS_LIST = [
+  "이명재",
+  "설유철",
+  "윤경수",
+  "이창엽",
+  "전재율",
+  "양인나",
+  "유동길",
+  "조인주",
+  "이상기",
+  "김동욱",
+  "오상민",
+  "정현규"
+];
+
+/**
+ * 근로자가 '관리자'인지 '일반작업자'인지 판별하는 단일 기준 함수
+ * 사용자 요구사항:
+ * 1. 인사카드에 '관리자'가 선택되어 있지 않으면 무조건 '일반작업자'
+ * 2. 기본 현장 관리자: 압출동(공영국 대리, 심임대 반장, 이상은 반장, 설유철 책임), 한울(박종미 반장), 부림텍(최현영 반장)
+ * 3. 첫화면 아래쪽 타일 인원(공장별 관리자, 협력사 대표이사, 본사 관리자)은 기존 100% 관리자 유지
+ */
+export const isWorkerManagerRole = (userOrProfile, personnelCardsMap = null) => {
+  if (!userOrProfile) return false;
+  const name = String(userOrProfile.name || "").trim();
+  const id = String(userOrProfile.id || "").trim();
+  const comp = String(userOrProfile.company || "").trim();
+
+  // 1. 최고경영진 / 본사 관리자
+  if (
+    userOrProfile.role === "ADMIN" ||
+    id === "admin" ||
+    id.startsWith("admin_") ||
+    name === "권태형" ||
+    name === "최미영" ||
+    userOrProfile.plant === "본사"
+  ) {
+    return true;
+  }
+
+  // 2. 첫 화면 아래쪽 협력업체 대표이사 타일 (유성, 한울, 부림텍 대표이사)
+  if (
+    !userOrProfile.isFieldWorker &&
+    (id === "sam_ys" ||
+      id === "hal_hu" ||
+      id === "hal_br" ||
+      userOrProfile.isPartner ||
+      userOrProfile.title === "대표이사" ||
+      userOrProfile.title === "협력업체" ||
+      ["한울", "부림텍", "유성"].includes(name))
+  ) {
+    return true;
+  }
+
+  // 3. 첫 화면 아래쪽 삼랑진/한림 공장별 관리자 타일 (정현규, 이상기 포함 12인)
+  if (!userOrProfile.isFieldWorker && PLANT_MANAGERS_LIST.includes(name)) {
+    return true;
+  }
+
+  // 4. ⭐ 인사카드(Personnel Card) 설정 확인
+  // 인사카드에서 주공정(mainProcess)이 "관리자"로 선택되어 있는지 확인
+  let card = userOrProfile.personnelCard || userOrProfile.card || null;
+  if (!card) {
+    const map = personnelCardsMap || getLocalPersonnelCardsMap();
+    if (map) {
+      const cleanComp = cleanCompanyName(comp || normalizeStandardCompany(comp));
+      card =
+        map[`${cleanComp}_${name}`] ||
+        map[`${comp}_${name}`] ||
+        map[`주)오륙_${name}`] ||
+        map[`오륙_${name}`] ||
+        null;
+    }
+  }
+
+  if (card && card.mainProcess) {
+    // 인사카드에 주공정이 지정되어 있다면 "관리자"인 경우만 관리자, 그 외(압출, 소재준비, 사상, 검사 등)는 일반작업자!
+    return card.mainProcess === "관리자";
+  }
+
+  // 5. ⭐ 인사카드가 아직 생성/저장되지 않은 경우의 기본 지정 현황
+  // 압출동: 공영국(대리), 심임대(반장), 이상은(반장), 설유철(책임)
+  // 한울: 박종미(반장)
+  // 부림텍: 최현영(반장)
+  if (FIELD_MANAGERS_LIST.includes(name)) {
+    return true;
+  }
+
+  // 6. 그 외 모든 현장 작업자는 "일반작업자"
+  return false;
+};
+
+/**
+ * 근로자의 표시용 직급/역할 타이틀 반환
+ */
+export const getWorkerDisplayRoleMeta = (userOrProfile, personnelCardsMap = null) => {
+  if (!userOrProfile) {
+    return { isManager: false, roleBadgeText: "일반작업자", officialTitle: "작업원" };
+  }
+
+  const isManager = isWorkerManagerRole(userOrProfile, personnelCardsMap);
+  const name = String(userOrProfile.name || "").trim();
+
+  let card = userOrProfile.personnelCard || userOrProfile.card || null;
+  if (!card) {
+    const map = personnelCardsMap || getLocalPersonnelCardsMap();
+    if (map) {
+      const cleanComp = cleanCompanyName(userOrProfile.company || "");
+      card = map[`${cleanComp}_${name}`] || map[`주)오륙_${name}`] || null;
+    }
+  }
+
+  const explicitPosition = card?.position || userOrProfile.position || userOrProfile.title;
+
+  let officialTitle = "작업원";
+  if (explicitPosition) {
+    officialTitle = explicitPosition;
+  } else if (name === "공영국") {
+    officialTitle = "대리";
+  } else if (["심임대", "이상은", "박종미", "최현영"].includes(name)) {
+    officialTitle = "반장";
+  } else if (name === "설유철") {
+    officialTitle = "책임";
+  } else if (isManager) {
+    officialTitle = "반장";
+  } else {
+    officialTitle = "작업원";
+  }
+
+  const roleBadgeText = isManager ? `[현장관리자] ${officialTitle}` : "일반작업자";
+
+  return { isManager, roleBadgeText, officialTitle };
+};
+
 // 협력/외주 업체 여부 확인 (유성, 한울, 부림텍)
 export const isPartnerCompany = (comp) => {
   if (!comp) return false;
@@ -406,21 +554,27 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 사용자가 인사카드에서 직급(사원, 선임, 책임, 이사, 대표이사)을 선택/수정 저장한 경우 그 직급이 최우선 적용됨
   const position = merged.position
     ? normalizeStandardPosition(merged.position, company)
-    : (worker.position ? normalizeStandardPosition(worker.position, company) : (isPartner ? "대표이사" : "사원"));
+    : (worker.position
+        ? normalizeStandardPosition(worker.position, company)
+        : (isPartner && !worker.isFieldWorker ? "대표이사" : (name === "공영국" ? "선임" : ["심임대", "이상은", "박종미", "최현영"].includes(name) ? "선임" : "사원")));
 
   // 기본 주공정 추정 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
+  // ⭐ 인사카드에 관리자가 선택되어 있지 않으면 무조건 일반작업자 제조공정 배정
   let defaultMainProcess = merged.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
-    const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
-    if (hint.includes("압출")) defaultMainProcess = "압출";
-    else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
-    else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
-    else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
-    else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
-    else if (hint.includes("검사") || hint.includes("품질")) defaultMainProcess = "검사";
-    else if (hint.includes("물류") || dept.includes("물류")) defaultMainProcess = "소재준비";
-    else if (dept === "관리팀" || dept === "관리부" || hint.includes("관리자") || hint.includes("총무") || hint.includes("경영")) defaultMainProcess = "관리자";
-    else defaultMainProcess = "압출";
+    if (isWorkerManagerRole(merged)) {
+      defaultMainProcess = "관리자";
+    } else {
+      const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
+      if (hint.includes("압출") || worker.building === "압출동") defaultMainProcess = "압출";
+      else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
+      else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
+      else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
+      else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
+      else if (hint.includes("검사") || hint.includes("품질")) defaultMainProcess = "검사";
+      else if (hint.includes("물류") || dept.includes("물류")) defaultMainProcess = "소재준비";
+      else defaultMainProcess = worker.building === "압출동" ? "압출" : "사상";
+    }
   }
 
   // 기본 숙련도 추정

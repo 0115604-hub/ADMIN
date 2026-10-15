@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ClipboardList,
   Plus,
@@ -7,6 +6,7 @@ import {
   FileText,
   Clock,
 } from "lucide-react";
+import { isWorkerManagerRole } from "../../services/personnelCardService";
 
 export default function FieldWorkerDashboardView({
   workerPlant = "",
@@ -29,6 +29,8 @@ export default function FieldWorkerDashboardView({
   currentProfile = null,
   handleDeleteLog,
 }) {
+  const isManager = isWorkerManagerRole(currentProfile);
+
   return (
     <div className="space-y-3.5 sm:space-y-4 animate-fadeIn max-w-[1400px] w-full mx-auto min-w-0">
       {/* 1. Worker Profile & Header Card */}
@@ -42,7 +44,14 @@ export default function FieldWorkerDashboardView({
               <h2 className="text-base sm:text-lg font-black text-white">
                 주)오륙 {workerPlant} 오늘의 작업일보
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-400/30">
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                  isManager
+                    ? "bg-indigo-500/30 text-indigo-200 border-indigo-400/40 shadow-xs"
+                    : "bg-blue-500/20 text-blue-300 border-blue-400/30"
+                }`}
+              >
+                {isManager ? "[현장관리자] " : "[일반작업자] "}
                 {workerFullName} {workerPosition} [{assignedProcess}]
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">

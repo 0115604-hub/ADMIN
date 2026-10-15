@@ -32,6 +32,7 @@ import {
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
 import { getWorkLogText } from "../../services/workLogI18nService";
+import { isWorkerManagerRole } from "../../services/personnelCardService";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
@@ -42,6 +43,14 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ACTIVE", "ALL", "RESOLVED"
   const [searchQuery, setSearchQuery] = useState("");
   const [previewImage, setPreviewImage] = useState(null);
+
+  const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
+  const displayTitle = currentProfile?.title || (
+    currentProfile?.name === "공영국" ? "대리" :
+    ["심임대", "이상은"].includes(currentProfile?.name) ? "반장" :
+    currentProfile?.name === "설유철" ? "책임" :
+    (isManager ? "반장" : "작업원")
+  );
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -142,8 +151,15 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
               <h2 className="font-black text-sm sm:text-base leading-tight">
                 🏭 삼랑진공장 {getWorkLogText("extrusion_shop")} ({getWorkLogText("work_log_title")})
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-teal-500 text-slate-950">
-                {currentProfile?.name} {currentProfile?.title || "작업자"}
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black shadow-xs ${
+                  isManager
+                    ? "bg-indigo-500 text-white border border-indigo-300/40"
+                    : "bg-teal-500 text-slate-950"
+                }`}
+              >
+                {isManager ? "[현장관리자] " : "[일반작업자] "}
+                {currentProfile?.name} {displayTitle}
               </span>
             </div>
             <p className="text-xs text-teal-200/90 font-medium mt-0.5">

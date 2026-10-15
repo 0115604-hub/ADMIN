@@ -205,7 +205,7 @@ import CommonScheduleCommentsModal from "./dashboard/modals/CommonScheduleCommen
 import OvertimeReportDetailModal from "./dashboard/modals/OvertimeReportDetailModal";
 import CreateWorkLogModal from "./dashboard/modals/CreateWorkLogModal";
 import { getWorkLogText } from "../services/workLogI18nService";
-import { getWorkerPersonnelCard } from "../services/personnelCardService";
+import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
 
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
@@ -513,10 +513,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth, allMonthlyData } = useMonth();
   const { formatAmount } = useCurrency();
 
+  const isManagerRole = isWorkerManagerRole(currentProfile);
   const workerPlant = currentProfile?.plant || "삼랑진공장";
   const workerFullName = currentProfile?.name || "작업자";
-  const officialTitle = currentProfile?.title || "선임";
-  const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
+  const officialTitle = currentProfile?.title || (
+    currentProfile?.name === "공영국" ? "대리" :
+    ["심임대", "이상은", "박종미", "최현영"].includes(currentProfile?.name) ? "반장" :
+    currentProfile?.name === "설유철" ? "책임" :
+    (isManagerRole ? "반장" : "작업원")
+  );
+  const assignedProcess = currentProfile?.assignedProcess || (
+    currentProfile?.building === "압출동" ? "압출" :
+    isExtrusionWorker ? "압출" :
+    isHanul ? "외주가공 (한울)" :
+    isPartnerProfile ? "외주가공" :
+    "가공"
+  );
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isJaeyul = currentProfile?.name === "전재율" || currentProfile?.id === "sam_jy" || currentProfile?.assignedProcess === "설비보전" || (assignedProcess?.includes("설비보전"));
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
@@ -3966,7 +3978,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </button>
 
                   <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                    {officialTitle || (isAdmin ? "대표이사" : "선임")}
+                    {officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "작업원"))}
                   </span>
                 </div>
               </div>

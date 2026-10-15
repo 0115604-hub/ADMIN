@@ -35,6 +35,7 @@ import {
   subscribeUrgentIssues,
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
+import { isWorkerManagerRole } from "../../services/personnelCardService";
 
 const HanulWorkReportModal = lazy(() =>
   import("../HanulWorkReportModal").then((m) => ({
@@ -58,6 +59,11 @@ export const HanulWorkerDashboardView = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalProject, setReportModalProject] = useState("9BQC");
+
+  const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
+  const displayTitle = currentProfile?.title || currentProfile?.position || (
+    currentProfile?.name === "박종미" ? "반장" : (isManager ? "반장" : "작업원")
+  );
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -208,8 +214,15 @@ export const HanulWorkerDashboardView = () => {
               <h2 className="font-black text-sm sm:text-base leading-tight">
                 🏭 한림공장 (주)한울 외주가공 (작업일보)
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-indigo-500 text-white shadow-2xs">
-                {currentProfile?.name || "한울"} {currentProfile?.position || currentProfile?.title || "작업원"}
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black shadow-2xs ${
+                  isManager
+                    ? "bg-purple-600 text-white border border-purple-300/40"
+                    : "bg-indigo-500 text-white"
+                }`}
+              >
+                {isManager ? "[현장관리자] " : "[일반작업자] "}
+                {currentProfile?.name || "한울"} {displayTitle}
               </span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 text-purple-300 border border-purple-400/40">
                 9BQC • LQ2

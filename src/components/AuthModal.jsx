@@ -1844,7 +1844,12 @@ export const AuthModal = () => {
 
             <div className="grid grid-cols-4 gap-1.5">
               {EXTRUSION_WORKERS.map((worker) => {
-                const isLead = worker.title === "반장" || worker.name === "공영국";
+                const isLead =
+                  worker.title === "반장" ||
+                  worker.title === "대리" ||
+                  worker.name === "공영국" ||
+                  worker.name === "심임대" ||
+                  worker.name === "이상은";
                 return (
                   <button
                     key={worker.id}
@@ -2099,36 +2104,48 @@ export const AuthModal = () => {
             {/* Scrollable Bulimtech Workers Grid */}
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {bulimtechWorkers.map((worker, idx) => (
-                  <button
-                    key={worker.no || idx}
-                    type="button"
-                    onClick={() => {
-                      setIsBulimtechModalOpen(false);
-                      handleUserClick({
-                        ...bulimtechUser,
-                        id: `hal_br_${worker.no || idx}`,
-                        name: worker.name,
-                        title: worker.position || "작업원",
-                        position: worker.position || "작업원",
-                        line: worker.line,
-                        assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
-                        isFieldWorker: true,
-                        isPartner: false
-                      });
-                    }}
-                    className="min-h-[48px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-teal-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
-                  >
-                    <div className="w-[50%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
-                      <span className="font-black text-xs tracking-tight truncate">
-                        {worker.name}
-                      </span>
-                    </div>
-                    <div className="w-[50%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-300">
-                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "작업원"}</span>
-                    </div>
-                  </button>
-                ))}
+                {bulimtechWorkers.map((worker, idx) => {
+                  const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "최현영";
+                  const displayPos = worker.name === "최현영" ? "반장" : (worker.position || "작업원");
+                  return (
+                    <button
+                      key={worker.no || idx}
+                      type="button"
+                      onClick={() => {
+                        setIsBulimtechModalOpen(false);
+                        handleUserClick({
+                          ...bulimtechUser,
+                          id: `hal_br_${worker.no || idx}`,
+                          name: worker.name,
+                          title: displayPos,
+                          position: displayPos,
+                          line: worker.line,
+                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          isFieldWorker: true,
+                          isPartner: false
+                        });
+                      }}
+                      className={`min-h-[48px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
+                        isLeader
+                          ? "border-teal-400 bg-teal-700 text-white shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:border-teal-400"
+                      }`}
+                    >
+                      <div className={`w-[50%] flex items-center justify-center px-1 text-center shrink-0 ${
+                        isLeader ? "bg-teal-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      }`}>
+                        <span className="font-black text-xs tracking-tight truncate">
+                          {worker.name}
+                        </span>
+                      </div>
+                      <div className={`w-[50%] flex items-center justify-center text-center px-1 py-0.5 ${
+                        isLeader ? "bg-teal-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                      }`}>
+                        <span className="text-[10px] font-bold truncate">{displayPos}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

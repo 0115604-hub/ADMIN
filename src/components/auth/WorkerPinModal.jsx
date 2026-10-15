@@ -71,7 +71,8 @@ import {
 } from "../../services/absence4MService";
 import {
   subscribePersonnelCards,
-  getLocalPersonnelCardsMap
+  getLocalPersonnelCardsMap,
+  isWorkerManagerRole
 } from "../../services/personnelCardService";
 import {
   subscribeFourMChangePoints,
@@ -388,13 +389,20 @@ export const WorkerPinModal = ({
 
   const isSamrangjinManager = useMemo(() => {
     if (!selectedUser) return false;
+    if (selectedUser.isFieldWorker) return false;
     return selectedUser.plant === "삼랑진공장" || String(selectedUser.id || "").startsWith("sam_");
   }, [selectedUser]);
 
   const isHallimManager = useMemo(() => {
     if (!selectedUser) return false;
+    if (selectedUser.isFieldWorker) return false;
     return selectedUser.plant === "한림공장" || String(selectedUser.id || "").startsWith("hal_");
   }, [selectedUser]);
+
+  // ⭐ 현장작업자 중 관리자 여부 (인사카드에서 '관리자' 선택자 또는 공영국/심임대/이상은/설유철/박종미/최현영)
+  const isWorkerManager = useMemo(() => {
+    return isWorkerManagerRole(selectedUser, personnelCardsMap);
+  }, [selectedUser, personnelCardsMap]);
 
   const isHeadquarterAdmin = useMemo(() => {
     if (!selectedUser) return false;
@@ -1263,12 +1271,16 @@ export const WorkerPinModal = ({
                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shrink-0 ${
                   isHeadquarterAdmin
                     ? "bg-blue-600 ring-2 ring-blue-400/40"
+                    : isCompanyRepresentative
+                    ? "bg-purple-600 ring-2 ring-purple-400/40"
+                    : isFieldWorker
+                    ? isWorkerManager
+                      ? "bg-indigo-600 ring-2 ring-indigo-400/40"
+                      : "bg-slate-700 ring-2 ring-slate-400/40"
                     : isSamrangjinManager
                     ? "bg-amber-600 ring-2 ring-amber-400/40"
                     : isHallimManager
                     ? "bg-emerald-600 ring-2 ring-emerald-400/40"
-                    : isExtrusionWorker
-                    ? "bg-indigo-600 ring-2 ring-indigo-400/40"
                     : "bg-slate-700 ring-2 ring-slate-400/40"
                 }`}
               >
@@ -1277,7 +1289,17 @@ export const WorkerPinModal = ({
 
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <h3 className="font-black text-base sm:text-lg md:text-xl text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : isCompanyRepresentative ? "대표이사" : "작업원")}
+                  {selectedUser.name}{" "}
+                  {selectedUser.title ||
+                    (isHeadquarterAdmin
+                      ? "대표이사"
+                      : isCompanyRepresentative
+                      ? "대표이사"
+                      : isWorkerManager
+                      ? selectedUser.name === "공영국"
+                        ? "대리"
+                        : "반장"
+                      : "작업원")}
                 </h3>
                 <span
                   className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
@@ -1285,34 +1307,32 @@ export const WorkerPinModal = ({
                       ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                       : isCompanyRepresentative
                       ? "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+                      : isFieldWorker
+                      ? isWorkerManager
+                        ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shadow-2xs font-black"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-bold"
                       : isSamrangjinManager
                       ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                       : isHallimManager
                       ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      : isHanul
-                      ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                      : isBurimtech
-                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
-                      : isExtrusionWorker
-                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300"
                   }`}
                 >
                   {isHeadquarterAdmin
                     ? "경영총괄/대표이사"
                     : isCompanyRepresentative
                     ? `협력업체 (${selectedUser.name} 대표이사)`
+                    : isFieldWorker
+                    ? isWorkerManager
+                      ? `[현장관리자] ${
+                          selectedUser.title || (selectedUser.name === "공영국" ? "대리" : "반장")
+                        }`
+                      : "일반작업자"
                     : isSamrangjinManager
                     ? "삼랑진공장 관리자"
                     : isHallimManager
                     ? "한림공장 관리자"
-                    : isHanul
-                    ? "한울 외주가공"
-                    : isBurimtech
-                    ? "부림텍 외주가공"
-                    : isExtrusionWorker
-                    ? "압출동 작업자"
-                    : "외주가공 작업자"}
+                    : "일반작업자"}
                 </span>
 
                 {/* PIN Input Badge */}

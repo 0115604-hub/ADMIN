@@ -757,7 +757,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "소재준비",
       "name": "최현영",
-      "position": "작업원",
+      "position": "반장",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -2187,7 +2187,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "소재준비",
       "name": "최현영",
-      "position": "작업원",
+      "position": "반장",
       "daily": {}
     },
     {
