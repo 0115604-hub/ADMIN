@@ -1169,7 +1169,9 @@ export const WorkerPinModal = ({
       if (document.activeElement && typeof document.activeElement.blur === "function") {
         document.activeElement.blur();
       }
-      handleLogin(e);
+      if (!isHanul) {
+        handleLogin(e);
+      }
     } else {
       setPinError(true);
       setIsPinVerified(false);
@@ -1986,35 +1988,24 @@ export const WorkerPinModal = ({
           {/* 🌟 3. Footer: 한울(일보작성) / 부림텍(작업개시) / 관리자·압출(작업개시) 맞춤 제공 */}
           <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
             {isHanul ? (
-              /* 한울 전용: 확인완료 작업개시 (작업자모드 진입) + 9BQC/LQ2a 간편 일보 작성 버튼 동시 제공 */
-              <div className="space-y-2">
+              /* 한울 전용: 확인완료 작업개시 뱃지 삭제, 9BQC 및 LQ2a 일보 작성 뱃지 2개만 단독 제공 */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={handleLogin}
-                  disabled={isLoggingIn}
-                  className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-indigo-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  onClick={() => handleOpenHanulReport("9BQC")}
+                  className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer"
                 >
-                  <span>확인완료 작업개시</span>
-                  <ArrowRight className="w-5 h-5" />
+                  <span>🚗 9BQC G/RUN 일보 작성</span>
+                  <ArrowRight className="w-4 h-4 text-indigo-200" />
                 </button>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("9BQC")}
-                    className="py-2.5 px-3.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs border border-indigo-200 dark:border-indigo-800 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>🚗 9BQC G/RUN 일보 작성</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-indigo-500" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("LQ2A")}
-                    className="py-2.5 px-3.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs border border-purple-200 dark:border-purple-800 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>⚡ LQ2a Hood Side 일보 작성</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-purple-500" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenHanulReport("LQ2A")}
+                  className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer"
+                >
+                  <span>⚡ LQ2a Hood Side 일보 작성</span>
+                  <ArrowRight className="w-4 h-4 text-purple-200" />
+                </button>
               </div>
             ) : isBurimtech ? (
               /* 부림텍 전용: 확인완료 작업개시 */
