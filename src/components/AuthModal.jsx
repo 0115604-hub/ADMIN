@@ -59,6 +59,8 @@ import {
   ArrowRight,
   ChevronRight,
   CheckCircle2,
+  Sparkles,
+  Plus,
   X
 } from "lucide-react";
 
