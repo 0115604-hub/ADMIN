@@ -14,11 +14,13 @@ import {
   Clock,
   Car,
   Zap,
-  Sparkles
+  Sparkles,
+  Gauge
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { SevereDisasterBar } from "../SevereDisasterBar";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import { DigitalInspectionModal } from "../sq/DigitalInspectionModal";
 import {
   subscribeHanulQualityIssues,
   getLocalHanulQualityIssues,
@@ -59,6 +61,7 @@ export const HanulWorkerDashboardView = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalProject, setReportModalProject] = useState("9BQC");
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || currentProfile?.position || (
@@ -257,6 +260,14 @@ export const HanulWorkerDashboardView = () => {
 
         {/* 1-Click Action Buttons: 9BQC 및 LQ2a 작업일보 작성 */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsInspectionModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+          >
+            <Gauge className="w-4 h-4 text-cyan-200" />
+            <span>⚡ 초중종/TPM 간편점검</span>
+          </button>
           <button
             type="button"
             onClick={() => handleOpenReportModal("9BQC")}
@@ -859,6 +870,12 @@ export const HanulWorkerDashboardView = () => {
           />
         </Suspense>
       )}
+
+      {/* Digital Inspection Modal */}
+      <DigitalInspectionModal
+        isOpen={isInspectionModalOpen}
+        onClose={() => setIsInspectionModalOpen(false)}
+      />
     </div>
   );
 };

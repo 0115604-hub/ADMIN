@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   ClipboardList,
   Plus,
@@ -5,8 +6,10 @@ import {
   CheckCircle2,
   FileText,
   Clock,
+  Gauge
 } from "lucide-react";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
+import { DigitalInspectionModal } from "../sq/DigitalInspectionModal";
 
 export default function FieldWorkerDashboardView({
   workerPlant = "",
@@ -30,6 +33,7 @@ export default function FieldWorkerDashboardView({
   handleDeleteLog,
 }) {
   const isManager = isWorkerManagerRole(currentProfile);
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
 
   return (
     <div className="space-y-3.5 sm:space-y-4 animate-fadeIn max-w-[1400px] w-full mx-auto min-w-0">
@@ -64,8 +68,16 @@ export default function FieldWorkerDashboardView({
           </div>
         </div>
 
-        {/* 1-Click Action Button: 오늘의 작업일보 작성 */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* 1-Click Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsInspectionModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-cyan-600/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Gauge className="w-4 h-4 text-cyan-200" />
+            <span>⚡ 초중종/TPM 간편점검</span>
+          </button>
           <button
             type="button"
             onClick={handleOpenWorkLogModal}
@@ -346,6 +358,11 @@ export default function FieldWorkerDashboardView({
           </table>
         </div>
       </div>
+
+      <DigitalInspectionModal
+        isOpen={isInspectionModalOpen}
+        onClose={() => setIsInspectionModalOpen(false)}
+      />
     </div>
   );
 }

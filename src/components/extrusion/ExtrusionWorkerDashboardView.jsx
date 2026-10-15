@@ -16,11 +16,13 @@ import {
   ArrowRight,
   Eye,
   Info,
-  Sparkles
+  Sparkles,
+  Gauge
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { SevereDisasterBar } from "../SevereDisasterBar";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import { DigitalInspectionModal } from "../sq/DigitalInspectionModal";
 import {
   subscribeExtrusionQualityIssues,
   getLocalExtrusionQualityIssues,
@@ -43,6 +45,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ACTIVE", "ALL", "RESOLVED"
   const [searchQuery, setSearchQuery] = useState("");
   const [previewImage, setPreviewImage] = useState(null);
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || (
@@ -169,6 +172,14 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsInspectionModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+          >
+            <Gauge className="w-4 h-4 text-cyan-200" />
+            <span>⚡ 초중종/TPM 간편점검</span>
+          </button>
 
           {onNavigateTab && (
             <button
@@ -536,6 +547,12 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
       {previewImage && (
         <ImagePreviewModal previewImage={previewImage} onClose={() => setPreviewImage(null)} />
       )}
+
+      {/* Digital Inspection Modal */}
+      <DigitalInspectionModal
+        isOpen={isInspectionModalOpen}
+        onClose={() => setIsInspectionModalOpen(false)}
+      />
     </div>
   );
 };

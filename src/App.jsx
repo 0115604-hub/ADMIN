@@ -21,6 +21,7 @@ const ElectronicApprovalView = lazy(() => import("./components/ElectronicApprova
 const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({ default: m.TelegramView || m.default })));
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
 const IncidentLogsView = lazy(() => import("./components/IncidentLogsView").then(m => ({ default: m.IncidentLogsView || m.default })));
+const SqLevelUpView = lazy(() => import("./components/sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
 const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
 
@@ -447,6 +448,11 @@ export const App = () => {
                       <SalesPurchaseAnalysisView />
                     </ErrorBoundary>
                   )}
+                  {activeTab === "sq_level_up" && (
+                    <ErrorBoundary inline title="SQ 레벨업 추진판">
+                      <SqLevelUpView />
+                    </ErrorBoundary>
+                  )}
                   {activeTab === "hanul_tax_invoice" && (
                     <ErrorBoundary inline title="한울 세금계산서">
                       <HanulTaxInvoiceView />
@@ -489,6 +495,12 @@ export const App = () => {
                         onBulkUpload={handleBulkUpload}
                         onNavigateTab={(tabId) => setActiveTab(tabId)}
                       />
+                    </ErrorBoundary>
+                  )}
+
+                  {activeTab === "sq_level_up" && (
+                    <ErrorBoundary inline title="SQ 레벨업 추진판">
+                      <SqLevelUpView />
                     </ErrorBoundary>
                   )}
 

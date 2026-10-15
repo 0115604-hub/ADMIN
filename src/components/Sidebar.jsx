@@ -16,7 +16,8 @@ import {
   FileSignature,
   Receipt,
   AlertTriangle,
-  X
+  X,
+  Target
 } from "lucide-react";
 import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
 import { OryukLogo } from "./OryukLogo";
@@ -24,6 +25,7 @@ import { TelegramLogo } from "./TelegramLogo";
 
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
+  { id: "sq_level_up", label: "SQ 레벨업 추진판", icon: Target },
   { id: "electronic_approval", label: "전자결재", icon: FileSignature },
   { id: "vehicle_sales", label: "매출매입분석", icon: BarChart3 },
   { id: "hanul_tax_invoice", label: "한울세금계산서", icon: Receipt },
@@ -49,6 +51,14 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       color: "blue",
       activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-1 ring-blue-500/30",
       iconColor: "text-blue-600 dark:text-blue-400"
+    },
+    {
+      id: "sq_level_up",
+      label: "SQ 레벨업 추진판",
+      icon: Target,
+      color: "indigo",
+      activeClass: "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 ring-1 ring-indigo-500/30",
+      iconColor: "text-indigo-600 dark:text-indigo-400"
     },
     ...(isHanul
       ? [

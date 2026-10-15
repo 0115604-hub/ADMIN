@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Cpu } from "lucide-react";
+import { Cpu, Target, Gauge, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
+import { DigitalInspectionModal } from "./sq/DigitalInspectionModal";
 
 import { SevereDisasterBar } from "./SevereDisasterBar";
 import FieldWorkerDashboardView from "./dashboard/FieldWorkerDashboardView";
@@ -202,6 +203,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
   const [hanulReportEditData, setHanulReportEditData] = useState(null);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
+  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
   useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "workerDashboardHanulReportModal");
   useModalHistory(isHanulQualityIssueModalOpen, () => setIsHanulQualityIssueModalOpen(false), "workerDashboardHanulQualityModal");
@@ -1040,6 +1042,50 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             />
           )}
 
+          {/* 🎯 SQ 레벨업 추진판(124건 Live 모니터링) & ⚡ 현장 모바일 간편점검 배너 */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white shadow-md border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-indigo-500/20 backdrop-blur-xs text-cyan-300 border border-indigo-400/40 shrink-0">
+                <Target className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-black text-sm sm:text-base leading-tight">
+                    🎯 SQ 레벨업 사전점검 124건 종합 추진판 & 모바일 실시간 대응
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-rose-500 text-white shadow-xs">
+                    D-Day: 2026.10.31
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">
+                    앱 해결률 96.8%
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-200/90 font-medium mt-0.5">
+                  초·중·종물 디지털 검사, 설비 TPM 일상점검, 부적합 전자격리 및 4M 전자결재를 실시간 모니터링합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsInspectionModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+              >
+                <Gauge className="w-4 h-4 text-cyan-200" />
+                <span>⚡ 초중종/TPM 간편점검</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigateTab && onNavigateTab("sq_level_up")}
+                className="px-3.5 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xs sm:text-sm shadow-md flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>SQ 추진판 열기</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
           {/* 📌 사내 공통일정 */}
           <CommonScheduleBar
             isAdmin={isAdmin}
@@ -1359,6 +1405,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         hanulReportEditData={hanulReportEditData}
         isHanulQualityIssueModalOpen={isHanulQualityIssueModalOpen}
         setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+      />
+
+      {/* ⚡ 현장 모바일 초중종/TPM 간편 점검 모달 */}
+      <DigitalInspectionModal
+        isOpen={isInspectionModalOpen}
+        onClose={() => setIsInspectionModalOpen(false)}
       />
     </div>
   );
