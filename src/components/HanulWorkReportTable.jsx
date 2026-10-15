@@ -90,8 +90,13 @@ export const HanulWorkReportTable = ({
   }, [filteredReports]);
 
   const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm("정말로 이 작업일보를 삭제하시겠습니까?")) return;
+    if (e && e.stopPropagation) e.stopPropagation();
+    const rep = (reports || []).find((r) => r.id === id);
+    if (rep && currentWorkerName && rep.worker !== currentWorkerName) {
+      alert("본인이 작성한 외주가공 작업일보만 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("정말로 이 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
     setIsDeleting(id);
     try {
       await deleteHanulWorkReport(id);

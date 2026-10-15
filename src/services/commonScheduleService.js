@@ -344,48 +344,13 @@ export const saveCommonSchedule = async (scheduleItem) => {
 };
 
 /**
- * ⚡ [핵심 기능] 날짜 및 시간이 경과된 일정 자동 삭제 및 보관대장 등록 이관
+ * 🔒 [보안] 앱에서의 임의삭제 방지:
+ * 사내 공통일정이 백그라운드에서 임의로 자동 삭제되는 것을 완전 차단하고,
+ * 사용자의 명시적 삭제 요청이 있을 때만 삭제되도록 안전하게 보호합니다.
  */
 export const cleanupExpiredCommonSchedules = async () => {
   const current = getLocalCommonSchedules();
-  if (!current || current.length === 0) return [];
-
-  const expiredItems = [];
-  const activeItems = [];
-
-  for (const item of current) {
-    if (isScheduleExpired(item)) {
-      expiredItems.push(item);
-    } else {
-      activeItems.push(item);
-    }
-  }
-
-  if (expiredItems.length > 0) {
-    console.log(`[공통일정 자동정리] 시간 경과된 일정 ${expiredItems.length}건을 보관대장으로 이관하고 삭제합니다:`, expiredItems);
-
-    // 1. 보관대장(Archive)에 등록
-    for (const exp of expiredItems) {
-      await saveToCommonScheduleArchive(exp, "선택 날짜/시간 경과 자동 삭제 및 대장 이관");
-      
-      // 2. Firestore 활성 컬렉션에서 삭제
-      try {
-        const docRef = doc(db, COLLECTION_NAME, exp.id);
-        await deleteDoc(docRef);
-      } catch (e) {
-        console.warn("Firestore cleanup delete error:", e);
-      }
-    }
-
-    // 3. 로컬 스토리지 활성 목록 갱신
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(activeItems));
-    } catch (e) {
-      console.error("LocalStorage update error in cleanupExpiredCommonSchedules:", e);
-    }
-  }
-
-  return activeItems;
+  return current || [];
 };
 
 /**

@@ -1880,8 +1880,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   const handleDeleteLeave = async (leaveId, originLeaveId) => {
-    if (!window.confirm("이 일정을 삭제하시겠습니까?\n(공유된 모든 작업자의 일정에서도 함께 자동 삭제됩니다)")) return;
     const targetId = originLeaveId || leaveId;
+    const leave = (annualLeaves || []).find((l) => l.id === targetId || l.originLeaveId === targetId || l.id === leaveId);
+    if (!isAdmin && leave && leave.workerId && leave.workerId !== currentProfile?.id && leave.workerName !== currentProfile?.name) {
+      alert("본인이 등록한 일정만 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("이 일정을 영구 삭제하시겠습니까?\n(공유된 모든 작업자의 일정에서도 함께 자동 삭제됩니다)")) return;
     await deleteAnnualLeave(targetId, true);
     setToastMessage("일정이 삭제되었습니다. (공유 작업자 일정에서도 자동 삭제 완료)");
     setLogSavedToast(true);
@@ -2538,7 +2543,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   const handleDeleteCommonSchedule = async (id) => {
-    if (!window.confirm("이 일정을 삭제하시겠습니까?")) return;
+    const item = (commonSchedules || []).find((s) => s.id === id);
+    if (!isAdmin && item && item.author !== currentProfile?.name && item.userName !== currentProfile?.name) {
+      alert("사내 공통일정은 관리자 또는 본인이 등록한 일정만 삭제할 수 있습니다.");
+      return;
+    }
+    const title = item?.title ? `"${item.title}" ` : "";
+    if (!window.confirm(`${title}일정을 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
     await deleteCommonSchedule(id);
     setToastMessage("일정이 삭제되었습니다.");
     setLogSavedToast(true);
@@ -3200,8 +3211,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   const handleDeleteLog = async (id) => {
-    if (!window.confirm("이 업무일지를 삭제하시겠습니까?")) return;
+    const log = (workLogs || []).find((l) => String(l.id) === String(id));
+    if (log && isWorkLogApproved(log)) {
+      alert("이미 관리자 승인(결재)이 완료된 업무일보는 삭제할 수 없습니다.");
+      return;
+    }
+    if (!isAdmin && log && log.workerName !== currentProfile?.name && log.writer !== currentProfile?.name) {
+      alert("본인이 작성한 업무일지만 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("이 업무일지를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
     await deleteWorkLog(id);
+    setToastMessage("업무일지가 삭제되었습니다.");
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
   };
 
   // ✏️ Open Work Log Edit Modal (Only allowed before approval, or by Admin)

@@ -452,11 +452,17 @@ export const updateWorkLog = async (id, updatedFields = {}, fallbackLog = null) 
 };
 
 // Delete a work log (Cloud Firestore + Local Cache)
-export const deleteWorkLog = async (id) => {
+export const deleteWorkLog = async (id, forceAdmin = false) => {
   const logId = String(id);
 
-  // 1. Update local cache immediately
+  // 🔒 [보안] 승인(결재) 완료된 업무일보 임의삭제 차단
   const current = getLocalWorkLogs();
+  const target = current.find((l) => String(l.id) === logId);
+  if (target && isWorkLogApproved(target) && !forceAdmin) {
+    throw new Error("이미 관리자 결재(승인)가 완료된 업무일보는 삭제할 수 없습니다.");
+  }
+
+  // 1. Update local cache immediately
   const filteredLocal = current.filter((l) => String(l.id) !== logId);
   saveLocalWorkLogs(filteredLocal);
 

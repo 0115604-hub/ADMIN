@@ -103,17 +103,8 @@ export const uploadSevereDisasterPhotos = async (files, uploaderProfile = null) 
   const uploaderId = uploaderProfile?.id || "sam_mj";
   const nowStr = new Date().toISOString();
 
-  // 1. 🌟 새로운 업로드 시 이전 게시물을 Firestore에서 자동 삭제하여 최신 업로드만 게시
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const existingSnap = await getDocs(query(colRef));
-    if (existingSnap && !existingSnap.empty) {
-      const deletePromises = existingSnap.docs.map((d) => deleteDoc(doc(db, COLLECTION_NAME, d.id)));
-      await Promise.all(deletePromises);
-    }
-  } catch (err) {
-    console.warn("Clearing previous severe disaster photos failed:", err);
-  }
+  // 1. 🔒 [보안] 기존 등록 사진 임의 삭제 방지: 이전 사진을 강제 삭제하지 않고 영구 보존하며, 명시적 삭제 요청 시에만 삭제
+
 
   // 2. 🌟 신규 선택된 사진 업로드 및 저장
   const uploadPromises = Array.from(files).map(async (file, idx) => {

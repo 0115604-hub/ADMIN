@@ -61,7 +61,11 @@ export const SevereDisasterModal = ({ isOpen, onClose }) => {
 
   const handleDelete = async (photoId, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm("선택한 중대재해 안전 사진을 삭제하시겠습니까?")) return;
+    if (!isAdmin && !isMyeongjae) {
+      alert("중대재해 안전 사진 삭제 권한이 없습니다. (관리자 전용)");
+      return;
+    }
+    if (!window.confirm("선택한 중대재해 안전 사진을 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
 
     try {
       await deleteSevereDisasterPhoto(photoId);
@@ -183,14 +187,16 @@ export const SevereDisasterModal = ({ isOpen, onClose }) => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 text-white text-[10px]">
                       <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={(e) => handleDelete(photo.id, e)}
-                          className="p-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        {isMyeongjae && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(photo.id, e)}
+                            className="p-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                            title="사진 영구 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <div>
                         <p className="font-bold truncate">{photo.title || "현장안전점검"}</p>

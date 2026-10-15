@@ -14,8 +14,7 @@ import { cleanCompanyName } from "./overtimeSmartService.js";
 import { getSkillMeta, STANDARD_PROCESS_LIST } from "./personnelCardService.js";
 import {
   registerToFourMLedger,
-  unregisterFromFourMLedger,
-  purgeManFourMChangePoints
+  unregisterFromFourMLedger
 } from "./fourMChangePointService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_4m_absence_logs_v1";

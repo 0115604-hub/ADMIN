@@ -656,9 +656,15 @@ export const saveExtrusionReport = async (reportData) => {
 /**
  * Delete a report
  */
-export const deleteExtrusionReport = async (reportId) => {
-  // 1. Local delete
+export const deleteExtrusionReport = async (reportId, forceAdmin = false) => {
+  // 🔒 [보안] 승인(결재) 완료된 압출 작업일보 임의삭제 차단
   const local = getLocalExtrusionReports();
+  const target = local.find((r) => r.id === reportId);
+  if (target && target.approvalStatus === "승인" && !forceAdmin) {
+    throw new Error("이미 관리자 승인(결재)이 완료된 압출 작업일보는 삭제할 수 없습니다.");
+  }
+
+  // 1. Local delete
   const filtered = local.filter((r) => r.id !== reportId);
   saveLocalExtrusionReports(filtered);
 

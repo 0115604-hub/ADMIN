@@ -151,7 +151,12 @@ export const ExtrusionProductionTab = () => {
 
   // Handler: Delete report
   const handleDeleteReport = async (reportId) => {
-    if (window.confirm("선택한 작업일보를 삭제하시겠습니까?")) {
+    const report = (reports || []).find((r) => r.id === reportId);
+    if (report && report.approvalStatus === "승인" && !isAdmin) {
+      alert("이미 관리자 승인(결재)이 완료된 압출 작업일보는 삭제할 수 없습니다.");
+      return;
+    }
+    if (window.confirm("선택한 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) {
       await deleteExtrusionReport(reportId);
       showToast("🗑️ 작업일보가 삭제되었습니다.");
     }
