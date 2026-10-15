@@ -3,7 +3,7 @@
 // Total: 160 items (OPEN: 124, CLOSE: 28, 해당없음: 8)
 
 export const SQ_LEVEL_UP_METADATA = {
-  title: "오륙산업 SQ 레벨업 추진판",
+  title: "(주)오륙 SQ 레벨업 추진판",
   targetDate: "2026-10-31",
   baseDate: "2026-10-06",
   version: "SQ Ver 5.1",

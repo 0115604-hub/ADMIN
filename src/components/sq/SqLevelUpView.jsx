@@ -105,21 +105,15 @@ export const SqLevelUpView = () => {
           <div>
             <div className="flex items-center gap-2.5 mb-2">
               <span className="px-2.5 py-1 rounded-full text-xs font-black bg-gradient-to-r from-cyan-400 to-blue-400 text-slate-950 shadow-md">
-                오륙산업 SQ 레벨업 종합 추진판
+                (주)오륙 SQ 레벨업 종합 추진판
               </span>
               <span className="px-2.5 py-1 rounded-full text-xs font-black bg-rose-500/20 border border-rose-400/40 text-rose-300">
                 🎯 {kpis.dDay} (목표: 2026.10.31)
-              </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/10 text-slate-300">
-                SQ Ver 5.1 | 압출·가공
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
               <span>사전점검 124건 Live 모니터링 & 스마트 앱 연계 현황</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              수기 문서 관리 한계를 넘어, <strong>현장 모바일 제조 앱(App)을 통해 96.8% 디지털 실시간 인터락(Poka-Yoke)</strong>으로 해결합니다.
-            </p>
           </div>
 
           {/* Action Buttons */}

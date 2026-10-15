@@ -182,7 +182,7 @@ export const calculateSqKPIs = (items) => {
 // 6. Export to Excel
 export const exportSqToExcel = (items) => {
   const rows = [
-    ["오륙산업 SQ 레벨업 추진 대장 (실시간 조치 현황)"],
+    ["(주)오륙 SQ 레벨업 추진 대장 (실시간 조치 현황)"],
     [`출력일시: ${new Date().toLocaleString("ko-KR")} | 목표일: ${SQ_LEVEL_UP_METADATA.targetDate}`],
     [],
     [
@@ -228,7 +228,7 @@ export const exportSqToExcel = (items) => {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   XLSX.utils.book_append_sheet(wb, ws, "SQ_레벨업_추진대장");
 
-  const filename = `오륙산업_SQ레벨업_추진대장_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `주_오륙_SQ레벨업_추진대장_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, filename);
   return filename;
 };
