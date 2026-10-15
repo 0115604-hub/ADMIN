@@ -37,8 +37,8 @@ export default function WorkLogDetailModal({
   const onCopyLineMatch = (matches, dateStr, writerName) => {
     if (typeof handleCopyLineMatchText === "function") {
       handleCopyLineMatchText(matches, dateStr, writerName);
-    } else if (matches && matches.length > 0) {
-      const totalMin = matches.reduce((acc, cur) => acc + (cur.totalMinutes || 0), 0);
+    } else if (Array.isArray(matches) && matches.length > 0) {
+      const totalMin = matches.reduce((acc, cur) => acc + (cur?.totalMinutes || 0), 0);
       let text = `[오륙산업 삼랑진공장 - 압출동 라인별 비가동 내역]\n`;
       text += `• 작성자: ${writerName || "작업자"} (${dateStr || ""})\n`;
       text += `• 업로드 라인: 총 ${matches.length}개 라인 (합계 비가동 ${totalMin}분)\n\n`;

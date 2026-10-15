@@ -106,46 +106,196 @@ export const getExtrusionSummaryData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_EXTRUSION);
     if (saved) {
-      store = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object") store = parsed;
     }
   } catch (e) {
-    console.error("Failed to load extrusion data:", e);
+    console.error("Failed to load extrusion store:", e);
   }
 
-  const lines = [
-    { id: "pcm1", name: "PCM 1호기", plant: "삼랑진공장" },
-    { id: "pcm3", name: "PCM 3호기", plant: "삼랑진공장" },
-    { id: "tpe1", name: "TPE 1호기", plant: "삼랑진공장" },
-    { id: "pvc1", name: "PVC 1호기", plant: "삼랑진공장" }
+  const lineKeys = [
+    { key: "pcm1", altKeys: ["pcm1", "pcm_1", "pcm#1"], defaultName: "압출 1호 (PCM #1)", defaultCode: "PCM #1", themeColor: "teal" },
+    { key: "pcm3", altKeys: ["pcm3", "pcm_3", "pcm#3"], defaultName: "압출 3호 (PCM #3)", defaultCode: "PCM #3", themeColor: "blue" },
+    { key: "pvc", altKeys: ["pvc", "pvc1", "pvc_1"], defaultName: "압출 PVC 라인", defaultCode: "PVC", themeColor: "amber" },
+    { key: "tpe", altKeys: ["tpe", "tpe1", "tpe_1"], defaultName: "압출 TPE 라인", defaultCode: "TPE", themeColor: "purple" }
   ];
 
-  return lines.map((l) => {
-    const records = store[l.id] || [];
-    const totalDowntimeMinutes = records.reduce((sum, r) => sum + (Number(r.durationMinutes) || 0), 0);
-    const issueCount = records.length;
-    const latest = records[records.length - 1];
+  return lineKeys.map(({ key, altKeys, defaultName, defaultCode, themeColor }) => {
+    let lObj = null;
+    if (store && typeof store === "object") {
+      lObj = store[key];
+      if (!lObj && Array.isArray(altKeys)) {
+        for (const ak of altKeys) {
+          if (store[ak]) {
+            lObj = store[ak];
+            break;
+          }
+        }
+      }
+    }
+    if (!lObj || typeof lObj !== "object") lObj = {};
+
+    const lineName = lObj.name || defaultName;
+    const lineCode = lObj.code || defaultCode;
+    const sheets = (lObj.sheets && typeof lObj.sheets === "object" ? lObj.sheets : null) ||
+                   (lObj.weeklyData && typeof lObj.weeklyData === "object" ? lObj.weeklyData : null) || {};
+    const sheetKeys = Object.keys(sheets);
+
+    const flatRecords = Array.isArray(lObj)
+      ? lObj
+      : (Array.isArray(lObj.records) ? lObj.records : []);
+
+    // If no data uploaded yet for this line
+    if (sheetKeys.length === 0 && flatRecords.length === 0) {
+      return {
+        id: key,
+        key,
+        lineKey: key,
+        line: lineName,
+        name: lineName,
+        code: lineCode,
+        plant: "삼랑진공장",
+        themeColor,
+        status: "정상가동",
+        statusColor: "emerald",
+        currentMonth: "9월",
+        currentMonthMin: 0,
+        currentMonthHours: "0.0h",
+        totalDowntimeMinutes: 0,
+        issueCount: 0,
+        mainReason: "특이사항 없음",
+        actionTaken: "정상 운전",
+        recentDate: "-",
+        lossRate: "0.0%",
+        opRatio: "100.0",
+        isPending: true,
+        monthlyTrend: [
+          { month: "7월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: false },
+          { month: "8월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: false },
+          { month: "9월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: true }
+        ]
+      };
+    }
+
+    // Monthly trends dynamically calculated from uploaded sheets
+    const months = ["7월", "8월", "9월"];
+    const monthlyTrend = months.map((m) => {
+      const mSheets = sheetKeys.filter((k) => k.startsWith(m) || k.includes(m));
+      if (mSheets.length === 0) {
+        return {
+          month: m,
+          opRate: "-",
+          opNum: 100,
+          lossRate: "-",
+          lossNum: 0,
+          isCurrent: m === "9월"
+        };
+      }
+
+      let mTotalMin = 0;
+      let mPlanMin = 0;
+      const mTotalBase = mSheets.length * 7200; // 5 days 24h per week (7,200 min)
+
+      mSheets.forEach((w) => {
+        const sh = sheets[w];
+        const rows = Array.isArray(sh?.rows) ? sh.rows : [];
+        rows.forEach((r) => {
+          const noStr = String(r?.no || "").trim();
+          const taskStr = String(r?.task || "").trim();
+          if (noStr.includes("합계") || taskStr.includes("합계") || taskStr.includes("총 합계")) return;
+          const min = Number(r?.minutes || 0);
+          mTotalMin += min;
+          if (r?.plan === "Y" || r?.plan === "y") mPlanMin += min;
+        });
+      });
+
+      const netDowntime = Math.max(0, mTotalMin - mPlanMin);
+      const netRunTime = Math.max(0, mTotalBase - mPlanMin);
+      const opNum = netRunTime > 0 ? ((netRunTime - netDowntime) / netRunTime) * 100 : 100;
+      const lossNum = mTotalBase > 0 ? (mTotalMin / mTotalBase) * 100 : 0;
+
+      return {
+        month: m,
+        opRate: `${opNum.toFixed(1)}%`,
+        opNum: Number(opNum.toFixed(1)),
+        lossRate: `${lossNum.toFixed(1)}%`,
+        lossNum: Number(lossNum.toFixed(1)),
+        isCurrent: m === "9월"
+      };
+    });
+
+    // 9월 (당월) 누적 비가동 시간 계산
+    const sepSheets = sheetKeys.filter((w) => w.startsWith("9월") || w.includes("9월"));
+    let sepMin = 0;
+    let sepPlanMin = 0;
+    const sepTotalBase = Math.max(1, sepSheets.length) * 7200;
+
+    sepSheets.forEach((w) => {
+      const sh = sheets[w];
+      const rows = Array.isArray(sh?.rows) ? sh.rows : [];
+      rows.forEach((r) => {
+        const noStr = String(r?.no || "").trim();
+        const taskStr = String(r?.task || "").trim();
+        if (noStr.includes("합계") || taskStr.includes("합계") || taskStr.includes("총 합계")) return;
+        const min = Number(r?.minutes || 0);
+        sepMin += min;
+        if (r?.plan === "Y" || r?.plan === "y") sepPlanMin += min;
+      });
+    });
+
+    // If flat records exist and no sheet records, aggregate safely
+    if (sepMin === 0 && flatRecords.length > 0) {
+      sepMin = flatRecords.reduce((sum, r) => sum + (Number(r?.durationMinutes || r?.minutes) || 0), 0);
+    }
+
+    const currSep = monthlyTrend.find((m) => m.month === "9월") || monthlyTrend[monthlyTrend.length - 1];
+    const sepHours = (sepMin / 60).toFixed(1) + "h";
+    const sepNetDowntime = Math.max(0, sepMin - sepPlanMin);
+    const sepNetRunTime = Math.max(0, sepTotalBase - sepPlanMin);
+    const sepOpRatio =
+      sepSheets.length > 0 && sepNetRunTime > 0
+        ? (((sepNetRunTime - sepNetDowntime) / sepNetRunTime) * 100).toFixed(1)
+        : (currSep?.opNum ? currSep.opNum.toFixed(1) : "100.0");
+    const sepLossRate =
+      sepSheets.length > 0 && sepTotalBase > 0
+        ? `${((sepMin / sepTotalBase) * 100).toFixed(1)}%`
+        : (currSep?.lossRate || "0.0%");
 
     let status = "정상가동";
     let statusColor = "emerald";
-    if (totalDowntimeMinutes > 180) {
+    if (sepMin > 180) {
       status = "가동주의";
       statusColor = "rose";
-    } else if (totalDowntimeMinutes > 60) {
+    } else if (sepMin > 60) {
       status = "점검대기";
       statusColor = "amber";
     }
 
+    const latest = flatRecords.length > 0 ? flatRecords[flatRecords.length - 1] : null;
+
     return {
-      id: l.id,
-      name: l.name,
-      plant: l.plant,
+      id: key,
+      key,
+      lineKey: key,
+      line: lineName,
+      name: lineName,
+      code: lineCode,
+      plant: "삼랑진공장",
+      themeColor,
       status,
       statusColor,
-      totalDowntimeMinutes,
-      issueCount,
-      mainReason: latest ? `${latest.reason || "설비점검"} (${latest.durationMinutes}분)` : "특이사항 없음",
+      currentMonth: "9월",
+      currentMonthMin: sepMin,
+      currentMonthHours: sepHours,
+      totalDowntimeMinutes: sepMin,
+      issueCount: flatRecords.length || sepSheets.length,
+      mainReason: latest ? `${latest.reason || "설비점검"} (${latest.durationMinutes || latest.minutes}분)` : "특이사항 없음",
       actionTaken: latest ? latest.actionTaken || "조치 완료" : "정상 운전",
-      recentDate: latest?.date || "-"
+      recentDate: latest?.date || "-",
+      lossRate: sepSheets.length > 0 ? sepLossRate : (currSep?.lossRate || "0.0%"),
+      opRatio: sepOpRatio,
+      isPending: false,
+      monthlyTrend
     };
   });
 };
@@ -387,14 +537,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       };
     });
 
-    const unwritten = companies.filter((c) => !c.isWritten);
+    const unwritten = (Array.isArray(companies) ? companies : []).filter((c) => !c.isWritten);
 
-    const totalWorkers = companies.reduce((acc, c) => acc + (c.workers || 0), 0);
-    const totalAttended = companies.reduce((acc, c) => acc + (c.attended || 0), 0);
-    const totalAbsent = companies.reduce((acc, c) => acc + (c.absent || 0), 0);
-    const totalOtWorkers = companies.reduce((acc, c) => acc + (c.otWorkers || 0), 0);
-    const totalOtHours = companies.reduce((acc, c) => acc + (c.otHours || 0), 0);
-    const totalHours = companies.reduce((acc, c) => acc + (c.totalHours || 0), 0);
+    const totalWorkers = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.workers || 0), 0);
+    const totalAttended = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.attended || 0), 0);
+    const totalAbsent = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.absent || 0), 0);
+    const totalOtWorkers = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.otWorkers || 0), 0);
+    const totalOtHours = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.otHours || 0), 0);
+    const totalHours = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.totalHours || 0), 0);
 
     const totalItem = {
       name: "전회사 TOTAL",

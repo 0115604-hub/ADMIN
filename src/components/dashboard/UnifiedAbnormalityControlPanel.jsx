@@ -850,26 +850,26 @@ export const UnifiedAbnormalityControlPanel = ({
     const officialLedgerCount = fourMLedgerRecords.length;
 
     // 1. Machine: 설비수리 + 비가동 + TPM
-    const machineRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MACHINE");
+    const machineRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MACHINE");
     const repairCount = machineRecords.filter((r) => r.origin === "설비수리").length;
     const downtimeCount = machineRecords.filter((r) => r.origin === "비가동").length;
     const tpmCount = machineRecords.filter((r) => r.origin === "TPM 이상신고").length;
-    const totalDowntimeMin = machineRecords.reduce((acc, r) => acc + (r.downtimeMinutes || 0), 0);
+    const totalDowntimeMin = (Array.isArray(machineRecords) ? machineRecords : []).reduce((acc, r) => acc + (r.downtimeMinutes || 0), 0);
 
     // 2. Man: 작업자 변동 / 교대 / 지원
-    const manRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MAN");
+    const manRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MAN");
     const manCount = manRecords.length;
 
     // 3. Method: 품질경보
-    const methodRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "METHOD");
+    const methodRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "METHOD");
     const methodPending = methodRecords.filter((r) => !r.isResolved).length;
 
     // 4. Material: 불량손실
-    const materialRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MATERIAL");
-    const totalScrapKg = Number(materialRecords.reduce((acc, r) => acc + (r.scrapKg || 0), 0).toFixed(1));
+    const materialRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MATERIAL");
+    const totalScrapKg = Number((Array.isArray(materialRecords) ? materialRecords : []).reduce((acc, r) => acc + (r.scrapKg || 0), 0).toFixed(1));
 
     // 사진 총 건수
-    const totalPhotos = allUnifiedRecords.reduce((acc, r) => acc + (r.images?.length || 0) + (r.actionImages?.length || 0), 0);
+    const totalPhotos = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).reduce((acc, r) => acc + (r.images?.length || 0) + (r.actionImages?.length || 0), 0);
 
     return {
       totalCount,
