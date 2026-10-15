@@ -88,6 +88,7 @@ export const AuthModal = () => {
   const [isMachiningModalOpen, setIsMachiningModalOpen] = useState(false);
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
+  const [isYuseongModalOpen, setIsYuseongModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [isSqLevelUpModalOpen, setIsSqLevelUpModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
@@ -331,6 +332,31 @@ export const AuthModal = () => {
   const machiningWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
       (w) => w.company === "오륙" && w.dept === "가공동" && w.status !== "퇴사"
+    );
+  }, []);
+
+  // Yuseong partner user definition (삼랑진공장 외주가공 대표 계정)
+  const yuseongUser = useMemo(() => {
+    return (
+      PLANTS[0]?.workers?.find((w) => w.name === "유성" || w.id === "sam_ys") || {
+        id: "sam_ys",
+        name: "유성",
+        title: "대표이사",
+        plant: "삼랑진공장",
+        company: "유성",
+        assignedProcess: "외주가공",
+        role: "OPERATOR",
+        avatar: "유",
+        pin: "11",
+        isPartner: true
+      }
+    );
+  }, []);
+
+  // Yuseong master workers list (외주가공 유성 14명)
+  const yuseongWorkers = useMemo(() => {
+    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
+      (w) => w.company?.includes("유성") && w.status !== "퇴사" && w.name !== "유성"
     );
   }, []);
 
@@ -1484,6 +1510,7 @@ export const AuthModal = () => {
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
   useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "hanulWorkReportModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
+  useModalHistory(isYuseongModalOpen, () => setIsYuseongModalOpen(false), "yuseongModal");
   useModalHistory(isSqLevelUpModalOpen, () => setIsSqLevelUpModalOpen(false), "sqLevelUpModal");
 
   return (
@@ -1595,6 +1622,19 @@ export const AuthModal = () => {
                 <span>부림텍</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-900/80 text-teal-100 hidden sm:inline">
                   {bulimtechWorkers.length}명
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsYuseongModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-blue-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-blue-400/30"
+                title={`외주가공 (주)유성 작업자 전용 포털 (${yuseongWorkers.length}명)`}
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-200 animate-pulse" />
+                <span>유성</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-900/80 text-blue-100 hidden sm:inline">
+                  {yuseongWorkers.length}명
                 </span>
               </button>
             </div>
@@ -2199,6 +2239,103 @@ export const AuthModal = () => {
                       }`}>
                         <span className="text-[10px] font-bold truncate">{displayPos}</span>
                       </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏢 삼랑진공장 외주가공 (주)유성 전용 팝업 선택 모달 */}
+      {isYuseongModalOpen && (
+        <div
+          onClick={() => setIsYuseongModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border-2 border-blue-400 dark:border-blue-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                    <span>외주가공 (주)유성</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
+                      총원 {yuseongWorkers.length}명
+                    </span>
+                  </h3>
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                    안전·품질 확인 후 JK1 • CE1 • DT Hood 작업일보 및 대시보드 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsYuseongModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 (주)유성 작업일보 및 생산관리 화면으로 바로 연결됩니다.
+            </p>
+
+            {/* Scrollable Yuseong Workers Grid */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                {yuseongWorkers.map((worker, idx) => {
+                  const isLeader = worker.position === "기사" || worker.position === "반장" || worker.position === "조장" || worker.name === "이성기";
+                  const displayPos = worker.position || (isLeader ? "기사" : "사원");
+                  return (
+                    <button
+                      key={worker.no || idx}
+                      type="button"
+                      onClick={() => {
+                        setIsYuseongModalOpen(false);
+                        handleUserClick({
+                          ...yuseongUser,
+                          id: `ys_${worker.no || idx}`,
+                          name: worker.name,
+                          title: displayPos,
+                          position: displayPos,
+                          line: worker.line,
+                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          plant: "삼랑진공장",
+                          company: "유성",
+                          portalType: "yuseong",
+                          isFieldWorker: true,
+                          isPartner: false
+                        });
+                      }}
+                      className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
+                        isLeader
+                          ? "border-blue-400 bg-blue-700 text-white shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-blue-400"
+                      }`}
+                    >
+                      <div className={`${displayPos ? "w-[50%]" : "w-full"} flex items-center justify-center px-1 text-center shrink-0 ${
+                        isLeader ? "bg-blue-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      }`}>
+                        <span className="font-black text-xs tracking-tight truncate">
+                          {worker.name}
+                        </span>
+                      </div>
+                      {displayPos && (
+                        <div className={`w-[50%] flex items-center justify-center text-center px-1 py-0.5 ${
+                          isLeader ? "bg-blue-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        }`}>
+                          <span className="text-[10px] font-bold truncate">{displayPos}</span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}

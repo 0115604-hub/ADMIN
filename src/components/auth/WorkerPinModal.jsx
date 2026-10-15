@@ -49,6 +49,10 @@ import {
   getLocalMachiningQualityIssues
 } from "../../services/machiningQualityIssueService";
 import {
+  subscribeYuseongQualityIssues,
+  getLocalYuseongQualityIssues
+} from "../../services/yuseongQualityIssueService";
+import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
   isScheduleExpired,
@@ -100,6 +104,7 @@ import HanulWorkReportModal from "../HanulWorkReportModal";
 import { isExcludedFromWorkReport } from "../../services/hanulWorkReportService";
 import { isExcludedFromMachiningWorkReport } from "../../services/machiningWorkReportService";
 const MachiningWorkReportModal = lazy(() => import("../machining/MachiningWorkReportModal"));
+const YuseongWorkReportModal = lazy(() => import("../yuseong/YuseongWorkReportModal"));
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
 export const WorkerPinModal = ({
@@ -137,6 +142,15 @@ export const WorkerPinModal = ({
     setIsMachiningWorkReportOpen(true);
   };
 
+  // 📋 유성 작업일보 (JK1 / CE1 / DT) 모달 State
+  const [isYuseongWorkReportOpen, setIsYuseongWorkReportOpen] = useState(false);
+  const [yuseongReportProject, setYuseongReportProject] = useState("JK1");
+
+  const handleOpenYuseongReport = (proj = "JK1") => {
+    setYuseongReportProject(proj);
+    setIsYuseongWorkReportOpen(true);
+  };
+
   // 💬 일정 상세 & 의견/메시지 모달 State
   const [selectedScheduleForComments, setSelectedScheduleForComments] = useState(null);
   const [scheduleCommentInput, setScheduleCommentInput] = useState("");
@@ -149,6 +163,7 @@ export const WorkerPinModal = ({
   const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
   const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
+  const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
@@ -170,6 +185,7 @@ export const WorkerPinModal = ({
     const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
     const unsubHanulQual = subscribeHanulQualityIssues((list) => setHanulQualityIssues(list || []));
     const unsubMachQual = subscribeMachiningQualityIssues((list) => setMachiningQualityIssues(list || []));
+    const unsubYuseongQual = subscribeYuseongQualityIssues((list) => setYuseongQualityIssues(list || []));
     const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
     const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
     const unsubLogs = subscribeWorkLogs((logs) => setWorkLogs(logs || []));
@@ -198,6 +214,7 @@ export const WorkerPinModal = ({
       if (unsubExtQual) unsubExtQual();
       if (unsubHanulQual) unsubHanulQual();
       if (unsubMachQual) unsubMachQual();
+      if (unsubYuseongQual) unsubYuseongQual();
       if (unsub4M) unsub4M();
       if (unsubExtRep) unsubExtRep();
       if (unsubLogs) unsubLogs();
@@ -392,8 +409,30 @@ export const WorkerPinModal = ({
   // Backward compatibility alias for Hanul worker checks
   const isHanulWorker = isHanul;
 
+  // 🌟 (주)유성 현장 작업자 판별 (첫 화면 아래쪽 유성 대표이사는 관리자이므로 제외)
+  const isYuseongWorker = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isExtrusionWorker || isMachiningWorker || isHanulOrBurim) return false;
+    if (!selectedUser.isFieldWorker && (selectedUser.id === "sam_ys" || selectedUser.title === "대표이사")) {
+      return false;
+    }
+    if (selectedUser.portalType === "yuseong") return true;
+    const comp = String(selectedUser.company || "");
+    const name = String(selectedUser.name || "");
+    const id = String(selectedUser.id || "");
+    return Boolean(
+      selectedUser.isFieldWorker && (
+        comp.includes("유성") ||
+        id.startsWith("ys_") ||
+        [
+          "이성기", "조마루", "쏘탈", "론나차이", "마리오", "제날드",
+          "팔라", "누리", "데란스", "포티퐁", "린", "넷플립", "제인", "그레이스"
+        ].includes(name)
+      )
+    );
+  }, [selectedUser, isExtrusionWorker, isMachiningWorker, isHanulOrBurim]);
 
-  // 🌟 4대 현장 작업자 (압출동, 가공동, 한울, 부림텍) 통합 판별 - 첫화면 아래쪽 인원은 100% 관리자
+  // 🌟 5대 현장 작업자 (압출동, 가공동, 한울, 부림텍, 유성) 통합 판별 - 첫화면 아래쪽 인원은 100% 관리자
   const isFieldWorker = useMemo(() => {
     if (!selectedUser) return false;
     if (!selectedUser.isFieldWorker) return false;
@@ -401,9 +440,10 @@ export const WorkerPinModal = ({
       isExtrusionWorker ||
       isHanulOrBurim ||
       isMachiningWorker ||
+      isYuseongWorker ||
       selectedUser?.isFieldWorker
     );
-  }, [isExtrusionWorker, isHanulOrBurim, isMachiningWorker, selectedUser]);
+  }, [isExtrusionWorker, isHanulOrBurim, isMachiningWorker, isYuseongWorker, selectedUser]);
 
   // 🌟 2. 첫화면 아래 협력업체 대표이사 계정 판별 (유성, 한울, 부림텍 등 첫화면 아래 대표이사 전원)
   const isCompanyRepresentative = useMemo(() => {
@@ -915,6 +955,49 @@ export const WorkerPinModal = ({
           });
         }
       });
+    } else if (isYuseongWorker) {
+      sectorName = "(주)유성";
+      managerName = "유성 관리자";
+      subText = "유성 관리자 공지 • JK1 Part'g / CE1 Part'g / DT Hood 품질이슈 및 공지";
+
+      (yuseongQualityIssues || []).forEach((yq) => {
+        if (!yq || yq.status === "RESOLVED") return;
+        const causeImgs = Array.isArray(yq.causeImages) ? yq.causeImages : [];
+        const actionImgs = Array.isArray(yq.actionImages) ? yq.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+        issues.push({
+          id: `yq_${yq.id}`,
+          title: yq.title,
+          content: yq.defectDescription || yq.content,
+          line: yq.line || yq.project || "유성",
+          defectType: yq.defectType,
+          actionResult: yq.actionPlan || yq.actionResult,
+          images: allImgs,
+          date: yq.date || todayKst,
+          author: yq.author || "유성 관리자"
+        });
+      });
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const comp = String(u.company || "");
+        const target = String(u.target || "");
+        const author = String(u.author || "");
+        if (comp.includes("유성") || target.includes("유성") || author.includes("유성")) {
+          issues.push({
+            id: `urg_ys_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "유성",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author || "유성 관리자"
+          });
+        }
+      });
     } else {
       // 일반 기타 현장 (윤경수 책임)
       sectorName = "가공동";
@@ -958,7 +1041,7 @@ export const WorkerPinModal = ({
       subText,
       issues: dedupedIssues.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     };
-  }, [isExtrusionWorker, isHanul, isBurimtech, isMachiningWorker, extrusionQualityIssues, hanulQualityIssues, machiningQualityIssues, urgentIssues, localUrgentIssues, todayKst]);
+  }, [isExtrusionWorker, isHanul, isBurimtech, isMachiningWorker, isYuseongWorker, extrusionQualityIssues, hanulQualityIssues, machiningQualityIssues, yuseongQualityIssues, urgentIssues, localUrgentIssues, todayKst]);
 
   // 2-2. [패널 3] 첫화면 품질경보 & 당일 사내공지 (사내공지 당일 1일 한정 노출)
   const firstScreenQualityAndNotices = useMemo(() => {
@@ -977,7 +1060,9 @@ export const WorkerPinModal = ({
         id.startsWith("urg_ext_") ||
         id.startsWith("mach_qual_") ||
         id.startsWith("urg_mach_") ||
-        id.startsWith("mq_")
+        id.startsWith("mq_") ||
+        id.startsWith("yq_") ||
+        id.startsWith("urg_ys_")
       ) {
         return;
       }
@@ -1363,6 +1448,16 @@ export const WorkerPinModal = ({
     }, 200);
   };
 
+  const handleOpenYuseongReportAction = (proj = "JK1", e) => {
+    try {
+      sessionStorage.setItem("auto_open_yuseong_report", proj);
+    } catch (err) {}
+    handleLogin(e);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("open-yuseong-work-report-modal", { detail: { project: proj } }));
+    }, 200);
+  };
+
   return (
     <>
       <div
@@ -1384,7 +1479,9 @@ export const WorkerPinModal = ({
                 : isHallimManager
                 ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
                 : isExtrusionWorker
-                ? "bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600"
+                ? "bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600"
+                : isYuseongWorker
+                ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-600"
                 : "bg-gradient-to-r from-slate-500 via-blue-500 to-slate-600"
             }`}
           />
@@ -1440,6 +1537,8 @@ export const WorkerPinModal = ({
                       ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs font-black"
                       : isMachiningWorker
                       ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs font-black"
+                      : isYuseongWorker
+                      ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 shadow-2xs font-black"
                       : isFieldWorker
                       ? isWorkerManager
                         ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shadow-2xs font-black"
@@ -1463,6 +1562,8 @@ export const WorkerPinModal = ({
                     ? `한림공장 부림텍 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
                     : isMachiningWorker
                     ? `삼랑진공장 가공동 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
+                    : isYuseongWorker
+                    ? `(주)유성 외주가공 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
                     : isFieldWorker
                     ? isWorkerManager
                       ? `[현장관리자] ${
@@ -2226,6 +2327,34 @@ export const WorkerPinModal = ({
                     <ArrowRight className="w-3.5 h-3.5 text-amber-200 shrink-0" />
                   </button>
                 </div>
+              ) : isYuseongWorker ? (
+                /* (주)유성 전용: JK1, CE1, DT Hood 3대 아이템 일보 작성 뱃지 (확인완료작업개시 뱃지 제거) */
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenYuseongReportAction("JK1", e)}
+                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚗 JK1 Part'g 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenYuseongReportAction("CE1", e)}
+                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚙 CE1 Part'g 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenYuseongReportAction("DT", e)}
+                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>⚡ DT Hood 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-teal-200 shrink-0" />
+                  </button>
+                </div>
               ) : isBurimtech ? (
                 /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
                 <button
@@ -2464,6 +2593,18 @@ export const WorkerPinModal = ({
                 ? selectedUser.name
                 : "크리스토퍼"
             }
+          />
+        </Suspense>
+      )}
+
+      {/* 📋 외주가공 (주)유성 작업일보 모달 (JK1 Part'g / CE1 Part'g / DT Hood) */}
+      {isYuseongWorkReportOpen && (
+        <Suspense fallback={null}>
+          <YuseongWorkReportModal
+            isOpen={isYuseongWorkReportOpen}
+            onClose={() => setIsYuseongWorkReportOpen(false)}
+            initialProject={yuseongReportProject}
+            initialWorker={selectedUser?.name || "이성기"}
           />
         </Suspense>
       )}

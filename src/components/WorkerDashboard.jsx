@@ -44,6 +44,8 @@ import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { MachiningWorkerDashboardView } from "./machining/MachiningWorkerDashboardView";
 import { isMachiningWorkerProfile } from "../services/machiningQualityIssueService";
+import { YuseongWorkerDashboardView } from "./yuseong/YuseongWorkerDashboardView";
+import { isYuseongWorkerProfile } from "../services/yuseongQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
@@ -977,6 +979,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   if (isMachiningOperatorWorker) {
     return (
       <MachiningWorkerDashboardView
+        onNavigateTab={onNavigateTab}
+      />
+    );
+  }
+
+  // 🌟 (주)유성 외주가공 현장작업자 (JK1 Part'g, CE1 Part'g, DT Hood)
+  const isYuseongOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
+    isYuseongWorkerProfile(currentProfile) &&
+    !isAdmin;
+
+  if (isYuseongOperatorWorker) {
+    return (
+      <YuseongWorkerDashboardView
         onNavigateTab={onNavigateTab}
       />
     );
