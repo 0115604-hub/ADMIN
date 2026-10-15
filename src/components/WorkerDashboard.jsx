@@ -188,6 +188,8 @@ import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../u
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
+import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
+import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 import { getWorkLogText } from "../services/workLogI18nService";
 import { getWorkerPersonnelCard } from "../services/personnelCardService";
@@ -3521,6 +3523,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   if (isExtrusionOperatorWorker) {
     return (
       <ExtrusionWorkerDashboardView
+        onNavigateTab={onNavigateTab}
+      />
+    );
+  }
+
+  // 🌟 한울 외주가공 현장작업자 로그인 시: 압출동과 동일한 형식(중대재해 + 사내공지 + 한울 9BQC/LQ2 품질이슈 공유판 + 9BQC/LQ2 작업일보 작성)
+  const isHanulOperatorWorker =
+    isHanulWorkerProfile(currentProfile) &&
+    !isAdmin;
+
+  if (isHanulOperatorWorker) {
+    return (
+      <HanulWorkerDashboardView
         onNavigateTab={onNavigateTab}
       />
     );

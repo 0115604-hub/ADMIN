@@ -216,11 +216,53 @@ export const deleteHanulQualityIssue = async (id) => {
   } catch (e) {
     console.warn("Firestore deleteHanulQualityIssue fallback:", e);
   }
-
-  // Also remove from legacy urgentIssues if any was previously synced
-  try {
-    await deleteDoc(doc(db, "urgent_issues", `urg_${id}`));
-  } catch (err) {
-    // ignore
-  }
 };
+
+// Acknowledge a Hanul quality issue
+export const acknowledgeHanulQualityIssue = async (id, workerName) => {
+  if (!id || !workerName) return;
+  const current = getLocalHanulQualityIssues();
+  const target = current.find((it) => it.id === id);
+  if (!target) return;
+
+  const currentAck = Array.isArray(target.acknowledgedBy) ? target.acknowledgedBy : [];
+  if (currentAck.includes(workerName)) return target;
+
+  const updatedItem = {
+    ...target,
+    acknowledgedBy: [...currentAck, workerName]
+  };
+
+  return await saveHanulQualityIssue(updatedItem);
+};
+
+// Check if worker belongs to Hanul (외주가공 작업자 또는 뱃지)
+export const isHanulWorkerProfile = (profile) => {
+  if (!profile) return false;
+  const name = String(profile.name || "");
+  const id = String(profile.id || "");
+  const comp = String(profile.company || "");
+  const line = String(profile.line || "");
+
+  // 🌟 황수현 선임은 한울 관리자이므로 일반 작업자 전용 모드에서 제외
+  if (name === "황수현" || id === "hal_sh" || id === "sam_sh") {
+    return false;
+  }
+
+  return Boolean(
+    comp.includes("한울") ||
+    name === "한울" ||
+    id === "hal_hu" ||
+    id.startsWith("hal_hu_") ||
+    line === "9BQC" ||
+    line === "LQ2" ||
+    line === "LQ2a" ||
+    [
+      "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+      "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+      "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+      "마이카", "알프레도", "아이린", "에릭", "언"
+    ].includes(name)
+  );
+};
+

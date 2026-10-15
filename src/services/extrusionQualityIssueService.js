@@ -251,6 +251,14 @@ export const isExtrusionWorkerProfile = (profile) => {
   if (!profile) return false;
   const name = profile.name || "";
   const id = profile.id || "";
+  const comp = profile.company || "";
+  const plant = profile.plant || "";
+  const line = profile.line || "";
+
+  // 🌟 한울 외주가공 및 한림공장 작업자는 압출 작업자에서 명확히 분리 제외
+  if (comp.includes("한울") || id.startsWith("hal_hu") || plant === "한림공장" || line === "9BQC" || line === "LQ2" || line === "LQ2a") {
+    return false;
+  }
 
   // 🌟 설유철 책임은 압출 관리자/책임자이므로 일반 현장 압출작업자에서 명확히 분리 제외
   if (name === "설유철" || id === "sam_yc") {
