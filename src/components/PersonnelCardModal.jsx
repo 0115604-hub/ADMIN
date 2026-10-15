@@ -476,9 +476,9 @@ export default function PersonnelCardModal({
                   </select>
                 </div>
 
-                {/* 직위 선택: 대표이사 / 이사 / 책임 / 선임 / 사원 */}
+                {/* 직책/직위 선택: 대표이사 / 이사 / 책임 / 선임 / 대리 / 반장 / 사원 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직위/직급</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직책/직위/직급</label>
                   <select
                     value={formData.position}
                     onChange={(e) => handleChange("position", e.target.value)}

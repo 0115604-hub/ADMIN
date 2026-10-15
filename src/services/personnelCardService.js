@@ -44,9 +44,11 @@ export const DEPARTMENTS_LIST = [
   "관리팀"
 ];
 
-// ⭐ 표준 5대 직급 목록 (사원 / 선임 / 책임 / 이사 / 대표이사)
+// ⭐ 표준 직책/직급 목록 (사원 / 반장 / 대리 / 선임 / 책임 / 이사 / 대표이사)
 export const POSITIONS_LIST = [
   "사원",
+  "반장",
+  "대리",
   "선임",
   "책임",
   "이사",
@@ -326,7 +328,7 @@ export const normalizeStandardDept = (dept, comp) => {
   return "생산팀";
 };
 
-// 직위 정규화 헬퍼 (사원, 선임, 책임, 이사, 대표이사 5단계 표준화)
+// 직책/직위 정규화 헬퍼 (사원, 반장, 대리, 선임, 책임, 이사, 대표이사)
 export const normalizeStandardPosition = (pos, comp) => {
   if (!pos) {
     const normComp = comp ? normalizeStandardCompany(comp) : "";
@@ -337,7 +339,9 @@ export const normalizeStandardPosition = (pos, comp) => {
   if (str === "대표이사" || str === "대표" || str.includes("대표이사") || str.includes("대표") || str === "대표자") return "대표이사";
   if (str === "이사" || str.includes("이사") || str.includes("임원") || str === "상무" || str === "전무") return "이사";
   if (str === "책임" || str.includes("책임") || str.includes("부장") || str.includes("차장") || str.includes("과장")) return "책임";
-  if (str === "선임" || str.includes("선임") || str.includes("반장") || str.includes("조장") || str.includes("대리") || str.includes("주임")) return "선임";
+  if (str === "대리" || str.includes("대리") || str.includes("주임")) return "대리";
+  if (str === "반장" || str.includes("반장") || str.includes("조장")) return "반장";
+  if (str === "선임" || str.includes("선임")) return "선임";
   if (str === "작업원" || str === "사원" || str === "사원(작업원)" || str.includes("사원") || str.includes("작업원")) return "사원";
   return "사원";
 };
@@ -582,7 +586,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   if (!defaultSkillLevel) {
     if (position === "대표이사" || position === "이사" || position === "책임") {
       defaultSkillLevel = 5;
-    } else if (position === "선임") {
+    } else if (position === "선임" || position === "대리" || position === "반장") {
       defaultSkillLevel = 4;
     } else {
       defaultSkillLevel = 3;

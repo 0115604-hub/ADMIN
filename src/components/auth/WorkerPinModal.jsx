@@ -1174,10 +1174,8 @@ export const WorkerPinModal = ({
       if (document.activeElement && typeof document.activeElement.blur === "function") {
         document.activeElement.blur();
       }
-      // 🌟 현장작업자는 핀번호만 입력하면 바로 다음 화면(대시보드)으로 즉시 이동
-      if (selectedUser?.isFieldWorker || isFieldWorker) {
-        handleLogin(e);
-      }
+      // 🌟 핀번호만 입력하면 바로 다음 화면(대시보드)으로 즉시 이동 (관리자 및 현장작업자 공통)
+      handleLogin(e);
     }
   };
 
@@ -2015,21 +2013,6 @@ export const WorkerPinModal = ({
               </div>
             )}
           </div>
-
-          {/* 🌟 3. Footer: 현장작업자는 아래 뱃지 완전 제거(핀번호 입력 즉시 이동) / 첫 화면 관리자만 확인완료 작업개시 노출 */}
-          {!(selectedUser?.isFieldWorker || isFieldWorker) && (
-            <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
-              <button
-                type="button"
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span>확인완료 작업개시</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
