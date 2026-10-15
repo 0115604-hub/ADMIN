@@ -93,6 +93,28 @@ export const MachiningWorkerDashboardView = () => {
     return () => unsub();
   }, []);
 
+  // 4. Listen to open-machining-work-report-modal event and auto-open session trigger
+  useEffect(() => {
+    const handleOpen = (e) => {
+      const proj = e?.detail?.project || "JA";
+      setReportModalProject(proj);
+      setIsReportModalOpen(true);
+    };
+    window.addEventListener("open-machining-work-report-modal", handleOpen);
+
+    // Check if auto-open requested via sessionStorage from WorkerPinModal
+    try {
+      const autoProj = sessionStorage.getItem("auto_open_machining_report");
+      if (autoProj) {
+        sessionStorage.removeItem("auto_open_machining_report");
+        setReportModalProject(autoProj);
+        setIsReportModalOpen(true);
+      }
+    } catch (err) {}
+
+    return () => window.removeEventListener("open-machining-work-report-modal", handleOpen);
+  }, []);
+
   // Active Company Notices
   const activeCompanyNotices = useMemo(() => {
     return urgentIssues.filter((item) => {

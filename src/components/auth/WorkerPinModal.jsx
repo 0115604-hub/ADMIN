@@ -45,6 +45,10 @@ import {
   getLocalHanulQualityIssues
 } from "../../services/hanulQualityIssueService";
 import {
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues
+} from "../../services/machiningQualityIssueService";
+import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
   isScheduleExpired,
@@ -94,6 +98,8 @@ import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import HanulWorkReportModal from "../HanulWorkReportModal";
 import { isExcludedFromWorkReport } from "../../services/hanulWorkReportService";
+import { isExcludedFromMachiningWorkReport } from "../../services/machiningWorkReportService";
+const MachiningWorkReportModal = lazy(() => import("../machining/MachiningWorkReportModal"));
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
 export const WorkerPinModal = ({
@@ -122,6 +128,15 @@ export const WorkerPinModal = ({
     setIsHanulWorkReportOpen(true);
   };
 
+  // 📋 가공동 작업일보 (JA / NX4 / NX4a / HR) 모달 State
+  const [isMachiningWorkReportOpen, setIsMachiningWorkReportOpen] = useState(false);
+  const [machiningReportProject, setMachiningReportProject] = useState("JA");
+
+  const handleOpenMachiningReport = (proj = "JA") => {
+    setMachiningReportProject(proj);
+    setIsMachiningWorkReportOpen(true);
+  };
+
   // 💬 일정 상세 & 의견/메시지 모달 State
   const [selectedScheduleForComments, setSelectedScheduleForComments] = useState(null);
   const [scheduleCommentInput, setScheduleCommentInput] = useState("");
@@ -133,6 +148,7 @@ export const WorkerPinModal = ({
   const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
+  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
@@ -153,6 +169,7 @@ export const WorkerPinModal = ({
     const unsubAbsence = subscribe4MAbsenceLogs((logs) => { if (logs) setAbsenceLogsMap(logs); });
     const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
     const unsubHanulQual = subscribeHanulQualityIssues((list) => setHanulQualityIssues(list || []));
+    const unsubMachQual = subscribeMachiningQualityIssues((list) => setMachiningQualityIssues(list || []));
     const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
     const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
     const unsubLogs = subscribeWorkLogs((logs) => setWorkLogs(logs || []));
@@ -180,6 +197,7 @@ export const WorkerPinModal = ({
       if (unsubAbsence) unsubAbsence();
       if (unsubExtQual) unsubExtQual();
       if (unsubHanulQual) unsubHanulQual();
+      if (unsubMachQual) unsubMachQual();
       if (unsub4M) unsub4M();
       if (unsubExtRep) unsubExtRep();
       if (unsubLogs) unsubLogs();
@@ -855,8 +873,50 @@ export const WorkerPinModal = ({
           });
         }
       });
+    } else if (isMachiningWorker) {
+      sectorName = "가공동";
+      managerName = "윤경수 책임";
+      subText = "윤경수 책임 공지 • JA / NX4 / NX4a / HR 가공 라인별 품질이슈 및 공지";
+
+      (machiningQualityIssues || []).forEach((mq) => {
+        if (!mq || mq.status === "RESOLVED") return;
+        const causeImgs = Array.isArray(mq.causeImages) ? mq.causeImages : [];
+        const actionImgs = Array.isArray(mq.actionImages) ? mq.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+        issues.push({
+          id: `mq_${mq.id}`,
+          title: mq.title,
+          content: mq.defectDescription || mq.content,
+          line: mq.line || "가공",
+          defectType: mq.defectType,
+          actionResult: mq.actionPlan || mq.actionResult,
+          images: allImgs,
+          date: mq.date || todayKst,
+          author: mq.author || "윤경수 책임"
+        });
+      });
+
+      (sourceIssues || []).forEach((u) => {
+        if (!u || u.isDeleted || u.deleted) return;
+        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수");
+        const isMach = (String(u.line || u.plant || u.target || "").includes("가공") || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(u.line)) && !String(u.line || "").includes("외주");
+        if (isYoon || isMach) {
+          issues.push({
+            id: `urg_mach_${u.id}`,
+            title: u.title,
+            content: u.content,
+            line: u.line || "가공",
+            defectType: u.defectType || u.category,
+            actionResult: u.actionResult || u.actionGuide,
+            images: u.images || [],
+            date: u.date || (u.createdAt ? String(u.createdAt).slice(0, 10) : todayKst),
+            author: u.author ? `${u.author} ${u.authorTitle || ""}` : "윤경수 책임"
+          });
+        }
+      });
     } else {
-      // 가공동 (윤경수 책임)
+      // 일반 기타 현장 (윤경수 책임)
       sectorName = "가공동";
       managerName = "윤경수 책임";
       subText = "윤경수 책임 공지 • 가공 라인별 품질이슈 및 긴급공지";
@@ -898,7 +958,7 @@ export const WorkerPinModal = ({
       subText,
       issues: dedupedIssues.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     };
-  }, [isExtrusionWorker, isHanul, isBurimtech, extrusionQualityIssues, hanulQualityIssues, urgentIssues, localUrgentIssues, todayKst]);
+  }, [isExtrusionWorker, isHanul, isBurimtech, isMachiningWorker, extrusionQualityIssues, hanulQualityIssues, machiningQualityIssues, urgentIssues, localUrgentIssues, todayKst]);
 
   // 2-2. [패널 3] 첫화면 품질경보 & 당일 사내공지 (사내공지 당일 1일 한정 노출)
   const firstScreenQualityAndNotices = useMemo(() => {
@@ -914,7 +974,10 @@ export const WorkerPinModal = ({
         id.startsWith("hanul_qual_") ||
         id.startsWith("urg_hanul_") ||
         id.startsWith("ext_qual_") ||
-        id.startsWith("urg_ext_")
+        id.startsWith("urg_ext_") ||
+        id.startsWith("mach_qual_") ||
+        id.startsWith("urg_mach_") ||
+        id.startsWith("mq_")
       ) {
         return;
       }
@@ -1287,6 +1350,16 @@ export const WorkerPinModal = ({
     handleLogin(e);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: proj } }));
+    }, 200);
+  };
+
+  const handleOpenMachiningReportAction = (proj = "JA", e) => {
+    try {
+      sessionStorage.setItem("auto_open_machining_report", proj);
+    } catch (err) {}
+    handleLogin(e);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("open-machining-work-report-modal", { detail: { project: proj } }));
     }, 200);
   };
 
@@ -2117,6 +2190,42 @@ export const WorkerPinModal = ({
                     <ArrowRight className="w-4 h-4 text-purple-200 shrink-0" />
                   </button>
                 </div>
+              ) : isMachiningWorker ? (
+                /* 가공동 전용: JA, NX4, NX4a, HR G/RUN 4대 차종 일보 작성 뱃지 */
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenMachiningReportAction("JA", e)}
+                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚗 JA 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenMachiningReportAction("NX4", e)}
+                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚙 NX4 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenMachiningReportAction("NX4A", e)}
+                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>⚡ NX4a 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-teal-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenMachiningReportAction("HR", e)}
+                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚐 HR 일보</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                  </button>
+                </div>
               ) : isBurimtech ? (
                 /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
                 <button
@@ -2341,6 +2450,22 @@ export const WorkerPinModal = ({
               : "박종미"
           }
         />
+      )}
+
+      {/* 📋 삼랑진공장 가공동 작업일보 모달 (JA / NX4 / NX4a / HR G/RUN) */}
+      {isMachiningWorkReportOpen && (
+        <Suspense fallback={null}>
+          <MachiningWorkReportModal
+            isOpen={isMachiningWorkReportOpen}
+            onClose={() => setIsMachiningWorkReportOpen(false)}
+            initialProject={machiningReportProject}
+            initialWorker={
+              selectedUser?.name && !isExcludedFromMachiningWorkReport(selectedUser.name)
+                ? selectedUser.name
+                : "크리스토퍼"
+            }
+          />
+        </Suspense>
       )}
     </>
   );
