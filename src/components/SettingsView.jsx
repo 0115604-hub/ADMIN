@@ -29,9 +29,11 @@ import {
   getDailyMaintenanceStatus,
   runDailyMaintenance
 } from "../services/dailyMaintenanceService";
+import { IncidentLogsView } from "./IncidentLogsView";
 
 export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
   const [copied, setCopied] = useState(false);
+  const [settingsSubTab, setSettingsSubTab] = useState("incident_logs"); // "incident_logs" | "telegram" | "maintenance" | "firebase"
 
   // Daily Maintenance State
   const [maintenanceStatus, setMaintenanceStatus] = useState(() => getDailyMaintenanceStatus());
@@ -182,20 +184,82 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       {/* Header */}
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>시스템 & 텔레그램 연동 설정</span>
+            <span>ADMIN 관리자 설정 & 시스템 관리</span>
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            품질경보 텔레그램 실시간 알림 봇, Firebase 백엔드 및 로컬 데이터 저장소 관리
+            시스템 오류 및 조치 이력 관리, 데이터 무결성 점검/백업, 텔레그램 연동 및 Firebase 설정
           </p>
         </div>
       </div>
 
+      {/* Sub Tabs */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+        <button
+          type="button"
+          onClick={() => setSettingsSubTab("incident_logs")}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            settingsSubTab === "incident_logs"
+              ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-md ring-1 ring-rose-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <AlertTriangle className="w-4 h-4 text-rose-500" />
+          <span>🚨 오류 및 조치 관리 (월요 점검)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSettingsSubTab("maintenance")}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            settingsSubTab === "maintenance"
+              ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-md ring-1 ring-blue-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Database className="w-4 h-4 text-blue-500" />
+          <span>데이터 무결성 점검 & 백업</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSettingsSubTab("telegram")}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            settingsSubTab === "telegram"
+              ? "bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-md ring-1 ring-sky-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Send className="w-4 h-4 text-sky-500" />
+          <span>텔레그램 알림 봇 연동</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSettingsSubTab("firebase")}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            settingsSubTab === "firebase"
+              ? "bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-md ring-1 ring-amber-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Flame className="w-4 h-4 text-amber-500" />
+          <span>Firebase 환경 설정</span>
+        </button>
+      </div>
+
+      {settingsSubTab === "incident_logs" && (
+        <IncidentLogsView />
+      )}
+
+      {settingsSubTab !== "incident_logs" && (
+        <>
+          {(settingsSubTab === "telegram" || settingsSubTab === "maintenance" || settingsSubTab === "firebase") && null}
       {/* 🚀 Telegram Bot Integration Settings */}
       <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-500/30 dark:border-blue-500/20 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -562,6 +626,8 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

@@ -5605,6 +5605,71 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 7. ⭐ [ADMIN 전용] 시스템 오류 및 조치 이력 관리 (월요 정기 품질 점검) */}
+      {/* ========================================================================= */}
+      {isAdmin && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5" />
+              </div>
+              <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                7. 시스템 오류 및 조치 이력 관리
+              </h3>
+              <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                ADMIN 전용
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
+              className="text-xs font-black text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+            >
+              <span>전체 관리 및 신규 등록 →</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div
+              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
+              className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                  🟢 조치완료 • 전자결재
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit 202ac86)</span>
+              </div>
+              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                전자결재 결재대기 카운트 동적 연동 및 협력사 보고서 자동 취합 누락 조치
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                결재함 배지 카운트 실시간 동기화 및 협력사 특근/근태보고서 자동 연동 완료
+              </p>
+            </div>
+
+            <div
+              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
+              className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                  🟢 조치완료 • 근태관리
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit cff95b6)</span>
+              </div>
+              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                근태 최종 저장 및 보고서 등록 시 TDZ ReferenceError 런타임 크래시 조치
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                선언 순서 재배치로 런타임 에러 완전 제거 및 평일 미선택 정시 자동채우기 확인창 적용
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Work Log Detail View Modal (상세내용 확인 & 코멘트 입력 & 전자결재 모달) */}
       {selectedLogDetail && (
         <div
