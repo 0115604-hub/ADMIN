@@ -27,8 +27,20 @@ export const SQ_MANAGERS = [
 export const getCleanOwnerName = (owner) => {
   if (!owner || owner === "-" || owner === "미지정") return "-";
   const trimmed = String(owner).trim();
-  const name = trimmed.split(/[\s(/]/)[0];
+  const name = trimmed.split(/[\s(\/]/)[0];
   return name || "-";
+};
+
+// Helper: Safely sanitize object by removing undefined fields for Firestore setDoc compatibility
+const cleanForFirestore = (obj) => {
+  if (!obj || typeof obj !== "object") return obj;
+  const cleaned = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  });
+  return cleaned;
 };
 
 // 1. Get Initial / Local Items
@@ -115,7 +127,7 @@ export const updateSqLevelUpItem = async (seq, updates) => {
 
   try {
     const docRef = doc(db, COLLECTION_NAME, String(seq));
-    await setDoc(docRef, updatedItem, { merge: true });
+    await setDoc(docRef, cleanForFirestore(updatedItem), { merge: true });
   } catch (e) {
     console.warn("Firestore updateSqLevelUpItem failed, preserved locally:", e);
   }
@@ -131,7 +143,7 @@ export const batchUpdateSqLevelUpItems = async (items) => {
     const timestamp = new Date().toISOString();
     const writePromises = items.map((item) => {
       const docRef = doc(db, COLLECTION_NAME, String(item.seq));
-      return setDoc(docRef, { ...item, updatedAt: timestamp }, { merge: true });
+      return setDoc(docRef, cleanForFirestore({ ...item, updatedAt: timestamp }), { merge: true });
     });
     await Promise.allSettled(writePromises);
     return true;

@@ -406,15 +406,13 @@ export const App = () => {
         </div>
       )}
 
-      {/* Sidebar (Admin Only - Desktop & Mobile Drawer) */}
-      {!isOperator && (
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          mobileOpen={mobileMenuOpen}
-          onCloseMobile={() => setMobileMenuOpen(false)}
-        />
-      )}
+      {/* Sidebar (Desktop for Admin & Mobile Drawer for All Users) */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 w-full mobile-pan-free">
@@ -506,7 +504,7 @@ export const App = () => {
                     </ErrorBoundary>
                   )}
                   {activeTab === "sq_level_up" && (
-                    <ErrorBoundary inline title="SQ 레벨업 추진판">
+                    <ErrorBoundary inline title="SQ 진행상황 현황표">
                       <SqLevelUpView />
                     </ErrorBoundary>
                   )}
@@ -556,7 +554,7 @@ export const App = () => {
                   )}
 
                   {activeTab === "sq_level_up" && (
-                    <ErrorBoundary inline title="SQ 레벨업 추진판">
+                    <ErrorBoundary inline title="SQ 진행상황 현황표">
                       <SqLevelUpView />
                     </ErrorBoundary>
                   )}

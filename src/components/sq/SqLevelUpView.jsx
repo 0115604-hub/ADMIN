@@ -551,13 +551,19 @@ export const SqLevelUpView = () => {
                     <td className="py-3 px-2 text-center">
                       <div className="flex flex-col items-center justify-center gap-0.5">
                         <div className="flex items-center justify-center gap-1 w-full">
-                          <input
-                            type="date"
-                            value={item.targetDate && item.targetDate !== "-" ? item.targetDate : ""}
-                            onChange={(e) => handleTargetDateChange(item.seq, e.target.value)}
-                            className="w-full max-w-[125px] px-1.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer font-mono text-center"
-                            title="완료예정일자 선택"
-                          />
+                          {(() => {
+                            const raw = item.targetDate ? String(item.targetDate).trim().replace(/[./]/g, "-") : "";
+                            const dateVal = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+                            return (
+                              <input
+                                type="date"
+                                value={dateVal}
+                                onChange={(e) => handleTargetDateChange(item.seq, e.target.value)}
+                                className="w-full max-w-[125px] px-1.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer font-mono text-center"
+                                title="완료예정일자 선택"
+                              />
+                            );
+                          })()}
                           {item.targetDate && item.targetDate !== "-" && (
                             <button
                               type="button"
@@ -570,17 +576,20 @@ export const SqLevelUpView = () => {
                           )}
                         </div>
                         {(() => {
-                          if (!item.targetDate || item.targetDate === "-" || item.status === "CLOSE" || item.status === "조치완료" || item.status === "해당없음") {
+                          const raw = item.targetDate ? String(item.targetDate).trim().replace(/[./]/g, "-") : "";
+                          const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+                          if (!safeDate || item.status === "CLOSE" || item.status === "조치완료" || item.status === "해당없음") {
                             return null;
                           }
                           const today = new Date().toISOString().slice(0, 10);
-                          if (item.targetDate < today) {
+                          if (safeDate < today) {
                             return <span className="text-[10px] font-black text-rose-500">기한초과</span>;
                           }
-                          if (item.targetDate === today) {
+                          if (safeDate === today) {
                             return <span className="text-[10px] font-black text-amber-500 animate-pulse">D-Day</span>;
                           }
-                          const diffDays = Math.ceil((new Date(item.targetDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                          const diffDays = Math.ceil((new Date(safeDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                          if (isNaN(diffDays)) return null;
                           return <span className="text-[10px] font-bold text-slate-400">D-{diffDays}</span>;
                         })()}
                       </div>
@@ -607,7 +616,7 @@ export const SqLevelUpView = () => {
                     {/* Status Dropdown */}
                     <td className="py-3 px-3 text-center">
                       <select
-                        value={item.status}
+                        value={item.status === "조치완료" ? "CLOSE" : (item.status || "OPEN")}
                         onChange={(e) => handleQuickStatusChange(item.seq, e.target.value)}
                         className={`px-2 py-1 rounded-lg text-[11px] font-black border cursor-pointer ${
                           item.status === "CLOSE" || item.status === "조치완료"
