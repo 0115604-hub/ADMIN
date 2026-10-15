@@ -583,60 +583,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isManagerOrAdmin = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusionWorkerOnly = isExtrusionWorkerProfile(currentProfile);
 
-  // ⭐ Field Worker (작업자 전용 모드) 상태 및 오늘 일보 확인
-  const [workerLogScope, setWorkerLogScope] = useState("my"); // "my" | "plant"
-  const [workerLogApprovalFilter, setWorkerLogApprovalFilter] = useState("all"); // "all" | "대기" | "승인"
-
-  const currentWorkerTodayDateStr = useMemo(() => getKSTDateString(), []);
-  const todayLog = useMemo(() => {
-    return (workLogs || []).find(
-      (l) =>
-        l.date === currentWorkerTodayDateStr &&
-        (l.writer === workerFullName ||
-          l.writer === currentProfile?.name ||
-          l.author === currentProfile?.name ||
-          (currentProfile?.name && l.writer?.includes(currentProfile.name)))
-    );
-  }, [workLogs, currentWorkerTodayDateStr, workerFullName, currentProfile?.name]);
-
-  const workerLogsList = useMemo(() => {
-    return (workLogs || [])
-      .filter((log) => {
-        // 1. Scope filter
-        if (workerLogScope === "my") {
-          const isMy =
-            log.writer === workerFullName ||
-            log.writer === currentProfile?.name ||
-            log.author === currentProfile?.name ||
-            (currentProfile?.name && log.writer?.includes(currentProfile.name));
-          if (!isMy) return false;
-        } else if (workerLogScope === "plant") {
-          if (workerPlant && log.plant && log.plant !== workerPlant) return false;
-        }
-
-        // 2. Approval filter
-        if (workerLogApprovalFilter === "대기") {
-          if (isWorkLogApproved(log)) return false;
-        } else if (workerLogApprovalFilter === "승인") {
-          if (!isWorkLogApproved(log)) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.date !== b.date) return (b.date || "").localeCompare(a.date || "");
-        return (b.createdAt || "").localeCompare(a.createdAt || "");
-      });
-  }, [workLogs, workerLogScope, workerFullName, currentProfile?.name, workerPlant, workerLogApprovalFilter]);
-
-  // Header "✍️ 일보작성" 버튼 연동 리스너
-  useEffect(() => {
-    const handleOpen = () => {
-      handleOpenWorkLogModal();
-    };
-    window.addEventListener("open-worker-worklog-modal", handleOpen);
-    return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
-  }, []);
 
   // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
   const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
@@ -1188,6 +1134,61 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setSelectedLogDetail(log);
     setApprovalCommentInput(log?.approvalComment || "");
   };
+
+  // ⭐ Field Worker (작업자 전용 모드) 상태 및 오늘 일보 확인 (workLogs, handleOpenWorkLogModal 초기화 후 안전하게 선언)
+  const [workerLogScope, setWorkerLogScope] = useState("my"); // "my" | "plant"
+  const [workerLogApprovalFilter, setWorkerLogApprovalFilter] = useState("all"); // "all" | "대기" | "승인"
+
+  const currentWorkerTodayDateStr = useMemo(() => getKSTDateString(), []);
+  const todayLog = useMemo(() => {
+    return (workLogs || []).find(
+      (l) =>
+        l.date === currentWorkerTodayDateStr &&
+        (l.writer === workerFullName ||
+          l.writer === currentProfile?.name ||
+          l.author === currentProfile?.name ||
+          (currentProfile?.name && l.writer?.includes(currentProfile.name)))
+    );
+  }, [workLogs, currentWorkerTodayDateStr, workerFullName, currentProfile?.name]);
+
+  const workerLogsList = useMemo(() => {
+    return (workLogs || [])
+      .filter((log) => {
+        // 1. Scope filter
+        if (workerLogScope === "my") {
+          const isMy =
+            log.writer === workerFullName ||
+            log.writer === currentProfile?.name ||
+            log.author === currentProfile?.name ||
+            (currentProfile?.name && log.writer?.includes(currentProfile.name));
+          if (!isMy) return false;
+        } else if (workerLogScope === "plant") {
+          if (workerPlant && log.plant && log.plant !== workerPlant) return false;
+        }
+
+        // 2. Approval filter
+        if (workerLogApprovalFilter === "대기") {
+          if (isWorkLogApproved(log)) return false;
+        } else if (workerLogApprovalFilter === "승인") {
+          if (!isWorkLogApproved(log)) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.date !== b.date) return (b.date || "").localeCompare(a.date || "");
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      });
+  }, [workLogs, workerLogScope, workerFullName, currentProfile?.name, workerPlant, workerLogApprovalFilter]);
+
+  // Header "✍️ 일보작성" 버튼 연동 리스너
+  useEffect(() => {
+    const handleOpen = () => {
+      handleOpenWorkLogModal();
+    };
+    window.addEventListener("open-worker-worklog-modal", handleOpen);
+    return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
+  }, []);
 
   const handleOpenQualityPopup = (it) => {
     pushModalHistory("quality_popup");
