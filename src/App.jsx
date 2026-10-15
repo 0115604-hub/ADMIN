@@ -59,7 +59,16 @@ import { syncAllOvertimeReportsToApprovalBox } from "./services/approvalService"
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
   const { resetToCurrentMonth } = useMonth();
-  const [activeTab, setActiveTab] = useState("worker_dashboard");
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const target = localStorage.getItem("admin_target_tab");
+      if (target) {
+        localStorage.removeItem("admin_target_tab");
+        return target;
+      }
+    } catch (e) {}
+    return "worker_dashboard";
+  });
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);

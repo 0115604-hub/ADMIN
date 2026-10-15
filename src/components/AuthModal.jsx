@@ -69,6 +69,7 @@ const IssueEditModal = lazy(() => import("./issues/IssueEditModal").then(m => ({
 const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m => ({ default: m.IssueActionModal || m.default })));
 const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
+const SqLevelUpView = lazy(() => import("./sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
 
 export const AuthModal = () => {
   const { currentProfile, loginWithProfile } = useAuth();
@@ -86,6 +87,7 @@ export const AuthModal = () => {
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
+  const [isSqLevelUpModalOpen, setIsSqLevelUpModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
   const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("박종미");
   const [firstPageToast, setFirstPageToast] = useState("");
@@ -1479,6 +1481,7 @@ export const AuthModal = () => {
   useModalHistory(isMachiningModalOpen, () => setIsMachiningModalOpen(false), "machiningModal");
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
+  useModalHistory(isSqLevelUpModalOpen, () => setIsSqLevelUpModalOpen(false), "sqLevelUpModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
@@ -1592,6 +1595,34 @@ export const AuthModal = () => {
                 </span>
               </button>
             </div>
+          </div>
+
+          {/* 🎯 첫화면 회사로고 바로 아래: SQ Live 모니터링 및 진행현황 1줄 패널 */}
+          <div className="mb-3 sm:mb-3.5">
+            <button
+              type="button"
+              onClick={() => setIsSqLevelUpModalOpen(true)}
+              className="w-full py-2.5 px-3.5 sm:px-4 rounded-2xl text-left transition-all group flex items-center justify-between shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer border bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 hover:from-slate-800 hover:to-indigo-900 text-white border-indigo-500/40 ring-1 ring-indigo-500/20"
+              title="SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판 열기)"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white group-hover:text-cyan-300 truncate tracking-tight">
+                  🎯 SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판)
+                </span>
+                <span className="hidden md:inline-block text-[11px] text-indigo-200/80 font-medium truncate">
+                  • D-Day 2026.10.31 • S등급 59건 / A등급 61건 • 앱 해결률 96.8%
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <span className="text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-colors">
+                  LIVE 추진판 ➔
+                </span>
+              </div>
+            </button>
           </div>
 
           {/* 📢 1. 실시간 공지 & 오픈이슈 라이브 보드 */}
@@ -2195,6 +2226,64 @@ export const AuthModal = () => {
             initialWorker={hanulWorkReportWorker}
           />
         </Suspense>
+      )}
+
+      {/* 🎯 SQ Live 모니터링 및 진행현황 모달 (Admin SQ 추진판 내용 전체 표시) */}
+      {isSqLevelUpModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-[1700px] max-h-[96vh] flex flex-col overflow-hidden animate-scaleIn">
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                </span>
+                <h3 className="font-black text-sm sm:text-base text-white tracking-tight">
+                  🎯 SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판)
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem("admin_target_tab", "sq_level_up");
+                      loginWithProfile(ADMIN_USERS[0], "0090", true);
+                    } catch (e) {
+                      console.warn(e);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="관리자(Admin) 모드로 전환"
+                >
+                  <span>🔑 관리자 모드로 전환</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSqLevelUpModalOpen(false)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="닫기"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 sm:p-4 bg-slate-100 dark:bg-slate-950">
+              <Suspense
+                fallback={
+                  <div className="h-96 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-xs text-slate-400">SQ 레벨업 추진판 로딩 중...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <SqLevelUpView />
+              </Suspense>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
