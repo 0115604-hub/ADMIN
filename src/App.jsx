@@ -19,6 +19,7 @@ const OvertimeStatusView = lazy(() => import("./components/OvertimeStatusView").
 const ElectronicApprovalView = lazy(() => import("./components/ElectronicApprovalView").then(m => ({ default: m.ElectronicApprovalView || m.default })));
 const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({ default: m.TelegramView || m.default })));
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
+const IncidentLogsView = lazy(() => import("./components/IncidentLogsView").then(m => ({ default: m.IncidentLogsView || m.default })));
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
 const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
 
@@ -462,6 +463,11 @@ export const App = () => {
                       <OperatorWorkspace onBulkUpload={handleBulkUpload} />
                     </ErrorBoundary>
                   )}
+                  {activeTab === "incident_logs" && (
+                    <ErrorBoundary inline title="오류 및 조치 관리">
+                      <IncidentLogsView />
+                    </ErrorBoundary>
+                  )}
                 </>
               )}
 
@@ -516,6 +522,12 @@ export const App = () => {
                   {activeTab === "operator_workspace" && (
                     <ErrorBoundary inline title="엑셀 파일 업로드">
                       <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                    </ErrorBoundary>
+                  )}
+
+                  {activeTab === "incident_logs" && (
+                    <ErrorBoundary inline title="오류 및 조치 관리">
+                      <IncidentLogsView />
                     </ErrorBoundary>
                   )}
 

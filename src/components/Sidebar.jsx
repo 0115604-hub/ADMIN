@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   FileSignature,
   Receipt,
+  AlertTriangle,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -26,6 +27,7 @@ export const ADMIN_TABS = [
   { id: "electronic_approval", label: "전자결재", icon: FileSignature },
   { id: "vehicle_sales", label: "매출매입분석", icon: BarChart3 },
   { id: "hanul_tax_invoice", label: "한울세금계산서", icon: Receipt },
+  { id: "incident_logs", label: "오류 및 조치 관리", icon: AlertTriangle },
   { id: "telegram", label: "텔레그램 연동 설정", icon: TelegramLogo },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];
@@ -88,6 +90,14 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       color: "purple",
       activeClass: "bg-purple-50 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300 ring-1 ring-purple-500/30",
       iconColor: "text-purple-600 dark:text-purple-400"
+    },
+    {
+      id: "incident_logs",
+      label: "오류 및 조치 관리",
+      icon: AlertTriangle,
+      color: "rose",
+      activeClass: "bg-rose-50 text-rose-900 dark:bg-rose-950/60 dark:text-rose-300 ring-1 ring-rose-500/30",
+      iconColor: "text-rose-600 dark:text-rose-400"
     },
     ...(isInjoo
       ? [
