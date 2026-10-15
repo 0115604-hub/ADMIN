@@ -2088,33 +2088,22 @@ export const WorkerPinModal = ({
           {isPinVerified && (
             <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
               {isExtrusionWorker ? (
-                /* 압출동 작업자: 압출 작업일보 작성 바로가기 + 확인완료 작업개시 */
+                /* 압출동 작업자: 압출 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
+                <button
+                  type="button"
+                  onClick={handleOpenExtrusionReportAction}
+                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
+                >
+                  <span>🏭 오늘의 압출 작업일보 작성 바로가기</span>
+                  <ArrowRight className="w-4 h-4 text-teal-200" />
+                </button>
+              ) : isHanul ? (
+                /* 한울 전용: 9BQC 및 LQ2a 일보 작성 뱃지 2개 (확인완료작업개시 뱃지 제거) */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={handleOpenExtrusionReportAction}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>🏭 압출 작업일보 작성 바로가기</span>
-                    <ArrowRight className="w-4 h-4 text-teal-200" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <span>확인완료 작업개시</span>
-                    <ArrowRight className="w-4 h-4 text-blue-200" />
-                  </button>
-                </div>
-              ) : isHanul ? (
-                /* 한울 전용: 9BQC 및 LQ2a 일보 작성 뱃지 2개 + 확인완료 작업개시 */
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
                     onClick={(e) => handleOpenHanulReportAction("9BQC", e)}
-                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
                   >
                     <span>🚗 9BQC 일보 작성</span>
                     <ArrowRight className="w-4 h-4 text-indigo-200 shrink-0" />
@@ -2122,63 +2111,32 @@ export const WorkerPinModal = ({
                   <button
                     type="button"
                     onClick={(e) => handleOpenHanulReportAction("LQ2A", e)}
-                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer truncate"
                   >
                     <span>⚡ LQ2a 일보 작성</span>
                     <ArrowRight className="w-4 h-4 text-purple-200 shrink-0" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-slate-700/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50 truncate"
-                  >
-                    <span>확인완료 작업개시</span>
-                    <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-                  </button>
                 </div>
               ) : isBurimtech ? (
-                /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 + 확인완료 작업개시 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleOpenGeneralWorkLogAction}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>✍️ 부림텍 작업일보 작성 바로가기</span>
-                    <ArrowRight className="w-4 h-4 text-teal-200" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-700/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <span>확인완료 작업개시</span>
-                    <ArrowRight className="w-4 h-4 text-slate-300" />
-                  </button>
-                </div>
+                /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
+                <button
+                  type="button"
+                  onClick={handleOpenGeneralWorkLogAction}
+                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
+                >
+                  <span>✍️ 오늘의 부림텍 작업일보 작성 바로가기</span>
+                  <ArrowRight className="w-4 h-4 text-teal-200" />
+                </button>
               ) : (selectedUser?.isFieldWorker || isFieldWorker) ? (
-                /* 가공동 등 일반 현장작업자: 작업일보 작성 바로가기 + 확인완료 작업개시 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleOpenGeneralWorkLogAction}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>✍️ 오늘의 작업일보 작성 바로가기</span>
-                    <ArrowRight className="w-4 h-4 text-indigo-200" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-700/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <span>확인완료 작업개시</span>
-                    <ArrowRight className="w-4 h-4 text-slate-300" />
-                  </button>
-                </div>
+                /* 가공동 등 일반 현장작업자: 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
+                <button
+                  type="button"
+                  onClick={handleOpenGeneralWorkLogAction}
+                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer"
+                >
+                  <span>✍️ 오늘의 작업일보 작성 바로가기</span>
+                  <ArrowRight className="w-4 h-4 text-indigo-200" />
+                </button>
               ) : (
                 /* 관리자 (본사 임원, 공장 관리자, 협력사 대표이사): 확인완료 작업개시 */
                 <button
