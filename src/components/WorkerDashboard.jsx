@@ -7,6 +7,7 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
+  ClipboardList,
   AlertTriangle,
   FileText,
   DollarSign,
@@ -1143,24 +1144,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const todayLog = useMemo(() => {
     return (workLogs || []).find(
       (l) =>
+        Boolean(l) &&
         l.date === currentWorkerTodayDateStr &&
         (l.writer === workerFullName ||
           l.writer === currentProfile?.name ||
           l.author === currentProfile?.name ||
-          (currentProfile?.name && l.writer?.includes(currentProfile.name)))
+          (currentProfile?.name && typeof l.writer === "string" && l.writer.includes(currentProfile.name)))
     );
   }, [workLogs, currentWorkerTodayDateStr, workerFullName, currentProfile?.name]);
 
   const workerLogsList = useMemo(() => {
     return (workLogs || [])
       .filter((log) => {
+        if (!log) return false;
         // 1. Scope filter
         if (workerLogScope === "my") {
           const isMy =
             log.writer === workerFullName ||
             log.writer === currentProfile?.name ||
             log.author === currentProfile?.name ||
-            (currentProfile?.name && log.writer?.includes(currentProfile.name));
+            (currentProfile?.name && typeof log.writer === "string" && log.writer.includes(currentProfile.name));
           if (!isMy) return false;
         } else if (workerLogScope === "plant") {
           if (workerPlant && log.plant && log.plant !== workerPlant) return false;
