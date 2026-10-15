@@ -440,8 +440,8 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ Live 모니터링 및 진행현황 1줄 패널 (현장 작업자 제외) */}
-        {!isFieldWorkerProfile && (
+        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ Live 모니터링 및 진행현황 1줄 패널 (Admin 및 현장 작업자 제외) */}
+        {!isAdmin && !isFieldWorkerProfile && (
           <div className="px-2 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-0">
             <button
               type="button"

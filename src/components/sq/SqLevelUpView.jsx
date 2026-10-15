@@ -21,12 +21,14 @@ import {
   Layers,
   HelpCircle,
   Printer,
+  Save,
   X
 } from "lucide-react";
 import {
   getLocalSqLevelUpItems,
   subscribeSqLevelUpItems,
   updateSqLevelUpItem,
+  batchUpdateSqLevelUpItems,
   calculateSqKPIs,
   exportSqToExcel,
   getCleanOwnerName,
@@ -52,6 +54,11 @@ export const SqLevelUpView = () => {
   const [isQualityModalOpen, setIsQualityModalOpen] = useState(false);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+
+  // Changes Registration State
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveToast, setSaveToast] = useState(null);
+  const [modifiedSeqs, setModifiedSeqs] = useState(new Set());
 
   // Real-time Subscription
   useEffect(() => {
@@ -114,26 +121,67 @@ export const SqLevelUpView = () => {
     await updateSqLevelUpItem(seq, { status: newStatus });
   };
 
-  // Handle Manager Assignment Change (이름만 정규화하여 저장)
-  const handleOwnerChange = async (seq, newOwner) => {
+  // Handle Manager Assignment Change (이름만 정규화하여 저장 및 수정 대기 목록에 등록)
+  const handleOwnerChange = (seq, newOwner) => {
     const clean = getCleanOwnerName(newOwner);
     setItems((prev) =>
       prev.map((it) => (it.seq === seq ? { ...it, mainOwner: clean } : it))
     );
-    await updateSqLevelUpItem(seq, { mainOwner: clean });
+    setModifiedSeqs((prev) => new Set(prev).add(seq));
+    updateSqLevelUpItem(seq, { mainOwner: clean }).catch((e) => console.warn(e));
   };
 
-  // Handle Target Completion Date Change (완료예정일자 저장)
-  const handleTargetDateChange = async (seq, newDate) => {
+  // Handle Target Completion Date Change (완료예정일자 저장 및 수정 대기 목록에 등록)
+  const handleTargetDateChange = (seq, newDate) => {
     const val = newDate ? String(newDate).trim() : "-";
     setItems((prev) =>
       prev.map((it) => (it.seq === seq ? { ...it, targetDate: val } : it))
     );
-    await updateSqLevelUpItem(seq, { targetDate: val });
+    setModifiedSeqs((prev) => new Set(prev).add(seq));
+    updateSqLevelUpItem(seq, { targetDate: val }).catch((e) => console.warn(e));
   };
 
+  // 💾 재등록: 모든 관리자 및 완료예정일자 변경사항을 클라우드 Firestore & 로컬에 일괄 재등록
+  const handleSaveAllChanges = async () => {
+    setIsSaving(true);
+    try {
+      await batchUpdateSqLevelUpItems(items);
+      const count = modifiedSeqs.size;
+      setModifiedSeqs(new Set());
+      setSaveToast(
+        count > 0
+          ? `✓ 관리자 및 완료예정일자 변경사항 (${count}건)이 정상적으로 재등록되었습니다.`
+          : "✓ 관리자 및 완료예정일자가 최신 상태로 정상 재등록되었습니다."
+      );
+      setTimeout(() => setSaveToast(null), 3500);
+    } catch (e) {
+      console.error("SQ changes save error:", e);
+      setSaveToast("⚠️ 재등록 중 네트워크 지연이 발생했으나 로컬에는 안전하게 보존되었습니다.");
+      setTimeout(() => setSaveToast(null), 3500);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Listen to custom trigger event from modal header or external actions
+  useEffect(() => {
+    const handleTrigger = () => {
+      handleSaveAllChanges();
+    };
+    window.addEventListener("trigger-sq-reregister", handleTrigger);
+    return () => window.removeEventListener("trigger-sq-reregister", handleTrigger);
+  }, [items, modifiedSeqs]);
+
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn relative">
+      {/* Toast Notification */}
+      {saveToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-xs sm:text-sm shadow-2xl flex items-center gap-2.5 border-2 border-emerald-300 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+          <span>{saveToast}</span>
+        </div>
+      )}
+
       {/* 1. Header Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-5 sm:p-6 shadow-xl border border-indigo-500/20">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -153,6 +201,22 @@ export const SqLevelUpView = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 sm:self-center">
+            {/* 💾 변경사항등록 버튼 */}
+            <button
+              type="button"
+              onClick={handleSaveAllChanges}
+              disabled={isSaving}
+              className="px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+              title="관리자 및 완료예정일자 변경사항 재등록"
+            >
+              <Save className="w-4 h-4 text-emerald-200" />
+              <span>{isSaving ? "재등록 중..." : "변경사항등록"}</span>
+              {modifiedSeqs.size > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-950 text-emerald-300 font-bold border border-emerald-400/40">
+                  {modifiedSeqs.size}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setIsInspectionModalOpen(true)}
               className="px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-lg shadow-cyan-500/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95"

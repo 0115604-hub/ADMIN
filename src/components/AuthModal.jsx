@@ -61,6 +61,7 @@ import {
   CheckCircle2,
   Sparkles,
   Plus,
+  Save,
   X
 } from "lucide-react";
 
@@ -2393,17 +2394,13 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    try {
-                      localStorage.setItem("admin_target_tab", "sq_level_up");
-                      loginWithProfile(ADMIN_USERS[0], "0090", true);
-                    } catch (e) {
-                      console.warn(e);
-                    }
+                    window.dispatchEvent(new CustomEvent("trigger-sq-reregister"));
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                  title="관리자(Admin) 모드로 전환"
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition-all shadow-md shadow-emerald-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  title="관리자 및 완료예정일자 변경사항 재등록"
                 >
-                  <span>🔑 관리자 모드로 전환</span>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>변경사항등록</span>
                 </button>
                 <button
                   type="button"

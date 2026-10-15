@@ -122,6 +122,25 @@ export const updateSqLevelUpItem = async (seq, updates) => {
   return true;
 };
 
+// 5. Batch Update / Re-register All SQ Changes to Cloud & Local
+export const batchUpdateSqLevelUpItems = async (items) => {
+  if (!Array.isArray(items) || items.length === 0) return false;
+  saveLocalSqLevelUpItems(items);
+
+  try {
+    const timestamp = new Date().toISOString();
+    const writePromises = items.map((item) => {
+      const docRef = doc(db, COLLECTION_NAME, String(item.seq));
+      return setDoc(docRef, { ...item, updatedAt: timestamp }, { merge: true });
+    });
+    await Promise.allSettled(writePromises);
+    return true;
+  } catch (e) {
+    console.warn("Firestore batchUpdateSqLevelUpItems error:", e);
+    return false;
+  }
+};
+
 // 5. Calculate Live KPIs
 export const calculateSqKPIs = (items) => {
   const total = items.length;
