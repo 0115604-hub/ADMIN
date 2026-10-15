@@ -191,27 +191,20 @@ import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueServi
 import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
-import WorkLogDetailModal from "./dashboard/modals/WorkLogDetailModal";
-import WorkLogEditModal from "./dashboard/modals/WorkLogEditModal";
-import WorkerLogListModal from "./dashboard/modals/WorkerLogListModal";
-import LineMatchShareModal from "./dashboard/modals/LineMatchShareModal";
-import ScheduleDetailModal from "./dashboard/modals/ScheduleDetailModal";
-import SharedReplyModal from "./dashboard/modals/SharedReplyModal";
-import SharedSenderConfirmModal from "./dashboard/modals/SharedSenderConfirmModal";
-import CommonScheduleModal from "./dashboard/modals/CommonScheduleModal";
-import DailyPnLModal from "./dashboard/modals/DailyPnLModal";
-import QualityStatusPopupModal from "./dashboard/modals/QualityStatusPopupModal";
-import CommonScheduleCommentsModal from "./dashboard/modals/CommonScheduleCommentsModal";
-import OvertimeReportDetailModal from "./dashboard/modals/OvertimeReportDetailModal";
-import CreateWorkLogModal from "./dashboard/modals/CreateWorkLogModal";
+import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkLogText } from "../services/workLogI18nService";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
-
-// Lazy-loaded on-demand heavy modals
-const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
-const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
-const HanulQualityIssueModal = lazy(() => import("./hanul/HanulQualityIssueModal").then(m => ({ default: m.HanulQualityIssueModal || m.default })));
-const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal").then(m => ({ default: m.RecentWorkLogsSummaryModal || m.default })));
+import {
+  CommonScheduleBar,
+  WorkerScheduleCalendarSection,
+  HanulAndSevereDisasterSection,
+  SalesPurchaseSummarySection,
+  AttendanceSummarySection,
+  QualityStatusSection,
+  ExtrusionDowntimeSection,
+  DailyWorkLogTableSection,
+  AdminAccessAndIncidentSection
+} from "./dashboard/sections";
 import { HanulWorkReportTable } from "./HanulWorkReportTable";
 import { isExcludedFromWorkReport } from "../services/hanulWorkReportService";
 import {
@@ -3680,2127 +3673,162 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         />
       )}
 
-      {/* ========================================================================= */}
-      {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출 • 클릭 시 실시간 의견/코멘트 팝업) */}
-      {/* ========================================================================= */}
-      {isAdmin && (
-        <div className={`rounded-xl px-3 sm:px-3.5 py-2 border shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 min-w-0 max-w-full transition-all ${
-          hasNewScheduleMessage
-            ? "bg-gradient-to-r from-indigo-50/95 via-purple-50/90 to-indigo-50/95 dark:from-indigo-950/85 dark:via-purple-950/70 dark:to-indigo-950/85 border-2 border-indigo-400 dark:border-indigo-500 ring-4 ring-indigo-400/40 shadow-xl shadow-indigo-500/25 animate-pulse"
-            : "bg-white dark:bg-slate-900 border-indigo-500/40 dark:border-indigo-600/40"
-        }`}>
-          {/* Mobile Top Header / Desktop Left Section */}
-          <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 sm:flex-1 overflow-hidden">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className={`p-1 rounded-lg text-white shadow-xs shrink-0 ${
-                hasNewScheduleMessage ? "bg-gradient-to-br from-rose-500 to-indigo-600 animate-bounce" : "bg-indigo-600"
-              }`}>
-                <CalendarDays className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
-                공통일정
-              </span>
-              {hasNewScheduleMessage && (
-                <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 animate-pulse flex items-center gap-1 shadow-2xs shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  <span>새 메시지(점멸)</span>
-                </span>
-              )}
-            </div>
-
-            {/* Desktop Only: Inline Chips */}
-            <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
-              {allActiveCommonSchedules.length > 0 ? (
-                allActiveCommonSchedules.map((item) => {
-                  const commentCount = item.comments?.length || 0;
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedCommonScheduleForComments(item)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs shadow-2xs shrink-0 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all group ${
-                        item.hasNewMessage
-                          ? "bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 dark:border-indigo-500 ring-2 ring-purple-400/80 animate-pulse"
-                          : "bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border-indigo-300 dark:border-indigo-700/80"
-                      }`}
-                      title="탭하여 일정 상세 보기 및 실시간 의견 작성하기"
-                    >
-                      {(() => {
-                        const start = item.startDate || item.date;
-                        const end = item.endDate || item.startDate || item.date;
-                        const hasRange = start && end && start !== end;
-                        if (hasRange) {
-                          return (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300">
-                              {start.slice(5)}~{end.slice(5)}
-                            </span>
-                          );
-                        }
-                        if (start) {
-                          return (
-                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                              start === todayDateStr
-                                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
-                                : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                            }`}>
-                              {start === todayDateStr ? "오늘" : start.slice(5)}
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
-                        item.target === "세미나"
-                          ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                        : item.target === "교육"
-                          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                        : item.target === "여행"
-                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                        : item.target === "맛집"
-                          ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
-                        : item.target === "기타"
-                          ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
-                        : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600"
-                      }`}>
-                        {item.target || "기타"}
-                      </span>
-                      {item.time && item.time !== "종일" && (
-                        <span className="font-mono text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400">
-                          [{item.time}]
-                        </span>
-                      )}
-                      <span className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[130px] sm:max-w-[220px] group-hover:underline">
-                        {item.title}
-                      </span>
-
-                      {/* Opinion / Comment Badge */}
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold flex items-center gap-0.5 border shadow-2xs ${
-                        commentCount > 0
-                          ? "bg-purple-600 text-white border-purple-500 animate-pulse"
-                          : item.isRecent
-                          ? "bg-rose-600 text-white border-rose-500 animate-pulse"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
-                      }`}>
-                        {commentCount > 0 ? (
-                          <>
-                            <MessageCircle className="w-2.5 h-2.5" />
-                            <span>의견 {commentCount}</span>
-                          </>
-                        ) : item.isRecent ? (
-                          <span>⚡ NEW</span>
-                        ) : (
-                          <span>의견</span>
-                        )}
-                      </span>
-
-                      {(isAdmin || isGeneralManager) && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCommonSchedule(item.id);
-                          }}
-                          className="ml-0.5 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
-                          title="일정 삭제"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-slate-500" />
-                  <span>등록된 공통일정 없음</span>
-                </span>
-              )}
-            </div>
-
-            {/* Mobile Top Right: '+ 일정 등록' button */}
-            <div className="flex sm:hidden items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setCommonScheduleModalOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-                title="공통 일정 등록 및 관리"
-              >
-                <Plus className="w-3 h-3" />
-                <span>+ 일정 등록</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Only Bottom Row: Full-width horizontal scrolling chips */}
-          <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full min-w-0">
-            {allActiveCommonSchedules.length > 0 ? (
-              allActiveCommonSchedules.map((item) => {
-                const commentCount = item.comments?.length || 0;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedCommonScheduleForComments(item)}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all group ${
-                      item.hasNewMessage
-                        ? "bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 dark:border-indigo-500 ring-2 ring-purple-400/80 animate-pulse"
-                        : "bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 border-indigo-300 dark:border-indigo-700/80"
-                    }`}
-                    title="탭하여 일정 상세 보기 및 실시간 의견 작성하기"
-                  >
-                    {(() => {
-                      const start = item.startDate || item.date;
-                      const end = item.endDate || item.startDate || item.date;
-                      const hasRange = start && end && start !== end;
-                      if (hasRange) {
-                        return (
-                          <span className="px-1 py-0.2 rounded text-[9.5px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300">
-                            {start.slice(5)}~{end.slice(5)}
-                          </span>
-                        );
-                      }
-                      if (start) {
-                        return (
-                          <span className={`px-1 py-0.2 rounded text-[9.5px] font-bold ${
-                            start === todayDateStr
-                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
-                              : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                          }`}>
-                            {start === todayDateStr ? "오늘" : start.slice(5)}
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()}
-                    <span className={`px-1 py-0.2 rounded text-[9.5px] font-black ${
-                      item.target === "세미나"
-                        ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                      : item.target === "교육"
-                        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                      : item.target === "여행"
-                        ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                      : item.target === "맛집"
-                        ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
-                      : item.target === "기타"
-                        ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
-                      : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600"
-                    }`}>
-                      {item.target || "기타"}
-                    </span>
-                    {item.time && item.time !== "종일" && (
-                      <span className="font-mono text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-                        [{item.time}]
-                      </span>
-                    )}
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-[11px] truncate max-w-[120px]">
-                      {item.title}
-                    </span>
-
-                    {/* Opinion / Comment Badge */}
-                    <span className={`px-1 py-0.2 rounded-full text-[9px] font-extrabold flex items-center gap-0.5 border shadow-2xs ${
-                      commentCount > 0
-                        ? "bg-purple-600 text-white border-purple-500 animate-pulse"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
-                    }`}>
-                      <MessageCircle className="w-2.5 h-2.5" />
-                      <span>{commentCount > 0 ? `${commentCount}` : "0"}</span>
-                    </span>
-
-                    {(isAdmin || isGeneralManager) && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCommonSchedule(item.id);
-                        }}
-                        className="p-0.5 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
-                        title="일정 삭제"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
-                <CheckCircle2 className="w-2.5 h-2.5 text-slate-500" />
-                <span>등록된 공통일정 없음</span>
-              </span>
-            )}
-          </div>
-
-          {/* Desktop Right Side: '+ 일정 등록' button */}
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setCommonScheduleModalOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-              title="공통 일정 등록 및 관리"
-            >
-              <Plus className="w-3 h-3" />
-              <span>+ 일정 등록</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 (ADMIN 및 전작업자 공통 적용) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
-        {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-          {/* Left: Worker Name and Title with Embedded Mini Electronic Approval Panel */}
-          <div className="lg:col-span-3 min-w-0">
-            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl px-3 py-2 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border-2 border-indigo-500/40 dark:border-indigo-400/40 shadow-md shadow-indigo-950/40 ring-1 ring-white/10 group transition-all">
-              {/* Ambient Soft Glow Highlights */}
-              <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none" />
-              <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-tr from-cyan-500/15 to-transparent rounded-full blur-lg pointer-events-none" />
-
-              <div className="relative flex items-center justify-between gap-1.5 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 truncate">
-                  {/* Dynamic Glowing Avatar with Online Status Indicator */}
-                  <div className="relative shrink-0">
-                    <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 p-[1.5px] shadow-sm shadow-cyan-500/30">
-                      <div className="w-full h-full rounded-[10px] bg-slate-900/90 backdrop-blur-xs flex items-center justify-center text-cyan-300">
-                        <User className="w-4 h-4 text-cyan-300 drop-shadow-xs" />
-                      </div>
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-950 rounded-full shadow-xs ring-1 ring-emerald-400/50">
-                      <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-                    </span>
-                  </div>
-
-                  {/* Worker Name with Sub-tag */}
-                  <div className="flex flex-col min-w-0 truncate leading-tight">
-                    <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
-                      {(workerPlant || "본사").replace("공장", "")}
-                    </span>
-                    <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
-                      {workerFullName}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right: Embedded Electronic Approval Mini Panel + Title Badge */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigateTab && onNavigateTab("electronic_approval");
-                    }}
-                    className={`px-2 py-1 rounded-lg border text-[10.5px] font-black transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 group/appr ${
-                      pendingCount > 0
-                        ? "bg-rose-500/25 hover:bg-rose-500/40 border-rose-400/70 text-rose-200 ring-1 ring-rose-500/40 animate-pulse"
-                        : holdCount > 0
-                        ? "bg-amber-500/25 hover:bg-amber-500/40 border-amber-400/70 text-amber-200"
-                        : "bg-emerald-500/20 hover:bg-emerald-500/35 border-emerald-400/60 text-emerald-200"
-                    }`}
-                    title="클릭하여 전자결재함으로 바로 이동"
-                  >
-                    <FileSignature className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover/appr:scale-110 transition-transform" />
-                    <span className="whitespace-nowrap font-black">전자결재</span>
-                    {pendingCount > 0 ? (
-                      <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">
-                        {pendingCount}
-                      </span>
-                    ) : (
-                      <span className="px-1 py-0.2 rounded-full bg-emerald-600/80 text-white text-[9px] font-bold">
-                        0
-                      </span>
-                    )}
-                  </button>
-
-                  <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                    {officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "작업원"))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Quick Schedule Register Form (9 cols) */}
-          <div className="lg:col-span-9 min-w-0">
-            <form onSubmit={handleRegisterSchedule} className="space-y-1.5">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
-                {/* 1. Leave Type Selector (2 cols) */}
-                <div className="sm:col-span-2 min-w-0">
-                  <select
-                    value={scheduleLeaveType}
-                    onChange={(e) => setScheduleLeaveType(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="할일">📝 할일</option>
-                    <option value="삼랑진방문">🏭 삼랑진방문</option>
-                    <option value="한림방문">🏭 한림방문</option>
-                    <option value="R&A회의">👔 R&A회의</option>
-                    <option value="외출">🚶 외출</option>
-                    <option value="연차(하루)">🌴 연차(하루)</option>
-                    <option value="오전반차">🌤️ 오전반차</option>
-                    <option value="오후반차">⛅ 오후반차</option>
-                    <option value="출장/교육">🚄 출장/교육</option>
-                  </select>
-                </div>
-
-                {/* 2. Date Picker (2 cols) */}
-                <div className="sm:col-span-2 min-w-0">
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
-                    <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
-                    <input
-                      type="date"
-                      required
-                      value={scheduleSelectedDate}
-                      onChange={(e) => setScheduleSelectedDate(e.target.value)}
-                      className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
-                    />
-                  </div>
-                </div>
-
-                {/* 3. Reason/Memo Input (3 cols) */}
-                <div className="sm:col-span-3 min-w-0">
-                  <input
-                    type="text"
-                    value={scheduleReasonInput}
-                    onChange={(e) => setScheduleReasonInput(e.target.value)}
-                    placeholder="내용 입력"
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
-                  />
-                </div>
-
-                {/* 4. 사진촬영 우선 & 파일/앨범 첨부 버튼 (2 cols) */}
-                <div className="sm:col-span-2 min-w-0 flex items-center gap-1">
-                  {/* Hidden inputs for camera capture & file picker */}
-                  <input
-                    type="file"
-                    ref={scheduleCameraInputRef}
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleScheduleFiles}
-                  />
-                  <input
-                    type="file"
-                    ref={scheduleFileInputRef}
-                    accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.txt"
-                    multiple
-                    className="hidden"
-                    onChange={handleScheduleFiles}
-                  />
-
-                  {/* 📸 Camera capture button (촬영 우선) */}
-                  <button
-                    type="button"
-                    onClick={() => scheduleCameraInputRef.current?.click()}
-                    disabled={isProcessingScheduleFiles}
-                    className="flex-1 px-1.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800/80 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
-                    title="카메라 사진 촬영 (촬영 우선)"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                    <span className="truncate">촬영</span>
-                  </button>
-
-                  {/* 📁 File / Album attachment button */}
-                  <button
-                    type="button"
-                    onClick={() => scheduleFileInputRef.current?.click()}
-                    disabled={isProcessingScheduleFiles}
-                    className="flex-1 px-1.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
-                    title="앨범 사진 또는 파일 첨부"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span className="truncate">첨부</span>
-                  </button>
-                </div>
-
-                {/* 5. 전작업자 선택창 (단수/복수 선택) (2 cols) */}
-                <div className="sm:col-span-2 relative min-w-0" ref={shareDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsShareDropdownOpen((prev) => !prev)}
-                    className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
-                      sharedWorkers.length > 0
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
-                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
-                    }`}
-                    title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
-                  >
-                    <div className="flex items-center gap-1 truncate min-w-0">
-                      <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
-                      <span className="truncate text-[11px]">
-                        {sharedWorkers.length === 0
-                          ? "공유작업자"
-                          : sharedWorkers.length === 1
-                          ? sharedWorkers[0].name
-                          : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
-                      </span>
-                    </div>
-                    {sharedWorkers.length > 0 ? (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSharedWorkers([]);
-                        }}
-                        className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
-                        title="선택 초기화"
-                      >
-                        <X className="w-3 h-3" />
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400">▼</span>
-                    )}
-                  </button>
-
-                  {/* 전작업자 드롭다운 팝업 */}
-                  {isShareDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
-                        <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-blue-500" />
-                          <span>원하는 공유 작업자 선택</span>
-                        </span>
-                        {sharedWorkers.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setSharedWorkers([])}
-                            className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
-                          >
-                            전체해제
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
-                        {/* 본사 / 경영진 */}
-                        {(() => {
-                          const adminList = (ADMIN_USERS || []).filter(
-                            (u) => u.id !== currentProfile?.id && u.name !== workerFullName
-                          );
-                          if (adminList.length === 0) return null;
-                          return (
-                            <div>
-                              <div className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-indigo-50/70 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 select-none">
-                                <div className="flex items-center gap-1.5">
-                                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                                  <span>본사 / 경영진</span>
-                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                    ({adminList.length}명)
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1 mb-2">
-                                {adminList.map((w) => {
-                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                  return (
-                                    <button
-                                      key={w.id}
-                                      type="button"
-                                      onClick={() => toggleSharedWorker(w)}
-                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                        isSelected
-                                          ? "bg-indigo-100 dark:bg-indigo-950/80 border-indigo-500 text-indigo-900 dark:text-indigo-100 font-black shadow-2xs ring-1 ring-indigo-400/50"
-                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                      }`}
-                                    >
-                                      <span>{w.name}</span>
-                                      <span className="text-[9.5px] opacity-70">
-                                        {isSelected ? "✓" : w.title || "대표"}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {/* 한림공장 작업자 */}
-                        <div>
-                          {(() => {
-                            const plantWorkers =
-                              PLANTS[1]?.workers?.filter(
-                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                              ) || [];
-                            const isAllPlantSelected =
-                              plantWorkers.length > 0 &&
-                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                            return (
-                              <div
-                                onClick={() => togglePlantSharedWorkers(1)}
-                                className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                title="한림공장 작업자 전체 선택 / 해제"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
-                                  <span className="group-hover:underline">한림공장</span>
-                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                    ({plantWorkers.length}명)
-                                  </span>
-                                </div>
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                    isAllPlantSelected
-                                      ? "bg-emerald-600 text-white shadow-2xs"
-                                      : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                                  }`}
-                                >
-                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <div className="grid grid-cols-2 gap-1">
-                            {PLANTS[1]?.workers
-                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                              .map((w) => {
-                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                return (
-                                  <button
-                                    key={w.id}
-                                    type="button"
-                                    onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                      isSelected
-                                        ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
-                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    <span>{w.name}</span>
-                                    <span className="text-[9.5px] opacity-70">
-                                      {isSelected ? "✓" : w.title || "선임"}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
-
-                        {/* 삼랑진공장 작업자 */}
-                        <div>
-                          {(() => {
-                            const plantWorkers =
-                              PLANTS[0]?.workers?.filter(
-                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                              ) || [];
-                            const isAllPlantSelected =
-                              plantWorkers.length > 0 &&
-                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                            return (
-                              <div
-                                onClick={() => togglePlantSharedWorkers(0)}
-                                className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                title="삼랑진공장 작업자 전체 선택 / 해제"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
-                                  <span className="group-hover:underline">삼랑진공장</span>
-                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                    ({plantWorkers.length}명)
-                                  </span>
-                                </div>
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                    isAllPlantSelected
-                                      ? "bg-amber-600 text-white shadow-2xs"
-                                      : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                                  }`}
-                                >
-                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <div className="grid grid-cols-2 gap-1">
-                            {PLANTS[0]?.workers
-                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                              .map((w) => {
-                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                return (
-                                  <button
-                                    key={w.id}
-                                    type="button"
-                                    onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                      isSelected
-                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
-                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    <span>{w.name}</span>
-                                    <span className="text-[9.5px] opacity-70">
-                                      {isSelected ? "✓" : w.title || "선임"}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                        <span className="text-[10.5px] font-bold text-slate-500">
-                          {sharedWorkers.length > 0 ? `${sharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setIsShareDropdownOpen(false)}
-                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] cursor-pointer"
-                          >
-                            선택 완료
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 6. Submit Button (1 col) */}
-                  <div className="sm:col-span-1 min-w-0">
-                    <button
-                      type="submit"
-                      disabled={scheduleSaving || isProcessingScheduleFiles}
-                      className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-0.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <span>{scheduleSaving ? "..." : "등록"}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Attached files preview strip */}
-                {(scheduleAttachedFiles.length > 0 || isProcessingScheduleFiles) && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[10.5px] font-black text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>첨부 파일 ({scheduleAttachedFiles.length}개):</span>
-                    </span>
-                    {isProcessingScheduleFiles && (
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold animate-pulse">
-                        파일 압축/처리 중...
-                      </span>
-                    )}
-                    {scheduleAttachedFiles.map((file, idx) => (
-                      <div
-                        key={file.id || idx}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10.5px] font-bold shadow-2xs"
-                      >
-                        {file.fileType === "image" || file.dataUrl?.startsWith("data:image") ? (
-                          <img
-                            src={file.dataUrl}
-                            alt={file.name}
-                            onClick={() => setPreviewImageModal({ url: file.dataUrl, name: file.name })}
-                            className="w-4 h-4 object-cover rounded shrink-0 cursor-pointer hover:opacity-80"
-                            title="클릭하여 사진 크게보기"
-                          />
-                        ) : (
-                          <FileText className="w-3 h-3 text-blue-500 shrink-0" />
-                        )}
-                        <span className="max-w-[90px] truncate text-slate-800 dark:text-slate-200" title={file.name}>
-                          {file.name}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-normal">({file.size})</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveScheduleFile(idx)}
-                          className="p-0.5 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
-                          title="첨부 파일 삭제"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </form>
-            </div>
-          </div>
-
-          {/* Bottom Bar: Registered schedules strip & Weekly mini-calendar toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-            {/* Active Registered Schedules List */}
-            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 shrink-0">
-                나의 등록 일정:
-              </span>
-              {myActiveLeaves.length === 0 ? (
-                <span className="text-[11px] text-slate-400 italic">등록된 활성 일정이 없습니다.</span>
-              ) : (
-                myActiveLeaves.map((l) => {
-                  const isToday = (l.startDate || "") === todayDateStr;
-                  const isRecipient = Boolean(l.isSharedRecipient || l.sharedBy);
-                  const isOrigin = Boolean(
-                    l.isSharedOrigin ||
-                    (Array.isArray(l.sharedWithDetails) && l.sharedWithDetails.length > 0) ||
-                    (Array.isArray(l.sharedWith) && l.sharedWith.length > 0)
-                  );
-                  const hasNewReply = Boolean(l.hasNewReply);
-
-                  return (
-                    <span
-                      key={l.id}
-                      onClick={() =>
-                        setScheduleDetailModal({
-                          selectedDate: l.startDate || todayDateStr,
-                          dayName: "",
-                          filterTab: isRecipient || isOrigin ? "shared" : "day",
-                          isRecipient: isRecipient
-                        })
-                      }
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all cursor-pointer hover:shadow-xs active:scale-95 ${
-                        isToday
-                          ? "bg-blue-600 text-white border-blue-600 shadow-2xs ring-2 ring-blue-400/40 animate-pulse"
-                          : "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800 hover:border-blue-400"
-                      }`}
-                      title={`[클릭 시 상세/전체목록 확인] 등록일: ${l.createdAt ? formatKSTDate(l.createdAt) : (l.createdDate || "미상")} ~ 만료일: ${l.endDate || l.startDate}`}
-                    >
-                      <span className="font-extrabold">{l.startDate?.slice(5)}</span>
-                      <span className="opacity-90">{l.leaveType}</span>
-                      {l.reason && l.reason !== l.leaveType && (
-                        <span className="max-w-[120px] truncate text-[10.5px] opacity-85">({l.reason})</span>
-                      )}
-                      {isRecipient && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-purple-600 text-white font-black shrink-0 flex items-center gap-0.5" title={`${l.sharedBy}님이 공유함 (삭제 시 답장 전송 필요)`}>
-                          <MessageCircle className="w-2.5 h-2.5" />
-                          <span>공유받음</span>
-                        </span>
-                      )}
-                      {isOrigin && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-indigo-600 text-white font-black shrink-0 flex items-center gap-0.5" title={`공유 대상: ${(l.sharedWithDetails?.length || l.sharedWith?.length || 0)}명`}>
-                          <Users className="w-2.5 h-2.5" />
-                          <span>공유 {l.sharedWithDetails?.length || l.sharedWith?.length || 0}명</span>
-                          {hasNewReply && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping ml-0.5" />}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRequestDismissOrDelete(l, "dismiss");
-                        }}
-                        className={`p-0.5 rounded transition-all cursor-pointer ${
-                          isToday ? "hover:bg-blue-700 text-white/80 hover:text-white" : "hover:bg-blue-200 dark:hover:bg-blue-900 text-slate-400 hover:text-slate-700"
-                        }`}
-                        title={isRecipient ? "답장 작성 후 삭제" : "일정 삭제 (공유 작업자 포함 자동 삭제)"}
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </span>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Toggle Weekly Calendar View Button & All List Quick Button */}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <button
-                type="button"
-                onClick={() =>
-                  setScheduleDetailModal({
-                    selectedDate: scheduleSelectedDate || todayDateStr,
-                    dayName: "",
-                    filterTab: "shared",
-                    isRecipient: false
-                  })
-                }
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-2xs"
-                title="공유답장 및 전체 등록 일정 목록 팝업 열기"
-              >
-                <FileText className="w-3 h-3 text-indigo-600" />
-                <span>전체 리스트</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowMiniCalendar((prev) => !prev)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
-              >
-                <Calendar className="w-3 h-3 text-blue-600" />
-                <span>{showMiniCalendar ? "달력 접기" : "주차별 달력보기"}</span>
-                <span className="text-[10px] text-slate-400">{showMiniCalendar ? "▲" : "▼"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Collapsible Weekly Calendar Grid */}
-          {showMiniCalendar && (
-            <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 space-y-1.5 animate-fadeIn">
-              <div className="flex items-center justify-between px-1 flex-wrap gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{scheduleWeekAnchor.slice(0, 7)} 주간 일정 현황</span>
-                  </span>
-                  <span className="text-[10.5px] text-slate-400 font-bold hidden sm:inline">
-                    (날짜나 일정을 탭하면 전체 리스트가 팝업됩니다)
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handlePrevWeek}
-                    className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black"
-                  >
-                    ◀ 이전주
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetToToday}
-                    className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-black border border-blue-200 dark:border-blue-900"
-                  >
-                    오늘
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextWeek}
-                    className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black"
-                  >
-                    다음주 ▶
-                  </button>
-                </div>
-              </div>
-
-              {/* 7 Days Row */}
-              <div className="grid grid-cols-7 gap-1">
-                {myWeeklyCalendarDays.map((day) => {
-                  const isSun = day.dayOfWeek === 0;
-                  const isSat = day.dayOfWeek === 6;
-                  const hasRecip = day.events.some((e) => e.isSharedRecipient || e.sharedBy);
-
-                  return (
-                    <div
-                      key={day.dateStr}
-                      onClick={() => {
-                        setScheduleSelectedDate(day.dateStr);
-                        setScheduleDetailModal({
-                          selectedDate: day.dateStr,
-                          dayName: day.dayName,
-                          filterTab: day.events.length > 0 ? "day" : "all",
-                          isRecipient: hasRecip
-                        });
-                      }}
-                      className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer min-h-[68px] flex flex-col justify-between hover:shadow-xs group ${
-                        day.isSelected
-                          ? "ring-2 ring-blue-500 border-blue-500 bg-blue-50/70 dark:bg-blue-950/50"
-                          : day.isToday
-                          ? "bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800"
-                          : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700"
-                      }`}
-                      title={`[탭 시 전체리스트 팝업] ${day.dateStr} (${day.dayName}) 등록 일정: ${day.events.length}건`}
-                    >
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className={`font-black ${isSun ? "text-rose-600" : isSat ? "text-blue-600" : "text-slate-700 dark:text-slate-300"}`}>
-                          {day.dayName}
-                        </span>
-                        <span className={`text-[10px] font-bold ${day.isToday ? "px-1 rounded bg-amber-500 text-white font-black" : "text-slate-500"}`}>
-                          {day.month}/{day.dayNumber}
-                        </span>
-                      </div>
-
-                      <div className="space-y-0.5 mt-1 overflow-hidden">
-                        {day.events.length === 0 ? (
-                          <span className="text-[10px] text-slate-300 dark:text-slate-600 block">-</span>
-                        ) : (
-                          day.events.slice(0, 2).map((ev) => {
-                            const isDone = Boolean(ev.isCompleted || ev.isDismissed);
-                            const isTodo = ev.leaveType === "할일" || ev.leaveType?.includes("할일");
-                            const isRecip = Boolean(ev.isSharedRecipient || ev.sharedBy);
-                            const displayText = isTodo
-                              ? (ev.reason && ev.reason !== "할일" ? `📝 ${ev.reason}` : "📝 할일")
-                              : (ev.reason && ev.reason !== ev.leaveType ? `${ev.leaveType} (${ev.reason})` : ev.leaveType);
-
-                            return (
-                              <div
-                                key={ev.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setScheduleSelectedDate(day.dateStr);
-                                  setScheduleDetailModal({
-                                    selectedDate: day.dateStr,
-                                    dayName: day.dayName,
-                                    filterTab: "day",
-                                    isRecipient: isRecip
-                                  });
-                                }}
-                                className={`text-[9.5px] px-1 py-0.5 rounded font-bold truncate text-left transition-all ${
-                                  isDone
-                                    ? "bg-slate-200/90 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700/80 opacity-75 shadow-none"
-                                    : isTodo
-                                    ? "bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 shadow-2xs"
-                                    : isRecip
-                                    ? "bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
-                                    : "bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200"
-                                }`}
-                                title={`${isDone ? "[완료됨] " : ""}${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
-                              >
-                                <span className={isDone ? "line-through decoration-slate-400 dark:decoration-slate-500 decoration-1" : ""}>
-                                  {isDone ? `✓ ${displayText}` : displayText}
-                                </span>
-                              </div>
-                            );
-                          })
-                        )}
-                        {day.events.length > 2 && (
-                          <span
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setScheduleSelectedDate(day.dateStr);
-                              setScheduleDetailModal({
-                                selectedDate: day.dateStr,
-                                dayName: day.dayName,
-                                filterTab: "day",
-                                isRecipient: hasRecip
-                              });
-                            }}
-                            className="text-[9px] text-blue-600 dark:text-blue-400 font-bold block hover:underline"
-                          >
-                            +{day.events.length - 2}건 상세▶
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-      {/* ========================================================================= */}
-      {/* 🌟 한울 전용 전월 지출내역 등록 (한울 로그인 시에만 표시, admin은 표시 안 함) */}
-      {(isHanul && !isAdmin) && (
-        <div
-          onClick={handleOpenHanulSettlementModal}
-          className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-emerald-500/60 shadow-md shadow-emerald-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
-            <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 flex items-center justify-center">
-              <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-100" />
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-black text-xs sm:text-sm text-white tracking-tight">
-                전월 지출내역 등록
-              </span>
-              <span className="hidden sm:inline text-[11px] text-emerald-300/80 font-semibold truncate">
-                (공통비 및 지출 공제내역 항목별 등록 / 영수증 증빙 확인)
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenHanulSettlementModal();
-              }}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black ring-2 ring-emerald-300/60 shadow-sm shadow-emerald-500/30 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
-              title="탭하여 공통비 및 지출내역 항목별 등록 팝업 열기"
-            >
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-950"></span>
-              </span>
-              <span>입력상세</span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-950 font-black" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 🌟 한울 전용 외주가공 품질경보 등록 & 작업일보 (9BQC / LQ2a) 실시간 관리 */}
-      {/* ========================================================================= */}
-      {(isHanul || isAdmin) && (
-        <div className="space-y-3">
-          <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-indigo-500/60 shadow-md shadow-indigo-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn">
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
-              <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white shadow-xs shrink-0 flex items-center justify-center animate-pulse">
-                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-              </div>
-              <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                <span className="font-black text-xs sm:text-sm text-white tracking-tight">
-                  한울품질경보등록
-                </span>
-                <span className="hidden sm:inline text-[11px] text-purple-300 font-semibold truncate">
-                  (9BQC G/RUN & LQ2a Hood Side 품질경보 및 외주가공 실시간 관리)
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {/* 🚨 품질경보 입력 뱃지 */}
-              <button
-                type="button"
-                onClick={() => setIsHanulQualityIssueModalOpen(true)}
-                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black shadow-md shadow-rose-950/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap animate-pulse"
-                title="한울 품질경보 및 품질이슈 등록/관리"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>🚨 품질경보 입력</span>
-                {activeHanulQualityCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
-                    {activeHanulQualityCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleOpenHanulReport("9BQC")}
-                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-              >
-                <span>🚗 9BQC 일보 작성</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenHanulReport("LQ2A")}
-                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-              >
-                <span>⚡ LQ2a 일보 작성</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Hanul Work Reports Live Table */}
-          <HanulWorkReportTable
-            onOpenReportModal={(proj, proc, rep) => handleOpenHanulReport(proj, proc, rep)}
-            currentWorkerName={currentProfile?.name || ""}
-          />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 🚨 [두번째 배치] 중대재해공유판 (이명재 이사 로그인 시 또는 공유 사진 등록 시 표시) */}
-      {/* ========================================================================= */}
-      <SevereDisasterBar />
-
-      {/* ========================================================================= */}
-      {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              1. {monthTitle} 매입매출현황 요약
-            </h2>
-            <span
-              className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
-              title={currentMonthData?.latestFile?.fileName ? `등록 엑셀: ${currentMonthData.latestFile.fileName} (${currentMonthData.latestFile.uploadedBy || '조인주 선임'})` : "일일 누적 기준"}
-            >
-              {currentMonthData?.latestFile?.uploadedAtFormatted
-                ? `${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준`
-                : `${todayFormattedLabel} 기준 (누적)`}
-            </span>
-          </div>
-
-          {onNavigateTab && (
-            <button
-              onClick={() => onNavigateTab("vehicle_sales")}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
-            >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
-              </span>
-              <span>매출 상세</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-            </button>
-          )}
-        </div>
-
-        {/* 3 Core KPI Cards (Clean numbers without annotations) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
-            <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-              {formatAmount(totalSales)}
-            </span>
-          </div>
-
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
-            <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
-              {formatAmount(totalPurchases)}
-            </span>
-          </div>
-
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입원가율</span>
-            <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
-              {purchaseRatio}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. ⭐ [2위치] 근태현황 및 관리 (잔업 스마트 통합관리대장 연동) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-              <span>2. 근태현황 및 관리</span>
-            </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
-              {todayFormattedLabel}
-            </span>
-            {/* ⭐ 미작성 업체 표기 배지 */}
-            {unwrittenCompanies.length > 0 ? (
-              <span
-                className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-1"
-                title="당일 근태대장 미작성 협력사 목록입니다."
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping shrink-0" />
-                <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
-              </span>
-            ) : (
-              <span
-                className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0 flex items-center gap-1"
-                title="5개 협력사 전원 작성 완료되었습니다."
-              >
-                <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span>5개사 전원 작성완료</span>
-              </span>
-            )}
-          </div>
-
-          {onNavigateTab && (
-            <button
-              onClick={() => onNavigateTab("overtime_status")}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
-            >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-cyan-500"></span>
-              </span>
-              <span>근태 상세</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-600 dark:text-cyan-400" />
-            </button>
-          )}
-        </div>
-
-        {/* 5 Company + TOTAL Today Overview Cards - Simple & Slim 2-Metric Design */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
-          {companyOverviewStats.map((comp) => (
-            <div
-              key={comp.name}
-              onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
-              className={`p-2 sm:p-2.5 rounded-xl ${
-                comp.isTotal
-                  ? "bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-300/90 dark:border-cyan-700/80 shadow-xs"
-                  : "bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800"
-              } ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
-              title={comp.isTotal ? "클릭 시 전회사 근태/잔업 상세대장으로 이동" : "클릭 시 5개사 근태/잔업 대장 상세관리로 이동"}
-            >
-              {/* Header: Company Name & 작성상태 미니 배지 */}
-              <div className={`flex items-center justify-between gap-1 pb-1 border-b ${
-                comp.isTotal
-                  ? "border-cyan-200/80 dark:border-cyan-800/80"
-                  : "border-slate-200/70 dark:border-slate-800/80"
-              }`}>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className={`w-2 h-2 rounded-full ${comp.dot} shrink-0`}></span>
-                  <span className={`font-black text-xs sm:text-sm truncate transition-colors ${
-                    comp.isTotal
-                      ? "text-cyan-900 dark:text-cyan-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
-                      : "text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
-                  }`}>
-                    {comp.name}
-                  </span>
-                </div>
-                {comp.isTotal ? (
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 ${
-                    unwrittenCompanies.length === 0
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-                      : "bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
-                  }`}>
-                    {unwrittenCompanies.length === 0 ? "전사 완료" : `${5 - unwrittenCompanies.length}/5 완료`}
-                  </span>
-                ) : (
-                  comp.isWritten ? (
-                    <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
-                      <span>✅</span>
-                    </span>
-                  ) : (
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${comp.statusBadgeClass}`}>
-                      <span>{comp.statusBadgeText}</span>
-                    </span>
-                  )
-                )}
-              </div>
-
-              {/* 2 Simple & Slim Metrics: 1. 전체 근로 대비 출근 인원 / 2. 잔업 투입 인원 */}
-              <div className="grid grid-cols-2 gap-1.5">
-                {/* 1. 출근 현황 */}
-                <div className={`p-1.5 rounded-lg border text-center flex flex-col justify-center ${
-                  comp.isTotal
-                    ? "bg-white dark:bg-slate-900/90 border-cyan-200 dark:border-cyan-800"
-                    : "bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/90"
-                }`}>
-                  <div className={`text-[9.5px] font-bold ${comp.isTotal ? "text-cyan-700 dark:text-cyan-300" : "text-slate-500 dark:text-slate-400"}`}>
-                    출근 현황
-                  </div>
-                  <div className="font-mono text-[9.5px] sm:text-[10.5px] leading-tight mt-0.5 flex flex-wrap items-center justify-center gap-1 font-bold">
-                    <span className="text-slate-700 dark:text-slate-200 whitespace-nowrap">총원:{comp.workers}명</span>
-                    <span className={`whitespace-nowrap ${comp.absent > 0 ? "text-rose-600 dark:text-rose-400 font-black animate-pulse" : "text-slate-400 dark:text-slate-500 font-medium"}`}>
-                      결근:{comp.absent}명
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. 잔업 투입 인원 */}
-                <div className={`p-1.5 rounded-lg border text-center flex flex-col justify-center ${
-                  comp.isTotal
-                    ? "bg-white dark:bg-slate-900/90 border-cyan-200 dark:border-cyan-800"
-                    : "bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/90"
-                }`}>
-                  <div className={`text-[9.5px] font-bold ${comp.isTotal ? "text-amber-700 dark:text-amber-300" : "text-slate-500 dark:text-slate-400"}`}>
-                    잔업 투입
-                  </div>
-                  <div className="font-mono font-black text-xs sm:text-sm text-amber-600 dark:text-amber-400 leading-tight mt-0.5">
-                    {comp.otWorkers}
-                    <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ⭐ 공장별/문서별 미결재 특근보고서 뱃지 (크롭 스타일: [공장명 (회사명)] [날짜 요일] [결재상태] -> 탭 시 특근근로자명 팝업) */}
-        {pendingApprovalCards.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2.5 pt-1.5">
-            {pendingApprovalCards.map((report) => {
-              const isHal = report.isHallim || report.plant === "한림공장";
-              const isSam = report.plant === "삼랑진공장";
-              const plantBadgeBg = isHal
-                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                : "bg-[#e59b2c] hover:bg-[#d4891b] text-white";
-              const dateBorderBg = isHal
-                ? "bg-slate-900/95 text-emerald-400 border border-emerald-500/70"
-                : "bg-slate-900/95 text-[#f5a623] border border-[#a8651a]/80";
-
-              const formattedDate = formatKoreanWorkDate(report.workDate) || report.workDateFormatted || report.workDate || "";
-              const statusText = report.statusLabel || "결재진행중";
-              const isHold = statusText === "결재보류";
-              const isApproved = statusText === "결재완료";
-              const statusBadgeClass = isApproved
-                ? "bg-emerald-950/90 text-emerald-300 border-emerald-600/70"
-                : isHold
-                ? "bg-amber-950/90 text-amber-300 border-amber-600/70"
-                : "bg-[#5c1322]/90 text-[#ff8097] border border-[#a8253d]/80";
-
-              return (
-                <div
-                  key={report.id}
-                  className="inline-flex items-center gap-1.5 p-1 px-1.5 rounded-lg bg-slate-900/80 dark:bg-slate-950/90 border border-slate-700/80 hover:border-amber-500/80 shadow-xs hover:shadow-md transition-all group"
-                >
-                  {/* 1. 공장명 (회사명) & 날짜 뱃지 (클릭 시 특근 근로자 명단 모달) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pushModalHistory("special_workers_modal");
-                      setSelectedOvertimeReportForModal(report);
-                    }}
-                    className="inline-flex items-center gap-1.5 cursor-pointer active:scale-98"
-                    title="클릭 시 특근 투입 근로자 명단 보기"
-                  >
-                    <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 shadow-2xs ${plantBadgeBg}`}>
-                      {report.badgeLabel || `${report.plant} 특근`}
-                    </span>
-                    {formattedDate && (
-                      <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 font-mono tracking-tight ${dateBorderBg}`}>
-                        {formattedDate}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* 2. 결재 상태 뱃지 (클릭 시 전자결재함으로 바로 이동) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onNavigateTab) onNavigateTab("electronic_approval");
-                    }}
-                    className={`px-2.5 py-0.8 rounded text-[10.5px] sm:text-xs font-black shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition-all flex items-center gap-1 ${statusBadgeClass}`}
-                    title="클릭 시 전자결재함으로 바로 이동"
-                  >
-                    <span>{statusText}</span>
-                    <ArrowRight className="w-3 h-3 shrink-0" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. ⭐ [3위치] 4대 코어 품목별 품질현황 (기존 아이템 패널) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden">
-        {/* Header with Quality Detail Link */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              3. 중요ITEM 품질현황
-            </h2>
-            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-              {selectedMonth?.slice(5, 7) || "9"}월 실적
-            </span>
-          </div>
-
-          {onNavigateTab && (
-            <button
-              onClick={() => onNavigateTab("daily_quality")}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
-            >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
-              </span>
-              <span>품질 상세</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-            </button>
-          )}
-        </div>
-
-        {/* 4 Core Item Quick Chips (Click to Open Detail Popup) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {(() => {
-            const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly.items;
-            return items.map((it) => {
-              const isGood = it.defectRate <= 0.70;
-
-              return (
-                <div
-                  key={it.id}
-                  onClick={() => handleOpenQualityPopup(it)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleOpenQualityPopup(it)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer select-none ${
-                    isGood
-                      ? "border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-400"
-                      : "border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-400"
-                  } hover:scale-[1.02] active:scale-98 shadow-xs space-y-1.5`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                      {it.name}
-                    </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${
-                        isGood
-                          ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300"
-                          : "bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 animate-pulse"
-                      }`}
-                    >
-                      {isGood ? "목표달성" : "관리주의"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-baseline justify-between pt-0.5">
-                    <span
-                      className={`text-lg sm:text-xl font-black font-mono leading-none ${
-                        isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {it.defectRate}%
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      {it.inspectQty.toLocaleString()}EA / {it.defectQty}불량
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-100 dark:border-slate-800">
-                    <span className="truncate">손실: ₩{it.lossAmount.toLocaleString()}</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                      <span>팝업</span>
-                      <ArrowRight className="w-2.5 h-2.5" />
-                    </span>
-                  </div>
-                </div>
-              );
-            });
-          })()}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 압출동 주간 비가동내역 요약 (월별 그래프 + 당월 누적시간 단독 합산) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 min-w-0 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              4. 압출동 주간 비가동내역 요약
-            </h2>
-            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
-              9월 당월 누적
-            </span>
-          </div>
-
-          {onNavigateTab && (
-            <button
-              onClick={() => onNavigateTab("extrusion_downtime")}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
-            >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
-              </span>
-              <span>비가동 상세</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-            </button>
-          )}
-        </div>
-
-        {/* 4 Line Cards with Monthly Mini Graph & Current Month Downtime */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
-          {extrusionSummaryList.map((ex) => {
-            return (
-              <div
-                key={ex.line}
-                className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xs transition-all space-y-1.5 min-w-0"
-              >
-                {/* Tile Top Header: Line Name & LOSS Rate Badge */}
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/70 dark:border-slate-700/70 gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0 truncate">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
-                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">{ex.line}</span>
-                  </div>
-                  <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
-                    LOSS {ex.lossRate}
-                  </span>
-                </div>
-
-                {/* Left (당월 누적시간) & Right (월별 비교 그래프) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 items-center">
-                  {/* Left Side: 당월 누적 합산 */}
-                  <div className="flex flex-col justify-center pr-1 sm:border-r border-slate-200/70 dark:border-slate-700/70 min-w-0">
-                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-500 dark:text-slate-400 truncate">
-                      <Clock className="w-2.5 h-2.5 text-rose-500 shrink-0" />
-                      <span className="truncate">[{ex.currentMonth}] 당월 누적</span>
-                    </div>
-                    <div className="flex items-baseline gap-0.5 mt-0.5">
-                      <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 tracking-tight leading-none">
-                        {ex.currentMonthMin.toLocaleString()}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">분</span>
-                    </div>
-                    <span className="text-[9px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate">
-                      ({ex.currentMonthHours}) • 가동률 {ex.opRatio}%
-                    </span>
-                  </div>
-
-                  {/* Right Side: 월별 가동율 & LOSS율 추이 (큰막대: 월가동율, 내부 작은막대: LOSS율) */}
-                  <div className="flex flex-col justify-center space-y-1 min-w-0">
-                    <div className="flex items-center justify-between text-[8.5px] font-extrabold text-slate-500 dark:text-slate-400 pb-0.5">
-                      <span>월별 추이 (7~9월)</span>
-                      <span className="text-[7.5px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                        <span className="inline-block w-1.5 h-1.5 rounded-xs bg-emerald-500"></span> 가동
-                        <span className="inline-block w-1.5 h-1.5 rounded-xs bg-rose-500 ml-0.5"></span> LOSS
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      {ex.monthlyTrend.map((mItem) => {
-                        const isNoData = mItem.opRate === "-";
-                        // 큰막대: 월가동율 (0~100% 기준)
-                        const opPct = isNoData ? 0 : Math.min(100, Math.max(20, mItem.opNum));
-                        // 작은막대: 0.5~6% 데이터가 육안상 명확히 구분되도록 전용 비례 스케일 적용 (16%~60%)
-                        const lossVisualPct = isNoData ? 0 : Math.min(65, Math.max(16, mItem.lossNum * 7));
-
-                        return (
-                          <div
-                            key={mItem.month}
-                            className="flex items-center gap-1.5 min-w-0"
-                          >
-                            {/* 월 라벨 */}
-                            <span
-                              className={`w-5 text-center py-0.2 rounded font-black text-[8px] shrink-0 leading-tight ${
-                                mItem.isCurrent
-                                  ? "bg-amber-400 text-slate-900 shadow-xs"
-                                  : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                              }`}
-                            >
-                              {mItem.month.replace("월", "")}월
-                            </span>
-
-                            {/* 시각적 바: 큰막대(월가동율) + 큰막대 안의 작은막대(LOSS율) */}
-                            <div className="flex-1 min-w-[50px] bg-slate-200/80 dark:bg-slate-800 rounded-full h-2.5 relative overflow-hidden flex items-center p-0.2">
-                              {isNoData ? (
-                                <div className="h-full w-full flex items-center justify-center text-[7px] text-slate-400 font-bold">
-                                  -
-                                </div>
-                              ) : (
-                                /* 큰막대: 월가동율 */
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 relative flex items-center ${
-                                    mItem.isCurrent
-                                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 shadow-xs"
-                                      : "bg-teal-600/80 dark:bg-teal-700/80"
-                                  }`}
-                                  style={{ width: `${opPct}%` }}
-                                  title={`${mItem.month} 가동: ${mItem.opRate} | LOSS: ${mItem.lossRate}`}
-                                >
-                                  {/* 큰막대 안의 작은막대: LOSS율 */}
-                                  <div
-                                    className="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border border-white/70"
-                                    style={{ width: `${lossVisualPct}%` }}
-                                    title={`${mItem.month} LOSS율: ${mItem.lossRate}`}
-                                  />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* 우측 수치 라벨: 가동율 & LOSS율 */}
-                            <div className="flex items-center gap-1 font-black text-[8px] shrink-0 leading-none">
-                              <span className="text-emerald-700 dark:text-emerald-400">{mItem.opRate}</span>
-                              <span className="text-rose-600 dark:text-rose-400">({mItem.lossRate})</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. ⭐ [5위치] 일일업무일지 현황 (상세내용 확인 후 개별 전자결재) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        {/* Manager Dedicated Information Banners (No batch approval - Requires reading details) */}
-        {isMyeongjae && pendingSamrangjinCount > 0 && (
-          <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                결재
-              </div>
-              <div className="min-w-0">
-                <p className="font-extrabold text-xs text-amber-900 dark:text-amber-200">
-                  [이명재 총괄이사] 삼랑진공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingSamrangjinCount}건</strong> 있습니다.
-                </p>
-                <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.2">
-                  목록에서 업무일지를 클릭하여 세부 작업 내용을 꼼꼼히 확인하신 후 결재를 진행해 주세요.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
-              <button
-                type="button"
-                onClick={() => setIsWorkLogsSummaryModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-              >
-                <span>대기 일지 확인 및 승인</span>
-              </button>
-              <span className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-black">
-                {pendingSamrangjinCount}건
-              </span>
-            </div>
-          </div>
-        )}
-
-        {isDongwook && pendingHallimCount > 0 && (
-          <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                결재
-              </div>
-              <div className="min-w-0">
-                <p className="font-extrabold text-xs text-emerald-900 dark:text-emerald-200">
-                  [김동욱 총괄책임] 한림공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingHallimCount}건</strong> 있습니다.
-                </p>
-                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.2">
-                  목록에서 업무일지를 클릭하여 세부 작업 내용을 꼼꼼히 확인하신 후 결재를 진행해 주세요.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
-              <button
-                type="button"
-                onClick={() => setIsWorkLogsSummaryModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-              >
-                <span>대기 일지 확인 및 승인</span>
-              </button>
-              <span className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black">
-                {pendingHallimCount}건
-              </span>
-            </div>
-          </div>
-        )}
-
-        {isAdmin && (pendingSamrangjinCount > 0 || pendingHallimCount > 0) && (
-          <div className="p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                ADMIN
-              </div>
-              <div className="min-w-0">
-                <p className="font-extrabold text-xs text-blue-900 dark:text-blue-200 truncate">
-                  [관리자 결재 현황] 삼랑진 <strong className="text-blue-600 dark:text-blue-400">{pendingSamrangjinCount}건</strong> • 한림 <strong className="text-emerald-600 dark:text-emerald-400">{pendingHallimCount}건</strong> 결재 대기중
-                </p>
-                <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.2 truncate">
-                  각 업무일지를 탭하여 세부 내용을 검토하신 후 전자결재를 진행할 수 있습니다.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsWorkLogsSummaryModalOpen(true)}
-              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all ml-auto sm:ml-0 shrink-0"
-            >
-              <span>전체 대기 일지 확인 및 승인</span>
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 min-w-0 truncate">
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              5. 일일업무일지 현황
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            <select
-              value={filterPlant}
-              onChange={(e) => setFilterPlant(e.target.value)}
-              className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
-            >
-              <option value="all">전체 ({workLogs.length})</option>
-              <option value="본사">본사 ({workLogs.filter((l) => l.plant === "본사" || l.writer === "권태형" || l.writer === "최미영" || l.department === "본사 관리팀").length})</option>
-              <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => (l.plant === "삼랑진공장" || !l.plant) && l.plant !== "본사" && l.writer !== "권태형" && l.writer !== "최미영" && !["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)).length})</option>
-              <option value="한림공장">한림 ({workLogs.filter((l) => l.plant === "한림공장" || ["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)).length})</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => {
-                pushModalHistory("recent_work_logs_summary_modal");
-                setIsWorkLogsSummaryModalOpen(true);
-              }}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
-              title="최근일 기준 전작업자 업무일지 종합 요약보기"
-            >
-              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
-              </span>
-              <span>업무일지 상세</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-            </button>
-          </div>
-        </div>
-
-        {/* 한줄 리스트 테이블 */}
-        <div className="w-full max-w-full overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[720px]">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-7 text-[10.5px]">
-                <th className="py-1 px-2 w-[10%] text-center">일자</th>
-                <th className="py-1 px-2 w-[8%] text-center">공장</th>
-                <th className="py-1 px-2 w-[12%]">작성자</th>
-                <th className="py-1 px-2 w-[38%]">작업 내용</th>
-                <th className="py-1 px-2 w-[10%]">부적합 / 특이사항</th>
-                <th className="py-1 px-2 w-[11%] text-center">결재 현황</th>
-                <th className="py-1 px-2 w-[11%] text-center">수정 / 관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {paginatedLogs.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-5 text-center text-slate-400 font-bold text-xs">
-                    등록된 일일업무일지가 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                paginatedLogs.map((log, index) => {
-                  const currentDate = log.date ? (log.date.length === 10 ? log.date.slice(5) : log.date) : "";
-                  const prevLog = index > 0 ? paginatedLogs[index - 1] : null;
-                  const prevDate = prevLog?.date ? (prevLog.date.length === 10 ? prevLog.date.slice(5) : prevLog.date) : "";
-                  const isSameDateAsPrev = index > 0 && currentDate === prevDate;
-
-                  return (
-                    <tr
-                      key={log.id}
-                      onClick={() => handleOpenLogDetail(log)}
-                      className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-8 sm:h-8.5 group text-[11px]"
-                      title="클릭하여 상세내용 확인 및 결재 진행"
-                    >
-                      <td className="py-1 px-2 text-center font-bold font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                        {!isSameDateAsPrev ? (
-                          <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-[10.5px]">
-                            {currentDate}
-                          </span>
-                        ) : null}
-                      </td>
-                    <td className="py-1 px-2 text-center">
-                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
-                        log.plant === "한림공장"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                          : log.plant === "본사" || log.writer === "권태형" || log.writer === "최미영"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                      }`}>
-                        {log.plant === "한림공장" ? "한림" : log.plant === "본사" || log.writer === "권태형" || log.writer === "최미영" ? "본사" : "삼랑진"}
-                      </span>
-                    </td>
-                    <td className="py-1 px-2 font-bold text-slate-900 dark:text-white truncate">
-                      {log.writer} {log.title || ""}
-                    </td>
-                    <td className="py-1 px-2 font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" title={log.workContent}>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">{log.workContent}</span>
-                        {Array.isArray(log.lineFileMatches) && log.lineFileMatches.length > 0 && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
-                            {log.lineFileMatches.length}개 라인 매칭
-                          </span>
-                        )}
-                        {Array.isArray(log.images) && log.images.length > 0 && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shrink-0 flex items-center gap-0.5">
-                            <Camera className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                            <span>사진 {log.images.length}장</span>
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-1 px-2 text-slate-500 dark:text-slate-400 truncate" title={log.issues || "-"}>
-                      {log.issues && log.issues !== "특이사항 없음" ? log.issues : "-"}
-                    </td>
-
-                    {/* 결재 상태 열 (클릭 시 상세 모달 열기) */}
-                    <td className="py-1 px-2 text-center whitespace-nowrap">
-                      {log.approvalStatus === "결재완료" ? (
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs"
-                          title={`결재자: ${log.approverName || "총괄관리자"} ${log.approverTitle || ""} (${log.approvedAt || ""})${log.approvalComment ? '\n지시사항: ' + log.approvalComment : ''}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                          <span>
-                            {log.approverName || (log.plant === "본사" || log.writer === "권태형" ? "권태형" : log.plant === "한림공장" ? "김동욱" : "이명재")}{" "}
-                            {log.approverTitle || (log.plant === "본사" || log.writer === "권태형" ? "대표이사" : log.plant === "한림공장" ? "책임" : "이사")}
-                          </span>
-                          {log.approvalComment && log.approvalComment !== "확인 및 전자결재 승인 완료" && (
-                            <span className="p-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200" title={`코멘트: ${log.approvalComment}`}>
-                              <MessageSquare className="w-2 h-2" />
-                            </span>
-                          )}
-                        </span>
-                      ) : log.approvalStatus === "반려" ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200">
-                          반려됨
-                        </span>
-                      ) : (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9.5px] font-bold ${
-                          canApproveLog(log)
-                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
-                            : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                        }`}>
-                          <Clock className="w-3 h-3 text-amber-500" />
-                          <span>{canApproveLog(log) ? "확인 후 결재" : "결재대기"}</span>
-                        </span>
-                      )}
-                    </td>
-
-                    {/* 수정 / 관리 열 */}
-                    <td className="py-1 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1.5">
-                        {isWorkLogApproved(log) && !isAdmin ? (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700 cursor-not-allowed select-none shadow-2xs"
-                            title="결재가 완료되어 내용 수정이 불가합니다."
-                          >
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>수정불가</span>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(log)}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9.5px] font-black bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/70 dark:text-blue-300 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 shadow-2xs active:scale-95 transition-all cursor-pointer ring-1 ring-blue-400/20"
-                            title={isWorkLogApproved(log) ? "관리자 권한으로 내용 수정" : "결재 전 일지 내용 수정"}
-                          >
-                            <Edit3 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                            <span>{isWorkLogApproved(log) ? "관리자수정" : "내용수정"}</span>
-                          </button>
-                        )}
-
-                        {(currentProfile?.name === log.writer || isAdmin) && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="p-1 text-slate-300 hover:text-rose-600 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 하단 페이징 컨트롤 및 업무일지 등록 버튼 */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
-            <span>
-              총 <strong className="text-slate-900 dark:text-white font-mono">{filteredLogs.length}</strong>건 중{" "}
-              <strong className="text-blue-600 dark:text-blue-400 font-mono">
-                {filteredLogs.length === 0 ? 0 : (currentLogPage - 1) * LOGS_PER_PAGE + 1}
-              </strong>
-              ~
-              <strong className="text-blue-600 dark:text-blue-400 font-mono">
-                {Math.min(currentLogPage * LOGS_PER_PAGE, filteredLogs.length)}
-              </strong>
-              건
-            </span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-              (페이지당 12개)
-            </span>
-          </div>
-
-          {/* Pagination Buttons */}
-          {totalLogPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                disabled={currentLogPage === 1}
-                onClick={() => setCurrentLogPage(1)}
-                className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-black text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                title="첫 페이지"
-              >
-                «
-              </button>
-              <button
-                disabled={currentLogPage === 1}
-                onClick={() => setCurrentLogPage((p) => Math.max(1, p - 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              >
-                이전
-              </button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalLogPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalLogPages || Math.abs(p - currentLogPage) <= 2)
-                  .map((p, idx, arr) => {
-                    const prevP = arr[idx - 1];
-                    const isGap = prevP && p - prevP > 1;
-                    return (
-                      <React.Fragment key={p}>
-                        {isGap && <span className="text-slate-400 text-xs px-0.5">...</span>}
-                        <button
-                          onClick={() => setCurrentLogPage(p)}
-                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
-                            currentLogPage === p
-                              ? "bg-blue-600 text-white shadow-xs shadow-blue-500/30 scale-105"
-                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      </React.Fragment>
-                    );
-                  })}
-              </div>
-
-              <button
-                disabled={currentLogPage === totalLogPages}
-                onClick={() => setCurrentLogPage((p) => Math.min(totalLogPages, p + 1))}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              >
-                다음
-              </button>
-              <button
-                disabled={currentLogPage === totalLogPages}
-                onClick={() => setCurrentLogPage(totalLogPages)}
-                className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-black text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                title="마지막 페이지"
-              >
-                »
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={handleOpenWorkLogModal}
-            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>오늘의 업무일지 등록하기</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. ⭐ [ADMIN 전용] 실시간 접속기록 현황 (이름 + 접속기록 간결화) */}
-      {/* ========================================================================= */}
-      {isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
-          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
-                <Users className="w-3.5 h-3.5" />
-              </div>
-              <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                6. 실시간 접속기록 현황
-              </h3>
-              <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-                ADMIN 전용
-              </span>
-            </div>
-            <span className="text-[10.5px] text-slate-400 font-medium truncate">
-              💡 탭하여 상세 접속 이력 조회
-            </span>
-          </div>
-
-          {/* Plant Groups Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-            {PLANTS.map((plant) => (
-              <div key={plant.id} className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white">
-                    <Factory className={`w-3.5 h-3.5 ${plant.name === "한림공장" ? "text-emerald-600" : "text-amber-500"}`} />
-                    <span>{plant.name}</span>
-                  </div>
-                  <span className="text-[9.5px] font-bold px-2 py-0.2 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                    {plant.workers.length}명
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {plant.workers.map((worker) => {
-                    const workerLogs = accessLogs[worker.id] || [];
-                    const lastLog = workerLogs[0] || null;
-                    const isMobile = lastLog?.deviceType === "MOBILE";
-
-                    return (
-                      <button
-                        key={worker.id}
-                        type="button"
-                        onClick={() => handleOpenWorkerLogs(worker)}
-                        className="flex flex-col justify-center p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 hover:shadow-xs transition-all text-left group cursor-pointer w-full min-w-0 active:scale-[0.98]"
-                      >
-                        {/* 1줄: 이름 + 직책 */}
-                        <div className="flex items-center justify-between gap-1 w-full min-w-0">
-                          <div className="flex items-baseline gap-1 min-w-0 truncate">
-                            <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">
-                              {worker.name}
-                            </span>
-                            <span className="text-[9.5px] font-bold text-slate-400 shrink-0">
-                              {worker.title}
-                            </span>
-                          </div>
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${lastLog ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700"}`} />
-                        </div>
-
-                        {/* 2줄: 접속기록 */}
-                        <div className="text-[10px] font-bold w-full truncate mt-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                          {lastLog ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 truncate">
-                              {isMobile ? (
-                                <Smartphone className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
-                              ) : (
-                                <Laptop className="w-2.5 h-2.5 text-blue-500 shrink-0" />
-                              )}
-                              <span className="truncate">{formatRelativeAccessTime(lastLog.timestamp)}</span>
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 font-medium inline-flex items-center gap-1">
-                              <Clock className="w-2 h-2 text-slate-300 dark:text-slate-600 shrink-0" />
-                              <span>미접속</span>
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 7. ⭐ [ADMIN 전용] 시스템 오류 및 조치 이력 관리 (월요 정기 품질 점검) */}
-      {/* ========================================================================= */}
-      {isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
-          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 shrink-0">
-                <AlertTriangle className="w-3.5 h-3.5" />
-              </div>
-              <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                7. 시스템 오류 및 조치 이력 관리
-              </h3>
-              <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                ADMIN 전용
-              </span>
-            </div>
-            <button
-              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
-              className="text-xs font-black text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
-            >
-              <span>전체 관리 및 신규 등록 →</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <div
-              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
-              className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                  🟢 조치완료 • 전자결재
-                </span>
-                <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit 202ac86)</span>
-              </div>
-              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                전자결재 결재대기 카운트 동적 연동 및 협력사 보고서 자동 취합 누락 조치
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                결재함 배지 카운트 실시간 동기화 및 협력사 특근/근태보고서 자동 연동 완료
-              </p>
-            </div>
-
-            <div
-              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
-              className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                  🟢 조치완료 • 근태관리
-                </span>
-                <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit cff95b6)</span>
-              </div>
-              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                근태 최종 저장 및 보고서 등록 시 TDZ ReferenceError 런타임 크래시 조치
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                선언 순서 재배치로 런타임 에러 완전 제거 및 평일 미선택 정시 자동채우기 확인창 적용
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출) */}
+      <CommonScheduleBar
+        isAdmin={isAdmin}
+        hasNewScheduleMessage={hasNewScheduleMessage}
+        allActiveCommonSchedules={allActiveCommonSchedules}
+        setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+        todayDateStr={todayDateStr}
+        isGeneralManager={isGeneralManager}
+        handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+        setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+      />
+
+      {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 */}
+      <WorkerScheduleCalendarSection
+        workerPlant={workerPlant}
+        workerFullName={workerFullName}
+        onNavigateTab={onNavigateTab}
+        pendingCount={pendingCount}
+        holdCount={holdCount}
+        officialTitle={officialTitle}
+        isAdmin={isAdmin}
+        isManagerRole={isManagerRole}
+        scheduleLeaveType={scheduleLeaveType}
+        setScheduleLeaveType={setScheduleLeaveType}
+        scheduleSelectedDate={scheduleSelectedDate}
+        setScheduleSelectedDate={setScheduleSelectedDate}
+        scheduleReasonInput={scheduleReasonInput}
+        setScheduleReasonInput={setScheduleReasonInput}
+        handleRegisterSchedule={handleRegisterSchedule}
+        scheduleSaving={scheduleSaving}
+        scheduleCameraInputRef={scheduleCameraInputRef}
+        scheduleFileInputRef={scheduleFileInputRef}
+        handleScheduleFiles={handleScheduleFiles}
+        scheduleAttachedFiles={scheduleAttachedFiles}
+        isProcessingScheduleFiles={isProcessingScheduleFiles}
+        handleRemoveScheduleFile={handleRemoveScheduleFile}
+        setPreviewImageModal={setPreviewImageModal}
+        shareDropdownRef={shareDropdownRef}
+        isShareDropdownOpen={isShareDropdownOpen}
+        setIsShareDropdownOpen={setIsShareDropdownOpen}
+        sharedWorkers={sharedWorkers}
+        setSharedWorkers={setSharedWorkers}
+        toggleSharedWorker={toggleSharedWorker}
+        togglePlantSharedWorkers={togglePlantSharedWorkers}
+        currentProfile={currentProfile}
+        ADMIN_USERS={ADMIN_USERS}
+        PLANTS={PLANTS}
+        myActiveLeaves={myActiveLeaves}
+        todayDateStr={todayDateStr}
+        formatKSTDate={formatKSTDate}
+        setScheduleDetailModal={setScheduleDetailModal}
+        handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+        showMiniCalendar={showMiniCalendar}
+        setShowMiniCalendar={setShowMiniCalendar}
+        scheduleWeekAnchor={scheduleWeekAnchor}
+        handlePrevWeek={handlePrevWeek}
+        handleResetToToday={handleResetToToday}
+        handleNextWeek={handleNextWeek}
+        myWeeklyCalendarDays={myWeeklyCalendarDays}
+      />
+
+      {/* 🌟 한울 외주가공 지출내역 / 품질경보 / 일보 & 중대재해 안전판 */}
+      <HanulAndSevereDisasterSection
+        isHanul={isHanul}
+        isAdmin={isAdmin}
+        handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
+        setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+        activeHanulQualityCount={activeHanulQualityCount}
+        handleOpenHanulReport={handleOpenHanulReport}
+        currentProfile={currentProfile}
+        SevereDisasterBar={SevereDisasterBar}
+      />
+
+      {/* 1. 매입매출현황 요약 */}
+      <SalesPurchaseSummarySection
+        monthTitle={monthTitle}
+        currentMonthData={currentMonthData}
+        todayFormattedLabel={todayFormattedLabel}
+        onNavigateTab={onNavigateTab}
+        formatAmount={formatAmount}
+        totalSales={totalSales}
+        totalPurchases={totalPurchases}
+        purchaseRatio={purchaseRatio}
+      />
+
+      {/* 2. 근태현황 및 관리 */}
+      <AttendanceSummarySection
+        todayFormattedLabel={todayFormattedLabel}
+        unwrittenCompanies={unwrittenCompanies}
+        onNavigateTab={onNavigateTab}
+        companyOverviewStats={companyOverviewStats}
+        pendingApprovalCards={pendingApprovalCards}
+        pushModalHistory={pushModalHistory}
+        setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+        formatKoreanWorkDate={formatKoreanWorkDate}
+      />
+
+      {/* 3. 금형별 일일품질 요약 */}
+      <QualityStatusSection
+        selectedMonth={selectedMonth}
+        onNavigateTab={onNavigateTab}
+        liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+        liveQualityPrevMonthly={liveQualityPrevMonthly}
+        handleOpenQualityPopup={handleOpenQualityPopup}
+      />
+
+      {/* 4. 압출동 주간 비가동내역 요약 */}
+      <ExtrusionDowntimeSection
+        onNavigateTab={onNavigateTab}
+        extrusionSummaryList={extrusionSummaryList}
+      />
+
+      {/* 5. 일일업무일지 현황 */}
+      <DailyWorkLogTableSection
+        isMyeongjae={isMyeongjae}
+        isDongwook={isDongwook}
+        isAdmin={isAdmin}
+        pendingSamrangjinCount={pendingSamrangjinCount}
+        pendingHallimCount={pendingHallimCount}
+        setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+        filterPlant={filterPlant}
+        setFilterPlant={setFilterPlant}
+        workLogs={workLogs}
+        pushModalHistory={pushModalHistory}
+        paginatedLogs={paginatedLogs}
+        handleOpenLogDetail={handleOpenLogDetail}
+        canApproveLog={canApproveLog}
+        isWorkLogApproved={isWorkLogApproved}
+        handleOpenEditModal={handleOpenEditModal}
+        handleDeleteLog={handleDeleteLog}
+        currentProfile={currentProfile}
+        filteredLogs={filteredLogs}
+        currentLogPage={currentLogPage}
+        setCurrentLogPage={setCurrentLogPage}
+        LOGS_PER_PAGE={LOGS_PER_PAGE}
+        totalLogPages={totalLogPages}
+        handleOpenWorkLogModal={handleOpenWorkLogModal}
+      />
+
+      {/* 6. 실시간 접속기록 현황 & 7. 시스템 오류 및 조치 이력 관리 */}
+      <AdminAccessAndIncidentSection
+        isAdmin={isAdmin}
+        PLANTS={PLANTS}
+        accessLogs={accessLogs}
+        handleOpenWorkerLogs={handleOpenWorkerLogs}
+        formatRelativeAccessTime={formatRelativeAccessTime}
+        onNavigateTab={onNavigateTab}
+      />
         </>
       )}
 
-      {/* 1. 작업일보 상세내용 및 전자결재 모달 */}
-      <WorkLogDetailModal
+      {/* 🌟 전체 대시보드 모달 컨테이너 (13개 핵심 모달 통합 관리) */}
+      <DashboardModalsContainer
         selectedLogDetail={selectedLogDetail}
         setSelectedLogDetail={setSelectedLogDetail}
+        handleOpenLogDetail={handleOpenLogDetail}
         isWorkLogApproved={isWorkLogApproved}
         handleOpenEditModal={handleOpenEditModal}
         setPreviewImageModal={setPreviewImageModal}
@@ -5814,10 +3842,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         currentProfile={currentProfile}
         isAdmin={isAdmin}
         handleDeleteLog={handleDeleteLog}
-      />
-
-      {/* 2. 일일업무일지 내용 수정 모달 */}
-      <WorkLogEditModal
         editingLog={editingLog}
         setEditingLog={setEditingLog}
         editFormData={editFormData}
@@ -5829,36 +3853,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         handleUpdateEditMaintenanceItem={handleUpdateEditMaintenanceItem}
         isEditProcessingImages={isEditProcessingImages}
         handleEditMaintenanceItemImageFiles={handleEditMaintenanceItemImageFiles}
-        setPreviewImageModal={setPreviewImageModal}
         handleRemoveEditMaintenanceItemImage={handleRemoveEditMaintenanceItemImage}
         handleEditLogImageFiles={handleEditLogImageFiles}
         handleRemoveEditLogImage={handleRemoveEditLogImage}
-      />
-
-      {/* 3. 작업자별 접속 기록 상세 조회 모달 */}
-      <WorkerLogListModal
         selectedWorkerForLogs={selectedWorkerForLogs}
         setSelectedWorkerForLogs={setSelectedWorkerForLogs}
         accessLogs={accessLogs}
-      />
-
-      {/* 4. 라인별 엑셀 파일 매칭 공유 리포트 모달 */}
-      <LineMatchShareModal
         lineMatchShareModal={lineMatchShareModal}
         setLineMatchShareModal={setLineMatchShareModal}
-        handleCopyLineMatchText={handleCopyLineMatchText}
-        copyToast={copyToast}
-      />
-
-      {/* Write Work Log & Upload Modal */}
-      <CreateWorkLogModal
         isModalOpen={isModalOpen}
         setIsModalOpen={setIsModalOpen}
         isInjoo={isInjoo}
         isJaeyul={isJaeyul}
         isExtrusionWorker={isExtrusionWorker}
         isQualityWorker={isQualityWorker}
-        isAdmin={isAdmin}
         isGeneralManager={isGeneralManager}
         logout={logout}
         assignedProcess={assignedProcess}
@@ -5868,7 +3876,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         isSavingLog={isSavingLog}
         logSavedToast={logSavedToast}
         formatAmount={formatAmount}
-        currentProfile={currentProfile}
         workerFullName={workerFullName}
         workerPlant={workerPlant}
         officialTitle={officialTitle}
@@ -5878,7 +3885,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         handleWorkLogImageFiles={handleWorkLogImageFiles}
         handleRemoveWorkLogImage={handleRemoveWorkLogImage}
         previewImageModal={previewImageModal}
-        setPreviewImageModal={setPreviewImageModal}
         selectedMonth={selectedMonth}
         currentYearMonth={currentYearMonth}
         availableMonths={availableMonths}
@@ -5915,10 +3921,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         qualityUploading={qualityUploading}
         qualitySuccessMessage={qualitySuccessMessage}
         handleConfirmQualityUpload={handleConfirmQualityUpload}
-      />
-
-      {/* 📌 태형&미영 일정 등록 및 완료 관리 모달 */}
-      <CommonScheduleModal
         commonScheduleModalOpen={commonScheduleModalOpen}
         setCommonScheduleModalOpen={setCommonScheduleModalOpen}
         commonScheduleForm={commonScheduleForm}
@@ -5931,15 +3933,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         commonScheduleFilterTab={commonScheduleFilterTab}
         setCommonScheduleFilterTab={setCommonScheduleFilterTab}
         modalFilteredSchedules={modalFilteredSchedules}
-        currentProfile={currentProfile}
-        isAdmin={isAdmin}
         handleToggleCompleteCommonSchedule={handleToggleCompleteCommonSchedule}
         handleDeleteCommonSchedule={handleDeleteCommonSchedule}
         setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
-      />
-
-      {/* 📱 매일 아침 손익결산 브리핑 예시화면 및 텔레그램 발송 모달 */}
-      <DailyPnLModal
         dailyPnLModalOpen={dailyPnLModalOpen}
         setDailyPnLModalOpen={setDailyPnLModalOpen}
         selectedPnLChannel={selectedPnLChannel}
@@ -5954,145 +3950,53 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         purchaseAchievementPct={purchaseAchievementPct}
         prevMonthKey={prevMonthKey}
         uncompletedCommonSchedules={uncompletedCommonSchedules}
-        todayDateStr={todayDateStr}
-      />
-
-      {/* 5. 등록 일정 상세 & 회신 목록 팝업 모달 */}
-      <ScheduleDetailModal
         scheduleDetailModal={scheduleDetailModal}
         setScheduleDetailModal={setScheduleDetailModal}
-        currentProfile={currentProfile}
-        workerFullName={workerFullName}
-        workerPlant={workerPlant}
-        officialTitle={officialTitle}
         myWeeklyCalendarDays={myWeeklyCalendarDays}
         annualLeaves={annualLeaves}
-        todayDateStr={todayDateStr}
         handleReactivateLeave={handleReactivateLeave}
         handleDeleteLeave={handleDeleteLeave}
         handleRequestDismissOrDelete={handleRequestDismissOrDelete}
         setScheduleSelectedDate={setScheduleSelectedDate}
-        setPreviewImageModal={setPreviewImageModal}
-      />
-
-      {/* 6. 받은 작업자: 공유 일정 답장(회신) 전송 모달 */}
-      <SharedReplyModal
         sharedReplyModalItem={sharedReplyModalItem}
         setSharedReplyModalItem={setSharedReplyModalItem}
         replySubmitting={replySubmitting}
         replyTextInput={replyTextInput}
         setReplyTextInput={setReplyTextInput}
         handleSendSharedReply={handleSendSharedReply}
-      />
-
-      {/* 7. 보낸 작업자: 공유 대상자 회신 확인 및 최종 삭제/완료 모달 */}
-      <SharedSenderConfirmModal
         sharedSenderConfirmModalItem={sharedSenderConfirmModalItem}
         setSharedSenderConfirmModalItem={setSharedSenderConfirmModalItem}
         confirmSubmitting={confirmSubmitting}
         handleConfirmSenderDismiss={handleConfirmSenderDismiss}
-      />
-
-      {/* 📊 4대 코어 품목별 일일 불량현황 & 일자별 상세 정리본 팝업 모달 */}
-      <QualityStatusPopupModal
         qualityPopupItem={qualityPopupItem}
         setQualityPopupItem={setQualityPopupItem}
         liveQualityDaily={liveQualityDaily}
         handleExportQualityItemExcel={handleExportQualityItemExcel}
-        selectedMonth={selectedMonth}
-      />
-
-      {/* 🌟 고화질 사진 미리보기 Lightbox */}
-      {previewImageModal && (
-        <ImagePreviewModal
-          previewImage={previewImageModal}
-          onClose={() => setPreviewImageModal(null)}
-        />
-      )}
-    
-      {/* ========================================================================= */}
-      {/* 💬 공통일정 상세 & 의견(코멘트) 작성 팝업 모달 */}
-      <CommonScheduleCommentsModal
         selectedCommonScheduleForComments={selectedCommonScheduleForComments}
-        setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
-        currentProfile={currentProfile}
-        isAdmin={isAdmin}
-        isGeneralManager={isGeneralManager}
         commonScheduleCommentInput={commonScheduleCommentInput}
         setCommonScheduleCommentInput={setCommonScheduleCommentInput}
         commonScheduleCommentSubmitting={commonScheduleCommentSubmitting}
         handleAddCommonScheduleComment={handleAddCommonScheduleComment}
         handleDeleteCommonScheduleComment={handleDeleteCommonScheduleComment}
-        handleToggleCompleteCommonSchedule={handleToggleCompleteCommonSchedule}
-      />
-
-      {/* ⭐ 팝업창: 특근 근로자 명단 보기 (Read-Only) */}
-      <OvertimeReportDetailModal
         selectedOvertimeReportForModal={selectedOvertimeReportForModal}
         setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
         getReportWorkersList={getReportWorkersList}
         onNavigateTab={onNavigateTab}
+        isWorkLogsSummaryModalOpen={isWorkLogsSummaryModalOpen}
+        setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+        workLogs={workLogs}
+        handleBatchApproveLogs={handleBatchApproveLogs}
+        isHanulSettlementModalOpen={isHanulSettlementModalOpen}
+        setIsHanulSettlementModalOpen={setIsHanulSettlementModalOpen}
+        getPreviousYearMonth={getPreviousYearMonth}
+        isHanulWorkReportModalOpen={isHanulWorkReportModalOpen}
+        setIsHanulWorkReportModalOpen={setIsHanulWorkReportModalOpen}
+        hanulReportProject={hanulReportProject}
+        hanulReportProcess={hanulReportProcess}
+        hanulReportEditData={hanulReportEditData}
+        isHanulQualityIssueModalOpen={isHanulQualityIssueModalOpen}
+        setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
       />
-
-      {/* 🌟 최근일 기준 전작업자 일일 업무일지 종합 요약 팝업 모달 */}
-      {isWorkLogsSummaryModalOpen && (
-        <Suspense fallback={null}>
-          <RecentWorkLogsSummaryModal
-            isOpen={isWorkLogsSummaryModalOpen}
-            onClose={() => setIsWorkLogsSummaryModalOpen(false)}
-            workLogs={workLogs}
-            onOpenIndividualLog={(log) => {
-              setIsWorkLogsSummaryModalOpen(false);
-              handleOpenLogDetail(log);
-            }}
-            onApproveLog={handleApproveLog}
-            onBatchApproveLogs={handleBatchApproveLogs}
-            canApproveLog={canApproveLog}
-            currentProfile={currentProfile}
-            isAdmin={isAdmin}
-            onNavigateTab={onNavigateTab}
-          />
-        </Suspense>
-      )}
-
-      {/* 🌟 한울 전월 정산표 및 공통비/지출공제 등록 모달 */}
-      {isHanulSettlementModalOpen && (
-        <Suspense fallback={null}>
-          <HanulSettlementModal
-            isOpen={isHanulSettlementModalOpen}
-            onClose={() => setIsHanulSettlementModalOpen(false)}
-            initialMonth={getPreviousYearMonth(selectedMonth || "2026-09")}
-          />
-        </Suspense>
-      )}
-
-      {/* 🌟 한울 외주가공 작업일보 작성/수정 모달 (9BQC / LQ2a) */}
-      {isHanulWorkReportModalOpen && (
-        <Suspense fallback={null}>
-          <HanulWorkReportModal
-            isOpen={isHanulWorkReportModalOpen}
-            onClose={() => setIsHanulWorkReportModalOpen(false)}
-            initialProject={hanulReportProject}
-            initialProcess={hanulReportProcess}
-            initialWorker={
-              currentProfile?.name && !isExcludedFromWorkReport(currentProfile.name)
-                ? currentProfile.name
-                : "박종미"
-            }
-            editReport={hanulReportEditData}
-          />
-        </Suspense>
-      )}
-
-      {/* 🌟 한울 품질경보 등록/관리 모달 (압출동 품질이슈 등록과 100% 동일한 기능 & 양식) */}
-      {isHanulQualityIssueModalOpen && (
-        <Suspense fallback={null}>
-          <HanulQualityIssueModal
-            isOpen={isHanulQualityIssueModalOpen}
-            onClose={() => setIsHanulQualityIssueModalOpen(false)}
-          />
-        </Suspense>
-      )}
 
     </div>
   );
