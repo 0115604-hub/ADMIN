@@ -2,7 +2,6 @@ import React, { Suspense, lazy } from "react";
 import WorkLogDetailModal from "./modals/WorkLogDetailModal";
 import WorkLogEditModal from "./modals/WorkLogEditModal";
 import WorkerLogListModal from "./modals/WorkerLogListModal";
-import LineMatchShareModal from "./modals/LineMatchShareModal";
 import CreateWorkLogModal from "./modals/CreateWorkLogModal";
 import CommonScheduleModal from "./modals/CommonScheduleModal";
 import DailyPnLModal from "./modals/DailyPnLModal";
@@ -37,8 +36,6 @@ export const DashboardModalsContainer = ({
   isWorkLogApproved,
   handleOpenEditModal,
   setPreviewImageModal,
-  handleCopyLineMatchText,
-  copyToast,
   canApproveLog,
   approvalCommentInput,
   setApprovalCommentInput,
@@ -69,9 +66,6 @@ export const DashboardModalsContainer = ({
   setSelectedWorkerForLogs,
   accessLogs,
 
-  // 4. LineMatchShareModal
-  lineMatchShareModal,
-  setLineMatchShareModal,
 
   // CreateWorkLogModal
   isModalOpen,
@@ -237,8 +231,6 @@ export const DashboardModalsContainer = ({
         isWorkLogApproved={isWorkLogApproved}
         handleOpenEditModal={handleOpenEditModal}
         setPreviewImageModal={setPreviewImageModal}
-        handleCopyLineMatchText={handleCopyLineMatchText}
-        copyToast={copyToast}
         canApproveLog={canApproveLog}
         approvalCommentInput={approvalCommentInput}
         setApprovalCommentInput={setApprovalCommentInput}
@@ -275,13 +267,6 @@ export const DashboardModalsContainer = ({
         accessLogs={accessLogs}
       />
 
-      {/* 4. 라인별 엑셀 파일 매칭 공유 리포트 모달 */}
-      <LineMatchShareModal
-        lineMatchShareModal={lineMatchShareModal}
-        setLineMatchShareModal={setLineMatchShareModal}
-        handleCopyLineMatchText={handleCopyLineMatchText}
-        copyToast={copyToast}
-      />
 
       {/* Write Work Log & Upload Modal */}
       <CreateWorkLogModal

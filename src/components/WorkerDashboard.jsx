@@ -885,7 +885,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
   }, [handleOpenWorkLogModal]);
 
-  // 4. Dashboard Excel (Extrusion, Quality, General PnL) Hook
+  // 4. Dashboard Excel (Quality & General PnL) Hook
   const {
     dailyPnLModalOpen,
     setDailyPnLModalOpen,
@@ -895,17 +895,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     selectedPnLChannel,
     setSelectedPnLChannel,
     handleSendDailyPnLTelegram,
-    lineMatchShareModal,
-    setLineMatchShareModal,
-    copyToast,
-    handleCopyLineMatchText,
-    extrusionFiles,
-    extrusionFileInputRef,
-    handleExtrusionFiles,
-    handleExtrusionDrag,
-    handleExtrusionDrop,
-    handleRemoveExtrusionFile,
-    handleConfirmExtrusionUpload,
     qualityFiles,
     setQualityFiles,
     qualityUploadSuccess,
@@ -933,18 +922,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     handleDrop,
     handleConfirmExcelUpload
   } = useDashboardExcel({
-    currentProfile,
     workerFullName,
     workerPlant,
-    officialTitle,
     selectedMonth,
     currentYearMonth,
     uploadMonthlyData,
     onBulkUpload,
     changeMonth,
-    formData,
-    setFormData,
-    setIsModalOpen,
     uncompletedCommonSchedules,
     todayDateStr,
     totalSales,
@@ -1219,8 +1203,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         isWorkLogApproved={isWorkLogApproved}
         handleOpenEditModal={handleOpenEditModal}
         setPreviewImageModal={setPreviewImageModal}
-        handleCopyLineMatchText={handleCopyLineMatchText}
-        copyToast={copyToast}
         canApproveLog={canApproveLog}
         approvalCommentInput={approvalCommentInput}
         setApprovalCommentInput={setApprovalCommentInput}
@@ -1246,8 +1228,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         selectedWorkerForLogs={selectedWorkerForLogs}
         setSelectedWorkerForLogs={setSelectedWorkerForLogs}
         accessLogs={accessLogs}
-        lineMatchShareModal={lineMatchShareModal}
-        setLineMatchShareModal={setLineMatchShareModal}
         isModalOpen={isModalOpen}
         setIsModalOpen={setIsModalOpen}
         isInjoo={isInjoo}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Lock,
   Edit3,
@@ -21,7 +21,7 @@ export default function WorkLogDetailModal({
   handleOpenEditModal,
   setPreviewImageModal,
   handleCopyLineMatchText,
-  copyToast,
+  copyToast: externalCopyToast,
   canApproveLog,
   approvalCommentInput,
   setApprovalCommentInput,
@@ -31,6 +31,26 @@ export default function WorkLogDetailModal({
   isAdmin,
   handleDeleteLog
 }) {
+  const [internalCopyToast, setInternalCopyToast] = useState(false);
+  const isCopied = externalCopyToast || internalCopyToast;
+
+  const onCopyLineMatch = (matches, dateStr, writerName) => {
+    if (typeof handleCopyLineMatchText === "function") {
+      handleCopyLineMatchText(matches, dateStr, writerName);
+    } else if (matches && matches.length > 0) {
+      const totalMin = matches.reduce((acc, cur) => acc + (cur.totalMinutes || 0), 0);
+      let text = `[오륙산업 삼랑진공장 - 압출동 라인별 비가동 내역]\n`;
+      text += `• 작성자: ${writerName || "작업자"} (${dateStr || ""})\n`;
+      text += `• 업로드 라인: 총 ${matches.length}개 라인 (합계 비가동 ${totalMin}분)\n\n`;
+      matches.forEach((m, idx) => {
+        text += `${idx + 1}. [${m.lineName}] ${m.fileName || "-"} (${m.totalMinutes || 0}분)\n`;
+      });
+      navigator.clipboard?.writeText(text).then(() => {
+        setInternalCopyToast(true);
+        setTimeout(() => setInternalCopyToast(false), 2000);
+      });
+    }
+  };
   if (!selectedLogDetail) return null;
 
   return (
@@ -247,11 +267,11 @@ export default function WorkLogDetailModal({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopyLineMatchText(matches, selectedLogDetail.date, selectedLogDetail.writer)}
+                      onClick={() => onCopyLineMatch(matches, selectedLogDetail.date, selectedLogDetail.writer)}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10.5px] shadow-xs active:scale-95 transition-all"
                     >
                       <Copy className="w-3 h-3" />
-                      <span>{copyToast ? "복사완료!" : "매칭내역 복사"}</span>
+                      <span>{isCopied ? "복사완료!" : "매칭내역 복사"}</span>
                     </button>
                   </div>
 
