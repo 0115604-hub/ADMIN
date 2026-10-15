@@ -200,8 +200,36 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
           )}
         </div>
 
+        {/* 🎯 회사로고 바로 아래: SQ Live 모니터링 및 진행현황 1줄 패널 */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("sq_level_up");
+            if (onCloseMobile) onCloseMobile();
+          }}
+          className={`w-full mt-3.5 px-3 py-2.5 rounded-xl text-left transition-all group flex items-center justify-between shadow-xs active:scale-[0.98] cursor-pointer border ${
+            activeTab === "sq_level_up"
+              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white border-blue-400 ring-2 ring-blue-500/40"
+              : "bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 hover:from-slate-800 hover:to-indigo-900 text-white border-indigo-500/40"
+          }`}
+          title="SQ Live 모니터링 및 진행현황 열기"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            <span className="text-xs font-black text-white group-hover:text-cyan-300 truncate tracking-tight">
+              SQ Live 모니터링 및 진행현황
+            </span>
+          </div>
+          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-500 text-white shrink-0 ml-1 shadow-xs">
+            LIVE ➔
+          </span>
+        </button>
+
         {/* Navigation Menu */}
-        <nav className="mt-6 sm:mt-8 space-y-1.5">
+        <nav className="mt-4 sm:mt-5 space-y-1.5">
           {navigationTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
