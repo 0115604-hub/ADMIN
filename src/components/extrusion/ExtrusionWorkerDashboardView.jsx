@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   Factory,
   ShieldAlert,
@@ -6,6 +6,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Check,
   ZoomIn,
   Camera,
   Calendar,
@@ -33,9 +34,16 @@ import {
   subscribeUrgentIssues,
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
+import { saveExtrusionReport } from "../../services/extrusionProductionService";
 import { getWorkLogText } from "../../services/workLogI18nService";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
+
+const ExtrusionWorkReportModal = lazy(() =>
+  import("./ExtrusionWorkReportModal").then((m) => ({
+    default: m.ExtrusionWorkReportModal || m.default
+  }))
+);
 
 export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const { currentProfile } = useAuth();
@@ -46,6 +54,8 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewImage, setPreviewImage] = useState(null);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [saveToastMessage, setSaveToastMessage] = useState("");
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || (
@@ -72,6 +82,44 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
     });
     return () => unsub();
   }, []);
+
+  // Listen to open-extrusion-work-report-modal event and auto-open session trigger
+  useEffect(() => {
+    const handleOpen = () => {
+      setIsReportModalOpen(true);
+    };
+    window.addEventListener("open-extrusion-work-report-modal", handleOpen);
+
+    try {
+      if (sessionStorage.getItem("auto_open_extrusion_report") === "true") {
+        sessionStorage.removeItem("auto_open_extrusion_report");
+        setIsReportModalOpen(true);
+      }
+    } catch (e) {}
+
+    return () => window.removeEventListener("open-extrusion-work-report-modal", handleOpen);
+  }, []);
+
+  // Save handler for Extrusion Work Report
+  const handleSaveExtrusionReport = async (reportData) => {
+    try {
+      await saveExtrusionReport(reportData);
+      setIsReportModalOpen(false);
+      setSaveToastMessage("✅ 압출 작업일보 및 TPM 점검이 성공적으로 저장되었습니다!");
+      setTimeout(() => setSaveToastMessage(""), 3500);
+
+      // 5단계 이후: 한울과 동일하게 품질이슈목록보기로 자동 스크롤
+      setTimeout(() => {
+        const el = document.getElementById("extrusion-quality-issues-board");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Save extrusion report error:", err);
+      alert("작업일보 저장 중 오류가 발생했습니다.");
+    }
+  };
 
   // Filter Active Company Notices (사내공지가 등록될 경우만 종료일까지 표시)
   const activeCompanyNotices = useMemo(() => {
@@ -174,6 +222,18 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           <button
             type="button"
+            onClick={() => {
+              const el = document.getElementById("extrusion-quality-issues-board");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-600/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-200" />
+            <span>🚨 품질이슈 목록보기</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsInspectionModalOpen(true)}
             className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
           >
@@ -181,23 +241,33 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
             <span>⚡ 초중종/TPM 간편점검</span>
           </button>
 
-          {onNavigateTab && (
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  localStorage.setItem("factory_extrusion_active_subtab", "production");
-                } catch (e) {}
-                onNavigateTab("extrusion_downtime");
-              }}
-              className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer text-center flex items-center justify-center gap-1.5"
-            >
-              <span>{getWorkLogText("work_log_title")} 바로가기</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer text-center flex items-center justify-center gap-1.5"
+          >
+            <span>{getWorkLogText("work_log_title")} 작성</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
+
+      {/* Save Success Toast */}
+      {saveToastMessage && (
+        <div className="p-3.5 rounded-2xl bg-emerald-600 text-white text-xs sm:text-sm font-black shadow-lg flex items-center justify-between animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4" />
+            <span>{saveToastMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveToastMessage("")}
+            className="text-white/80 hover:text-white text-xs font-bold"
+          >
+            닫기
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 설유철 작업자 전용 BOM 등록 및 오탈자/재료변경 수정 패널 */}
@@ -307,9 +377,9 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🚨 3. 설유철이 올린 품질이슈공유 내용 (실시간 압출 품질이슈 공유 보드) */}
+      {/* 🚨 3. 설유철이 올린 품질이슈공유 내용 (실시간 압출 품질이슈 공유 보드 - 이슈목록보기) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-md space-y-4 text-slate-900 dark:text-white">
+      <div id="extrusion-quality-issues-board" className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-md space-y-4 text-slate-900 dark:text-white scroll-mt-20">
         {/* Quality Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -553,6 +623,17 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
         isOpen={isInspectionModalOpen}
         onClose={() => setIsInspectionModalOpen(false)}
       />
+
+      {/* 📋 삼랑진공장 압출동 작업일보 모달 (4단계 TPM 점검 10개 항목 현행유지) */}
+      {isReportModalOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
+          <ExtrusionWorkReportModal
+            isOpen={isReportModalOpen}
+            onClose={() => setIsReportModalOpen(false)}
+            onSave={handleSaveExtrusionReport}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
