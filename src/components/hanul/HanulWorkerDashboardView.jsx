@@ -38,6 +38,10 @@ import {
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
+import {
+  getOverallDaySampleStatus,
+  getSampleInspectionStatus
+} from "../../utils/sampleInspectionUtils";
 
 const HanulWorkReportModal = lazy(() =>
   import("../HanulWorkReportModal").then((m) => ({
@@ -216,6 +220,10 @@ export const HanulWorkerDashboardView = () => {
     return (workReports || []).filter((r) => r && r.date === todayStr).length;
   }, [workReports, todayStr]);
 
+  const sampleStatus = useMemo(() => {
+    return getOverallDaySampleStatus(workReports, todayStr);
+  }, [workReports, todayStr]);
+
   const initialWorkerName = useMemo(() => {
     if (currentProfile?.name && !isExcludedFromWorkReport(currentProfile.name)) {
       return currentProfile.name;
@@ -226,122 +234,50 @@ export const HanulWorkerDashboardView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto min-w-0">
       {/* ========================================================================= */}
-      {/* 🌟 0. Top Hanul Worker Welcome & Quick Link Banner (압출동과 100% 동일한 고급 카드) */}
+      {/* 🏭 상단 바: 초·중·종물 기록 여부만 표출 (6단계 라벨 및 일보 작성 뱃지 제거) */}
       {/* ========================================================================= */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-800 via-slate-900 to-purple-900 text-white shadow-md border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-slate-900/90 rounded-2xl shadow-lg border border-slate-800 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-indigo-500/20 backdrop-blur-xs text-indigo-300 border border-indigo-400/40 shrink-0">
+          <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shrink-0">
             <Factory className="w-6 h-6" />
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-sm sm:text-base leading-tight">
-                🏭 한림공장 (주)한울 외주가공 (작업일보)
+              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
+                한림공장 (주)한울 외주가공
               </h2>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black shadow-2xs ${
-                  isManager
-                    ? "bg-purple-600 text-white border border-purple-300/40"
-                    : "bg-indigo-500 text-white"
-                }`}
-              >
-                {isManager ? "[현장관리자] " : "[일반작업자] "}
-                {currentProfile?.name || "한울"} {displayTitle}
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-600/30 text-purple-300 border border-purple-400/40">
+                [작업자] {currentProfile?.name || "한울"} {displayTitle}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 text-purple-300 border border-purple-400/40">
-                9BQC • LQ2
-              </span>
+
+              {/* 🔥 초·중·종물 기록 여부 뱃지만 표출 */}
+              {sampleStatus.isComplete ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/80 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>✓ 초·중·종물 기록 완료</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-950 text-amber-300 border border-amber-500/80 flex items-center gap-1.5 shadow-sm shadow-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>⏳ 초·중·종물 기록 진행중 (종물 대기)</span>
+                </span>
+              )}
             </div>
-            <p className="text-xs text-indigo-200/90 font-medium mt-0.5">
-              안전제일 • 9BQC G/RUN & LQ2a Hood Side 생산품질 무결점 실현
+
+            <p className="text-xs text-slate-400 font-medium mt-1 truncate">
+              품질이슈 공유판의 최신 불량 및 표준 조치사항을 숙지한 후 작업을 개시하세요.
             </p>
           </div>
         </div>
 
-        {/* 1-Click Action Buttons: 9BQC 및 LQ2a 작업일보 작성 */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsInspectionModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-          >
-            <Gauge className="w-4 h-4 text-cyan-200" />
-            <span>⚡ 초중종/TPM 간편점검</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenReportModal("9BQC")}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer flex items-center gap-1.5"
-          >
-            <Car className="w-4 h-4" />
-            <span>🚗 9BQC 일보 작성</span>
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenReportModal("LQ2A")}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer flex items-center gap-1.5"
-          >
-            <Zap className="w-4 h-4" />
-            <span>⚡ LQ2a 일보 작성</span>
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 🌟 1. 한울 9BQC & LQ2 핵심 라인 선택 탭 (사용자 요구사항 완벽 반영) */}
-      {/* ========================================================================= */}
-      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-black text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>생산 라인 선택:</span>
+        <div className="text-right shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-1">
+          <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
+          <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+            {sampleStatus.summary}
           </span>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("ALL")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-              selectedProjectFilter === "ALL"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            전체 라인 (9BQC + LQ2)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("9BQC")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedProjectFilter === "9BQC"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🚗 9BQC (G/RUN)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("LQ2")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedProjectFilter === "LQ2"
-                ? "bg-purple-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>⚡ LQ2 / LQ2a (Hood Side)</span>
-          </button>
-        </div>
-
-        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2">
-          당일 등록 일보: <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">{todayReportsCount}건</span>
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 🚨 2. 중대재해공유판 (항상 최상단 안전 공유) */}
-      {/* ========================================================================= */}
-      <SevereDisasterBar />
 
       {/* ========================================================================= */}
       {/* 📢 3. 사내공지 (등록된 공지가 있을 때만 종료일까지 표시) */}
@@ -700,15 +636,6 @@ export const HanulWorkerDashboardView = () => {
                 한울 전체
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => handleOpenReportModal(selectedProjectFilter === "LQ2" ? "LQ2A" : "9BQC")}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>신규 일보 작성</span>
-            </button>
           </div>
         </div>
 
@@ -717,38 +644,21 @@ export const HanulWorkerDashboardView = () => {
           <table className="w-full text-xs text-left border-collapse min-w-[750px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
-                <th className="py-1 px-3 w-[12%] text-center">일자</th>
-                <th className="py-1 px-3 w-[12%] text-center">프로젝트/라인</th>
-                <th className="py-1 px-3 w-[12%]">공정</th>
-                <th className="py-1 px-3 w-[10%]">작업자</th>
-                <th className="py-1 px-3 w-[24%] text-center">생산 실적 (양품/불량/총생산)</th>
-                <th className="py-1 px-3 w-[16%]">특이사항</th>
-                <th className="py-1 px-3 w-[14%] text-center">관리</th>
+                <th className="py-1 px-3 w-[11%] text-center">일자</th>
+                <th className="py-1 px-3 w-[11%] text-center">프로젝트/라인</th>
+                <th className="py-1 px-3 w-[10%]">공정</th>
+                <th className="py-1 px-3 w-[9%]">작업자</th>
+                <th className="py-1 px-3 w-[20%] text-center">생산 실적 (양품/불량/총생산)</th>
+                <th className="py-1 px-3 w-[15%] text-center">초·중·종물 검사</th>
+                <th className="py-1 px-3 w-[12%]">특이사항</th>
+                <th className="py-1 px-3 w-[12%] text-center">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredWorkReports.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-10 text-center text-slate-400 font-bold">
+                  <td colSpan="8" className="py-10 text-center text-slate-400 font-bold">
                     <p className="text-sm text-slate-500 dark:text-slate-400">등록된 작업일보가 없습니다.</p>
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenReportModal("9BQC")}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs cursor-pointer"
-                      >
-                        <Car className="w-3.5 h-3.5" />
-                        <span>🚗 9BQC 첫 일보 작성</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenReportModal("LQ2A")}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-xs cursor-pointer"
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>⚡ LQ2a 첫 일보 작성</span>
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ) : (
@@ -761,6 +671,7 @@ export const HanulWorkerDashboardView = () => {
                   const totalProd = Number(report.totalProduced || report.productionQty || 0);
                   const totalGood = Number(report.goodQty || totalProd - (report.defectQty || 0));
                   const totalDefect = Number(report.defectQty || 0);
+                  const insp = getSampleInspectionStatus(report);
 
                   return (
                     <tr
@@ -806,6 +717,21 @@ export const HanulWorkerDashboardView = () => {
                             {totalProd.toLocaleString()}
                           </span>
                         </div>
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        {insp.isComplete ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                            완료 (초·중·종 OK)
+                          </span>
+                        ) : insp.hasAny ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                            진행중 (종물 대기)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            미기록
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-slate-700 dark:text-slate-300 truncate max-w-[150px]">
                         {report.notes || report.issues || "-"}

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
+  Factory,
   ClipboardList,
   Plus,
   Cpu,
@@ -10,6 +11,10 @@ import {
 } from "lucide-react";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
 import { DigitalInspectionModal } from "../sq/DigitalInspectionModal";
+import {
+  getOverallDaySampleStatus,
+  getSampleInspectionStatus
+} from "../../utils/sampleInspectionUtils";
 
 export default function FieldWorkerDashboardView({
   workerPlant = "",
@@ -32,60 +37,82 @@ export default function FieldWorkerDashboardView({
   currentProfile = null,
   handleDeleteLog,
 }) {
-  const isManager = isWorkerManagerRole(currentProfile);
+  const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+
+  const isBurimtech = useMemo(() => {
+    return (
+      currentProfile?.company === "부림텍" ||
+      currentProfile?.portalType === "bulimtech" ||
+      currentProfile?.name === "부림텍" ||
+      currentProfile?.name === "최현영" ||
+      workerFullName === "부림텍" ||
+      workerFullName === "최현영"
+    );
+  }, [currentProfile, workerFullName]);
+
+  const displayTitle = currentProfile?.title || currentProfile?.position || (
+    isBurimtech && (currentProfile?.name === "최현영" || workerFullName === "최현영") ? "반장" :
+    (isManager ? "반장" : "사원")
+  );
+
+  const companyTitle = isBurimtech
+    ? "한림공장 (주)부림텍 외주가공"
+    : `${workerPlant || currentProfile?.plant || "삼랑진공장"} (주)${currentProfile?.company || "오륙"} 현장가공`;
+
+  const workerBadgeText = `[작업자] ${workerFullName || currentProfile?.name || (isBurimtech ? "부림텍" : "")} ${displayTitle}`;
+
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const sampleStatus = useMemo(() => {
+    return getOverallDaySampleStatus(workerLogsList, todayStr);
+  }, [workerLogsList, todayStr]);
 
   return (
     <div className="space-y-3.5 sm:space-y-4 animate-fadeIn max-w-[1400px] w-full mx-auto min-w-0">
-      {/* 1. Worker Profile & Header Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-4 sm:p-5 border border-blue-900/60 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ========================================================================= */}
+      {/* 🏭 상단 바: 초·중·종물 기록 여부만 표출 (6단계 라벨 및 일보 작성 뱃지 제거) */}
+      {/* ========================================================================= */}
+      <div className="bg-slate-900/90 rounded-2xl shadow-lg border border-slate-800 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/30 shrink-0">
-            <ClipboardList className="w-6 h-6" />
+          <div className="p-2.5 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/30 shrink-0">
+            <Factory className="w-6 h-6" />
           </div>
+
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-lg font-black text-white">
-                주)오륙 {workerPlant} 오늘의 작업일보
+              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
+                {companyTitle}
               </h2>
-              <span
-                className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-                  isManager
-                    ? "bg-indigo-500/30 text-indigo-200 border-indigo-400/40 shadow-xs"
-                    : "bg-blue-500/20 text-blue-300 border-blue-400/30"
-                }`}
-              >
-                {isManager ? "[현장관리자] " : "[일반작업자] "}
-                {workerFullName} {workerPosition} [{assignedProcess}]
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-600/30 text-teal-300 border border-teal-400/40">
+                {workerBadgeText}
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
-                {todayFormattedLabel}
-              </span>
+
+              {/* 🔥 초·중·종물 기록 여부 뱃지만 표출 */}
+              {sampleStatus.isComplete ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/80 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>✓ 초·중·종물 기록 완료</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-950 text-amber-300 border border-amber-500/80 flex items-center gap-1.5 shadow-sm shadow-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>⏳ 초·중·종물 기록 진행중 (종물 대기)</span>
+                </span>
+              )}
             </div>
-            <p className="text-xs text-blue-200/80 mt-1">
-              오늘 진행한 생산 작업 실적 및 특이사항을 등록하고 결재 상태를 간편하게 확인하세요.
+
+            <p className="text-xs text-slate-400 font-medium mt-1 truncate">
+              금일 작업 공정 표준 및 안전수칙을 준수하고 실적을 정확히 기록하세요.
             </p>
           </div>
         </div>
 
-        {/* 1-Click Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsInspectionModalOpen(true)}
-            className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-cyan-600/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <Gauge className="w-4 h-4 text-cyan-200" />
-            <span>⚡ 초중종/TPM 간편점검</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenWorkLogModal}
-            className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-black shadow-lg shadow-blue-600/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>✍️ 오늘의 작업일보 작성</span>
-          </button>
+        <div className="text-right shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-1">
+          <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
+          <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+            {sampleStatus.summary}
+          </span>
         </div>
       </div>
 
@@ -116,75 +143,6 @@ export default function FieldWorkerDashboardView({
             className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
           >
             압출 작업일보 바로가기 ➡️
-          </button>
-        </div>
-      )}
-
-      {/* 2. Today's Submission Status Notification Card */}
-      {todayLog ? (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-2">
-                <span>오늘({todayFormattedLabel}) 작업일보가 등록되었습니다.</span>
-                <span
-                  className={`px-2 py-0.2 rounded-full text-[10.5px] font-black ${
-                    isWorkLogApproved && isWorkLogApproved(todayLog)
-                      ? "bg-emerald-200 text-emerald-900 border border-emerald-400"
-                      : "bg-amber-100 text-amber-900 border border-amber-300"
-                  }`}
-                >
-                  {isWorkLogApproved && isWorkLogApproved(todayLog) ? "승인완료" : "결재대기"}
-                </span>
-              </p>
-              <p className="text-xs text-emerald-800 dark:text-emerald-300 truncate mt-0.5">
-                {todayLog.workContent || "작업 내용 등록 완료"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleOpenLogDetail && handleOpenLogDetail(todayLog)}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95"
-            >
-              상세보기
-            </button>
-            {(!isWorkLogApproved || !isWorkLogApproved(todayLog)) && (
-              <button
-                type="button"
-                onClick={() => handleOpenEditModal && handleOpenEditModal(todayLog)}
-                className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-black shadow-xs cursor-pointer active:scale-95"
-              >
-                수정하기
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border-2 border-amber-400 dark:border-amber-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-base shrink-0 shadow-md">
-              📝
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100">
-                오늘({todayFormattedLabel}) 작업일보가 아직 작성되지 않았습니다.
-              </p>
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                작업 종료 후 또는 일과 중 오늘 진행한 실적을 기록해 주세요.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleOpenWorkLogModal}
-            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
-          >
-            ✍️ 지금 작업일보 작성하기
           </button>
         </div>
       )}
@@ -239,25 +197,43 @@ export default function FieldWorkerDashboardView({
               <option value="대기">결재대기만</option>
               <option value="승인">승인완료만</option>
             </select>
+
+            <button
+              type="button"
+              onClick={() => setIsInspectionModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white font-black text-xs flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Gauge className="w-3.5 h-3.5 text-cyan-200" />
+              <span>간편점검</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenWorkLogModal}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>일보 작성</span>
+            </button>
           </div>
         </div>
 
         {/* Table */}
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse min-w-[700px]">
+          <table className="w-full text-xs text-left border-collapse min-w-[760px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
-                <th className="py-1 px-3 w-[12%] text-center">일자</th>
-                <th className="py-1 px-3 w-[12%]">작성자</th>
-                <th className="py-1 px-3 w-[44%]">작업 내용 및 실적</th>
-                <th className="py-1 px-3 w-[14%] text-center">결재 현황</th>
-                <th className="py-1 px-3 w-[18%] text-center">관리</th>
+                <th className="py-1 px-3 w-[10%] text-center">일자</th>
+                <th className="py-1 px-3 w-[11%]">작성자</th>
+                <th className="py-1 px-3 w-[35%]">작업 내용 및 실적</th>
+                <th className="py-1 px-3 w-[18%] text-center">초·중·종물 검사</th>
+                <th className="py-1 px-3 w-[13%] text-center">결재 현황</th>
+                <th className="py-1 px-3 w-[13%] text-center">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {workerLogsList.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-10 text-center text-slate-400 font-bold">
+                  <td colSpan="6" className="py-10 text-center text-slate-400 font-bold">
                     <p className="text-sm text-slate-500 dark:text-slate-400">등록된 작업일보가 없습니다.</p>
                     <button
                       type="button"
@@ -272,6 +248,7 @@ export default function FieldWorkerDashboardView({
               ) : (
                 workerLogsList.map((log) => {
                   const isApproved = isWorkLogApproved ? isWorkLogApproved(log) : false;
+                  const sampleInsp = getSampleInspectionStatus(log);
                   const isMyLog =
                     log.writer === workerFullName ||
                     log.writer === currentProfile?.name ||
@@ -307,6 +284,28 @@ export default function FieldWorkerDashboardView({
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        {sampleInsp.isComplete ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                            title={sampleInsp.summary}
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>초·중·종 완료</span>
+                          </span>
+                        ) : sampleInsp.hasAny ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                            title={sampleInsp.summary}
+                          >
+                            <span>{sampleInsp.start && sampleInsp.mid ? "초·중 기록" : "초물만 기록"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <span>미기록</span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-center">
                         {isApproved ? (

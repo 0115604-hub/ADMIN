@@ -34,9 +34,17 @@ import {
   subscribeUrgentIssues,
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
-import { saveExtrusionReport } from "../../services/extrusionProductionService";
+import {
+  saveExtrusionReport,
+  getLocalExtrusionReports,
+  subscribeToExtrusionReports
+} from "../../services/extrusionProductionService";
 import { getWorkLogText } from "../../services/workLogI18nService";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
+import {
+  getOverallDaySampleStatus,
+  getSampleInspectionStatus
+} from "../../utils/sampleInspectionUtils";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 const ExtrusionWorkReportModal = lazy(() =>
@@ -82,6 +90,20 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
     });
     return () => unsub();
   }, []);
+
+  // Subscribe to Extrusion Reports for Sample Completion Status
+  const [extrusionReports, setExtrusionReports] = useState(() => getLocalExtrusionReports());
+
+  useEffect(() => {
+    const unsub = subscribeToExtrusionReports((list) => {
+      setExtrusionReports(list || []);
+    });
+    return () => unsub();
+  }, []);
+
+  const sampleStatus = useMemo(() => {
+    return getOverallDaySampleStatus(extrusionReports, todayStr);
+  }, [extrusionReports, todayStr]);
 
   // Listen to open-extrusion-work-report-modal event and auto-open session trigger
   useEffect(() => {
@@ -190,65 +212,48 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto min-w-0">
       {/* ========================================================================= */}
-      {/* 🌟 0. Top Extrusion Worker Welcome & Quick Link Banner & Language Selector */}
+      {/* 🏭 상단 바: 초·중·종물 기록 여부만 표출 (6단계 라벨 및 일보 작성 뱃지 제거) */}
       {/* ========================================================================= */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-700 via-slate-900 to-teal-900 text-white shadow-md border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-slate-900/90 rounded-2xl shadow-lg border border-slate-800 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-teal-500/20 backdrop-blur-xs text-teal-300 border border-teal-400/40 shrink-0">
+          <div className="p-2.5 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/30 shrink-0">
             <Factory className="w-6 h-6" />
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-sm sm:text-base leading-tight">
-                🏭 삼랑진공장 {getWorkLogText("extrusion_shop")} ({getWorkLogText("work_log_title")})
+              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
+                삼랑진공장 압출동
               </h2>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black shadow-xs ${
-                  isManager
-                    ? "bg-indigo-500 text-white border border-indigo-300/40"
-                    : "bg-teal-500 text-slate-950"
-                }`}
-              >
-                {isManager ? "[현장관리자] " : "[일반작업자] "}
-                {currentProfile?.name} {displayTitle}
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-600/30 text-teal-300 border border-teal-400/40">
+                [작업자] {currentProfile?.name} {displayTitle}
               </span>
+
+              {/* 🔥 초·중·종물 기록 여부 뱃지만 표출 */}
+              {sampleStatus.isComplete ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/80 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>✓ 초·중·종물 기록 완료</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-950 text-amber-300 border border-amber-500/80 flex items-center gap-1.5 shadow-sm shadow-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>⏳ 초·중·종물 기록 진행중 (종물 대기)</span>
+                </span>
+              )}
             </div>
-            <p className="text-xs text-teal-200/90 font-medium mt-0.5">
-              {getWorkLogText("safety_first")}
+
+            <p className="text-xs text-slate-400 font-medium mt-1 truncate">
+              품질이슈 공유판의 최신 불량 및 표준 조치사항을 숙지한 후 작업을 개시하세요.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              const el = document.getElementById("extrusion-quality-issues-board");
-              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-600/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-          >
-            <ShieldAlert className="w-4 h-4 text-rose-200" />
-            <span>🚨 품질이슈 목록보기</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsInspectionModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-          >
-            <Gauge className="w-4 h-4 text-cyan-200" />
-            <span>⚡ 초중종/TPM 간편점검</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsReportModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer text-center flex items-center justify-center gap-1.5"
-          >
-            <span>{getWorkLogText("work_log_title")} 작성</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="text-right shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-1">
+          <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
+          <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+            {sampleStatus.summary}
+          </span>
         </div>
       </div>
 
@@ -273,11 +278,6 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
       {/* 설유철 작업자 전용 BOM 등록 및 오탈자/재료변경 수정 패널 */}
       {/* ========================================================================= */}
       <ExtrusionMaterialBOMQuickPanel />
-
-      {/* ========================================================================= */}
-      {/* 🚨 1. 중대재해공유판 (항상 최상단 안전 공유) */}
-      {/* ========================================================================= */}
-      <SevereDisasterBar />
 
       {/* ========================================================================= */}
       {/* 📢 2. 사내공지 (등록된 공지가 있을 때만 종료일까지 표시) */}

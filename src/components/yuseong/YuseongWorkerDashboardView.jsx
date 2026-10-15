@@ -38,6 +38,10 @@ import {
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
 import { isWorkerManagerRole } from "../../services/personnelCardService";
+import {
+  getOverallDaySampleStatus,
+  getSampleInspectionStatus
+} from "../../utils/sampleInspectionUtils";
 
 const YuseongWorkReportModal = lazy(() =>
   import("./YuseongWorkReportModal").then((m) => ({
@@ -178,6 +182,10 @@ export const YuseongWorkerDashboardView = () => {
     return workReports.filter((r) => r.date === todayStr).length;
   }, [workReports, todayStr]);
 
+  const sampleStatus = useMemo(() => {
+    return getOverallDaySampleStatus(workReports, todayStr);
+  }, [workReports, todayStr]);
+
   // Handlers
   const handleAcknowledge = (issueId) => {
     if (currentProfile?.name) {
@@ -200,123 +208,50 @@ export const YuseongWorkerDashboardView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto min-w-0">
       {/* ========================================================================= */}
-      {/* 🌟 0. Top Yuseong Worker Welcome & Quick Link Banner */}
+      {/* 🏭 상단 바: 초·중·종물 기록 여부만 표출 (6단계 라벨 및 일보 작성 뱃지 제거) */}
       {/* ========================================================================= */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-900 to-slate-900 text-white shadow-md border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-slate-900/90 rounded-2xl shadow-lg border border-slate-800 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-indigo-500/20 backdrop-blur-xs text-indigo-300 border border-indigo-400/40 shrink-0">
+          <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shrink-0">
             <Factory className="w-6 h-6" />
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-sm sm:text-base leading-tight">
-                🏭 (주)유성 외주가공 포털 (JK1 • CE1 • DT Hood)
+              <h2 className="text-base sm:text-lg font-black text-white leading-tight">
+                (주)유성 외주가공
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black shadow-xs bg-indigo-500 text-white border border-indigo-300/40">
-                {currentProfile?.name} {displayTitle}
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-600/30 text-indigo-300 border border-indigo-400/40">
+                [작업자] {currentProfile?.name || "유성"} {displayTitle}
               </span>
+
+              {/* 🔥 초·중·종물 기록 여부 뱃지만 표출 */}
+              {sampleStatus.isComplete ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/80 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>✓ 초·중·종물 기록 완료</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-950 text-amber-300 border border-amber-500/80 flex items-center gap-1.5 shadow-sm shadow-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>⏳ 초·중·종물 기록 진행중 (종물 대기)</span>
+                </span>
+              )}
             </div>
-            <p className="text-xs text-indigo-200/90 font-medium mt-0.5">
-              안전제일(Safety First) • 3대 핵심 아이템 무결점 가공 실현
+
+            <p className="text-xs text-slate-400 font-medium mt-1 truncate">
+              품질이슈 공유판의 최신 불량 및 표준 조치사항을 숙지한 후 작업을 개시하세요.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          <button
-            type="button"
-            onClick={() => handleOpenReportModal("JK1")}
-            className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs active:scale-95 transition-all shadow-md shrink-0 cursor-pointer flex items-center gap-1"
-          >
-            <Car className="w-3.5 h-3.5" />
-            <span>JK1 Part'g 일보</span>
-            <Plus className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenReportModal("CE1")}
-            className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs active:scale-95 transition-all shadow-md shrink-0 cursor-pointer flex items-center gap-1"
-          >
-            <Car className="w-3.5 h-3.5" />
-            <span>CE1 Part'g 일보</span>
-            <Plus className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenReportModal("DT")}
-            className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs active:scale-95 transition-all shadow-md shrink-0 cursor-pointer flex items-center gap-1"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>DT Hood 일보</span>
-            <Plus className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 🌟 1. 유성 3대 아이템 선택 탭 (JK1, CE1, DT Hood) */}
-      {/* ========================================================================= */}
-      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-black text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>아이템 선택:</span>
+        <div className="text-right shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-1">
+          <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
+          <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+            {sampleStatus.summary}
           </span>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("ALL")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-              selectedProjectFilter === "ALL"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            전체 아이템
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("JK1")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedProjectFilter === "JK1"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🚗 JK1 Part'g</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("CE1")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedProjectFilter === "CE1"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🚙 CE1 Part'g</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedProjectFilter("DT")}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-              selectedProjectFilter === "DT"
-                ? "bg-teal-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>⚡ DT Hood</span>
-          </button>
-        </div>
-
-        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2">
-          당일 등록 일보: <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">{todayReportsCount}건</span>
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 🚨 2. 중대재해공유판 */}
-      {/* ========================================================================= */}
-      <SevereDisasterBar />
 
       {/* ========================================================================= */}
       {/* 📢 3. 사내공지 (등록된 공지가 있을 때만 종료일까지 표시) */}
@@ -602,15 +537,6 @@ export const YuseongWorkerDashboardView = () => {
                 전체 일보
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => handleOpenReportModal(selectedProjectFilter === "ALL" ? "JK1" : selectedProjectFilter)}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>새 일보 작성</span>
-            </button>
           </div>
         </div>
 
@@ -625,7 +551,7 @@ export const YuseongWorkerDashboardView = () => {
                 <th className="py-2.5 px-3 text-right">총생산(EA)</th>
                 <th className="py-2.5 px-3 text-right">정품(EA)</th>
                 <th className="py-2.5 px-3 text-right">불량(EA)</th>
-                <th className="py-2.5 px-3 text-right">양품률</th>
+                <th className="py-2.5 px-3 text-center">초·중·종물 검사</th>
                 <th className="py-2.5 px-3 text-center">TPM 점검</th>
                 <th className="py-2.5 px-3 text-center">관리</th>
               </tr>
@@ -640,6 +566,7 @@ export const YuseongWorkerDashboardView = () => {
               ) : (
                 filteredReports.map((rep) => {
                   const yieldPct = rep.summary?.yieldPct ?? 100;
+                  const insp = getSampleInspectionStatus(rep);
                   return (
                     <tr key={rep.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="py-2.5 px-3 font-mono font-bold">
@@ -670,10 +597,20 @@ export const YuseongWorkerDashboardView = () => {
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600">
                         {rep.summary?.totalBad || 0}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black">
-                        <span className={yieldPct < 98 ? "text-amber-600" : "text-emerald-600"}>
-                          {yieldPct}%
-                        </span>
+                      <td className="py-2.5 px-3 text-center">
+                        {insp.isComplete ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                            완료 (초·중·종 OK)
+                          </span>
+                        ) : insp.hasAny ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                            진행중 (종물 대기)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            미기록
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
