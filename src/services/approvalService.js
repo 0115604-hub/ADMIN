@@ -422,10 +422,29 @@ export function normalizeApprovalDoc(d) {
 }
 
 // Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-export function isApprovalDocPending(doc) {
+export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
   if (!doc) return false;
   const s = doc.status || "IN_PROGRESS";
   if (s === "APPROVED" || s === "REJECTED" || s === "HOLD") return false;
+
+  // Personalized check if user profile is provided
+  if (currentProfile) {
+    const userName = currentProfile.name || "";
+    // 1. If user already approved a step in this doc, it is NO LONGER pending for this user!
+    if (userName && Array.isArray(doc.steps)) {
+      const alreadyApproved = doc.steps.some(
+        (st) => st && st.status === "APPROVED" && (st.name === userName || (isAdmin && (st.name === "권태형" || st.name === "최미영" || st.title?.includes("대표"))))
+      );
+      if (alreadyApproved) {
+        return false;
+      }
+    }
+
+    // 2. Check if this user can approve the currently active step
+    const perm = checkApprovalPermission(doc, currentProfile, isAdmin);
+    return Boolean(perm.canApprove);
+  }
+
   return s === "IN_PROGRESS" || s === "PENDING" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "PENDING"));
 }
 
@@ -435,10 +454,24 @@ export function isApprovalDocHold(doc) {
   return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "HOLD"));
 }
 
-export function isApprovalDocApproved(doc) {
+export function isApprovalDocApproved(doc, currentProfile = null, isAdmin = false) {
   if (!doc) return false;
   const s = doc.status;
-  return s === "APPROVED" || s === "완료" || (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st && st.status === "APPROVED"));
+  if (s === "APPROVED" || s === "완료") return true;
+  if (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st && st.status === "APPROVED")) return true;
+
+  // If user profile is provided and this is an intermediate approver who already approved their step:
+  if (currentProfile && !isAdmin) {
+    const userName = currentProfile.name || "";
+    if (userName && Array.isArray(doc.steps)) {
+      const stepApproved = doc.steps.some(
+        (st) => st && st.status === "APPROVED" && st.name === userName
+      );
+      if (stepApproved) return true;
+    }
+  }
+
+  return false;
 }
 
 export function isApprovalDocRejected(doc) {
@@ -552,6 +585,11 @@ export function saveLocalApprovalDocs(docs) {
       }
     });
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("oryuk_approval_document_updated", { detail: { docs: normalized } }));
+      } catch (evtErr) {}
+    }
   } catch (e) {
     console.error("Local storage write error for approval documents:", e);
   }
@@ -968,6 +1006,60 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
   });
 
   const saved = await saveApprovalDocument(updatedTarget);
+
+  // ⭐ Bidirectional Overtime Sync: If this is an Overtime report, immediately sync status to overtime_reports
+  if (isOvertimeApprovalDoc(updatedTarget)) {
+    try {
+      const overtimeRaw = typeof window !== "undefined" ? localStorage.getItem("official_overtime_reports_store_v7_company_reports") : null;
+      if (overtimeRaw) {
+        const overtimeList = JSON.parse(overtimeRaw);
+        if (Array.isArray(overtimeList)) {
+          const plantName = updatedTarget.plant;
+          const workDate = updatedTarget.workDate;
+          const dateClean = workDate ? workDate.replace(/-/g, "") : "";
+
+          let modified = false;
+          const updatedOvertimeList = overtimeList.map((rep) => {
+            const isSam = rep.plant === "삼랑진공장" || rep.company === "(주)오륙" || rep.company === "유성" || rep.plant?.includes("삼랑진");
+            const repPlant = isSam ? "삼랑진공장" : "한림공장";
+            const matchesPlant = repPlant === plantName || rep.plant === plantName || (updatedTarget.id && updatedTarget.id.includes(isSam ? "samrangjin" : "hanlim"));
+            const matchesDate = rep.workDate === workDate || (dateClean && rep.workDate && rep.workDate.replace(/-/g, "") === dateClean);
+
+            if (matchesPlant && matchesDate) {
+              modified = true;
+              return {
+                ...rep,
+                approvalStatus: isAllApproved ? "결재완료" : "결재진행중",
+                status: isAllApproved ? "APPROVED" : "IN_PROGRESS",
+                approval: updatedSteps,
+                approvedAt: nowStr,
+                approverName: approverName,
+                updatedAt: new Date().toISOString()
+              };
+            }
+            return rep;
+          });
+
+          if (modified) {
+            localStorage.setItem("official_overtime_reports_store_v7_company_reports", JSON.stringify(updatedOvertimeList));
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("oryuk_overtime_reports_updated", { detail: { plant: plantName, workDate } }));
+            }
+            // Background sync matching documents to Firestore overtime_reports
+            updatedOvertimeList.filter(r => r.workDate === workDate).forEach(async (r) => {
+              if (r.id) {
+                try {
+                  await setDoc(doc(db, "overtime_reports", r.id), sanitizeForFirestore(r), { merge: true });
+                } catch (e) {}
+              }
+            });
+          }
+        }
+      }
+    } catch (otSyncErr) {
+      console.warn("Could not sync overtime reports in approveDocumentStep:", otSyncErr);
+    }
+  }
 
   // Telegram notification on step approval (오직 최종 승인 완료 시에만 발송)
   if (isAllApproved) {

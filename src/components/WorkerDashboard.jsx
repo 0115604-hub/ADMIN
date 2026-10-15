@@ -117,7 +117,8 @@ import {
   checkApprovalPermission,
   approveDocumentStep,
   holdDocumentStep,
-  rejectDocumentStep
+  rejectDocumentStep,
+  isApprovalDocPending
 } from "../services/approvalService";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
 import { parseExtrusionExcelFile, saveExtrusionDowntimeBatch, clearAllExtrusionDowntimeLogs } from "../services/extrusionDowntimeService";
@@ -624,9 +625,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const unsubReports = subscribeOvertimeReports((reports) => {
       setOvertimeReports(reports || []);
     });
+    const handleOvertimeUpdated = (e) => {
+      if (e.detail?.reports) {
+        setOvertimeReports(e.detail.reports);
+      } else {
+        setOvertimeReports(getLocalOvertimeReports());
+      }
+    };
+    window.addEventListener("oryuk_overtime_reports_updated", handleOvertimeUpdated);
     return () => {
       unsubSmart();
       unsubReports();
+      window.removeEventListener("oryuk_overtime_reports_updated", handleOvertimeUpdated);
     };
   }, []);
 
@@ -751,14 +761,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
     });
-    return () => unsub();
+    const handleApprovalUpdated = (e) => {
+      if (e.detail?.docs) {
+        setApprovalDocs(e.detail.docs);
+      } else {
+        setApprovalDocs(getLocalApprovalDocs());
+      }
+    };
+    window.addEventListener("oryuk_approval_document_updated", handleApprovalUpdated);
+    return () => {
+      unsub();
+      window.removeEventListener("oryuk_approval_document_updated", handleApprovalUpdated);
+    };
   }, []);
 
   const pendingOrHoldDocs = useMemo(() => {
-    return approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
-  }, [approvalDocs]);
+    return approvalDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin) || d.status === "HOLD");
+  }, [approvalDocs, currentProfile, isAdmin]);
 
-  const pendingCount = useMemo(() => approvalDocs.filter((d) => d.status === "IN_PROGRESS").length, [approvalDocs]);
+  const pendingCount = useMemo(() => {
+    return approvalDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+  }, [approvalDocs, currentProfile, isAdmin]);
+
   const holdCount = useMemo(() => approvalDocs.filter((d) => d.status === "HOLD").length, [approvalDocs]);
 
   // Plant-specific approval authority
@@ -864,21 +888,34 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return true;
     }
     if (Array.isArray(approvalDocs)) {
-      const plantKey = rep.plant === "삼랑진공장" ? "samrangjin" : "hanlim";
+      const isSam = rep.plant === "삼랑진공장" || rep.company === "(주)오륙" || rep.company === "유성" || rep.plant?.includes("삼랑진");
+      const plantKey = isSam ? "samrangjin" : "hanlim";
+      const targetPlant = isSam ? "삼랑진공장" : "한림공장";
       const dateKey = rep.workDate ? rep.workDate.replace(/-/g, "") : "";
       const matchedDoc = approvalDocs.find((d) => {
         const isOt = d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "OVERTIME";
         if (!isOt) return false;
-        const matchesPlant = d.plant === rep.plant || d.targetPlant === rep.plant || (d.id && d.id.includes(plantKey));
-        const matchesDate = (dateKey && d.id && d.id.includes(dateKey)) || d.workDate === rep.workDate;
+        const matchesPlant = d.plant === targetPlant || d.targetPlant === targetPlant || (d.id && d.id.includes(plantKey)) || (d.title && d.title.includes(isSam ? "삼랑진" : "한림"));
+        const matchesDate = (dateKey && d.id && d.id.includes(dateKey)) || d.workDate === rep.workDate || (d.title && rep.workDate && d.title.includes(rep.workDate));
         return matchesPlant && matchesDate;
       });
-      if (matchedDoc && (matchedDoc.status === "APPROVED" || matchedDoc.status === "결재완료")) {
-        return true;
+      if (matchedDoc) {
+        if (matchedDoc.status === "APPROVED" || matchedDoc.status === "결재완료") {
+          return true;
+        }
+        if (Array.isArray(matchedDoc.steps) && matchedDoc.steps.every((st) => st.status === "APPROVED" || st.status === "완료")) {
+          return true;
+        }
+        if (currentProfile) {
+          const perm = checkApprovalPermission(matchedDoc, currentProfile, isAdmin);
+          if (perm.hasApproved) {
+            return true;
+          }
+        }
       }
     }
     return false;
-  }, [approvalDocs]);
+  }, [approvalDocs, currentProfile, isAdmin]);
 
   // 🌟 공장별 최신 일자의 미결재 특근보고서 추출 (주말/공휴일 특근보고서만 대상, 평일 근태보고서 완전 제외, 결재 완료 시 자동 숨김)
   const pendingApprovalCards = useMemo(() => {
@@ -1504,7 +1541,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const unsubscribe = subscribeWorkLogs((logs) => {
       setWorkLogs(logs);
     });
-    return () => unsubscribe();
+    const handleWorkLogsUpdated = (e) => {
+      if (e.detail?.logs) {
+        setWorkLogs(e.detail.logs);
+      } else {
+        setWorkLogs(getWorkLogs());
+      }
+    };
+    window.addEventListener("oryuk_work_logs_updated", handleWorkLogsUpdated);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("oryuk_work_logs_updated", handleWorkLogsUpdated);
+    };
   }, []);
 
   // Pending Approvals Count for General Managers
@@ -1573,6 +1621,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
 
     setToastMessage("결재 및 지시사항 코멘트가 정상적으로 등록되었습니다.");
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
+  const handleBatchApproveLogs = async (logIds) => {
+    if (!Array.isArray(logIds) || logIds.length === 0) return;
+    const nowFormatted = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    const targetIds = new Set(logIds.map(String));
+    const updated = workLogs.map((l) => {
+      if (targetIds.has(String(l.id))) {
+        const targetPlant = l.plant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
+        const approverName = currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재");
+        const approverTitle = currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사");
+        return {
+          ...l,
+          plant: targetPlant,
+          approvalStatus: "결재완료",
+          approverName,
+          approverTitle,
+          approverPlant: targetPlant,
+          approvedAt: nowFormatted,
+          approvalComment: `${targetPlant} 일괄 확인 및 전자결재 승인 완료`,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return l;
+    });
+
+    setWorkLogs(updated);
+
+    try {
+      await batchApproveWorkLogs(logIds, {
+        name: currentProfile?.name,
+        title: currentProfile?.title,
+        plant: currentProfile?.plant || workerPlant
+      });
+    } catch (e) {
+      console.error("Batch approve work logs error:", e);
+    }
+
+    setToastMessage(`선택된 ${logIds.length}건의 업무일지가 일괄 결재 승인되었습니다.`);
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
   };
@@ -5069,9 +5165,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-black shrink-0 ml-auto sm:ml-0">
-              결재 대기 {pendingSamrangjinCount}건
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              <button
+                type="button"
+                onClick={() => setIsWorkLogsSummaryModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>대기 일지 확인 및 승인</span>
+              </button>
+              <span className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-black">
+                {pendingSamrangjinCount}건
+              </span>
+            </div>
           </div>
         )}
 
@@ -5090,14 +5195,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black shrink-0 ml-auto sm:ml-0">
-              결재 대기 {pendingHallimCount}건
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              <button
+                type="button"
+                onClick={() => setIsWorkLogsSummaryModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>대기 일지 확인 및 승인</span>
+              </button>
+              <span className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black">
+                {pendingHallimCount}건
+              </span>
+            </div>
           </div>
         )}
 
         {isAdmin && (pendingSamrangjinCount > 0 || pendingHallimCount > 0) && (
-          <div className="p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2 animate-fadeIn min-w-0">
+          <div className="p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
                 ADMIN
@@ -5111,6 +5225,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsWorkLogsSummaryModalOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all ml-auto sm:ml-0 shrink-0"
+            >
+              <span>전체 대기 일지 확인 및 승인</span>
+            </button>
           </div>
         )}
 
@@ -11622,6 +11743,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               setIsWorkLogsSummaryModalOpen(false);
               handleOpenLogDetail(log);
             }}
+            onApproveLog={handleApproveLog}
+            onBatchApproveLogs={handleBatchApproveLogs}
+            canApproveLog={canApproveLog}
+            currentProfile={currentProfile}
+            isAdmin={isAdmin}
             onNavigateTab={onNavigateTab}
           />
         </Suspense>

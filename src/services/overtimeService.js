@@ -246,6 +246,9 @@ export const saveLocalOvertimeReports = (reports) => {
       })
       .map(normalizeOvertimeReport);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cleanList));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("oryuk_overtime_reports_updated", { detail: { reports: cleanList } }));
+    }
   } catch (e) {
     console.error("Local storage overtime save error:", e);
   }

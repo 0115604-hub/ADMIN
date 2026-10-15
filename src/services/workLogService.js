@@ -216,6 +216,9 @@ const saveLocalWorkLogs = (logs) => {
       ? logs.map(normalizeWorkLogApproval)
       : [];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("oryuk_work_logs_updated", { detail: { logs: parsed } }));
+    }
   } catch (e) {
     console.warn("Local storage write warning, attempting payload trimming:", e);
     try {
@@ -231,6 +234,9 @@ const saveLocalWorkLogs = (logs) => {
         return item;
       });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("oryuk_work_logs_updated", { detail: { logs: trimmed } }));
+      }
     } catch (innerErr) {
       console.error("Local storage error after trim:", innerErr);
     }

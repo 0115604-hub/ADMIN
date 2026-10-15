@@ -27,9 +27,17 @@ export const RecentWorkLogsSummaryModal = ({
   onClose,
   workLogs = [],
   onOpenIndividualLog = null,
+  onApproveLog = null,
+  onBatchApproveLogs = null,
+  canApproveLog = null,
+  currentProfile = null,
+  isAdmin = false,
   onNavigateTab = null
 }) => {
   useModalHistory(isOpen, onClose, "recent_work_logs_summary_modal");
+
+  const canApproveSamrangjin = isAdmin || (currentProfile?.name === "이명재" || (currentProfile?.plant === "삼랑진공장" && currentProfile?.assignedProcess === "총괄관리"));
+  const canApproveHallim = isAdmin || (currentProfile?.name === "김동욱" || (currentProfile?.plant === "한림공장" && currentProfile?.assignedProcess === "총괄관리"));
 
   // 🌟 Extract ONLY dates that actually have registered workers/logs
   const availableDates = useMemo(() => {
@@ -83,6 +91,14 @@ export const RecentWorkLogsSummaryModal = ({
     const plant = l.plant || l.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
     return plant === "한림공장";
   }), [dateLogs, headLogs]);
+
+  const pendingSamLogs = useMemo(() => {
+    return samLogs.filter((l) => l.approvalStatus !== "결재완료");
+  }, [samLogs]);
+
+  const pendingHanLogs = useMemo(() => {
+    return hanLogs.filter((l) => l.approvalStatus !== "결재완료");
+  }, [hanLogs]);
 
   // Date navigation handlers
   const currentIndex = availableDates.indexOf(selectedDate);
@@ -324,11 +340,27 @@ export const RecentWorkLogsSummaryModal = ({
               {/* 1. 삼랑진공장 */}
               {samLogs.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 pb-1 border-b border-slate-200 dark:border-slate-700">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <h4 className="font-black text-xs text-slate-900 dark:text-white">
-                      삼랑진공장 ({samLogs.length}명)
-                    </h4>
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <h4 className="font-black text-xs text-slate-900 dark:text-white">
+                        삼랑진공장 ({samLogs.length}명)
+                      </h4>
+                    </div>
+                    {onBatchApproveLogs && pendingSamLogs.length > 0 && (canApproveSamrangjin || isAdmin) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onBatchApproveLogs(pendingSamLogs.map((l) => l.id));
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-black text-[10.5px] shadow-2xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                        title="삼랑진공장 대기 일지 일괄 승인"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>대기 일지 일괄 승인 ({pendingSamLogs.length}건)</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -360,15 +392,31 @@ export const RecentWorkLogsSummaryModal = ({
                               </span>
                             </div>
 
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
-                                isApproved
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                              }`}
-                            >
-                              {isApproved ? `✓ 승인 (${log.approverName || "완료"})` : "⏳ 결재대기"}
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {!isApproved && onApproveLog && (canApproveLog ? canApproveLog(log) : (canApproveSamrangjin || isAdmin)) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApproveLog(log.id, "확인 및 전자결재 승인 완료");
+                                  }}
+                                  className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                  title="원클릭 즉시 결재 승인"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>즉시 승인</span>
+                                </button>
+                              )}
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
+                                  isApproved
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                }`}
+                              >
+                                {isApproved ? `✓ 승인 (${log.approverName || "완료"})` : "⏳ 결재대기"}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Work Content */}
@@ -408,11 +456,27 @@ export const RecentWorkLogsSummaryModal = ({
               {/* 2. 한림공장 */}
               {hanLogs.length > 0 && (
                 <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-1.5 pb-1 border-b border-slate-200 dark:border-slate-700">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <h4 className="font-black text-xs text-slate-900 dark:text-white">
-                      한림공장 ({hanLogs.length}명)
-                    </h4>
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <h4 className="font-black text-xs text-slate-900 dark:text-white">
+                        한림공장 ({hanLogs.length}명)
+                      </h4>
+                    </div>
+                    {onBatchApproveLogs && pendingHanLogs.length > 0 && (canApproveHallim || isAdmin) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onBatchApproveLogs(pendingHanLogs.map((l) => l.id));
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10.5px] shadow-2xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                        title="한림공장 대기 일지 일괄 승인"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>대기 일지 일괄 승인 ({pendingHanLogs.length}건)</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -441,15 +505,31 @@ export const RecentWorkLogsSummaryModal = ({
                               </span>
                             </div>
 
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
-                                isApproved
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                              }`}
-                            >
-                              {isApproved ? `✓ 승인 (${log.approverName || "완료"})` : "⏳ 결재대기"}
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {!isApproved && onApproveLog && (canApproveLog ? canApproveLog(log) : (canApproveHallim || isAdmin)) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApproveLog(log.id, "확인 및 전자결재 승인 완료");
+                                  }}
+                                  className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                  title="원클릭 즉시 결재 승인"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>즉시 승인</span>
+                                </button>
+                              )}
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
+                                  isApproved
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                }`}
+                              >
+                                {isApproved ? `✓ 승인 (${log.approverName || "완료"})` : "⏳ 결재대기"}
+                              </span>
+                            </div>
                           </div>
 
                           <p className="text-slate-700 dark:text-slate-300 text-[11.5px] leading-relaxed whitespace-pre-line font-medium pl-1 border-l-2 border-slate-200 dark:border-slate-700">

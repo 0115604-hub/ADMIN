@@ -296,7 +296,7 @@ export const ElectronicApprovalView = () => {
     selectedDocRef.current = selectedDoc;
   }, [selectedDoc]);
 
-  // Real-time Cloud Synchronization
+  // Real-time Cloud Synchronization & Instant Local Event Sync
   useEffect(() => {
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
@@ -305,7 +305,21 @@ export const ElectronicApprovalView = () => {
         if (found) setSelectedDoc(found);
       }
     });
-    return () => unsub();
+
+    const handleLocalUpdate = () => {
+      const latest = getLocalApprovalDocs();
+      setApprovalDocs(latest);
+      if (selectedDocRef.current) {
+        const found = latest.find((d) => d.id === selectedDocRef.current.id);
+        if (found) setSelectedDoc(found);
+      }
+    };
+    window.addEventListener("oryuk_approval_document_updated", handleLocalUpdate);
+
+    return () => {
+      unsub();
+      window.removeEventListener("oryuk_approval_document_updated", handleLocalUpdate);
+    };
   }, []);
 
   // Sync draft form with logged-in user
@@ -357,8 +371,8 @@ export const ElectronicApprovalView = () => {
     const generalList = approvalDocs.filter(isGeneralApprovalDoc);
     const overtime = overtimeList.length;
     const general = generalList.length;
-    const overtimePending = overtimeList.filter(isApprovalDocPending).length;
-    const generalPending = generalList.filter(isApprovalDocPending).length;
+    const overtimePending = overtimeList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     return {
       total,
       overtime,
@@ -366,7 +380,7 @@ export const ElectronicApprovalView = () => {
       overtimePending,
       generalPending
     };
-  }, [approvalDocs]);
+  }, [approvalDocs, currentProfile, isAdmin]);
 
   // Scoped documents according to selected category
   const categoryScopedDocs = useMemo(() => {
@@ -386,10 +400,10 @@ export const ElectronicApprovalView = () => {
       }
 
       // 2. Tab filter
-      if (selectedTab === "PENDING" && !isApprovalDocPending(doc)) return false;
+      if (selectedTab === "PENDING" && !isApprovalDocPending(doc, currentProfile, isAdmin)) return false;
       if (selectedTab === "HOLD" && !isApprovalDocHold(doc)) return false;
       if (selectedTab === "MY_DRAFTS" && !isApprovalDocMyDraft(doc, currentProfile, isAdmin)) return false;
-      if (selectedTab === "APPROVED" && !isApprovalDocApproved(doc)) return false;
+      if (selectedTab === "APPROVED" && !isApprovalDocApproved(doc, currentProfile, isAdmin)) return false;
       if (selectedTab === "REJECTED" && !isApprovalDocRejected(doc)) return false;
 
       // 3. Search query filter
@@ -420,9 +434,9 @@ export const ElectronicApprovalView = () => {
   // Statistics (100% unified with current category scope)
   const stats = useMemo(() => {
     const total = categoryScopedDocs.length;
-    const pending = categoryScopedDocs.filter(isApprovalDocPending).length;
+    const pending = categoryScopedDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     const hold = categoryScopedDocs.filter(isApprovalDocHold).length;
-    const approved = categoryScopedDocs.filter(isApprovalDocApproved).length;
+    const approved = categoryScopedDocs.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
     const rejected = categoryScopedDocs.filter(isApprovalDocRejected).length;
     const myDrafts = categoryScopedDocs.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
     return { total, pending, hold, approved, rejected, myDrafts };
@@ -601,7 +615,7 @@ export const ElectronicApprovalView = () => {
       alert("일괄 결재 권한이 없습니다. (총괄관리자 ADMIN 전용)");
       return;
     }
-    const pendingList = approvalDocs.filter(isApprovalDocPending);
+    const pendingList = approvalDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin));
     if (pendingList.length === 0) {
       alert("현재 결재 대기(미결) 중인 문서가 없습니다.");
       return;
@@ -1080,10 +1094,11 @@ export const ElectronicApprovalView = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredDocs.map((doc) => {
-                  const isPending = doc.status === "IN_PROGRESS";
-                  const isHold = doc.status === "HOLD";
-                  const isApproved = doc.status === "APPROVED";
-                  const isRejected = doc.status === "REJECTED";
+                  const isApproved = isApprovalDocApproved(doc, currentProfile, isAdmin);
+                  const isPending = isApprovalDocPending(doc, currentProfile, isAdmin);
+                  const isHold = isApprovalDocHold(doc);
+                  const isRejected = isApprovalDocRejected(doc);
+                  const isSignedByMe = Boolean(currentProfile?.name && Array.isArray(doc.steps) && doc.steps.some((st) => st?.name === currentProfile.name && st?.status === "APPROVED"));
 
                   return (
                     <tr
@@ -1144,7 +1159,7 @@ export const ElectronicApprovalView = () => {
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         {isApproved ? (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                            ✓ 결재완료
+                            ✓ {doc.status === "APPROVED" ? "결재완료" : "내 결재완료"}
                           </span>
                         ) : isHold ? (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
@@ -1153,6 +1168,11 @@ export const ElectronicApprovalView = () => {
                         ) : isRejected ? (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
                             ✕ 반려됨
+                          </span>
+                        ) : isSignedByMe ? (
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-blue-500" />
+                            <span>승인완료 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "다음"} 대기)</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
