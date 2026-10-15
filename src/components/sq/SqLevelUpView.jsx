@@ -40,6 +40,7 @@ export const SqLevelUpView = () => {
   // Filters
   const [priorityTab, setPriorityTab] = useState("ALL"); // ALL | S | A | B
   const [deptFilter, setDeptFilter] = useState("ALL");
+  const [ownerFilter, setOwnerFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("OPEN"); // ALL | OPEN | CLOSE
   const [searchQuery, setSearchQuery] = useState("");
   const [solutionTypeFilter, setSolutionTypeFilter] = useState("ALL"); // ALL | App-Direct | App-Assisted | Physical
@@ -74,14 +75,24 @@ export const SqLevelUpView = () => {
       // 2. Department Filter
       if (deptFilter !== "ALL" && it.mainDept !== deptFilter) return false;
 
-      // 3. Status Filter
+      // 3. Manager Filter
+      if (ownerFilter !== "ALL") {
+        if (ownerFilter === "-") {
+          if (it.mainOwner && it.mainOwner !== "-") return false;
+        } else {
+          const simpleName = ownerFilter.split(" ")[0];
+          if (!it.mainOwner || !it.mainOwner.includes(simpleName)) return false;
+        }
+      }
+
+      // 4. Status Filter
       if (statusFilter === "OPEN" && (it.status === "CLOSE" || it.status === "조치완료" || it.status === "해당없음")) return false;
       if (statusFilter === "CLOSE" && it.status !== "CLOSE" && it.status !== "조치완료") return false;
 
-      // 4. Solution Type
+      // 5. Solution Type
       if (solutionTypeFilter !== "ALL" && it.appSolutionType !== solutionTypeFilter) return false;
 
-      // 5. Search Query
+      // 6. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const text = `${it.seq} ${it.code} ${it.subItem} ${it.problem} ${it.actionPlan} ${it.mainDept} ${it.mainOwner} ${it.appModule}`.toLowerCase();
@@ -90,11 +101,22 @@ export const SqLevelUpView = () => {
 
       return true;
     });
-  }, [items, priorityTab, deptFilter, statusFilter, solutionTypeFilter, searchQuery]);
+  }, [items, priorityTab, deptFilter, ownerFilter, statusFilter, solutionTypeFilter, searchQuery]);
 
   // Handle Quick Status Change
   const handleQuickStatusChange = async (seq, newStatus) => {
+    setItems((prev) =>
+      prev.map((it) => (it.seq === seq ? { ...it, status: newStatus } : it))
+    );
     await updateSqLevelUpItem(seq, { status: newStatus });
+  };
+
+  // Handle Manager Assignment Change
+  const handleOwnerChange = async (seq, newOwner) => {
+    setItems((prev) =>
+      prev.map((it) => (it.seq === seq ? { ...it, mainOwner: newOwner } : it))
+    );
+    await updateSqLevelUpItem(seq, { mainOwner: newOwner });
   };
 
   return (
@@ -269,14 +291,14 @@ export const SqLevelUpView = () => {
         </div>
 
         {/* Detailed Secondary Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           {/* Department Filter */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500 shrink-0">부서:</span>
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
             >
               <option value="ALL">전체 부서 ({items.length})</option>
               <option value="품질관리팀">품질관리팀 (54건)</option>
@@ -288,13 +310,47 @@ export const SqLevelUpView = () => {
             </select>
           </div>
 
+          {/* Manager Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 shrink-0">담당자:</span>
+            <select
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
+            >
+              <option value="ALL">전체 담당자</option>
+              <option value="-">미지정</option>
+              <optgroup label="본사">
+                <option value="권태형">권태형 대표이사</option>
+                <option value="최미영">최미영 전무</option>
+              </optgroup>
+              <optgroup label="삼랑진공장">
+                <option value="이명재">이명재 이사</option>
+                <option value="이창엽">이창엽 책임</option>
+                <option value="설유철">설유철 책임</option>
+                <option value="윤경수">윤경수 책임</option>
+                <option value="전재율">전재율 책임</option>
+                <option value="조인주">조인주 선임</option>
+                <option value="양인나">양인나 선임</option>
+                <option value="유동길">유동길 선임</option>
+                <option value="공영국">공영국 대리</option>
+                <option value="이상기">이상기 기사</option>
+              </optgroup>
+              <optgroup label="한림공장">
+                <option value="김동욱">김동욱 책임</option>
+                <option value="오상민">오상민 선임</option>
+                <option value="정현규">정현규 사원</option>
+              </optgroup>
+            </select>
+          </div>
+
           {/* Status Filter */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500 shrink-0">상태:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
             >
               <option value="OPEN">미완료 (OPEN: {kpis.open}건)</option>
               <option value="ALL">전체 (160건)</option>
@@ -308,12 +364,12 @@ export const SqLevelUpView = () => {
             <select
               value={solutionTypeFilter}
               onChange={(e) => setSolutionTypeFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
             >
               <option value="ALL">전체 해결방식</option>
-              <option value="App-Direct">📱 앱 직접 해결 ({kpis.appDirect}건)</option>
-              <option value="App-Assisted">📂 앱 연계 관리 ({kpis.appAssisted}건)</option>
-              <option value="Physical">🔧 현장 물리 제작 ({kpis.physical}건)</option>
+              <option value="App-Direct">📱 앱 직접 ({kpis.appDirect}건)</option>
+              <option value="App-Assisted">📂 앱 연계 ({kpis.appAssisted}건)</option>
+              <option value="Physical">🔧 현장 물리 ({kpis.physical}건)</option>
             </select>
           </div>
 
@@ -324,7 +380,7 @@ export const SqLevelUpView = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="항목, 문제점, 대책, 담당자 검색..."
+              placeholder="항목, 문제점, 담당자 검색..."
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white font-medium"
             />
           </div>
@@ -352,11 +408,10 @@ export const SqLevelUpView = () => {
             <thead>
               <tr className="bg-slate-100/70 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                 <th className="py-2.5 px-3 w-12 text-center">No</th>
-                <th className="py-2.5 px-3 w-20">우선순위</th>
                 <th className="py-2.5 px-3 w-28">대/중분류</th>
                 <th className="py-2.5 px-3 min-w-[240px]">추진 세부항목 & 지적사항</th>
                 <th className="py-2.5 px-3 min-w-[280px]">구체적 개선 조치 대책 (Action Plan)</th>
-                <th className="py-2.5 px-3 w-24">기한</th>
+                <th className="py-2.5 px-3 w-44 min-w-[160px]">담당 관리자</th>
                 <th className="py-2.5 px-3 min-w-[220px]">📱 앱(App) 기준 해결 모듈</th>
                 <th className="py-2.5 px-3 w-24 text-center">조치상태</th>
               </tr>
@@ -373,21 +428,6 @@ export const SqLevelUpView = () => {
                   >
                     <td className="py-3 px-3 text-center font-bold text-slate-500">
                       {item.seq}
-                    </td>
-
-                    {/* Priority Badge */}
-                    <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-block ${
-                        item.priority === "S등급"
-                          ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300"
-                          : item.priority === "A등급"
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
-                          : item.priority === "B등급"
-                          ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
-                          : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {item.priority}
-                      </span>
                     </td>
 
                     {/* Category */}
@@ -420,9 +460,61 @@ export const SqLevelUpView = () => {
                       )}
                     </td>
 
-                    {/* Target Date */}
-                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                      {item.targetDate || "2026-10-31"}
+                    {/* Assigned Manager Dropdown */}
+                    <td className="py-3 px-3">
+                      <select
+                        value={item.mainOwner || "-"}
+                        onChange={(e) => handleOwnerChange(item.seq, e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer truncate"
+                      >
+                        <option value="-">선택 (미지정)</option>
+                        <optgroup label="본사">
+                          <option value="권태형 대표이사">권태형 대표이사</option>
+                          <option value="최미영 전무">최미영 전무</option>
+                        </optgroup>
+                        <optgroup label="삼랑진공장">
+                          <option value="이명재 이사">이명재 이사 (총괄)</option>
+                          <option value="이창엽 책임">이창엽 책임 (품질)</option>
+                          <option value="설유철 책임">설유철 책임 (압출)</option>
+                          <option value="윤경수 책임">윤경수 책임 (가공)</option>
+                          <option value="전재율 책임">전재율 책임 (설비보전)</option>
+                          <option value="조인주 선임">조인주 선임 (관리/근태)</option>
+                          <option value="양인나 선임">양인나 선임 (가공)</option>
+                          <option value="유동길 선임">유동길 선임 (가공)</option>
+                          <option value="공영국 대리">공영국 대리 (압출)</option>
+                          <option value="이상기 기사">이상기 기사 (품질)</option>
+                          {item.mainOwner === "이상기 사원" && (
+                            <option value="이상기 사원">이상기 사원 (품질)</option>
+                          )}
+                        </optgroup>
+                        <optgroup label="한림공장">
+                          <option value="김동욱 책임">김동욱 책임 (총괄)</option>
+                          <option value="오상민 선임">오상민 선임 (가공)</option>
+                          <option value="정현규 사원">정현규 사원 (가공)</option>
+                        </optgroup>
+                        {item.mainOwner &&
+                          item.mainOwner !== "-" &&
+                          ![
+                            "권태형 대표이사",
+                            "최미영 전무",
+                            "이명재 이사",
+                            "이창엽 책임",
+                            "설유철 책임",
+                            "윤경수 책임",
+                            "전재율 책임",
+                            "조인주 선임",
+                            "양인나 선임",
+                            "유동길 선임",
+                            "공영국 대리",
+                            "이상기 기사",
+                            "이상기 사원",
+                            "김동욱 책임",
+                            "오상민 선임",
+                            "정현규 사원"
+                          ].includes(item.mainOwner) && (
+                            <option value={item.mainOwner}>{item.mainOwner}</option>
+                          )}
+                      </select>
                     </td>
 
                     {/* App Module */}
