@@ -1647,7 +1647,7 @@ export const AuthModal = () => {
               type="button"
               onClick={() => setIsSqLevelUpModalOpen(true)}
               className="w-full py-2.5 px-3.5 sm:px-4 rounded-2xl text-left transition-all group flex items-center justify-between shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer border bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 hover:from-slate-800 hover:to-indigo-900 text-white border-indigo-500/40 ring-1 ring-indigo-500/20"
-              title="SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판 열기)"
+              title="SQ 진행상황 현황표 열기"
             >
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -1655,7 +1655,7 @@ export const AuthModal = () => {
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
                 </span>
                 <span className="text-xs sm:text-sm font-black text-white group-hover:text-cyan-300 truncate tracking-tight">
-                  🎯 SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판)
+                  🎯 SQ 진행상황 현황표
                 </span>
                 <span className="hidden md:inline-block text-[11px] text-indigo-200/80 font-medium truncate">
                   • D-Day 2026.10.31 • S등급 59건 / A등급 61건 • 앱 해결률 96.8%
@@ -1663,7 +1663,7 @@ export const AuthModal = () => {
               </div>
               <div className="flex items-center gap-1.5 shrink-0 ml-2">
                 <span className="text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-colors">
-                  LIVE 추진판 ➔
+                  현황표 ➔
                 </span>
               </div>
             </button>
@@ -2387,7 +2387,7 @@ export const AuthModal = () => {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
                 </span>
                 <h3 className="font-black text-sm sm:text-base text-white tracking-tight">
-                  🎯 SQ Live 모니터링 및 진행현황 (사전점검 124건 종합 추진판)
+                  🎯 SQ 진행상황 현황표
                 </h3>
               </div>
               <div className="flex items-center gap-2">

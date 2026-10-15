@@ -195,7 +195,7 @@ export const SqLevelUpView = () => {
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>사전점검 124건 Live 모니터링 & 스마트 앱 연계 현황</span>
+              <span>SQ 진행상황 현황표</span>
             </h1>
           </div>
 

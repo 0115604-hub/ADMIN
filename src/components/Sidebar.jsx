@@ -204,7 +204,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
                 ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white border-blue-400 ring-2 ring-blue-500/40"
                 : "bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 hover:from-slate-800 hover:to-indigo-900 text-white border-indigo-500/40"
             }`}
-            title="SQ Live 모니터링 및 진행현황 열기"
+            title="SQ 진행상황 현황표 열기"
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="relative flex h-2 w-2 shrink-0">
@@ -212,11 +212,11 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
               </span>
               <span className="text-xs font-black text-white group-hover:text-cyan-300 truncate tracking-tight">
-                SQ Live 모니터링 및 진행현황
+                SQ 진행상황 현황표
               </span>
             </div>
             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-500 text-white shrink-0 ml-1 shadow-xs">
-              LIVE ➔
+              현황표 ➔
             </span>
           </button>
         )}
