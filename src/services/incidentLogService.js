@@ -48,6 +48,27 @@ export const DEFAULT_INCIDENT_LOGS = [
     createdAt: "2026-10-15T09:10:00+09:00",
     resolvedAt: "2026-10-15T09:16:00+09:00",
     notes: "평일 근태 미선택자가 있어도 정시 자동채우기 확인창을 통해 원스톱 등록 지원"
+  },
+  {
+    id: "inc_20261015_03",
+    incidentNo: 3,
+    workDate: "2026-10-15",
+    category: "일일생산정보",
+    severity: "P1",
+    title: "현장 작업자 로그인 시 작업일보 전용 초슬림 화면 개편 및 불필요한 관리자 지표 차단",
+    plant: "삼랑진 / 한림공장",
+    reporter: "현장 작업자 및 대표",
+    symptoms: "현장 일반 작업자(가공동 및 생산원)가 로그인했을 때 관리자용 매입매출, 전사 근태관리대장, 품질게이지, 압출 비가동, 결재함 등 복잡한 차트가 노출되어 현장 입력 사용성이 크게 저하되는 현상",
+    rootCause: "작업자와 관리자 구분이 명확하지 않아 모든 작업자가 관리자용 대시보드 및 8개 사이드바 탭을 상속받아 렌더링됨",
+    resolution: "isManagerOrAdminUser/isExtrusionWorkerProfile 헬퍼 도입, 작업자 로그인 시 사이드바를 '작업일보' 단독 탭으로 슬림화, 대시보드에서 매입매출/근태/품질/비가동 차단 후 당일 작업일보 등록 및 본인 일보 결재 현황판(상세/수정/삭제) 전용 뷰 제공, 상단 헤더에 '✍️ 일보작성' 원클릭 버튼 연동",
+    actionCommit: "Commit 9bf00d5",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-15T10:00:00+09:00",
+    resolvedAt: "2026-10-15T10:08:00+09:00",
+    notes: "압출동 작업자와 동일하게 일반 작업자도 작업일보만 집중 노출되어 현장 편의성 대폭 극대화"
   }
 ];
 

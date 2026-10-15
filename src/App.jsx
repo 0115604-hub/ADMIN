@@ -5,7 +5,7 @@ import { Header } from "./components/Header";
 import { AuthModal } from "./components/AuthModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { runStorageHealthCheck } from "./utils/storageHealthCheck";
-import { useAuth } from "./context/AuthContext";
+import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
 
 // Lazy-loaded views & modals for near-instant startup & mobile optimization
@@ -110,14 +110,7 @@ export const App = () => {
     } catch (e) {}
 
     if (currentProfile) {
-      const isExtrusionWorker =
-        (currentProfile.building === "압출동" ||
-        currentProfile.id?.startsWith("ext_") ||
-        currentProfile.name === "공영국" ||
-        currentProfile.name === "심임대" ||
-        currentProfile.name === "이상은") &&
-        currentProfile.name !== "설유철" &&
-        currentProfile.id !== "sam_yc";
+      const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
 
       const targetTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
       if (isExtrusionWorker) {
@@ -334,8 +327,17 @@ export const App = () => {
 
   // Title mapping
   const getTabTitle = () => {
-    if (activeTab === "worker_dashboard") return isAdmin ? "현황" : "일일생산정보현황";
-    if (activeTab === "extrusion_downtime") return "압출동 주간 비가동내역";
+    const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
+    const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
+
+    if (activeTab === "worker_dashboard") {
+      if (isAdmin) return "현황";
+      if (!isManager) return "오늘의 작업일보";
+      return "일일생산정보현황";
+    }
+    if (activeTab === "extrusion_downtime") {
+      return isExtrusionWorker ? "압출 작업일보" : "압출동 주간 비가동내역";
+    }
     if (activeTab === "daily_quality") return "일일 품질현황";
     if (activeTab === "overtime_status") return "근태현황 및 관리";
     if (activeTab === "operator_workspace") return "엑셀 파일 업로드";

@@ -6,7 +6,7 @@ import {
   Menu,
   Plus
 } from "lucide-react";
-import { useAuth, PLANTS } from "../context/AuthContext";
+import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
@@ -41,15 +41,8 @@ export const Header = ({
     return `${parts[0]}년 ${parts[1]}월`;
   };
 
-  const isExtrusionWorker = Boolean(
-    (currentProfile?.building === "압출동" ||
-    currentProfile?.id?.startsWith("ext_") ||
-    currentProfile?.name === "공영국" ||
-    currentProfile?.name === "심임대" ||
-    currentProfile?.name === "이상은") &&
-    currentProfile?.name !== "설유철" &&
-    currentProfile?.id !== "sam_yc"
-  );
+  const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
+  const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
 
   const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard" && !isExtrusionWorker);
 
@@ -57,8 +50,8 @@ export const Header = ({
     <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs max-w-full min-w-0">
       {/* Left: View Title / Mobile Menu Button / Operator Back Button */}
       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 mr-1">
-        {/* Admin Mobile Hamburger Menu Button */}
-        {isAdmin && onOpenMobileMenu && (
+        {/* Mobile Hamburger Menu Button (Admin & Operators) */}
+        {onOpenMobileMenu && (
           <button
             onClick={onOpenMobileMenu}
             className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 md:hidden transition-colors shrink-0"
@@ -87,7 +80,11 @@ export const Header = ({
               <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
                 <span className="text-slate-900 dark:text-white font-black">(주)오륙 </span>
                 <span className="text-teal-600 dark:text-teal-400 font-black">
-                  {currentProfile?.building === "압출동" ? "압출 생산관리" : "생산관리시스템"}
+                  {isExtrusionWorker
+                    ? "압출 작업일보"
+                    : (!isManager && !isAdmin
+                      ? "작업일보"
+                      : (currentProfile?.building === "압출동" ? "압출 생산관리" : "생산관리시스템"))}
                 </span>
               </h2>
             </div>
@@ -107,6 +104,23 @@ export const Header = ({
                 }}
                 className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-teal-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
                 title="압출 작업일보 작성"
+              >
+                <span>✍️ 일보작성</span>
+              </button>
+            )}
+
+            {/* General Field Worker Work Report Write Button */}
+            {!isManager && !isAdmin && !isExtrusionWorker && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeTab !== "worker_dashboard" && setActiveTab) {
+                    setActiveTab("worker_dashboard");
+                  }
+                  window.dispatchEvent(new CustomEvent("open-worker-worklog-modal"));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
+                title="오늘의 작업일보 작성"
               >
                 <span>✍️ 일보작성</span>
               </button>

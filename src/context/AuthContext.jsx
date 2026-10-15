@@ -73,7 +73,7 @@ export const PLANTS = [
     workers: [
       { id: "hal_dw", name: "김동욱", title: "책임", plant: "한림공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "김", pin: "11" },
       { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "오", pin: "11" },
-      { id: "hal_hg", name: "정현규", title: "사원", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "정", pin: "11" },
+      { id: "hal_hg", name: "정현규", title: "사원", plant: "한림공장", assignedProcess: "가공동", role: "OPERATOR", avatar: "정", pin: "11" },
       { id: "hal_br", name: "부림텍", title: "대표이사", plant: "한림공장", company: "부림텍", assignedProcess: "외주가공", role: "OPERATOR", avatar: "부", pin: "11", isPartner: true },
       { id: "hal_hu", name: "한울", title: "대표이사", plant: "한림공장", company: "한울", assignedProcess: "외주가공", role: "OPERATOR", avatar: "한", pin: "11", isPartner: true },
       { id: "hal_test", name: "TEST", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "T", pin: "11" }
@@ -87,6 +87,50 @@ export const ALL_DESIGNATED_USERS = [
   ...PLANTS.flatMap((p) => p.workers),
   ...EXTRUSION_WORKERS
 ];
+
+// ⭐ 관리자(ADMIN) / 총괄 / 중간관리자 여부 판별 헬퍼 (일반 현장작업자와 구분)
+export const isManagerOrAdminUser = (profile, isAdmin = false) => {
+  if (!profile) return Boolean(isAdmin);
+  if (isAdmin || profile.role === "ADMIN") return true;
+
+  // 1. 지정 관리자 이름
+  const managerNames = [
+    "권태형", "최미영", "이명재", "김동욱", "설유철", "윤경수", 
+    "이창엽", "전재율", "조인주", "오상민", "양인나", "유동길", "TEST"
+  ];
+  if (managerNames.includes(profile.name)) return true;
+
+  // 2. 지정 관리자 ID
+  const managerIds = [
+    "admin_kwon", "admin_choi", "sam_mj", "hal_dw", "sam_yc", 
+    "sam_ks", "sam_cy", "sam_jy", "sam_ij", "hal_sm", "sam_in", "sam_dg", "hal_test"
+  ];
+  if (managerIds.includes(profile.id)) return true;
+
+  // 3. 외주가공 협력사 대표
+  if (profile.isPartner || ["부림텍", "한울", "유성"].includes(profile.company) || ["부림텍", "한울", "유성"].includes(profile.name)) {
+    return true;
+  }
+
+  // 4. 관리자 직급 (대표, 전무, 상무, 이사, 부장, 차장, 과장, 책임, 선임)
+  // ※ 사원, 대리, 반장, 기사, 작업원 등 현장 작업자는 관리자가 아님
+  const managerTitles = ["대표이사", "대표", "전무", "상무", "이사", "부장", "차장", "과장", "책임", "선임"];
+  if (managerTitles.includes(profile.title)) return true;
+
+  return false;
+};
+
+// ⭐ 압출동 작업자 판별 헬퍼 (설유철 책임은 관리자이므로 제외)
+export const isExtrusionWorkerProfile = (profile) => {
+  if (!profile) return false;
+  if (profile.name === "설유철" || profile.id === "sam_yc") return false;
+  return Boolean(
+    profile.building === "압출동" ||
+    profile.id?.startsWith("ext_") ||
+    profile.assignedProcess === "압출동" ||
+    ["공영국", "심임대", "이상은", "닉", "마이클", "존카를로", "지미", "만", "샤먼", "쿠마루", "이수루"].includes(profile.name)
+  );
+};
 
 export const AuthContext = createContext();
 

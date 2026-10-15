@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   X
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
 
@@ -36,6 +36,9 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const isInjoo = currentProfile?.name === "조인주";
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || currentProfile?.name?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
+
+  const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
+  const isExtrusion = isExtrusionWorkerProfile(currentProfile);
 
   // Operator navigation tabs - strictly 1 line, no badges/annotations
   const operatorTabs = [
@@ -113,14 +116,43 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       : [])
   ];
 
-  const navigationTabs = isOperator ? operatorTabs : ADMIN_TABS;
+  // ⭐ 현장 작업자 모드: 압출동 작업자 -> 압출 작업일보만 노출 / 가공동 일반작업자 -> 오늘의 작업일보만 노출
+  let navigationTabs;
+  if (isAdmin) {
+    navigationTabs = ADMIN_TABS;
+  } else if (isManager) {
+    navigationTabs = operatorTabs;
+  } else if (isExtrusion) {
+    navigationTabs = [
+      {
+        id: "extrusion_downtime",
+        label: "압출 작업일보",
+        icon: ClipboardList,
+        color: "teal",
+        activeClass: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 ring-1 ring-teal-500/30",
+        iconColor: "text-teal-600 dark:text-teal-400"
+      }
+    ];
+  } else {
+    // 가공동 및 일반 현장 작업자
+    navigationTabs = [
+      {
+        id: "worker_dashboard",
+        label: "오늘의 작업일보",
+        icon: ClipboardList,
+        color: "blue",
+        activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-1 ring-blue-500/30",
+        iconColor: "text-blue-600 dark:text-blue-400"
+      }
+    ];
+  }
 
   const displayName = isOperator
     ? `${currentProfile?.name} ${currentProfile?.title || ""}`
     : (currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || ""}` : "ADMIN");
 
   const displayPlant = isOperator
-    ? currentProfile?.plant
+    ? `${currentProfile?.plant || "생산현장"}${!isManager && !isAdmin ? " • 작업자 모드" : ""}`
     : "본사 총괄";
 
   const sidebarContent = (

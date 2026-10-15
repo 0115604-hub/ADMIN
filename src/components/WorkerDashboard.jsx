@@ -99,7 +99,7 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
   });
 };
 import { SevereDisasterBar } from "./SevereDisasterBar";
-import { useAuth, PLANTS, ADMIN_USERS } from "../context/AuthContext";
+import { useAuth, PLANTS, ADMIN_USERS, isManagerOrAdminUser } from "../context/AuthContext";
 import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { parseExcelFile } from "../utils/excelHelper";
@@ -580,20 +580,63 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const workerPosition = isPartnerProfile
     ? "대표이사"
     : (officialTitle || workerCard?.position || "작업원");
-  const isManagerOrAdmin =
-    isGeneralManager ||
-    isAdmin ||
-    isInjoo ||
-    currentProfile?.role === "ADMIN" ||
-    ["이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "오상민", "양인나", "유동길", "조인주", "권태형", "최미영", "TEST"].includes(currentProfile?.name) ||
-    ["sam_mj", "sam_yc", "sam_ks", "sam_cy", "sam_jy", "sam_in", "sam_dg", "sam_ij", "hal_dw", "hal_sm", "hal_test", "admin_kwon", "admin_choi"].includes(currentProfile?.id) ||
-    ["이사", "대표이사", "대표", "전무", "상무", "책임", "선임", "부장", "차장", "과장"].includes(currentProfile?.title) ||
-    ["이사", "대표이사", "대표", "전무", "상무", "책임", "선임", "부장", "차장", "과장"].includes(officialTitle) ||
-    String(currentProfile?.assignedProcess || "").includes("관리") ||
-    String(currentProfile?.assignedProcess || "").includes("총괄") ||
-    String(currentProfile?.assignedProcess || "").includes("품질") ||
-    String(currentProfile?.assignedProcess || "").includes("보전") ||
-    workerDept === "관리팀";
+  const isManagerOrAdmin = isManagerOrAdminUser(currentProfile, isAdmin);
+  const isExtrusionWorkerOnly = isExtrusionWorkerProfile(currentProfile);
+
+  // ⭐ Field Worker (작업자 전용 모드) 상태 및 오늘 일보 확인
+  const [workerLogScope, setWorkerLogScope] = useState("my"); // "my" | "plant"
+  const [workerLogApprovalFilter, setWorkerLogApprovalFilter] = useState("all"); // "all" | "대기" | "승인"
+
+  const currentWorkerTodayDateStr = useMemo(() => getKSTDateString(), []);
+  const todayLog = useMemo(() => {
+    return (workLogs || []).find(
+      (l) =>
+        l.date === currentWorkerTodayDateStr &&
+        (l.writer === workerFullName ||
+          l.writer === currentProfile?.name ||
+          l.author === currentProfile?.name ||
+          (currentProfile?.name && l.writer?.includes(currentProfile.name)))
+    );
+  }, [workLogs, currentWorkerTodayDateStr, workerFullName, currentProfile?.name]);
+
+  const workerLogsList = useMemo(() => {
+    return (workLogs || [])
+      .filter((log) => {
+        // 1. Scope filter
+        if (workerLogScope === "my") {
+          const isMy =
+            log.writer === workerFullName ||
+            log.writer === currentProfile?.name ||
+            log.author === currentProfile?.name ||
+            (currentProfile?.name && log.writer?.includes(currentProfile.name));
+          if (!isMy) return false;
+        } else if (workerLogScope === "plant") {
+          if (workerPlant && log.plant && log.plant !== workerPlant) return false;
+        }
+
+        // 2. Approval filter
+        if (workerLogApprovalFilter === "대기") {
+          if (isWorkLogApproved(log)) return false;
+        } else if (workerLogApprovalFilter === "승인") {
+          if (!isWorkLogApproved(log)) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.date !== b.date) return (b.date || "").localeCompare(a.date || "");
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      });
+  }, [workLogs, workerLogScope, workerFullName, currentProfile?.name, workerPlant, workerLogApprovalFilter]);
+
+  // Header "✍️ 일보작성" 버튼 연동 리스너
+  useEffect(() => {
+    const handleOpen = () => {
+      handleOpenWorkLogModal();
+    };
+    window.addEventListener("open-worker-worklog-modal", handleOpen);
+    return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
+  }, []);
 
   // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
   const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
@@ -3480,29 +3523,314 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
-      {/* 🌐 가공동 / 압출동 현장 작업자 전용 최상단 바 (관리자는 단순화를 위해 숨김) */}
-      {!isManagerOrAdmin && (
-        <div className="bg-slate-900/95 dark:bg-slate-950 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 shadow-sm flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs shrink-0">
-              <Factory className="w-4 h-4 sm:w-5 sm:h-5" />
+      {!isManagerOrAdmin ? (
+        /* 🏭 [현장 작업자 전용 모드] - 불필요한 관리자 지표/차트 없이 작업일보에만 100% 집중 */
+        <div className="space-y-3.5 sm:space-y-4 animate-fadeIn max-w-[1400px] w-full mx-auto min-w-0">
+          {/* 1. Worker Profile & Header Card */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-4 sm:p-5 border border-blue-900/60 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/30 shrink-0">
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-black text-white">
+                    주)오륙 {workerPlant} 오늘의 작업일보
+                  </h2>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-400/30">
+                    {workerFullName} {workerPosition} [{assignedProcess}]
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+                    {todayFormattedLabel}
+                  </span>
+                </div>
+                <p className="text-xs text-blue-200/80 mt-1">
+                  오늘 진행한 생산 작업 실적 및 특이사항을 등록하고 결재 상태를 간편하게 확인하세요.
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-xs sm:text-sm text-white">
-                  🏭 {workerPlant} {isExtrusionWorker ? getWorkLogText("extrusion_shop") : getWorkLogText("machining_shop")} ({getWorkLogText("work_log_title")})
-                </span>
-                <span className="text-[11px] px-2 py-0.2 rounded-md bg-blue-950 text-blue-300 font-bold border border-blue-700/60">
-                  {workerFullName} {officialTitle} [{assignedProcess}]
+
+            {/* 1-Click Action Button: 오늘의 작업일보 작성 */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenWorkLogModal}
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-black shadow-lg shadow-blue-600/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>✍️ 오늘의 작업일보 작성</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 🌟 압출동 작업자가 이 화면에 들어온 경우 바로가기 배너 */}
+          {isExtrusionWorkerOnly && (
+            <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-800 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Cpu className="w-5 h-5 text-teal-600 shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm font-black text-teal-950 dark:text-teal-100">
+                    🏭 삼랑진공장 압출동 작업자 모드
+                  </p>
+                  <p className="text-xs text-teal-700 dark:text-teal-300">
+                    압출 생산관리 탭에서 전용 압출 작업일보 및 라인별 생산실적을 기록하실 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("factory_extrusion_active_subtab", "production");
+                  } catch (e) {}
+                  if (onNavigateTab) onNavigateTab("extrusion_downtime");
+                }}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                압출 작업일보 바로가기 ➡️
+              </button>
+            </div>
+          )}
+
+          {/* 2. Today's Submission Status Notification Card */}
+          {todayLog ? (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-2">
+                    <span>오늘({todayFormattedLabel}) 작업일보가 등록되었습니다.</span>
+                    <span className={`px-2 py-0.2 rounded-full text-[10.5px] font-black ${
+                      isWorkLogApproved(todayLog)
+                        ? "bg-emerald-200 text-emerald-900 border border-emerald-400"
+                        : "bg-amber-100 text-amber-900 border border-amber-300"
+                    }`}>
+                      {isWorkLogApproved(todayLog) ? "승인완료" : "결재대기"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 truncate mt-0.5">
+                    {todayLog.workContent || "작업 내용 등록 완료"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleOpenLogDetail(todayLog)}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95"
+                >
+                  상세보기
+                </button>
+                {!isWorkLogApproved(todayLog) && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(todayLog)}
+                    className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-black shadow-xs cursor-pointer active:scale-95"
+                  >
+                    수정하기
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border-2 border-amber-400 dark:border-amber-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-base shrink-0 shadow-md">
+                  📝
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100">
+                    오늘({todayFormattedLabel}) 작업일보가 아직 작성되지 않았습니다.
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    작업 종료 후 또는 일과 중 오늘 진행한 실적을 기록해 주세요.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenWorkLogModal}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
+              >
+                ✍️ 지금 작업일보 작성하기
+              </button>
+            </div>
+          )}
+
+          {/* 3. Work Logs List Table Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3.5">
+            {/* Top Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>작업일보 등록 내역</span>
+                </h3>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  총 {workerLogsList.length}건
                 </span>
               </div>
-              <span className="text-[10.5px] text-slate-400 block truncate">
-                {getWorkLogText("safety_first")}
-              </span>
+
+              {/* Filter Mode Toggle & Status Filter */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setWorkerLogScope("my")}
+                    className={`px-3 py-1 rounded-lg font-black transition-all ${
+                      workerLogScope === "my"
+                        ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    내 일보만
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWorkerLogScope("plant")}
+                    className={`px-3 py-1 rounded-lg font-black transition-all ${
+                      workerLogScope === "plant"
+                        ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {workerPlant} 전체
+                  </button>
+                </div>
+
+                <select
+                  value={workerLogApprovalFilter}
+                  onChange={(e) => setWorkerLogApprovalFilter(e.target.value)}
+                  className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                >
+                  <option value="all">결재상태: 전체</option>
+                  <option value="대기">결재대기만</option>
+                  <option value="승인">승인완료만</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
+                    <th className="py-1 px-3 w-[12%] text-center">일자</th>
+                    <th className="py-1 px-3 w-[12%]">작성자</th>
+                    <th className="py-1 px-3 w-[44%]">작업 내용 및 실적</th>
+                    <th className="py-1 px-3 w-[14%] text-center">결재 현황</th>
+                    <th className="py-1 px-3 w-[18%] text-center">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {workerLogsList.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="py-10 text-center text-slate-400 font-bold">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">등록된 작업일보가 없습니다.</p>
+                        <button
+                          type="button"
+                          onClick={handleOpenWorkLogModal}
+                          className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>첫 작업일보 작성하기</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    workerLogsList.map((log) => {
+                      const isApproved = isWorkLogApproved(log);
+                      const isMyLog =
+                        log.writer === workerFullName ||
+                        log.writer === currentProfile?.name ||
+                        log.author === currentProfile?.name ||
+                        (currentProfile?.name && log.writer?.includes(currentProfile.name));
+
+                      return (
+                        <tr
+                          key={log.id}
+                          onClick={() => handleOpenLogDetail(log)}
+                          className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-10 group text-[11.5px]"
+                          title="클릭하여 상세내용 확인"
+                        >
+                          <td className="py-2 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                            {log.date}
+                          </td>
+                          <td className="py-2 px-3 font-bold text-slate-900 dark:text-white truncate">
+                            {log.writer} {log.title || ""}
+                          </td>
+                          <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600">
+                                {log.workContent || "-"}
+                              </span>
+                              {Array.isArray(log.images) && log.images.length > 0 && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 shrink-0">
+                                  📷 {log.images.length}
+                                </span>
+                              )}
+                              {log.issues && log.issues !== "특이사항 없음" && log.issues !== "-" && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 truncate max-w-[150px]">
+                                  ⚠️ {log.issues}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            {isApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <span>승인완료</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span>결재대기</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenLogDetail(log)}
+                                className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10.5px] cursor-pointer"
+                              >
+                                상세
+                              </button>
+                              {isMyLog && !isApproved && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditModal(log)}
+                                    className="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[10.5px] cursor-pointer"
+                                  >
+                                    수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLog(log.id)}
+                                    className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-bold text-[10.5px] cursor-pointer"
+                                  >
+                                    삭제
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      )}
+      ) : (
+        <>
 
       {/* 🌟 압출동 일반작업자 전용 상단 배너 (설유철 책임은 관리자이므로 제외) */}
       {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && currentProfile?.name !== "설유철" && currentProfile?.id !== "sam_yc" && (
@@ -5668,6 +5996,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Work Log Detail View Modal (상세내용 확인 & 코멘트 입력 & 전자결재 모달) */}
