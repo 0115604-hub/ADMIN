@@ -337,7 +337,7 @@ export const saveOvertimeReport = async (report) => {
       line: it.line || "",
       category: it.category || it.line || "",
       workerName: it.workerName || "",
-      position: it.position || "작업원",
+      position: it.position || "사원",
       attendanceCode: it.attendanceCode || "",
       startTime: it.startTime || "08:00",
       endTime: it.endTime || "17:00",

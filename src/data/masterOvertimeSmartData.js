@@ -64,7 +64,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "양인나",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -75,7 +75,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "유동길",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -86,7 +86,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "조인주",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -97,7 +97,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "이상기",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -108,7 +108,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "크리스토퍼",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -119,7 +119,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "찬턴",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -130,7 +130,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "로빈(야간)",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -141,7 +141,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "채수연",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -152,7 +152,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "피아",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -163,7 +163,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "데이시",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -174,7 +174,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "짱",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -185,7 +185,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "김선옥",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -196,7 +196,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "윤희수",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -207,7 +207,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "데니스",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -218,7 +218,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "주재순",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -229,7 +229,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "김수연",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -240,7 +240,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA.HR",
       "name": "이스라엘",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -251,7 +251,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "버나드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -262,7 +262,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "롤란도",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -273,7 +273,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "돈돈",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -284,7 +284,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "알라딘",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -295,7 +295,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "김순미",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -306,7 +306,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "양인순",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -317,7 +317,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "박순복",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -328,7 +328,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김상아",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -339,7 +339,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김윤자",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -350,7 +350,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김현희",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "퇴사",
       "note": "퇴사자"
@@ -361,7 +361,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "손선희",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -372,7 +372,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "이영숙",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -383,7 +383,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "수베트",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -394,7 +394,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "치찬",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -405,7 +405,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "콩지",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -416,7 +416,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA.HR",
       "name": "케넷",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -427,7 +427,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "정상근",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -438,7 +438,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "링링",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -449,7 +449,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "유미",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -460,7 +460,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "공영국",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -471,7 +471,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "심임대",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -482,7 +482,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "이상은",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -493,7 +493,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "닉",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -504,7 +504,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "마이클",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -515,7 +515,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "존카를로",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -526,7 +526,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "지미",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -537,7 +537,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "만",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -548,7 +548,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "샤먼",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -559,7 +559,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "쿠마루",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -570,7 +570,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "이수루",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -581,7 +581,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "코팅",
       "name": "준",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -592,7 +592,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -603,7 +603,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -614,7 +614,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -625,7 +625,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -636,7 +636,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "마리오",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -647,7 +647,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "제날드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -658,7 +658,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "팔라",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -669,7 +669,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "누리",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -680,7 +680,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -691,7 +691,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -702,7 +702,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "린",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -713,7 +713,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -724,7 +724,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "제인",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -735,7 +735,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -746,7 +746,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리",
       "name": "김동훈",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -768,7 +768,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "김영희",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -779,7 +779,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박은혜",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -790,7 +790,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS DT 소재준비",
       "name": "조은미",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -801,7 +801,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박선영",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -845,7 +845,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "김은경",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -856,7 +856,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "다렌",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -867,7 +867,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "조엘",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -878,7 +878,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "제롬",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -889,7 +889,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "곽은진",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -900,7 +900,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "김용자",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -911,7 +911,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT  후가공",
       "name": "수니아",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -922,7 +922,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "로나",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -933,7 +933,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "김다혜",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -944,7 +944,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "구다혜",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -955,7 +955,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 검사",
       "name": "김창희",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -966,7 +966,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT  검사",
       "name": "오미해",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -977,7 +977,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 소재준비",
       "name": "김진경",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -988,7 +988,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 클립",
       "name": "우수진",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -999,7 +999,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 클립",
       "name": "콰이",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1010,7 +1010,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS조인트",
       "name": "리차드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1021,7 +1021,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS조인트",
       "name": "라밀",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1032,7 +1032,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS V조인트",
       "name": "조나스",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1043,7 +1043,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "양은주",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1054,7 +1054,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "박정화",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1065,7 +1065,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "김계연",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1076,7 +1076,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "김금옥",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1087,7 +1087,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "정인순",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1098,7 +1098,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS검사",
       "name": "서윤엽",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1109,7 +1109,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS소재준비",
       "name": "윤의정",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1120,7 +1120,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A 조인트",
       "name": "이은숙",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1131,7 +1131,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A조인트",
       "name": "제이",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1142,7 +1142,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A후가공",
       "name": "김린",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1153,7 +1153,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A후가공",
       "name": "미",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1164,7 +1164,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A 검사",
       "name": "김진숙",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1175,7 +1175,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A소재준비",
       "name": "래리",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1186,7 +1186,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K TPG  조인트",
       "name": "웨인",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1197,7 +1197,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K FRUNK 조인트",
       "name": "안",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1208,7 +1208,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OVK1 검사",
       "name": "장윤형",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1219,7 +1219,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K FRUNK 소재준비",
       "name": "이말숙",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1230,7 +1230,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 조인트",
       "name": "바네사",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1241,7 +1241,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 후가공",
       "name": "르엉",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1252,7 +1252,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 검사",
       "name": "박미진",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1263,7 +1263,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "고무작업",
       "name": "유리",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1274,7 +1274,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "소재이동관리",
       "name": "준",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1285,7 +1285,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "황수현",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1307,7 +1307,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마이클",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1318,7 +1318,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마크",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1329,7 +1329,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "로렉스",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1340,7 +1340,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "무피드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1351,7 +1351,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마틴",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1362,7 +1362,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "박민정",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1373,7 +1373,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "지라완",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1384,7 +1384,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "레이놀드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1395,7 +1395,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "맥리",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1406,7 +1406,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "조제인",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1417,7 +1417,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "새드릭",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1428,7 +1428,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "니사낫",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1439,7 +1439,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "수파따",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1450,7 +1450,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "와히드",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1461,7 +1461,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "찬티마",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1472,7 +1472,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "데이브",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1483,7 +1483,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "위간",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1494,7 +1494,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "프랭클린",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1505,7 +1505,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "에일리",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1516,7 +1516,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마이카",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1527,7 +1527,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "알프레도",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1538,7 +1538,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "아이린",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1549,7 +1549,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "에릭",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1560,7 +1560,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "언",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1571,7 +1571,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS 조인트",
       "name": "벤",
-      "position": "작업원",
+      "position": "사원",
       "employmentType": "정규직",
       "status": "재직",
       "note": ""
@@ -1629,7 +1629,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "양인나",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1638,7 +1638,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "유동길",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1647,7 +1647,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "조인주",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1656,7 +1656,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "이상기",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1665,7 +1665,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "크리스토퍼",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1674,7 +1674,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "찬턴",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1683,7 +1683,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "로빈(야간)",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1692,7 +1692,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "채수연",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1701,7 +1701,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "피아",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1710,7 +1710,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "데이시",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1719,7 +1719,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "짱",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1728,7 +1728,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA",
       "name": "김선옥",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1737,7 +1737,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "윤희수",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1746,7 +1746,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "데니스",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1755,7 +1755,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "주재순",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1764,7 +1764,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HR",
       "name": "김수연",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1773,7 +1773,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA.HR",
       "name": "이스라엘",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1782,7 +1782,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "버나드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1791,7 +1791,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "롤란도",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1800,7 +1800,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "돈돈",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1809,7 +1809,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "알라딘",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1818,7 +1818,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "김순미",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1827,7 +1827,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4a",
       "name": "양인순",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1836,7 +1836,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "박순복",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1845,7 +1845,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김상아",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1854,7 +1854,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4",
       "name": "김윤자",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1863,7 +1863,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "손선희",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1872,7 +1872,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "이영숙",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1881,7 +1881,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "수베트",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1890,7 +1890,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "치찬",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1899,7 +1899,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "콩지",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1908,7 +1908,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JA.HR",
       "name": "케넷",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1917,7 +1917,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "정상근",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1926,7 +1926,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "링링",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1935,7 +1935,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "Channel",
       "name": "유미",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1944,7 +1944,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "공영국",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1953,7 +1953,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "심임대",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1962,7 +1962,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "이상은",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1971,7 +1971,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "닉",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1980,7 +1980,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "마이클",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1989,7 +1989,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "존카를로",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -1998,7 +1998,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "지미",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2007,7 +2007,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "만",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2016,7 +2016,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "샤먼",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2025,7 +2025,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "쿠마루",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2034,7 +2034,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "압출동",
       "name": "이수루",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2043,7 +2043,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "코팅",
       "name": "준",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2052,7 +2052,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2061,7 +2061,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2070,7 +2070,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2079,7 +2079,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2088,7 +2088,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "마리오",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2097,7 +2097,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "제날드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2106,7 +2106,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "팔라",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2115,7 +2115,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "DT",
       "name": "누리",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2124,7 +2124,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2133,7 +2133,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2142,7 +2142,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "린",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2151,7 +2151,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2160,7 +2160,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "제인",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2169,7 +2169,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2178,7 +2178,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리",
       "name": "김동훈",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2196,7 +2196,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "김영희",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2205,7 +2205,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박은혜",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2214,7 +2214,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS DT 소재준비",
       "name": "조은미",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2223,7 +2223,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박선영",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2259,7 +2259,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "김은경",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2268,7 +2268,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "다렌",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2277,7 +2277,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "조엘",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2286,7 +2286,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 조인트",
       "name": "제롬",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2295,7 +2295,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "곽은진",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2304,7 +2304,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "김용자",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2313,7 +2313,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT  후가공",
       "name": "수니아",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2322,7 +2322,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "로나",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2331,7 +2331,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "김다혜",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2340,7 +2340,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 후가공",
       "name": "구다혜",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2349,7 +2349,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 검사",
       "name": "김창희",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2358,7 +2358,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT  검사",
       "name": "오미해",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2367,7 +2367,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 소재준비",
       "name": "김진경",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2376,7 +2376,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 클립",
       "name": "우수진",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2385,7 +2385,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DT 클립",
       "name": "콰이",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2394,7 +2394,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS조인트",
       "name": "리차드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2403,7 +2403,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS조인트",
       "name": "라밀",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2412,7 +2412,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS V조인트",
       "name": "조나스",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2421,7 +2421,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "양은주",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2430,7 +2430,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "박정화",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2439,7 +2439,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "김계연",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2448,7 +2448,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "김금옥",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2457,7 +2457,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS후가공",
       "name": "정인순",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2466,7 +2466,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS검사",
       "name": "서윤엽",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2475,7 +2475,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS소재준비",
       "name": "윤의정",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2484,7 +2484,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A 조인트",
       "name": "이은숙",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2493,7 +2493,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A조인트",
       "name": "제이",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2502,7 +2502,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A후가공",
       "name": "김린",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2511,7 +2511,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A후가공",
       "name": "미",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2520,7 +2520,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A 검사",
       "name": "김진숙",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2529,7 +2529,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "NE1A소재준비",
       "name": "래리",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2538,7 +2538,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K TPG  조인트",
       "name": "웨인",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2547,7 +2547,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K FRUNK 조인트",
       "name": "안",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2556,7 +2556,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OVK1 검사",
       "name": "장윤형",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2565,7 +2565,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "OV1K FRUNK 소재준비",
       "name": "이말숙",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2574,7 +2574,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 조인트",
       "name": "바네사",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2583,7 +2583,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 후가공",
       "name": "르엉",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2592,7 +2592,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "JG 검사",
       "name": "박미진",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2601,7 +2601,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "고무작업",
       "name": "유리",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2610,7 +2610,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "소재이동관리",
       "name": "준",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2619,7 +2619,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "관리부",
       "line": "관리부",
       "name": "황수현",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2637,7 +2637,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마이클",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2646,7 +2646,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마크",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2655,7 +2655,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "로렉스",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2664,7 +2664,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "무피드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2673,7 +2673,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마틴",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2682,7 +2682,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "박민정",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2691,7 +2691,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "지라완",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2700,7 +2700,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "레이놀드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2709,7 +2709,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "맥리",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2718,7 +2718,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "조제인",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2727,7 +2727,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "새드릭",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2736,7 +2736,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "니사낫",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2745,7 +2745,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "수파따",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2754,7 +2754,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "와히드",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2763,7 +2763,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "찬티마",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2772,7 +2772,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "데이브",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2781,7 +2781,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "위간",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2790,7 +2790,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "프랭클린",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2799,7 +2799,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "에일리",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2808,7 +2808,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "9BQC",
       "name": "마이카",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2817,7 +2817,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "알프레도",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2826,7 +2826,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "아이린",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2835,7 +2835,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "에릭",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2844,7 +2844,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "LQ2",
       "name": "언",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     },
     {
@@ -2853,7 +2853,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "DS 조인트",
       "name": "벤",
-      "position": "작업원",
+      "position": "사원",
       "daily": {}
     }
   ]

@@ -672,7 +672,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
-      position: w.position || "작업원",
+      position: w.position || "사원",
       daily: { ...(w.daily || {}) }
     };
   });
@@ -852,7 +852,7 @@ export const ensureAllCompaniesPresent = (data) => {
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
       name: rawName,
-      position: w.position || "작업원",
+      position: w.position || "사원",
       daily: { ...(w.daily || {}) }
     };
   });
@@ -878,7 +878,7 @@ export const ensureAllCompaniesPresent = (data) => {
             dept: normalizeDept(w.dept || matrix[idx]?.dept),
             line: w.line || matrix[idx]?.line || normalizeDept(w.dept),
             name: rawName,
-            position: w.position || matrix[idx]?.position || "작업원",
+            position: w.position || matrix[idx]?.position || "사원",
             employmentType: w.employmentType || "정규직",
             status: w.status || "재직",
             note: w.note || ""
@@ -889,7 +889,7 @@ export const ensureAllCompaniesPresent = (data) => {
         dept: normalizeDept(w.dept),
         line: w.line || normalizeDept(w.dept),
         name: w.name,
-        position: w.position || "작업원",
+        position: w.position || "사원",
         employmentType: w.employmentType || "정규직",
         status: w.status || "재직",
         note: w.note || ""
@@ -960,7 +960,7 @@ export const createEmptySmartOvertimeData = (year = 2026, month = 10) => {
     dept: w.dept,
     line: w.line,
     name: w.name,
-    position: w.position || "작업원",
+    position: w.position || "사원",
     daily: {}
   }));
   return {
@@ -1236,7 +1236,7 @@ export const exportSmartOvertimeToExcel = (data) => {
   currentData.attendanceMatrix.forEach((w, idx) => {
     const val = w.daily ? w.daily[sampleDay] : "";
     const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-    s0Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "작업원", val || "-", weekdayOt + weekendOt, workHours, ""]);
+    s0Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "사원", val || "-", weekdayOt + weekendOt, workHours, ""]);
   });
   const ws0 = XLSX.utils.aoa_to_sheet(s0Rows);
   XLSX.utils.book_append_sheet(wb, ws0, "📋 일자별_근태정리본");
@@ -1323,7 +1323,7 @@ export const exportSmartOvertimeToExcel = (data) => {
     ["No.", "소속 업체", "소속 부서", "차종 / 라인", "성명", "직급", "고용 형태", "재직 상태", "비고"]
   ];
   currentData.masterWorkers.forEach((w, idx) => {
-    s5Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "작업원", w.employmentType || "정규직", w.status || "재직", w.note || ""]);
+    s5Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "사원", w.employmentType || "정규직", w.status || "재직", w.note || ""]);
   });
   const ws5 = XLSX.utils.aoa_to_sheet(s5Rows);
   XLSX.utils.book_append_sheet(wb, ws5, "👥 마스터_인원관리대장");
@@ -1384,7 +1384,7 @@ export const importSmartOvertimeFromExcel = async (file) => {
             dept,
             line: line || "1라인",
             name,
-            position: "작업원",
+            position: "사원",
             employmentType: "정규직",
             status: "재직",
             note: ""
