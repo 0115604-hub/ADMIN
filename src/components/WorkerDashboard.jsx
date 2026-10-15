@@ -307,6 +307,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   const isManagerRole = isWorkerManagerRole(currentProfile);
   const workerPlant = currentProfile?.plant || "삼랑진공장";
+  const isSamrangjin = workerPlant === "삼랑진공장" || String(currentProfile?.id || "").startsWith("sam_");
+  const isHallim = workerPlant === "한림공장" || String(currentProfile?.id || "").startsWith("hal_");
   const workerFullName = currentProfile?.name || "작업자";
   const officialTitle = currentProfile?.title || (
     currentProfile?.name === "공영국" ? "대리" :
@@ -322,21 +324,64 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     currentProfile?.id === "sam_yc" ||
     isExtrusionWorkerProfile(currentProfile);
 
-  const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
-
-  const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
-    currentProfile?.portalType === "bulimtech" ||
-    currentProfile?.company === "부림텍" ||
-    currentProfile?.name === "부림텍" ||
-    String(currentProfile?.id || "").startsWith("hal_br_")
+  // 🌟 한울 관리자 (대표이사 hal_hu, 황수현 선임 등 외주가공 한울 관리자)
+  const isHanulManager = Boolean(
+    currentProfile?.name === "한울" ||
+    currentProfile?.id === "hal_hu" ||
+    currentProfile?.name === "황수현" ||
+    String(currentProfile?.id || "").startsWith("hal_hu") ||
+    (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("한울") || currentProfile?.company === "한울"))
   );
 
-  const isPartnerProfile = !currentProfile?.isFieldWorker && (
-    currentProfile?.isPartner ||
-    currentProfile?.name === "유성" ||
-    currentProfile?.name === "한울" ||
+  // 🌟 한울 전체 (관리자 + 작업자)
+  const isHanul = isHanulManager || Boolean(
+    !isExtrusionWorker && (
+      currentProfile?.company?.includes("한울") ||
+      currentProfile?.company === "한울" ||
+      currentProfile?.name === "한울" ||
+      String(currentProfile?.id || "").startsWith("hal_hu") ||
+      isHanulWorkerProfile(currentProfile)
+    )
+  );
+
+  // 🌟 부림텍 관리자 (대표이사 hal_br 등)
+  const isBurimtechManager = Boolean(
     currentProfile?.name === "부림텍" ||
-    (!String(currentProfile?.id || "").includes("_") && (currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍"))
+    currentProfile?.id === "hal_br" ||
+    (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("부림") || currentProfile?.company === "부림텍"))
+  );
+
+  const isBurimtech = isBurimtechManager || Boolean(
+    !isExtrusionWorker && !isHanul && (
+      currentProfile?.portalType === "bulimtech" ||
+      currentProfile?.company?.includes("부림") ||
+      currentProfile?.name === "부림텍" ||
+      String(currentProfile?.id || "").startsWith("hal_br_")
+    )
+  );
+
+  // 🌟 유성 관리자 (대표이사 sam_ys 등)
+  const isYuseongManager = Boolean(
+    currentProfile?.name === "유성" ||
+    currentProfile?.id === "sam_ys" ||
+    (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("유성") || currentProfile?.company === "유성"))
+  );
+
+  // 🌟 외주 협력사 대표/관리자 판별 (한울, 부림텍, 유성 등)
+  const isPartnerProfile = Boolean(
+    isHanulManager ||
+    isBurimtechManager ||
+    isYuseongManager ||
+    (!currentProfile?.isFieldWorker && (
+      currentProfile?.isPartner ||
+      currentProfile?.name === "유성" ||
+      currentProfile?.name === "한울" ||
+      currentProfile?.name === "부림텍" ||
+      currentProfile?.company === "유성" ||
+      currentProfile?.company === "한울" ||
+      currentProfile?.company === "부림텍" ||
+      (!String(currentProfile?.id || "").includes("_") && (currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍"))
+    ))
   );
 
   const assignedProcess = currentProfile?.assignedProcess || (
@@ -572,6 +617,47 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, [smartOvertimeData, overtimeReports]);
 
+  // 🌟 관리자별 맞춤 근태현황 필터링 (협력사는 자기 회사만, 공장 총괄은 해당 공장만, ADMIN은 전사)
+  const filteredCompanyOverviewStats = useMemo(() => {
+    if (!companyOverviewStats || companyOverviewStats.length === 0) return [];
+    if (isHanulManager || (isHanul && !isAdmin)) {
+      return companyOverviewStats.filter((c) => c.name === "한울" || c.shortName === "한울");
+    }
+    if (isBurimtechManager || (isBurimtech && !isAdmin)) {
+      return companyOverviewStats.filter((c) => c.name === "부림텍" || c.shortName === "부림텍");
+    }
+    if (isYuseongManager && !isAdmin) {
+      return companyOverviewStats.filter((c) => c.name === "유성" || c.shortName === "유성");
+    }
+    if (isSamrangjin && !isAdmin) {
+      return companyOverviewStats.filter((c) => c.isTotal || c.shortName === "오륙" || c.shortName === "유성");
+    }
+    if (isHallim && !isAdmin) {
+      return companyOverviewStats.filter((c) => c.isTotal || c.shortName === "조영" || c.shortName === "한울" || c.shortName === "부림텍");
+    }
+    return companyOverviewStats;
+  }, [companyOverviewStats, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager, isSamrangjin, isHallim, isAdmin]);
+
+  const filteredUnwrittenCompanies = useMemo(() => {
+    if (!unwrittenCompanies || unwrittenCompanies.length === 0) return [];
+    if (isHanulManager || (isHanul && !isAdmin)) {
+      return unwrittenCompanies.filter((c) => c.shortName === "한울");
+    }
+    if (isBurimtechManager || (isBurimtech && !isAdmin)) {
+      return unwrittenCompanies.filter((c) => c.shortName === "부림텍");
+    }
+    if (isYuseongManager && !isAdmin) {
+      return unwrittenCompanies.filter((c) => c.shortName === "유성");
+    }
+    if (isSamrangjin && !isAdmin) {
+      return unwrittenCompanies.filter((c) => c.shortName === "오륙" || c.shortName === "유성");
+    }
+    if (isHallim && !isAdmin) {
+      return unwrittenCompanies.filter((c) => c.shortName === "조영" || c.shortName === "한울" || c.shortName === "부림텍");
+    }
+    return unwrittenCompanies;
+  }, [unwrittenCompanies, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager, isSamrangjin, isHallim, isAdmin]);
+
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
 
   useEffect(() => {
@@ -697,6 +783,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     return list;
   }, [overtimeReports, isOvertimeReportApproved]);
+
+  // 🌟 관리자별 맞춤 미결재 특근보고서 (협력사는 비노출, 삼랑진 총괄은 삼랑진만, 한림 총괄은 한림만, 본사는 전체)
+  const filteredPendingApprovalCards = useMemo(() => {
+    if (isPartnerProfile) return [];
+    if (isAdmin) return pendingApprovalCards;
+    if (isMyeongjae) return pendingApprovalCards.filter((r) => r.plantName === "삼랑진공장");
+    if (isDongwook) return pendingApprovalCards.filter((r) => r.plantName === "한림공장");
+    return [];
+  }, [pendingApprovalCards, isPartnerProfile, isAdmin, isMyeongjae, isDongwook]);
 
   const getReportWorkersList = (report) => {
     if (!report) return [];
@@ -1288,85 +1383,100 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             myWeeklyCalendarDays={myWeeklyCalendarDays}
           />
 
-          {/* 🌟 한울 외주가공 지출내역 / 품질경보 / 일보 & 중대재해 안전판 */}
-          <HanulAndSevereDisasterSection
-            isHanul={isHanul}
-            isAdmin={isAdmin}
-            handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
-            setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
-            activeHanulQualityCount={activeHanulQualityCount}
-            handleOpenHanulReport={handleOpenHanulReport}
-            currentProfile={currentProfile}
-            SevereDisasterBar={SevereDisasterBar}
-          />
+          {/* 🌟 1. 한울 외주가공 지출내역 / 품질경보 / 일보 & 중대재해 안전판 */}
+          {(isHanul || isAdmin) && (
+            <HanulAndSevereDisasterSection
+              isHanul={isHanul}
+              isAdmin={isAdmin}
+              handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
+              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+              activeHanulQualityCount={activeHanulQualityCount}
+              handleOpenHanulReport={handleOpenHanulReport}
+              currentProfile={currentProfile}
+              SevereDisasterBar={SevereDisasterBar}
+            />
+          )}
 
-          {/* 1. 매입매출현황 요약 */}
-          <SalesPurchaseSummarySection
-            monthTitle={monthTitle}
-            currentMonthData={currentMonthData}
-            todayFormattedLabel={todayFormattedLabel}
-            onNavigateTab={onNavigateTab}
-            formatAmount={formatAmount}
-            totalSales={totalSales}
-            totalPurchases={totalPurchases}
-            purchaseRatio={purchaseRatio}
-          />
+          {/* 🌟 한울/ADMIN 외 일반 관리자(이명재, 김동욱, 설유철, 전재율 등)를 위한 중대재해 안전판 */}
+          {!isHanul && !isAdmin && SevereDisasterBar && (
+            <SevereDisasterBar />
+          )}
 
-          {/* 2. 근태현황 및 관리 */}
+          {/* 1. 매입매출현황 요약 (외주 협력사 관리자에게는 재무 보안상 비노출) */}
+          {!isPartnerProfile && (
+            <SalesPurchaseSummarySection
+              monthTitle={monthTitle}
+              currentMonthData={currentMonthData}
+              todayFormattedLabel={todayFormattedLabel}
+              onNavigateTab={onNavigateTab}
+              formatAmount={formatAmount}
+              totalSales={totalSales}
+              totalPurchases={totalPurchases}
+              purchaseRatio={purchaseRatio}
+            />
+          )}
+
+          {/* 2. 근태현황 및 관리 (관리자별 소속사/공장 맞춤 필터링) */}
           <AttendanceSummarySection
             todayFormattedLabel={todayFormattedLabel}
-            unwrittenCompanies={unwrittenCompanies}
+            unwrittenCompanies={filteredUnwrittenCompanies}
             onNavigateTab={onNavigateTab}
-            companyOverviewStats={companyOverviewStats}
-            pendingApprovalCards={pendingApprovalCards}
+            companyOverviewStats={filteredCompanyOverviewStats}
+            pendingApprovalCards={filteredPendingApprovalCards}
             pushModalHistory={pushModalHistory}
             setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
             formatKoreanWorkDate={formatKoreanWorkDate}
           />
 
-          {/* 3. 금형별 일일품질 요약 */}
-          <QualityStatusSection
-            selectedMonth={selectedMonth}
-            onNavigateTab={onNavigateTab}
-            liveQualityCurrentMonthly={liveQualityCurrentMonthly}
-            liveQualityPrevMonthly={liveQualityPrevMonthly}
-            handleOpenQualityPopup={handleOpenQualityPopup}
-          />
+          {/* 3. 금형별 일일품질 요약 (외주 협력사 관리자는 전용 품질경보/일보로 관리) */}
+          {!isPartnerProfile && (
+            <QualityStatusSection
+              selectedMonth={selectedMonth}
+              onNavigateTab={onNavigateTab}
+              liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+              liveQualityPrevMonthly={liveQualityPrevMonthly}
+              handleOpenQualityPopup={handleOpenQualityPopup}
+            />
+          )}
 
-          {/* 4. 압출동 주간 비가동내역 요약 */}
-          <ExtrusionDowntimeSection
-            onNavigateTab={onNavigateTab}
-            extrusionSummaryList={extrusionSummaryList}
-          />
+          {/* 4. 압출동 주간 비가동내역 요약 (설유철, 이명재, 전재율, 본사 ADMIN 등 압출 관련자만 표출) */}
+          {!isPartnerProfile && (isExtrusionWorker || isMyeongjae || isJaeyul || isAdmin || !isHallim) && (
+            <ExtrusionDowntimeSection
+              onNavigateTab={onNavigateTab}
+              extrusionSummaryList={extrusionSummaryList}
+            />
+          )}
 
-          {/* 5. 일일업무일지 현황 */}
-          <DailyWorkLogTableSection
-            isMyeongjae={isMyeongjae}
-            isDongwook={isDongwook}
-            isAdmin={isAdmin}
-            pendingSamrangjinCount={pendingSamrangjinCount}
-            pendingHallimCount={pendingHallimCount}
-            setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
-            filterPlant={filterPlant}
-            setFilterPlant={setFilterPlant}
-            workLogs={workLogs}
-            pushModalHistory={pushModalHistory}
-            paginatedLogs={paginatedLogs}
-            handleOpenLogDetail={handleOpenLogDetail}
-            canApproveLog={canApproveLog}
-            isWorkLogApproved={isWorkLogApproved}
-            handleOpenEditModal={handleOpenEditModal}
-            handleDeleteLog={handleDeleteLog}
-            currentProfile={currentProfile}
-            filteredLogs={filteredLogs}
-            currentLogPage={currentLogPage}
-            setCurrentLogPage={setCurrentLogPage}
-            LOGS_PER_PAGE={LOGS_PER_PAGE}
-            totalLogPages={totalLogPages}
-            handleOpenWorkLogModal={handleOpenWorkLogModal}
-          />
+          {/* 5. 일일업무일지 현황 (오륙 내부 관리자 전용 - 한울 등 외주사는 전용 일보 대장으로 관리) */}
+          {!isPartnerProfile && (
+            <DailyWorkLogTableSection
+              isMyeongjae={isMyeongjae}
+              isDongwook={isDongwook}
+              isAdmin={isAdmin}
+              pendingSamrangjinCount={pendingSamrangjinCount}
+              pendingHallimCount={pendingHallimCount}
+              setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+              filterPlant={filterPlant}
+              setFilterPlant={setFilterPlant}
+              workLogs={workLogs}
+              pushModalHistory={pushModalHistory}
+              paginatedLogs={paginatedLogs}
+              handleOpenLogDetail={handleOpenLogDetail}
+              canApproveLog={canApproveLog}
+              isWorkLogApproved={isWorkLogApproved}
+              handleOpenEditModal={handleOpenEditModal}
+              handleDeleteLog={handleDeleteLog}
+              currentProfile={currentProfile}
+              filteredLogs={filteredLogs}
+              currentLogPage={currentLogPage}
+              setCurrentLogPage={setCurrentLogPage}
+              LOGS_PER_PAGE={LOGS_PER_PAGE}
+              totalLogPages={totalLogPages}
+              handleOpenWorkLogModal={handleOpenWorkLogModal}
+            />
+          )}
 
-          {/* 6. 실시간 접속기록 현황 & 7. 시스템 오류 및 조치 이력 관리 */}
+          {/* 6. 실시간 접속기록 현황 & 7. 시스템 오류 및 조치 이력 관리 (ADMIN 전용) */}
           <AdminAccessAndIncidentSection
             isAdmin={isAdmin}
             PLANTS={PLANTS}
