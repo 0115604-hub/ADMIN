@@ -1301,11 +1301,10 @@ export const WorkerPinModal = ({
         }
         return false;
       });
-      if (hasDirectReport) return false;
-
-      // 2. 매트릭스 입력 인원 확인
+      // 🔒 [단일 진실의 원천 원칙] 원장에 등록된 작업원(compWorkers)이 존재하는 협력사는
+      // 당일 근태 대장에 실제 입력(enteredCount > 0)되어야만 작성완료(unwritten = false)입니다.
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
-      if (compWorkers.length === 0) return false;
+      if (compWorkers.length === 0) return !hasDirectReport;
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
         const str = String(v ?? "").trim();

@@ -2216,11 +2216,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         }
         return false;
       });
-      if (hasReport) return false; // 보고서 등록 완료
-
-      // 2. 통합 매트릭스에 근태 데이터가 등록되어 있는지 확인
+      // 🔒 [단일 진실의 원천 원칙] 원장에 등록된 작업원(compWorkers)이 존재하는 협력사는
+      // 당일 근태 대장에 실제 입력(enteredCount > 0)되어야만 작성완료(unwritten = false)입니다.
+      // 대장이 비어있는(enteredCount === 0) 상태에서는 보고서만 존재해도 미작성으로 판정합니다.
       const compWorkers = (effectiveMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp);
-      if (compWorkers.length === 0) return false;
+      if (compWorkers.length === 0) {
+        return !hasReport;
+      }
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)];
         const str = String(v ?? "").trim();

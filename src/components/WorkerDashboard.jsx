@@ -350,7 +350,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      const isWritten = hasDirectReport || (compWorkers.length > 0 ? enteredCount > 0 : false);
+      // 🔒 [단일 진실의 원천 원칙] 원장에 등록된 작업원(compWorkers)이 존재하는 협력사는
+      // 당일 근태 대장에 실제 입력(enteredCount > 0)되어야만 '작성완료'로 판정합니다.
+      // 대장이 비어있는(enteredCount === 0) 상태에서 보고서만 임의 생성된 유령 보고서는 작성완료로 인정하지 않습니다.
+      const isWritten = compWorkers.length > 0 ? enteredCount > 0 : hasDirectReport;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
