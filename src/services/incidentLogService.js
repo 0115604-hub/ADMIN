@@ -69,6 +69,27 @@ export const DEFAULT_INCIDENT_LOGS = [
     createdAt: "2026-10-15T10:00:00+09:00",
     resolvedAt: "2026-10-15T10:08:00+09:00",
     notes: "압출동 작업자와 동일하게 일반 작업자도 작업일보만 집중 노출되어 현장 편의성 대폭 극대화"
+  },
+  {
+    id: "inc_20261015_04",
+    incidentNo: 4,
+    workDate: "2026-10-15",
+    category: "시스템/로그인",
+    severity: "P0",
+    title: "작업자 전용 모드 진입 시 ClipboardList 미임포트 및 TDZ ReferenceError 조치",
+    plant: "삼랑진 / 한림공장",
+    reporter: "공장 현장관리자",
+    symptoms: "현장 작업자 로그인 시 '화면 일시 중단 감지 및 안전 복구' CrashGuard 배너가 표시되며 작업일보 대시보드 진입이 중단되는 현상",
+    rootCause: "WorkerDashboard.jsx 내 작업자 전용 헤더 카드에 사용된 ClipboardList 아이콘의 lucide-react import 누락 및 workLogs 선언 전 참조로 인한 런타임 ReferenceError 발생",
+    resolution: "ClipboardList 아이콘 정식 import 추가, 작업일보 상태 변수 선언 위치를 workLogs 및 모달 핸들러 초기화 이후로 재배치하고 안전한 null/string 체크 방어코드 적용 완료",
+    actionCommit: "Commit dc7443e",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-15T11:00:00+09:00",
+    resolvedAt: "2026-10-15T11:06:00+09:00",
+    notes: "첫 화면 하단 관리자(정현규, 이상기 등)의 관리자 권한 완전 보존 및 4대 작업자(압출, 가공, 한울, 부림텍) 로그인 시 무오류 정상 작동 검증 완료"
   }
 ];
 
