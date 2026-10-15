@@ -1174,13 +1174,19 @@ export const WorkerPinModal = ({
       if (document.activeElement && typeof document.activeElement.blur === "function") {
         document.activeElement.blur();
       }
-      // 🌟 핀번호만 입력하면 바로 다음 화면(대시보드)으로 즉시 이동 (관리자 및 현장작업자 공통)
-      handleLogin(e);
+      // 🌟 현장작업자는 핀번호만 입력하면 바로 다음 화면(대시보드)으로 즉시 이동
+      if (selectedUser?.isFieldWorker || isFieldWorker) {
+        handleLogin(e);
+      }
     }
   };
 
   const handlePinSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (isPinVerified) {
+      handleLogin(e);
+      return;
+    }
     if (checkPinValidity(pinInput)) {
       setIsPinVerified(true);
       setPinError(false);
@@ -1188,7 +1194,9 @@ export const WorkerPinModal = ({
       if (document.activeElement && typeof document.activeElement.blur === "function") {
         document.activeElement.blur();
       }
-      handleLogin(e);
+      if (selectedUser?.isFieldWorker || isFieldWorker) {
+        handleLogin(e);
+      }
     } else {
       setPinError(true);
       setIsPinVerified(false);
@@ -2013,6 +2021,21 @@ export const WorkerPinModal = ({
               </div>
             )}
           </div>
+
+          {/* 🌟 3. Footer: 관리자 핀 인증 완료 후(isPinVerified) 다음 화면(대시보드) 이동 뱃지 표시 (핀 입력 전에는 숨김) */}
+          {isPinVerified && !(selectedUser?.isFieldWorker || isFieldWorker) && (
+            <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
+              <button
+                type="button"
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>확인완료 작업개시</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
