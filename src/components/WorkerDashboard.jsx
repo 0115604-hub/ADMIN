@@ -1212,12 +1212,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       });
   }, [workLogs, workerLogScope, workerFullName, currentProfile?.name, workerPlant, workerLogApprovalFilter]);
 
-  // Header "✍️ 일보작성" 버튼 연동 리스너
+  // Header "✍️ 일보작성" 버튼 연동 리스너 및 핀 로그인 즉시 일보작성 연결
   useEffect(() => {
     const handleOpen = () => {
       handleOpenWorkLogModal();
     };
     window.addEventListener("open-worker-worklog-modal", handleOpen);
+
+    try {
+      if (sessionStorage.getItem("auto_open_worker_worklog") === "true") {
+        sessionStorage.removeItem("auto_open_worker_worklog");
+        setTimeout(() => {
+          handleOpenWorkLogModal();
+        }, 100);
+      }
+    } catch (e) {}
+
     return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
   }, []);
 

@@ -30,13 +30,24 @@ export const ExtrusionProductionTab = () => {
   const [editingReport, setEditingReport] = useState(null);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Listen for open report modal event from Header
+  // Listen for open report modal event from Header or direct badge navigation
   useEffect(() => {
     const handleOpenModal = () => {
       setEditingReport(null);
       setIsModalOpen(true);
     };
     window.addEventListener("open-extrusion-work-report-modal", handleOpenModal);
+
+    try {
+      if (sessionStorage.getItem("auto_open_extrusion_report") === "true") {
+        sessionStorage.removeItem("auto_open_extrusion_report");
+        setTimeout(() => {
+          setEditingReport(null);
+          setIsModalOpen(true);
+        }, 100);
+      }
+    } catch (e) {}
+
     return () => {
       window.removeEventListener("open-extrusion-work-report-modal", handleOpenModal);
     };
