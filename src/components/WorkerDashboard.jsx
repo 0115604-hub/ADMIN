@@ -42,6 +42,8 @@ import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboa
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
 import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
+import { MachiningWorkerDashboardView } from "./machining/MachiningWorkerDashboardView";
+import { isMachiningWorkerProfile } from "../services/machiningQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
@@ -961,6 +963,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   if (isHanulOperatorWorker) {
     return (
       <HanulWorkerDashboardView
+        onNavigateTab={onNavigateTab}
+      />
+    );
+  }
+
+  // 🌟 삼랑진공장 가공동 현장작업자 (JA, NX4, NX4a, HR G/RUN 4대 차종)
+  const isMachiningOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
+    isMachiningWorkerProfile(currentProfile) &&
+    !isAdmin;
+
+  if (isMachiningOperatorWorker) {
+    return (
+      <MachiningWorkerDashboardView
         onNavigateTab={onNavigateTab}
       />
     );

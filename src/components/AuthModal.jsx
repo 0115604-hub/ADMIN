@@ -69,6 +69,7 @@ const IssueEditModal = lazy(() => import("./issues/IssueEditModal").then(m => ({
 const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m => ({ default: m.IssueActionModal || m.default })));
 const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
+const MachiningWorkReportModal = lazy(() => import("./machining/MachiningWorkReportModal").then(m => ({ default: m.MachiningWorkReportModal || m.default })));
 const SqLevelUpView = lazy(() => import("./sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
 
 export const AuthModal = () => {
@@ -87,6 +88,10 @@ export const AuthModal = () => {
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
+  const [isMachiningReportModalOpen, setIsMachiningReportModalOpen] = useState(false);
+  const [machiningReportProject, setMachiningReportProject] = useState("JA");
+  const [machiningReportWorker, setMachiningReportWorker] = useState("크리스토퍼");
+  const [machiningLineFilter, setMachiningLineFilter] = useState("ALL");
   const [isSqLevelUpModalOpen, setIsSqLevelUpModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
   const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("박종미");
@@ -1479,7 +1484,9 @@ export const AuthModal = () => {
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
   useModalHistory(isMachiningModalOpen, () => setIsMachiningModalOpen(false), "machiningModal");
+  useModalHistory(isMachiningReportModalOpen, () => setIsMachiningReportModalOpen(false), "machiningReportModal");
   useModalHistory(isHanulModalOpen, () => setIsHanulModalOpen(false), "hanulModal");
+  useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "hanulWorkReportModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
   useModalHistory(isSqLevelUpModalOpen, () => setIsSqLevelUpModalOpen(false), "sqLevelUpModal");
 
@@ -1942,13 +1949,13 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>삼랑진공장 가공동 작업자</span>
+                    <span>삼랑진공장 가공동 (주)오륙</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
                       총원 {machiningWorkers.length}명
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    안전·품질 확인 후 가공 생산관리 입장
+                    JA • NX4 • NX4a • HR 4대 차종 G/RUN 생산라인 & 작업일보
                   </span>
                 </div>
               </div>
@@ -1961,46 +1968,163 @@ export const AuthModal = () => {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
-              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 가공 생산관리 화면으로 바로 연결됩니다.
-            </p>
+            {/* 🌟 4대 차종 G/RUN 작업일보 즉시 작성 배너 */}
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300 dark:border-amber-700/60 space-y-2 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>4대 차종 G/RUN 작업일보 작성 (한울 동일 분류):</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMachiningReportProject("JA");
+                    setMachiningReportWorker("");
+                    setIsMachiningReportModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-black shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>✍️ 일보 전체작성</span>
+                </button>
+              </div>
 
-            {/* Scrollable Machining Workers Grid */}
-            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {machiningWorkers.map((worker, idx) => (
+                {[
+                  { id: "JA", name: "JA G/RUN", desc: "모닝/레이", icon: "🚗", color: "from-indigo-600 to-indigo-700" },
+                  { id: "NX4", name: "NX4 G/RUN", desc: "투싼", icon: "🚙", color: "from-blue-600 to-blue-700" },
+                  { id: "NX4A", name: "NX4a G/RUN", desc: "투싼 PE", icon: "⚡", color: "from-teal-600 to-teal-700" },
+                  { id: "HR", name: "HR G/RUN", desc: "포터", icon: "🚚", color: "from-amber-600 to-amber-700" }
+                ].map((p) => (
                   <button
-                    key={worker.no || idx}
+                    key={p.id}
                     type="button"
                     onClick={() => {
-                      setIsMachiningModalOpen(false);
-                      handleUserClick({
-                        id: `mach_${worker.no || idx}`,
-                        name: worker.name,
-                        title: worker.position || "사원",
-                        position: worker.position || "사원",
-                        dept: worker.dept || "가공동",
-                        building: "가공동",
-                        plant: "삼랑진공장",
-                        company: "오륙",
-                        line: worker.line,
-                        assignedProcess: worker.line ? `${worker.line} 가공` : "가공",
-                        portalType: "machining",
-                        isFieldWorker: true
-                      });
+                      setMachiningReportProject(p.id);
+                      setMachiningReportWorker("");
+                      setIsMachiningReportModalOpen(true);
                     }}
-                    className="min-h-[44px] rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs hover:border-amber-400 overflow-hidden flex items-stretch hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0"
+                    className={`p-2 rounded-xl bg-gradient-to-r ${p.color} text-white shadow-xs hover:shadow-md hover:scale-[1.02] active:scale-95 transition cursor-pointer text-left flex flex-col justify-between`}
                   >
-                    <div className="w-[55%] flex items-center justify-center px-1 text-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
-                      <span className="font-black text-xs tracking-tight truncate">
-                        {worker.name}
-                      </span>
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm">{p.icon}</span>
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-white/20">일보 ➔</span>
                     </div>
-                    <div className="w-[45%] flex items-center justify-center text-center px-1 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      <span className="text-[10px] font-bold truncate">{worker.line || worker.position || "가공"}</span>
+                    <div className="mt-1">
+                      <span className="font-black text-xs block leading-tight">{p.name}</span>
+                      <span className="text-[10px] opacity-80">{p.desc}</span>
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Line Filter Tabs */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 text-xs">
+              <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">라인:</span>
+              {[
+                { id: "ALL", label: "전체" },
+                { id: "JA", label: "JA (모닝/레이)" },
+                { id: "NX4", label: "NX4 (투싼)" },
+                { id: "NX4A", label: "NX4a (투싼 PE)" },
+                { id: "HR", label: "HR (포터)" },
+                { id: "OTHER", label: "소재/기타" }
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setMachiningLineFilter(filter.id)}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] whitespace-nowrap cursor-pointer transition ${
+                    machiningLineFilter === filter.id
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Scrollable Machining Workers Grid */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {machiningWorkers
+                  .filter((worker) => {
+                    if (machiningLineFilter === "ALL") return true;
+                    const wLine = String(worker.line || "").toUpperCase();
+                    if (machiningLineFilter === "JA") return wLine.includes("JA");
+                    if (machiningLineFilter === "HR") return wLine.includes("HR");
+                    if (machiningLineFilter === "NX4") return wLine === "NX4" || wLine.startsWith("NX4.");
+                    if (machiningLineFilter === "NX4A") return wLine.includes("NX4A");
+                    if (machiningLineFilter === "OTHER") {
+                      return !wLine.includes("JA") && !wLine.includes("HR") && !wLine.includes("NX4");
+                    }
+                    return true;
+                  })
+                  .map((worker, idx) => {
+                    const rawLine = String(worker.line || "").toUpperCase();
+                    const inferredProject = rawLine.includes("JA")
+                      ? "JA"
+                      : rawLine.includes("HR")
+                      ? "HR"
+                      : rawLine.includes("NX4A")
+                      ? "NX4A"
+                      : rawLine.includes("NX4")
+                      ? "NX4"
+                      : "JA";
+
+                    return (
+                      <div
+                        key={worker.no || idx}
+                        className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs hover:border-amber-400 overflow-hidden flex items-stretch hover:shadow-md transition-all group"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMachiningModalOpen(false);
+                            handleUserClick({
+                              id: `mach_${worker.no || idx}`,
+                              name: worker.name,
+                              title: worker.position || "사원",
+                              position: worker.position || "사원",
+                              dept: worker.dept || "가공동",
+                              building: "가공동",
+                              plant: "삼랑진공장",
+                              company: "오륙",
+                              line: worker.line,
+                              assignedProcess: worker.line ? `${worker.line} 가공` : "가공",
+                              portalType: "machining",
+                              isFieldWorker: true
+                            });
+                          }}
+                          className="flex-1 flex items-center justify-between px-2.5 py-1.5 cursor-pointer text-left min-w-0"
+                          title="가공 생산관리 화면으로 입장"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-black text-xs block text-slate-900 dark:text-white truncate">
+                              {worker.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold block truncate">
+                              {worker.line || worker.position || "가공"}
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMachiningReportProject(inferredProject);
+                            setMachiningReportWorker(worker.name);
+                            setIsMachiningReportModalOpen(true);
+                          }}
+                          className="px-2 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-600 hover:text-white text-amber-700 dark:text-amber-300 text-[10px] font-black border-l border-amber-200 dark:border-amber-800 transition flex items-center justify-center shrink-0 cursor-pointer"
+                          title={`${worker.name} 작업일보 즉시 작성`}
+                        >
+                          일보
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -2224,6 +2348,18 @@ export const AuthModal = () => {
             onClose={() => setIsHanulWorkReportModalOpen(false)}
             initialProject={hanulWorkReportProject}
             initialWorker={hanulWorkReportWorker}
+          />
+        </Suspense>
+      )}
+
+      {/* 📋 삼랑진공장 가공동 작업일보 신규 작성 모달 (JA / NX4 / NX4a / HR G/RUN) */}
+      {isMachiningReportModalOpen && (
+        <Suspense fallback={null}>
+          <MachiningWorkReportModal
+            isOpen={isMachiningReportModalOpen}
+            onClose={() => setIsMachiningReportModalOpen(false)}
+            initialProject={machiningReportProject}
+            initialWorker={machiningReportWorker}
           />
         </Suspense>
       )}
