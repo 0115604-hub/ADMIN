@@ -1396,13 +1396,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
-  const handleOpenRegistrationReportModal = () => {
+  const handleOpenRegistrationReportModal = async () => {
     const d = selectedDay || 1;
     const isWk = isWeekendDay(d);
     const dayLabel = getDayLabel(d);
     const reportType = isWk ? "특근보고서" : "근태보고서";
 
-    // 🚨 1. 누락된 항목(미선택 인원) 검증: 평일인 경우에만 미선택 항목이 있을 때 등록 차단 및 알림 (휴무일/주말/공휴일은 비출근자가 있으므로 미선택자가 있어도 특근자만 등록 가능)
+    // 🚨 1. 누락된 항목(미선택 인원) 검증: 평일인 경우 미선택 항목이 있을 때 원클릭 정시 자동 채우기 확인창 제공
     if (!isWk) {
       const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
         const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
@@ -1418,16 +1418,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           .join("\n");
         const moreText = missingCount > 10 ? `\n... 외 ${missingCount - 10}명` : "";
 
-        const alertMessage = `⚠️ [근태 미선택 알림 - 등록 불가]\n\n${currentMonthNum}월 ${d}일(${dayLabel}) [${selectedCompanyFilter}] 근태 선택 테이블에 아직 근태가 선택되지 않은 근로자가 총 ${missingCount}명 있습니다.\n\n[미선택 근로자 명단 (${missingCount}명)]\n${sampleNames}${moreText}\n\n평일 근태는 모든 근로자의 근태(정시, 19시, 21시, 22시, 야간, 연차, 결근 등)를 빠짐없이 선택하셔야 보고서 등록이 가능합니다.\n\n💡 TIP: 상단의 '🟢 정시전체선택' 또는 '📋 전일과동일' 버튼을 누르시면 전체 인원의 근태를 빠르게 일괄 입력하실 수 있습니다.`;
+        const confirmMessage = `⚠️ [근태 미선택 알림]\n\n${currentMonthNum}월 ${d}일(${dayLabel}) [${selectedCompanyFilter}] 근태 선택 테이블에 아직 근태가 선택되지 않은 근로자가 총 ${missingCount}명 있습니다.\n\n[미선택 근로자 명단 (${missingCount}명)]\n${sampleNames}${moreText}\n\n'확인'을 누르시면 미선택된 ${missingCount}명을 기본 '정시(🟢)'로 자동 채우고 바로 보고서 작성을 진행합니다.\n(기존 입력된 연차, 결근, 잔업/특근 인원은 안전하게 보존됩니다)\n\n'취소'를 누르시면 화면으로 돌아가 직접 근태를 입력하실 수 있습니다.`;
 
-        alert(alertMessage);
-        triggerToast(`⚠️ 근태 미선택 인원이 ${missingCount}명 있어 등록할 수 없습니다. 테이블에서 모든 인원의 근태를 선택해주세요.`);
-        return;
+        if (window.confirm(confirmMessage)) {
+          await handleSetMissingWorkersRegular();
+        } else {
+          triggerToast(`⚠️ 근태 미선택 인원이 ${missingCount}명 있어 등록이 취소되었습니다.`);
+          return;
+        }
       }
     }
 
+    const cleanedComp = cleanCompanyName(selectedCompanyFilter);
     const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-    const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
+    const compMeta = COMPANY_APPROVAL_MANAGERS[cleanedComp] || COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
       company: selectedCompanyFilter || "전체",
       plant: "전사",
       author: "조인주 선임",
@@ -1442,13 +1446,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
 
     const attendedCount = (filteredAttendanceWorkers || []).filter(w => {
-      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+      let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+      const strVal = String(val || "").trim();
+      if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+        val = "🟢";
+      }
       const { isAttended, workHours } = calculateWorkerDailyHours(val);
       return isAttended && workHours > 0;
     }).length;
 
     const totalHours = (filteredAttendanceWorkers || []).reduce((sum, w) => {
-      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+      let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+      const strVal = String(val || "").trim();
+      if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+        val = "🟢";
+      }
       const { workHours } = calculateWorkerDailyHours(val);
       return sum + (workHours || 0);
     }, 0);
@@ -1486,6 +1498,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const d = selectedDay || 1;
     const isWk = isWeekendDay(d);
     const dayLabel = getDayLabel(d);
+    const reportType = isWk ? "특근보고서" : "근태보고서";
+    const cleanedComp = cleanCompanyName(selectedCompanyFilter);
+    const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
+    const compMeta = COMPANY_APPROVAL_MANAGERS[cleanedComp] || COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
+      company: selectedCompanyFilter || "전체",
+      plant: "전사",
+      author: "조인주 선임",
+      drafter: "조인주",
+      drafterRole: "선임",
+      lead: "윤경수",
+      leadRole: "책임",
+      director: "이명재",
+      directorRole: "이사",
+      ceo: "권태형",
+      ceoRole: "대표"
+    };
 
     // 🚨 최종 저장 전 누락 항목 재검증 (평일인 경우에만 전체 선택 필수)
     if (!isWk) {
@@ -1496,8 +1524,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       });
 
       if (missingWorkers.length > 0) {
-        alert(`⚠️ 근태가 미선택된 근로자(${missingWorkers.length}명)가 있어 저장 및 등록을 진행할 수 없습니다.\n\n정시, 19시, 21시, 22시, 야간, 연차, 결근 등 모든 근로자의 근태를 선택해주세요.`);
-        return;
+        const confirmMsg = `⚠️ [근태 미선택 근로자 ${missingWorkers.length}명]\n\n미선택된 근로자(${missingWorkers.length}명)를 기본 '정시(🟢)'로 자동 채우고 최종 저장을 진행하시겠습니까?\n\n'확인': 미선택자를 정시로 채우고 저장 진행\n'취소': 취소하고 직접 수정`;
+        if (window.confirm(confirmMsg)) {
+          await handleSetMissingWorkersRegular();
+        } else {
+          return;
+        }
       }
     }
 
@@ -1516,6 +1548,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         // 주말 및 법정 휴무일: 출근하지 않거나 미입력/결근인 인원은 결근이 아닌 정상 '휴무(-)'로 처리
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
           val = "-";
+        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+          // 평일 미입력은 정상 '정시(🟢)'로 안전 보정
+          val = "🟢";
         }
         const cleanWName = cleanWorkerNameOnly(w.name);
         const targetIdx = currentMatrix.findIndex(
@@ -1549,29 +1584,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       });
       
       // 2. Generate and save company-specific report record
-      const reportType = isWk ? "특근보고서" : "근태보고서";
-      const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-      const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
-        company: selectedCompanyFilter || "전체",
-        plant: "전사",
-        author: "조인주 선임",
-        drafter: "조인주",
-        drafterRole: "선임",
-        lead: "윤경수",
-        leadRole: "책임",
-        director: "이명재",
-        directorRole: "이사",
-        ceo: "권태형",
-        ceoRole: "대표"
-      };
       const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
       const items = allWorkersList.map((w, idx) => {
         let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
-        const strVal = String(val || "").trim();
-        const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
+        let strVal = String(val || "").trim();
         // 주말/휴무일 특근 시 미출근자는 결근이 아닌 미출근(-)로 강제 보정
-        if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
+        if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근")) {
+          val = "-";
+        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+          val = "🟢";
+        }
+        const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
+        if (isWk && (!isAttended || workHours === 0)) {
           val = "-";
         }
         const isOff = val === "결근" || val === "병결" || val === "사결" || val === "공결" || val === "연차" || val === "휴가" || val === "병가" || val === "반차" || val === "-" || val === "휴무" || val === "미출근";
