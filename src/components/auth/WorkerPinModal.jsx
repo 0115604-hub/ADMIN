@@ -265,28 +265,51 @@ export const WorkerPinModal = ({
 
   // =========================================================================
   // 🌟 Role Identification
-  // 1. 압출동 작업자: EXTRUSION_WORKERS (11명) / building === "압출동" / id starts with "ext_"
+  // 1. 압출동 작업자: portalType === 'extrusion' / EXTRUSION_WORKERS (11명) / building === "압출동" / id starts with "ext_"
   // 2. 관리자: 첫화면의 모든 명찰(본사 대표이사/전무, 삼랑진공장, 한림공장)은 관리자임!
   // =========================================================================
   const isExtrusionWorker = useMemo(() => {
     if (!selectedUser) return false;
+    if (selectedUser.portalType === "extrusion") return true;
+    if (selectedUser.portalType === "hanul" || selectedUser.portalType === "bulimtech" || selectedUser.portalType === "machining") return false;
     return Boolean(
       EXTRUSION_WORKERS.some((w) => w.id === selectedUser.id || w.name === selectedUser.name) ||
       selectedUser.building === "압출동" ||
-      selectedUser.id?.startsWith("ext_")
+      selectedUser.id?.startsWith("ext_") ||
+      selectedUser.assignedProcess === "압출동" ||
+      (selectedUser.plant === "삼랑진공장" && ["공영국", "심임대", "이상은", "닉", "마이클", "존카를로", "지미", "만", "샤먼", "쿠마루", "이수루"].includes(selectedUser.name))
     );
   }, [selectedUser]);
+
+  // 🌟 가공동 작업자 판별 (상단 가공동 31명 포털 및 가공 현장 인원)
+  const isMachiningWorker = useMemo(() => {
+    if (!selectedUser) return false;
+    if (isExtrusionWorker) return false;
+    if (selectedUser.portalType === "machining") return true;
+    if (selectedUser.portalType === "extrusion" || selectedUser.portalType === "hanul" || selectedUser.portalType === "bulimtech") return false;
+    return Boolean(
+      selectedUser.building === "가공동" ||
+      selectedUser.dept === "가공동" ||
+      String(selectedUser.id || "").startsWith("mach_") ||
+      (selectedUser.company === "오륙" && (selectedUser.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(selectedUser.line)))
+    );
+  }, [selectedUser, isExtrusionWorker]);
 
   // 🌟 1. 한울 및 부림텍 현장 작업자 판별 (첫 화면 아래쪽 대표이사 hal_hu, hal_br는 관리자이므로 제외)
   const isHanulOrBurim = useMemo(() => {
     if (!selectedUser) return false;
+    if (isExtrusionWorker || isMachiningWorker) return false;
     // 첫 화면 아래쪽 대표이사(hal_hu, hal_br)는 관리자이므로 현장작업자에서 명확히 제외
     if (!selectedUser.isFieldWorker && (selectedUser.id === "hal_hu" || selectedUser.id === "hal_br" || selectedUser.title === "대표이사")) {
       return false;
     }
+    if (selectedUser.portalType === "hanul" || selectedUser.portalType === "bulimtech") return true;
+    if (selectedUser.portalType === "extrusion" || selectedUser.portalType === "machining") return false;
+
     const comp = String(selectedUser.company || "");
     const name = String(selectedUser.name || "");
     const id = String(selectedUser.id || "");
+    const plant = String(selectedUser.plant || "");
 
     return Boolean(
       selectedUser.isFieldWorker && (
@@ -296,62 +319,61 @@ export const WorkerPinModal = ({
         name === "부림텍" ||
         id.startsWith("hal_hu_") ||
         id.startsWith("hal_br_") ||
-        selectedUser.line === "9BQC" ||
-        selectedUser.line === "LQ2" ||
-        selectedUser.line === "LQ2a" ||
-        [
-          "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
-          "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
-          "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
-          "마이카", "알프레도", "아이린", "에릭", "언"
-        ].includes(name)
+        (plant === "한림공장" && (
+          selectedUser.line === "9BQC" ||
+          selectedUser.line === "LQ2" ||
+          selectedUser.line === "LQ2a" ||
+          [
+            "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+            "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+            "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+            "마이카", "알프레도", "아이린", "에릭", "언"
+          ].includes(name)
+        ))
       )
     );
-  }, [selectedUser]);
+  }, [selectedUser, isExtrusionWorker, isMachiningWorker]);
 
   const isHanul = useMemo(() => {
     if (!isHanulOrBurim) return false;
+    if (isExtrusionWorker || isMachiningWorker) return false;
+    if (selectedUser?.portalType === "bulimtech") return false;
+    if (selectedUser?.portalType === "hanul") return true;
+
     const comp = String(selectedUser?.company || "");
     const name = String(selectedUser?.name || "");
     const id = String(selectedUser?.id || "");
+    const plant = String(selectedUser?.plant || "");
     return Boolean(
       selectedUser?.isFieldWorker && (
         comp.includes("한울") ||
         name === "한울" ||
         id.startsWith("hal_hu_") ||
-        selectedUser?.line === "9BQC" ||
-        selectedUser?.line === "LQ2" ||
-        selectedUser?.line === "LQ2a" ||
-        [
-          "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
-          "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
-          "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
-          "마이카", "알프레도", "아이린", "에릭", "언"
-        ].includes(name)
+        (plant === "한림공장" && (
+          selectedUser?.line === "9BQC" ||
+          selectedUser?.line === "LQ2" ||
+          selectedUser?.line === "LQ2a" ||
+          [
+            "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
+            "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
+            "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
+            "마이카", "알프레도", "아이린", "에릭", "언"
+          ].includes(name)
+        ))
       )
     );
-  }, [selectedUser, isHanulOrBurim]);
+  }, [selectedUser, isHanulOrBurim, isExtrusionWorker, isMachiningWorker]);
 
   const isBurimtech = useMemo(() => {
     if (!isHanulOrBurim) return false;
+    if (isExtrusionWorker || isMachiningWorker || isHanul) return false;
+    if (selectedUser?.portalType === "bulimtech") return true;
     return !isHanul;
-  }, [isHanulOrBurim, isHanul]);
+  }, [isHanulOrBurim, isHanul, isExtrusionWorker, isMachiningWorker, selectedUser]);
 
   // Backward compatibility alias for Hanul worker checks
   const isHanulWorker = isHanul;
 
-  // 🌟 가공동 작업자 판별 (상단 가공동 31명 포털 및 가공 현장 인원)
-  const isMachiningWorker = useMemo(() => {
-    if (!selectedUser) return false;
-    if (isExtrusionWorker || isHanulOrBurim) return false;
-    return Boolean(
-      selectedUser.isFieldWorker ||
-      selectedUser.building === "가공동" ||
-      selectedUser.dept === "가공동" ||
-      String(selectedUser.id || "").startsWith("mach_") ||
-      (selectedUser.company === "오륙" && (selectedUser.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(selectedUser.line)))
-    );
-  }, [selectedUser, isExtrusionWorker, isHanulOrBurim]);
 
   // 🌟 4대 현장 작업자 (압출동, 가공동, 한울, 부림텍) 통합 판별 - 첫화면 아래쪽 인원은 100% 관리자
   const isFieldWorker = useMemo(() => {
@@ -1258,6 +1280,16 @@ export const WorkerPinModal = ({
     }, 200);
   };
 
+  const handleOpenHanulReportAction = (proj = "9BQC", e) => {
+    try {
+      sessionStorage.setItem("auto_open_hanul_report", proj);
+    } catch (err) {}
+    handleLogin(e);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: proj } }));
+    }, 200);
+  };
+
   return (
     <>
       <div
@@ -1322,11 +1354,19 @@ export const WorkerPinModal = ({
                       : "작업원")}
                 </h3>
                 <span
-                  className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+                  className={`text-[11px] font-black px-2.5 py-0.5 rounded-full ${
                     isHeadquarterAdmin
                       ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                       : isCompanyRepresentative
                       ? "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+                      : isExtrusionWorker
+                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700 shadow-2xs font-black"
+                      : isHanul
+                      ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 shadow-2xs font-black"
+                      : isBurimtech
+                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs font-black"
+                      : isMachiningWorker
+                      ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs font-black"
                       : isFieldWorker
                       ? isWorkerManager
                         ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shadow-2xs font-black"
@@ -1342,6 +1382,14 @@ export const WorkerPinModal = ({
                     ? "경영총괄/대표이사"
                     : isCompanyRepresentative
                     ? `협력업체 (${selectedUser.name} 대표이사)`
+                    : isExtrusionWorker
+                    ? `삼랑진공장 압출동 (${selectedUser.title || (selectedUser.name === "공영국" ? "대리" : isWorkerManager ? "반장" : "작업원")})`
+                    : isHanul
+                    ? `한림공장 한울 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
+                    : isBurimtech
+                    ? `한림공장 부림텍 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
+                    : isMachiningWorker
+                    ? `삼랑진공장 가공동 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
                     : isFieldWorker
                     ? isWorkerManager
                       ? `[현장관리자] ${
@@ -2039,27 +2087,7 @@ export const WorkerPinModal = ({
           {/* 🌟 3. Footer: 핀 인증 완료 후(isPinVerified) 작업자별 일보작성 바로가기 & 관리자 확인완료 뱃지 제공 */}
           {isPinVerified && (
             <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
-              {isHanul ? (
-                /* 한울 전용: 9BQC 및 LQ2a 일보 작성 뱃지 2개 단독 제공 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("9BQC")}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>🚗 9BQC G/RUN 일보 작성</span>
-                    <ArrowRight className="w-4 h-4 text-indigo-200" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenHanulReport("LQ2A")}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer"
-                  >
-                    <span>⚡ LQ2a Hood Side 일보 작성</span>
-                    <ArrowRight className="w-4 h-4 text-purple-200" />
-                  </button>
-                </div>
-              ) : isExtrusionWorker ? (
+              {isExtrusionWorker ? (
                 /* 압출동 작업자: 압출 작업일보 작성 바로가기 + 확인완료 작업개시 */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
@@ -2080,8 +2108,58 @@ export const WorkerPinModal = ({
                     <ArrowRight className="w-4 h-4 text-blue-200" />
                   </button>
                 </div>
+              ) : isHanul ? (
+                /* 한울 전용: 9BQC 및 LQ2a 일보 작성 뱃지 2개 + 확인완료 작업개시 */
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenHanulReportAction("9BQC", e)}
+                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>🚗 9BQC 일보 작성</span>
+                    <ArrowRight className="w-4 h-4 text-indigo-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenHanulReportAction("LQ2A", e)}
+                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer truncate"
+                  >
+                    <span>⚡ LQ2a 일보 작성</span>
+                    <ArrowRight className="w-4 h-4 text-purple-200 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogin}
+                    disabled={isLoggingIn}
+                    className="py-3 sm:py-3.5 px-3 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-slate-700/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50 truncate"
+                  >
+                    <span>확인완료 작업개시</span>
+                    <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
+                  </button>
+                </div>
+              ) : isBurimtech ? (
+                /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 + 확인완료 작업개시 */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleOpenGeneralWorkLogAction}
+                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
+                  >
+                    <span>✍️ 부림텍 작업일보 작성 바로가기</span>
+                    <ArrowRight className="w-4 h-4 text-teal-200" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogin}
+                    disabled={isLoggingIn}
+                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-700/25 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <span>확인완료 작업개시</span>
+                    <ArrowRight className="w-4 h-4 text-slate-300" />
+                  </button>
+                </div>
               ) : (selectedUser?.isFieldWorker || isFieldWorker) ? (
-                /* 가공동 / 부림텍 / 조영 등 일반 현장작업자: 작업일보 작성 바로가기 + 확인완료 작업개시 */
+                /* 가공동 등 일반 현장작업자: 작업일보 작성 바로가기 + 확인완료 작업개시 */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"

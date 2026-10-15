@@ -254,32 +254,41 @@ export const isExtrusionWorkerProfile = (profile) => {
   const comp = profile.company || "";
   const plant = profile.plant || "";
   const line = profile.line || "";
-
-  // 🌟 한울 외주가공 및 한림공장 작업자는 압출 작업자에서 명확히 분리 제외
-  if (comp.includes("한울") || id.startsWith("hal_hu") || plant === "한림공장" || line === "9BQC" || line === "LQ2" || line === "LQ2a") {
-    return false;
-  }
+  const portal = profile.portalType || "";
 
   // 🌟 설유철 책임은 압출 관리자/책임자이므로 일반 현장 압출작업자에서 명확히 분리 제외
   if (name === "설유철" || id === "sam_yc") {
     return false;
   }
 
+  // 🌟 명시적 portalType 검사
+  if (portal === "extrusion") return true;
+  if (portal === "hanul" || portal === "bulimtech" || portal === "machining") return false;
+
+  // 🌟 한울 외주가공, 부림텍, 가공동 및 한림공장 작업자는 압출 작업자에서 명확히 분리 제외
+  if (
+    comp.includes("한울") ||
+    comp.includes("부림") ||
+    id.startsWith("hal_hu") ||
+    id.startsWith("hal_br") ||
+    id.startsWith("mach_") ||
+    plant === "한림공장" ||
+    profile.building === "가공동" ||
+    line === "9BQC" ||
+    line === "LQ2" ||
+    line === "LQ2a"
+  ) {
+    return false;
+  }
+
   const building = profile.building || "";
 
-  return (
-    name === "공영국" ||
-    name === "심임대" ||
-    name === "이상은" ||
-    name === "닉" ||
-    name === "마이클" ||
-    name === "존카를로" ||
-    name === "지미" ||
-    name === "만" ||
-    name === "샤먼" ||
-    name === "쿠마루" ||
-    name === "이수루" ||
+  return Boolean(
+    building === "압출동" ||
     id.startsWith("ext_") ||
-    (building === "압출동" && profile.role === "OPERATOR")
+    profile.assignedProcess === "압출동" ||
+    (plant === "삼랑진공장" && [
+      "공영국", "심임대", "이상은", "닉", "마이클", "존카를로", "지미", "만", "샤먼", "쿠마루", "이수루"
+    ].includes(name))
   );
 };

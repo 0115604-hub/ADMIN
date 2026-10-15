@@ -6,6 +6,7 @@ import { AuthModal } from "./components/AuthModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { runStorageHealthCheck } from "./utils/storageHealthCheck";
 import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile } from "./context/AuthContext";
+import { isHanulWorkerProfile } from "./services/hanulQualityIssueService";
 import { useMonth } from "./context/MonthContext";
 
 // Lazy-loaded views & modals for near-instant startup & mobile optimization
@@ -111,8 +112,12 @@ export const App = () => {
 
     if (currentProfile) {
       const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
+      let autoOpenExtrusion = false;
+      try {
+        autoOpenExtrusion = sessionStorage.getItem("auto_open_extrusion_report") === "true";
+      } catch (e) {}
 
-      const targetTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
+      const targetTab = (isExtrusionWorker && autoOpenExtrusion) ? "extrusion_downtime" : "worker_dashboard";
       if (isExtrusionWorker) {
         try {
           localStorage.setItem("factory_extrusion_active_subtab", "production");
@@ -167,17 +172,7 @@ export const App = () => {
         return;
       }
 
-      const isExtrusionWorker =
-        currentProfile &&
-        (currentProfile.building === "압출동" ||
-        currentProfile.id?.startsWith("ext_") ||
-        currentProfile.name === "공영국" ||
-        currentProfile.name === "심임대" ||
-        currentProfile.name === "이상은") &&
-        currentProfile.name !== "설유철" &&
-        currentProfile.id !== "sam_yc";
-
-      const homeTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
+      const homeTab = "worker_dashboard";
 
       // 상세 메뉴에서 뒤로가기 누른 경우 홈 화면으로 이동
       if (currentTab !== homeTab) {
@@ -329,10 +324,22 @@ export const App = () => {
   const getTabTitle = () => {
     const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
     const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
+    const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
+    const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
+      currentProfile?.portalType === "bulimtech" ||
+      currentProfile?.company === "부림텍" ||
+      currentProfile?.name === "부림텍" ||
+      String(currentProfile?.id || "").startsWith("hal_br_")
+    );
 
     if (activeTab === "worker_dashboard") {
       if (isAdmin) return "현황";
-      if (!isManager) return "오늘의 작업일보";
+      if (!isManager) {
+        if (isExtrusionWorker) return "압출 작업일보";
+        if (isHanul) return "한울 외주가공 작업일보";
+        if (isBurimtech) return "부림텍 작업일보";
+        return "가공동 작업일보";
+      }
       return "일일생산정보현황";
     }
     if (activeTab === "extrusion_downtime") {

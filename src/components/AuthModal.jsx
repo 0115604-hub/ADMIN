@@ -1855,7 +1855,15 @@ export const AuthModal = () => {
                     key={worker.id}
                     onClick={() => {
                       setIsExtrusionModalOpen(false);
-                      handleUserClick({ ...worker, isFieldWorker: true });
+                      handleUserClick({
+                        ...worker,
+                        portalType: "extrusion",
+                        building: "압출동",
+                        plant: "삼랑진공장",
+                        company: "오륙",
+                        assignedProcess: "압출동",
+                        isFieldWorker: true
+                      });
                     }}
                     className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
                       isLead
@@ -1946,6 +1954,7 @@ export const AuthModal = () => {
                         company: "오륙",
                         line: worker.line,
                         assignedProcess: worker.line ? `${worker.line} 가공` : "가공",
+                        portalType: "machining",
                         isFieldWorker: true
                       });
                     }}
@@ -2027,6 +2036,9 @@ export const AuthModal = () => {
                           position: worker.position || "작업원",
                           line: worker.line,
                           assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          plant: "한림공장",
+                          company: "한울",
+                          portalType: "hanul",
                           isFieldWorker: true,
                           isPartner: false
                         });
@@ -2121,6 +2133,9 @@ export const AuthModal = () => {
                           position: displayPos,
                           line: worker.line,
                           assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          plant: "한림공장",
+                          company: "부림텍",
+                          portalType: "bulimtech",
                           isFieldWorker: true,
                           isPartner: false
                         });

@@ -91,6 +91,27 @@ export const HanulWorkerDashboardView = () => {
     return () => unsub();
   }, []);
 
+  // 4. Listen to open-hanul-work-report-modal event and auto-open session trigger
+  useEffect(() => {
+    const handleOpen = (e) => {
+      const proj = e?.detail?.project || "9BQC";
+      setReportModalProject(proj === "LQ2A" ? "LQ2" : proj);
+      setIsReportModalOpen(true);
+    };
+    window.addEventListener("open-hanul-work-report-modal", handleOpen);
+
+    try {
+      const autoProj = sessionStorage.getItem("auto_open_hanul_report");
+      if (autoProj) {
+        sessionStorage.removeItem("auto_open_hanul_report");
+        setReportModalProject(autoProj === "LQ2A" ? "LQ2" : autoProj);
+        setIsReportModalOpen(true);
+      }
+    } catch (e) {}
+
+    return () => window.removeEventListener("open-hanul-work-report-modal", handleOpen);
+  }, []);
+
   // Active Company Notices (종료일까지 유효한 공지만)
   const activeCompanyNotices = useMemo(() => {
     return urgentIssues.filter((item) => {

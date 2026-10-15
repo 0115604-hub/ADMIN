@@ -107,11 +107,13 @@ export const isManagerOrAdminUser = (profile, isAdmin = false) => {
 export const isExtrusionWorkerProfile = (profile) => {
   if (!profile) return false;
   if (profile.name === "설유철" || profile.id === "sam_yc") return false;
+  if (profile.portalType === "extrusion") return true;
+  if (profile.portalType === "hanul" || profile.portalType === "bulimtech" || profile.portalType === "machining") return false;
   return Boolean(
     profile.building === "압출동" ||
     profile.id?.startsWith("ext_") ||
     profile.assignedProcess === "압출동" ||
-    ["공영국", "심임대", "이상은", "닉", "마이클", "존카를로", "지미", "만", "샤먼", "쿠마루", "이수루"].includes(profile.name)
+    (profile.plant === "삼랑진공장" && ["공영국", "심임대", "이상은", "닉", "마이클", "존카를로", "지미", "만", "샤먼", "쿠마루", "이수루"].includes(profile.name))
   );
 };
 

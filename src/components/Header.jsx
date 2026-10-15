@@ -7,6 +7,7 @@ import {
   Plus
 } from "lucide-react";
 import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
+import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
@@ -43,8 +44,15 @@ export const Header = ({
 
   const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
+  const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
+  const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
+    currentProfile?.portalType === "bulimtech" ||
+    currentProfile?.company === "부림텍" ||
+    currentProfile?.name === "부림텍" ||
+    String(currentProfile?.id || "").startsWith("hal_br_")
+  );
 
-  const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard" && !isExtrusionWorker);
+  const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard");
 
   return (
     <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs max-w-full min-w-0">
@@ -62,7 +70,7 @@ export const Header = ({
         )}
 
         {/* Operator Back Button */}
-        {showBackButton && onBackToSummary && !isExtrusionWorker ? (
+        {showBackButton && onBackToSummary ? (
           <button
             onClick={onBackToSummary}
             className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-black transition-all shadow-sm ring-1 ring-blue-500/20 active:scale-95 shrink-0"
@@ -82,8 +90,12 @@ export const Header = ({
                 <span className="text-teal-600 dark:text-teal-400 font-black">
                   {isExtrusionWorker
                     ? "압출 작업일보"
+                    : isHanul
+                    ? "한울 외주가공 작업일보"
+                    : isBurimtech
+                    ? "부림텍 작업일보"
                     : (!isManager && !isAdmin
-                      ? "작업일보"
+                      ? "가공동 작업일보"
                       : (currentProfile?.building === "압출동" ? "압출 생산관리" : "생산관리시스템"))}
                 </span>
               </h2>
@@ -109,8 +121,25 @@ export const Header = ({
               </button>
             )}
 
-            {/* General Field Worker Work Report Write Button */}
-            {!isManager && !isAdmin && !isExtrusionWorker && (
+            {/* Hanul Operator Work Report Write Button */}
+            {isHanul && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeTab !== "worker_dashboard" && setActiveTab) {
+                    setActiveTab("worker_dashboard");
+                  }
+                  window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: "9BQC" } }));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
+                title="한울 외주가공 작업일보 작성"
+              >
+                <span>✍️ 일보작성</span>
+              </button>
+            )}
+
+            {/* General Field Worker (Machining / Bulimtech) Work Report Write Button */}
+            {!isManager && !isAdmin && !isExtrusionWorker && !isHanul && (
               <button
                 type="button"
                 onClick={() => {

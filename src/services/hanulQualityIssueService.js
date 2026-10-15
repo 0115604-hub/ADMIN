@@ -246,6 +246,23 @@ export const isHanulWorkerProfile = (profile) => {
   if (profile.name === "황수현" || profile.id === "hal_sh" || profile.id === "sam_sh") {
     return false;
   }
+  // 🌟 압출동, 가공동, 부림텍 작업자는 한울 외주가공에서 완전 배제!
+  if (
+    profile.portalType === "extrusion" ||
+    profile.portalType === "machining" ||
+    profile.portalType === "bulimtech" ||
+    profile.building === "압출동" ||
+    profile.building === "가공동" ||
+    profile.id?.startsWith("ext_") ||
+    profile.id?.startsWith("mach_") ||
+    profile.id?.startsWith("hal_br_") ||
+    profile.company === "부림텍" ||
+    profile.plant === "삼랑진공장"
+  ) {
+    return false;
+  }
+  if (profile.portalType === "hanul") return true;
+
   const name = String(profile.name || "");
   const id = String(profile.id || "");
   const comp = String(profile.company || "");
@@ -258,12 +275,12 @@ export const isHanulWorkerProfile = (profile) => {
     line === "9BQC" ||
     line === "LQ2" ||
     line === "LQ2a" ||
-    [
+    (profile.plant === "한림공장" && [
       "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
       "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
       "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
       "마이카", "알프레도", "아이린", "에릭", "언"
-    ].includes(name)
+    ].includes(name))
   );
 };
 

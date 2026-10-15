@@ -162,23 +162,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isJaeyul = currentProfile?.name === "전재율" || currentProfile?.id === "sam_jy" || currentProfile?.assignedProcess === "설비보전";
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
-  const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출");
+  const isExtrusionWorker =
+    currentProfile?.name === "설유철" ||
+    currentProfile?.id === "sam_yc" ||
+    isExtrusionWorkerProfile(currentProfile);
 
-  const isHanul = Boolean(
-    currentProfile?.name === "한울" ||
-    currentProfile?.company === "한울" ||
-    currentProfile?.company?.includes("한울") ||
-    currentProfile?.id === "hal_hu" ||
-    String(currentProfile?.id || "").startsWith("hal_hu") ||
-    (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) ||
-    workerFullName?.includes("한울") ||
-    currentProfile?.assignedProcess?.includes("한울") ||
-    [
-      "황수현", "박종미", "마이클", "마크", "로렉스", "무피드", "마틴",
-      "박민정", "지라완", "레이놀드", "맥리", "조제인", "새드릭", "니사낫",
-      "수파따", "와히드", "찬티마", "데이브", "위간", "프랭클린", "에일리",
-      "마이카", "알프레도", "아이린", "에릭", "언"
-    ].includes(currentProfile?.name)
+  const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
+
+  const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
+    currentProfile?.portalType === "bulimtech" ||
+    currentProfile?.company === "부림텍" ||
+    currentProfile?.name === "부림텍" ||
+    String(currentProfile?.id || "").startsWith("hal_br_")
   );
 
   const isPartnerProfile = !currentProfile?.isFieldWorker && (
@@ -193,6 +188,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     currentProfile?.building === "압출동" ? "압출" :
     isExtrusionWorker ? "압출" :
     isHanul ? "외주가공 (한울)" :
+    isBurimtech ? "외주가공 (부림텍)" :
     isPartnerProfile ? "외주가공" :
     "가공"
   );
