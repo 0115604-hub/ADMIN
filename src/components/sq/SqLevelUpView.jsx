@@ -362,9 +362,8 @@ export const SqLevelUpView = () => {
                 <th className="py-2.5 px-3 w-28">대/중분류</th>
                 <th className="py-2.5 px-3 min-w-[240px]">추진 세부항목 & 지적사항</th>
                 <th className="py-2.5 px-3 min-w-[280px]">구체적 개선 조치 대책 (Action Plan)</th>
-                <th className="py-2.5 px-3 w-28">주관 / 담당</th>
                 <th className="py-2.5 px-3 w-24">기한</th>
-                <th className="py-2.5 px-3 w-32">앱(App) 해결 모듈</th>
+                <th className="py-2.5 px-3 min-w-[220px]">📱 앱(App) 기준 해결 모듈</th>
                 <th className="py-2.5 px-3 w-24 text-center">조치상태</th>
               </tr>
             </thead>
@@ -427,28 +426,27 @@ export const SqLevelUpView = () => {
                       )}
                     </td>
 
-                    {/* Dept / Owner */}
-                    <td className="py-3 px-3">
-                      <div className="font-bold text-slate-800 dark:text-slate-200">{item.mainDept}</div>
-                      <div className="text-[11px] text-slate-500 font-medium">{item.mainOwner}</div>
-                    </td>
-
                     {/* Target Date */}
-                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
                       {item.targetDate || "2026-10-31"}
                     </td>
 
                     {/* App Module */}
                     <td className="py-3 px-3">
-                      <span className={`px-2 py-1 rounded-lg text-[10px] font-bold inline-block leading-tight ${
-                        item.appSolutionType === "App-Direct"
-                          ? "bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border border-cyan-400/40"
-                          : item.appSolutionType === "App-Assisted"
-                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-400/40"
-                          : "bg-slate-100 text-slate-600 border border-slate-200"
-                      }`}>
-                        {item.appModule}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black inline-block leading-snug shadow-xs ${
+                          item.appSolutionType === "App-Direct"
+                            ? "bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/60 dark:to-blue-950/60 text-cyan-900 dark:text-cyan-200 border border-cyan-400/50"
+                            : item.appSolutionType === "App-Assisted"
+                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-300/50"
+                            : "bg-slate-100 text-slate-700 border border-slate-300"
+                        }`}>
+                          {item.appModule}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold">
+                          {item.appSolutionType === "App-Direct" ? "⚡ 앱 모듈 실시간 자동화" : item.appSolutionType === "App-Assisted" ? "📂 표준 문서 클라우드 연계" : "🔧 현장 물리적 제작"}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Status Dropdown */}
