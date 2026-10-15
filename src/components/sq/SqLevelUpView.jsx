@@ -28,7 +28,9 @@ import {
   subscribeSqLevelUpItems,
   updateSqLevelUpItem,
   calculateSqKPIs,
-  exportSqToExcel
+  exportSqToExcel,
+  getCleanOwnerName,
+  SQ_MANAGERS
 } from "../../services/sqLevelUpService";
 import { DigitalInspectionModal } from "./DigitalInspectionModal";
 import { HanulQualityIssueModal } from "../hanul/HanulQualityIssueModal";
@@ -75,13 +77,13 @@ export const SqLevelUpView = () => {
       // 2. Department Filter
       if (deptFilter !== "ALL" && it.mainDept !== deptFilter) return false;
 
-      // 3. Manager Filter
+      // 3. Manager Filter (이름 일치 비교)
       if (ownerFilter !== "ALL") {
+        const clean = getCleanOwnerName(it.mainOwner);
         if (ownerFilter === "-") {
-          if (it.mainOwner && it.mainOwner !== "-") return false;
+          if (clean !== "-") return false;
         } else {
-          const simpleName = ownerFilter.split(" ")[0];
-          if (!it.mainOwner || !it.mainOwner.includes(simpleName)) return false;
+          if (clean !== ownerFilter) return false;
         }
       }
 
@@ -95,7 +97,8 @@ export const SqLevelUpView = () => {
       // 6. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const text = `${it.seq} ${it.code} ${it.subItem} ${it.problem} ${it.actionPlan} ${it.mainDept} ${it.mainOwner} ${it.appModule}`.toLowerCase();
+        const clean = getCleanOwnerName(it.mainOwner);
+        const text = `${it.seq} ${it.code} ${it.subItem} ${it.problem} ${it.actionPlan} ${it.mainDept} ${clean} ${it.targetDate || ""} ${it.appModule}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
 
@@ -111,12 +114,22 @@ export const SqLevelUpView = () => {
     await updateSqLevelUpItem(seq, { status: newStatus });
   };
 
-  // Handle Manager Assignment Change
+  // Handle Manager Assignment Change (이름만 정규화하여 저장)
   const handleOwnerChange = async (seq, newOwner) => {
+    const clean = getCleanOwnerName(newOwner);
     setItems((prev) =>
-      prev.map((it) => (it.seq === seq ? { ...it, mainOwner: newOwner } : it))
+      prev.map((it) => (it.seq === seq ? { ...it, mainOwner: clean } : it))
     );
-    await updateSqLevelUpItem(seq, { mainOwner: newOwner });
+    await updateSqLevelUpItem(seq, { mainOwner: clean });
+  };
+
+  // Handle Target Completion Date Change (완료예정일자 저장)
+  const handleTargetDateChange = async (seq, newDate) => {
+    const val = newDate ? String(newDate).trim() : "-";
+    setItems((prev) =>
+      prev.map((it) => (it.seq === seq ? { ...it, targetDate: val } : it))
+    );
+    await updateSqLevelUpItem(seq, { targetDate: val });
   };
 
   return (
@@ -310,37 +323,21 @@ export const SqLevelUpView = () => {
             </select>
           </div>
 
-          {/* Manager Filter */}
+          {/* Manager Filter (이름만 표시) */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 shrink-0">담당자:</span>
+            <span className="text-xs font-bold text-slate-500 shrink-0">관리자:</span>
             <select
               value={ownerFilter}
               onChange={(e) => setOwnerFilter(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 truncate cursor-pointer"
             >
-              <option value="ALL">전체 담당자</option>
-              <option value="-">미지정</option>
-              <optgroup label="본사">
-                <option value="권태형">권태형 대표이사</option>
-                <option value="최미영">최미영 전무</option>
-              </optgroup>
-              <optgroup label="삼랑진공장">
-                <option value="이명재">이명재 이사</option>
-                <option value="이창엽">이창엽 책임</option>
-                <option value="설유철">설유철 책임</option>
-                <option value="윤경수">윤경수 책임</option>
-                <option value="전재율">전재율 책임</option>
-                <option value="조인주">조인주 선임</option>
-                <option value="양인나">양인나 선임</option>
-                <option value="유동길">유동길 선임</option>
-                <option value="공영국">공영국 대리</option>
-                <option value="이상기">이상기 기사</option>
-              </optgroup>
-              <optgroup label="한림공장">
-                <option value="김동욱">김동욱 책임</option>
-                <option value="오상민">오상민 선임</option>
-                <option value="정현규">정현규 사원</option>
-              </optgroup>
+              <option value="ALL">전체 관리자</option>
+              <option value="-">미지정 (-)</option>
+              {SQ_MANAGERS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -409,10 +406,11 @@ export const SqLevelUpView = () => {
               <tr className="bg-slate-100/70 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                 <th className="py-2.5 px-3 w-12 text-center">No</th>
                 <th className="py-2.5 px-3 w-28">대/중분류</th>
-                <th className="py-2.5 px-3 min-w-[240px]">추진 세부항목 & 지적사항</th>
-                <th className="py-2.5 px-3 min-w-[280px]">구체적 개선 조치 대책 (Action Plan)</th>
-                <th className="py-2.5 px-3 w-44 min-w-[160px]">담당 관리자</th>
-                <th className="py-2.5 px-3 min-w-[220px]">📱 앱(App) 기준 해결 모듈</th>
+                <th className="py-2.5 px-3 min-w-[220px]">추진 세부항목 & 지적사항</th>
+                <th className="py-2.5 px-3 min-w-[250px]">구체적 개선 조치 대책 (Action Plan)</th>
+                <th className="py-2.5 px-2.5 w-28 min-w-[110px] text-center">관리자</th>
+                <th className="py-2.5 px-2.5 w-36 min-w-[140px] text-center">완료예정일자</th>
+                <th className="py-2.5 px-3 min-w-[200px]">📱 앱(App) 기준 해결 모듈</th>
                 <th className="py-2.5 px-3 w-24 text-center">조치상태</th>
               </tr>
             </thead>
@@ -460,61 +458,68 @@ export const SqLevelUpView = () => {
                       )}
                     </td>
 
-                    {/* Assigned Manager Dropdown */}
-                    <td className="py-3 px-3">
-                      <select
-                        value={item.mainOwner || "-"}
-                        onChange={(e) => handleOwnerChange(item.seq, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer truncate"
-                      >
-                        <option value="-">선택 (미지정)</option>
-                        <optgroup label="본사">
-                          <option value="권태형 대표이사">권태형 대표이사</option>
-                          <option value="최미영 전무">최미영 전무</option>
-                        </optgroup>
-                        <optgroup label="삼랑진공장">
-                          <option value="이명재 이사">이명재 이사 (총괄)</option>
-                          <option value="이창엽 책임">이창엽 책임 (품질)</option>
-                          <option value="설유철 책임">설유철 책임 (압출)</option>
-                          <option value="윤경수 책임">윤경수 책임 (가공)</option>
-                          <option value="전재율 책임">전재율 책임 (설비보전)</option>
-                          <option value="조인주 선임">조인주 선임 (관리/근태)</option>
-                          <option value="양인나 선임">양인나 선임 (가공)</option>
-                          <option value="유동길 선임">유동길 선임 (가공)</option>
-                          <option value="공영국 대리">공영국 대리 (압출)</option>
-                          <option value="이상기 기사">이상기 기사 (품질)</option>
-                          {item.mainOwner === "이상기 사원" && (
-                            <option value="이상기 사원">이상기 사원 (품질)</option>
+                    {/* Assigned Manager Dropdown (이름만 표시) */}
+                    <td className="py-3 px-2 text-center">
+                      {(() => {
+                        const cleanOwner = getCleanOwnerName(item.mainOwner);
+                        return (
+                          <select
+                            value={cleanOwner}
+                            onChange={(e) => handleOwnerChange(item.seq, e.target.value)}
+                            className="w-full max-w-[105px] px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer text-center truncate"
+                            title="관리자 선택"
+                          >
+                            <option value="-">미지정</option>
+                            {SQ_MANAGERS.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                            {cleanOwner !== "-" && !SQ_MANAGERS.includes(cleanOwner) && (
+                              <option value={cleanOwner}>{cleanOwner}</option>
+                            )}
+                          </select>
+                        );
+                      })()}
+                    </td>
+
+                    {/* Target Completion Date (완료예정일자 선택) */}
+                    <td className="py-3 px-2 text-center">
+                      <div className="flex flex-col items-center justify-center gap-0.5">
+                        <div className="flex items-center justify-center gap-1 w-full">
+                          <input
+                            type="date"
+                            value={item.targetDate && item.targetDate !== "-" ? item.targetDate : ""}
+                            onChange={(e) => handleTargetDateChange(item.seq, e.target.value)}
+                            className="w-full max-w-[125px] px-1.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-hidden transition-all cursor-pointer font-mono text-center"
+                            title="완료예정일자 선택"
+                          />
+                          {item.targetDate && item.targetDate !== "-" && (
+                            <button
+                              type="button"
+                              onClick={() => handleTargetDateChange(item.seq, "-")}
+                              title="일자 초기화"
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] shrink-0 cursor-pointer"
+                            >
+                              ✕
+                            </button>
                           )}
-                        </optgroup>
-                        <optgroup label="한림공장">
-                          <option value="김동욱 책임">김동욱 책임 (총괄)</option>
-                          <option value="오상민 선임">오상민 선임 (가공)</option>
-                          <option value="정현규 사원">정현규 사원 (가공)</option>
-                        </optgroup>
-                        {item.mainOwner &&
-                          item.mainOwner !== "-" &&
-                          ![
-                            "권태형 대표이사",
-                            "최미영 전무",
-                            "이명재 이사",
-                            "이창엽 책임",
-                            "설유철 책임",
-                            "윤경수 책임",
-                            "전재율 책임",
-                            "조인주 선임",
-                            "양인나 선임",
-                            "유동길 선임",
-                            "공영국 대리",
-                            "이상기 기사",
-                            "이상기 사원",
-                            "김동욱 책임",
-                            "오상민 선임",
-                            "정현규 사원"
-                          ].includes(item.mainOwner) && (
-                            <option value={item.mainOwner}>{item.mainOwner}</option>
-                          )}
-                      </select>
+                        </div>
+                        {(() => {
+                          if (!item.targetDate || item.targetDate === "-" || item.status === "CLOSE" || item.status === "조치완료" || item.status === "해당없음") {
+                            return null;
+                          }
+                          const today = new Date().toISOString().slice(0, 10);
+                          if (item.targetDate < today) {
+                            return <span className="text-[10px] font-black text-rose-500">기한초과</span>;
+                          }
+                          if (item.targetDate === today) {
+                            return <span className="text-[10px] font-black text-amber-500 animate-pulse">D-Day</span>;
+                          }
+                          const diffDays = Math.ceil((new Date(item.targetDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                          return <span className="text-[10px] font-bold text-slate-400">D-{diffDays}</span>;
+                        })()}
+                      </div>
                     </td>
 
                     {/* App Module */}

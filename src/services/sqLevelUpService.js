@@ -6,6 +6,31 @@ import { SQ_LEVEL_UP_METADATA, SQ_LEVEL_UP_ITEMS } from "../data/sqLevelUpMaster
 const COLLECTION_NAME = "sq_level_up_items";
 const LOCAL_STORAGE_KEY = "oryuk_sq_level_up_items_v1";
 
+export const SQ_MANAGERS = [
+  "권태형",
+  "최미영",
+  "이명재",
+  "이창엽",
+  "설유철",
+  "윤경수",
+  "전재율",
+  "조인주",
+  "양인나",
+  "유동길",
+  "공영국",
+  "이상기",
+  "김동욱",
+  "오상민",
+  "정현규"
+];
+
+export const getCleanOwnerName = (owner) => {
+  if (!owner || owner === "-" || owner === "미지정") return "-";
+  const trimmed = String(owner).trim();
+  const name = trimmed.split(/[\s(/]/)[0];
+  return name || "-";
+};
+
 // 1. Get Initial / Local Items
 export const getLocalSqLevelUpItems = () => {
   try {
@@ -215,8 +240,8 @@ export const exportSqToExcel = (items) => {
       it.problem,
       it.actionPlan,
       it.mainDept,
-      it.mainOwner,
-      it.targetDate,
+      getCleanOwnerName(it.mainOwner),
+      it.targetDate || "-",
       it.status,
       it.appModule,
       it.appSolutionType,
