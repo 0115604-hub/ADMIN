@@ -22,6 +22,7 @@ const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
 const IncidentLogsView = lazy(() => import("./components/IncidentLogsView").then(m => ({ default: m.IncidentLogsView || m.default })));
 const SqLevelUpView = lazy(() => import("./components/sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
+import { SqStatusBannerCard } from "./components/sq/SqStatusBannerCard";
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
 const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
 
@@ -438,37 +439,10 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ Live 모니터링 및 진행현황 1줄 패널 (Admin 및 현장 작업자 제외) */}
-        {!isAdmin && !isFieldWorkerProfile && (
+        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ 진행상황 현황표 배너/카드 */}
+        {!isFieldWorkerProfile && activeTab !== "sq_level_up" && (
           <div className="px-2 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab("sq_level_up")}
-              className={`w-full py-2 px-3 sm:px-4 rounded-xl text-left transition-all group flex items-center justify-between shadow-xs active:scale-[0.99] cursor-pointer border ${
-                activeTab === "sq_level_up"
-                  ? "bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white border-blue-400 ring-2 ring-blue-500/30"
-                  : "bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 hover:from-slate-800 hover:to-indigo-900 text-white border-indigo-500/30"
-              }`}
-              title="SQ 진행상황 현황표 열기"
-            >
-              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-                </span>
-                <span className="text-xs sm:text-sm font-black text-white group-hover:text-cyan-300 truncate tracking-tight">
-                  🎯 SQ 진행상황 현황표
-                </span>
-                <span className="hidden md:inline-block text-[11px] text-indigo-200/80 font-medium truncate">
-                  • D-Day 2026.10.31 • S등급 59건 / A등급 61건 • 앱 해결률 96.8%
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-500 text-white shadow-xs">
-                  {activeTab === "sq_level_up" ? "현재 화면" : "현황표 ➔"}
-                </span>
-              </div>
-            </button>
+            <SqStatusBannerCard onOpenSqModal={() => setActiveTab("sq_level_up")} />
           </div>
         )}
 
