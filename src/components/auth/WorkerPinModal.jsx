@@ -63,11 +63,7 @@ import {
 import {
   subscribeSmartOvertimeData,
   getLocalSmartOvertimeData,
-  calculateDailySummary,
-  COMPANIES,
-  cleanCompanyName,
-  buildMatrixFromReports,
-  getReportDateSortKey
+  cleanCompanyName
 } from "../../services/overtimeSmartService";
 import {
   subscribeOvertimeReports,
@@ -497,17 +493,7 @@ export const WorkerPinModal = ({
     );
   }, [selectedUser]);
 
-  // 협력업체 대표 = 해당 업체만 / 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
-  const visibleAttendanceCompanies = useMemo(() => {
-    if (!selectedUser) return ["오륙", "유성", "조영", "한울", "부림텍"];
-    if (selectedUser.company === "유성" || selectedUser.name === "유성") return ["유성"];
-    if (selectedUser.company === "조영" || selectedUser.name === "조영") return ["조영"];
-    if (selectedUser.company === "한울" || selectedUser.name === "한울") return ["한울"];
-    if (selectedUser.company === "부림텍" || selectedUser.name === "부림텍") return ["부림텍"];
-    if (isSamrangjinManager) return ["오륙", "유성"];
-    if (isHallimManager) return ["조영", "한울", "부림텍"];
-    return ["오륙", "유성", "조영", "한울", "부림텍"];
-  }, [selectedUser, isSamrangjinManager, isHallimManager]);
+
 
   const isProcessingWorker = useMemo(() => {
     if (!selectedUser) return false;
@@ -1272,47 +1258,7 @@ export const WorkerPinModal = ({
     };
   }, []);
 
-  // 🔒 Direct Authoritative Matrix: Use official ledger without report re-synthesis
-  const unifiedPinMatrix = useMemo(() => {
-    return smartOvertimeData?.attendanceMatrix || [];
-  }, [smartOvertimeData]);
 
-  const dailyOvertimeSummary = useMemo(() => {
-    if (!unifiedPinMatrix || unifiedPinMatrix.length === 0) return null;
-    return calculateDailySummary(unifiedPinMatrix, todayDayNum, todayYear, todayMonth);
-  }, [unifiedPinMatrix, todayDayNum, todayYear, todayMonth]);
-
-  const unwrittenCompanies = useMemo(() => {
-    const matrix = unifiedPinMatrix || [];
-    const todayStr = `${todayYear}-${String(todayMonth).padStart(2, "0")}-${String(todayDayNum).padStart(2, "0")}`;
-    return COMPANIES.filter((comp) => {
-      const cleanCompName = cleanCompanyName(comp);
-      // 1. 등록된 일일 보고서 존재 여부 확인
-      const hasDirectReport = (overtimeReports || []).some((r) => {
-        if (!r) return false;
-        const rDateKey = getReportDateSortKey(r);
-        if (rDateKey !== todayStr) return false;
-        const rComp = cleanCompanyName(r.company || "");
-        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
-          return rComp === cleanCompName;
-        }
-        if (Array.isArray(r.companies) && r.companies.length > 0) {
-          return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
-        }
-        return false;
-      });
-      // 🔒 [단일 진실의 원천 원칙] 원장에 등록된 작업원(compWorkers)이 존재하는 협력사는
-      // 당일 근태 대장에 실제 입력(enteredCount > 0)되어야만 작성완료(unwritten = false)입니다.
-      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
-      if (compWorkers.length === 0) return !hasDirectReport;
-      const enteredCount = compWorkers.filter((w) => {
-        const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
-        const str = String(v ?? "").trim();
-        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
-      }).length;
-      return enteredCount === 0;
-    });
-  }, [unifiedPinMatrix, overtimeReports, todayYear, todayMonth, todayDayNum]);
 
   // 당일 근태
   const leaveStatus = useMemo(() => {
@@ -2193,62 +2139,6 @@ export const WorkerPinModal = ({
                             등록된 변동점이 없습니다.
                           </div>
                         )}
-                      </div>
-
-                      {/* 3. 실시간 근태정보 (공장별 필터: 삼랑진=오륙·유성 / 한림=조영·한울·부림텍 / 본사=전사) */}
-                      <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
-                              <Users className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                👥 실시간 근태현황정보
-                              </span>
-                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                {isCompanyRepresentative
-                                  ? `${selectedUser.company || selectedUser.name} 실시간 근태 현황`
-                                  : isSamrangjinManager
-                                  ? "오륙 • 유성 (삼랑진공장)"
-                                  : isHallimManager
-                                  ? "조영 • 한울 • 부림텍 (한림공장)"
-                                  : "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200">
-                            당일 {todayDayNum}일 기준
-                          </span>
-                        </div>
-
-                        <div className={`grid gap-1.5 text-[10px] ${
-                          visibleAttendanceCompanies.length === 1 ? "grid-cols-1" :
-                          visibleAttendanceCompanies.length === 2 ? "grid-cols-2" :
-                          visibleAttendanceCompanies.length === 3 ? "grid-cols-3" :
-                          "grid-cols-5"
-                        }`}>
-                          {visibleAttendanceCompanies.map((comp) => {
-                            const b = dailyOvertimeSummary?.companyBreakdown?.[comp] || { attended: 0, total: 0, otWorkers: 0 };
-                            const isUn = unwrittenCompanies.includes(comp);
-                            return (
-                              <div key={comp} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-0.5 shadow-2xs">
-                                <span className="font-black text-slate-800 dark:text-slate-200 block truncate text-[11px]">{comp}</span>
-                                <span className="font-bold text-slate-900 dark:text-white block text-xs">{b.attended}/{b.total}명</span>
-                                <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block">잔업 {b.otWorkers}명</span>
-                                {isUn ? (
-                                  <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block">작성전</span>
-                                ) : (
-                                  <span className="text-[9.5px] text-emerald-500 font-black flex items-center justify-center gap-0.5">
-                                    <span>✅</span>
-                                    <span>완료</span>
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
                       </div>
                     </div>
                   )}
