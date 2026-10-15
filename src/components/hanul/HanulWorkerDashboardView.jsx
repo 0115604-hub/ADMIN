@@ -62,7 +62,7 @@ export const HanulWorkerDashboardView = () => {
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || currentProfile?.position || (
-    currentProfile?.name === "박종미" ? "반장" : (isManager ? "반장" : "작업원")
+    currentProfile?.name === "박종미" ? "반장" : (isManager ? "반장" : "사원")
   );
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);

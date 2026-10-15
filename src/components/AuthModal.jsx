@@ -647,7 +647,7 @@ export const AuthModal = () => {
         setErrorMsg(err.message || "로그인 처리 중 오류가 발생했습니다.");
       }
     } else {
-      setErrorMsg(selectedUser.role === "ADMIN" ? "관리자 PIN 번호(0090)가 일치하지 않습니다." : "PIN 번호가 일치하지 않습니다. (공장 PIN: 11)");
+      setErrorMsg(selectedUser.role === "ADMIN" ? "관리자 PIN 번호가 일치하지 않습니다." : "PIN 번호가 일치하지 않습니다.");
     }
     setLoading(false);
   };
@@ -1825,7 +1825,7 @@ export const AuthModal = () => {
                     삼랑진공장 압출동 작업자 (11명)
                   </h3>
                   <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
-                    비밀번호: 11 • 안전·품질 확인 후 압출 생산관리 입장
+                    안전·품질 확인 후 압출 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -1917,7 +1917,7 @@ export const AuthModal = () => {
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    비밀번호: 11 • 안전·품질 확인 후 가공 생산관리 입장
+                    안전·품질 확인 후 가공 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -1946,8 +1946,8 @@ export const AuthModal = () => {
                       handleUserClick({
                         id: `mach_${worker.no || idx}`,
                         name: worker.name,
-                        title: worker.position || "작업원",
-                        position: worker.position || "작업원",
+                        title: worker.position || "사원",
+                        position: worker.position || "사원",
                         dept: worker.dept || "가공동",
                         building: "가공동",
                         plant: "삼랑진공장",
@@ -2000,7 +2000,7 @@ export const AuthModal = () => {
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                    비밀번호: 11 • 안전·품질 확인 후 한울 외주가공 및 생산관리 입장
+                    안전·품질 확인 후 한울 외주가공 및 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -2032,8 +2032,8 @@ export const AuthModal = () => {
                           ...hanulUser,
                           id: `hal_hu_${worker.no || idx}`,
                           name: worker.name,
-                          title: worker.position || "작업원",
-                          position: worker.position || "작업원",
+                          title: worker.position || "사원",
+                          position: worker.position || "사원",
                           line: worker.line,
                           assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
                           plant: "한림공장",
@@ -2096,7 +2096,7 @@ export const AuthModal = () => {
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                    비밀번호: 11 • 안전·품질 확인 후 부림텍 외주가공 및 생산관리 입장
+                    안전·품질 확인 후 부림텍 외주가공 및 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -2118,7 +2118,7 @@ export const AuthModal = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {bulimtechWorkers.map((worker, idx) => {
                   const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "최현영";
-                  const displayPos = worker.name === "최현영" ? "반장" : (worker.position || "작업원");
+                  const displayPos = worker.name === "최현영" ? "반장" : (worker.position || "사원");
                   return (
                     <button
                       key={worker.no || idx}

@@ -138,7 +138,7 @@ export const saveHanulQualityIssue = async (issueData) => {
     causeImages: causeImgs,
     actionImages: actionImgs,
     author: issueData.author || "한울",
-    authorTitle: issueData.authorTitle || "작업원",
+    authorTitle: issueData.authorTitle || "사원",
     status: issueData.status || "ACTIVE", // ACTIVE | RESOLVED
     date: issueData.date || todayStr,
     createdAt: issueData.createdAt || nowKst,

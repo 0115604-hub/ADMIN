@@ -1351,7 +1351,7 @@ export const WorkerPinModal = ({
                       ? selectedUser.name === "공영국"
                         ? "대리"
                         : "반장"
-                      : "작업원")}
+                      : "사원")}
                 </h3>
                 <span
                   className={`text-[11px] font-black px-2.5 py-0.5 rounded-full ${
@@ -1383,24 +1383,24 @@ export const WorkerPinModal = ({
                     : isCompanyRepresentative
                     ? `협력업체 (${selectedUser.name} 대표이사)`
                     : isExtrusionWorker
-                    ? `삼랑진공장 압출동 (${selectedUser.title || (selectedUser.name === "공영국" ? "대리" : isWorkerManager ? "반장" : "작업원")})`
+                    ? `삼랑진공장 압출동 (${selectedUser.title || (selectedUser.name === "공영국" ? "대리" : isWorkerManager ? "반장" : "사원")})`
                     : isHanul
-                    ? `한림공장 한울 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
+                    ? `한림공장 한울 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
                     : isBurimtech
-                    ? `한림공장 부림텍 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
+                    ? `한림공장 부림텍 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
                     : isMachiningWorker
-                    ? `삼랑진공장 가공동 (${selectedUser.title || (isWorkerManager ? "반장" : "작업원")})`
+                    ? `삼랑진공장 가공동 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
                     : isFieldWorker
                     ? isWorkerManager
                       ? `[현장관리자] ${
                           selectedUser.title || (selectedUser.name === "공영국" ? "대리" : "반장")
                         }`
-                      : "일반작업자"
+                      : "사원"
                     : isSamrangjinManager
                     ? "삼랑진공장 관리자"
                     : isHallimManager
                     ? "한림공장 관리자"
-                    : "일반작업자"}
+                    : "사원"}
                 </span>
 
                 {/* PIN Input Badge */}
@@ -1425,7 +1425,7 @@ export const WorkerPinModal = ({
                       type="password"
                       inputMode="numeric"
                       maxLength={4}
-                      placeholder={isHeadquarterAdmin ? "0090" : "11"}
+                      placeholder="••••"
                       value={pinInput}
                       onChange={handlePinChange}
                       className="w-14 sm:w-16 bg-transparent text-xs sm:text-sm font-black text-center tracking-widest text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
@@ -1470,9 +1470,9 @@ export const WorkerPinModal = ({
 
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
-                    {selectedUser.name} {selectedUser.title || ""}님, <br className="hidden sm:inline" />
+                    {selectedUser.name} {selectedUser.title || "사원"}님, <br className="hidden sm:inline" />
                     {isFieldWorker
-                      ? "안전·품질 확인을 위해 비밀번호(11)를 입력해 주세요."
+                      ? "안전·품질 확인을 위해 비밀번호(PIN)를 입력해 주세요."
                       : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">

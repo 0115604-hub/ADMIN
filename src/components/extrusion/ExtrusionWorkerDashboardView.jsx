@@ -49,7 +49,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
     currentProfile?.name === "공영국" ? "대리" :
     ["심임대", "이상은"].includes(currentProfile?.name) ? "반장" :
     currentProfile?.name === "설유철" ? "책임" :
-    (isManager ? "반장" : "작업원")
+    (isManager ? "반장" : "사원")
   );
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);

@@ -157,7 +157,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     currentProfile?.name === "공영국" ? "대리" :
     ["심임대", "이상은", "박종미", "최현영"].includes(currentProfile?.name) ? "반장" :
     currentProfile?.name === "설유철" ? "책임" :
-    (isManagerRole ? "반장" : "작업원")
+    (isManagerRole ? "반장" : "사원")
   );
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isJaeyul = currentProfile?.name === "전재율" || currentProfile?.id === "sam_jy" || currentProfile?.assignedProcess === "설비보전";
@@ -251,7 +251,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     : (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : (workerCard?.dept || "생산팀"));
   const workerPosition = isPartnerProfile
     ? "대표이사"
-    : (officialTitle || workerCard?.position || "작업원");
+    : (officialTitle || workerCard?.position || "사원");
   const isManagerOrAdmin = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusionWorkerOnly = isExtrusionWorkerProfile(currentProfile);
 

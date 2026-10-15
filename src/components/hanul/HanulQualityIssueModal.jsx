@@ -208,7 +208,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     setIsProcessing(true);
     try {
       const authorName = currentProfile?.name || "한울";
-      const authorTitle = currentProfile?.title || "작업원";
+      const authorTitle = currentProfile?.title || "사원";
 
       const payload = {
         ...form,
@@ -693,7 +693,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 <span className="text-[11px] text-slate-500 font-bold flex items-center gap-1">
                   <User className="w-3.5 h-3.5 text-purple-600" />
                   <span>
-                    등록자: <strong>{currentProfile?.name || "한울"} {currentProfile?.title || "작업원"}</strong>
+                    등록자: <strong>{currentProfile?.name || "한울"} {currentProfile?.title || "사원"}</strong>
                   </span>
                 </span>
 

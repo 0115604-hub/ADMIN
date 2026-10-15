@@ -129,7 +129,7 @@ export const WorkerScheduleCalendarSection = ({
                 </button>
 
                 <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                  {officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "작업원"))}
+                  {officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "사원"))}
                 </span>
               </div>
             </div>

@@ -244,7 +244,7 @@ export const isWorkerManagerRole = (userOrProfile, personnelCardsMap = null) => 
  */
 export const getWorkerDisplayRoleMeta = (userOrProfile, personnelCardsMap = null) => {
   if (!userOrProfile) {
-    return { isManager: false, roleBadgeText: "일반작업자", officialTitle: "작업원" };
+    return { isManager: false, roleBadgeText: "사원", officialTitle: "사원" };
   }
 
   const isManager = isWorkerManagerRole(userOrProfile, personnelCardsMap);
@@ -261,7 +261,7 @@ export const getWorkerDisplayRoleMeta = (userOrProfile, personnelCardsMap = null
 
   const explicitPosition = card?.position || userOrProfile.position || userOrProfile.title;
 
-  let officialTitle = "작업원";
+  let officialTitle = "사원";
   if (explicitPosition) {
     officialTitle = explicitPosition;
   } else if (name === "공영국") {
@@ -273,10 +273,10 @@ export const getWorkerDisplayRoleMeta = (userOrProfile, personnelCardsMap = null
   } else if (isManager) {
     officialTitle = "반장";
   } else {
-    officialTitle = "작업원";
+    officialTitle = "사원";
   }
 
-  const roleBadgeText = isManager ? `[현장관리자] ${officialTitle}` : "일반작업자";
+  const roleBadgeText = isManager ? `[현장관리자] ${officialTitle}` : "사원";
 
   return { isManager, roleBadgeText, officialTitle };
 };
