@@ -26,7 +26,9 @@ import {
   deleteRubberLedgerEntry,
   parseRubberBarcode,
   playBeepSound,
-  calculateRubberStockSummary
+  calculateRubberStockSummary,
+  purgeDummyRubberData,
+  clearAllRubberLedger
 } from "../services/rubberLedgerService";
 
 export const RubberInventoryPanel = () => {
@@ -65,8 +67,10 @@ export const RubberInventoryPanel = () => {
   const [attachedPhoto, setAttachedPhoto] = useState(null); // { url, name, detectedBarcode }
   const [viewPhotoModal, setViewPhotoModal] = useState(null);
 
-  // Firestore & LocalStorage 실시간 구독
+  // Firestore & LocalStorage 실시간 구독 (마운트 시 더미 데이터 완전 정화)
   useEffect(() => {
+    purgeDummyRubberData().catch(() => {});
+
     const unsub = subscribeRubberLedger((data) => {
       setLedgerEntries(data);
       setLoading(false);
@@ -117,6 +121,12 @@ export const RubberInventoryPanel = () => {
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      alert("이미지 파일(JPG, PNG 등)만 첨부할 수 있습니다.");
+      e.target.value = "";
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -248,6 +258,26 @@ export const RubberInventoryPanel = () => {
     }
   };
 
+  // 대장 전체 초기화 및 더미 데이터 완전 삭제
+  const handleClearAll = async () => {
+    if (ledgerEntries.length === 0) {
+      showToast("정리할 내역이 없습니다.");
+      return;
+    }
+    if (
+      window.confirm(
+        "⚠️ 주의: 현재 등록된 모든 연고무 입출고 내역과 테스트 데이터를 완전히 삭제하시겠습니까?\n(삭제 후 복구할 수 없습니다.)"
+      )
+    ) {
+      try {
+        await clearAllRubberLedger();
+        showToast("모든 데이터가 완전히 정리 및 초기화되었습니다.");
+      } catch (err) {
+        alert("데이터 정리 중 오류가 발생했습니다: " + err.message);
+      }
+    }
+  };
+
   // 카메라 바코드 스캐너 실행
   useEffect(() => {
     let stream = null;
@@ -298,6 +328,9 @@ export const RubberInventoryPanel = () => {
       if (scanInterval) clearInterval(scanInterval);
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [cameraModalOpen]);
@@ -434,6 +467,15 @@ export const RubberInventoryPanel = () => {
           >
             <Printer className="w-4 h-4 text-slate-500" />
             대장 인쇄
+          </button>
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900"
+            title="등록된 테스트 데이터 및 더미 내역 전체 정리"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            데이터 정리
           </button>
         </div>
       </div>

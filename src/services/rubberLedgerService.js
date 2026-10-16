@@ -12,71 +12,53 @@ import { db } from "../firebase";
 const STORAGE_KEY = "mfg_rubber_ledger_v1";
 const COLL_NAME = "rubber_ledger";
 
-// 초기 샘플 데이터 (초기 상태용)
-const DEFAULT_INITIAL_DATA = [
-  {
-    id: "RL-1728956000000-101",
-    type: "IN",
-    rawBarcode: "FFW26A14W60712$2+02",
-    itemCode: "FFW",
-    lotDate: "26A14",
-    lotFormatted: "2026-10-14",
-    shift: "주간(White)",
-    lineNo: "압출라인",
-    cavity: "02 (순번/캐비티)",
-    qty: 120.5,
-    unit: "kg",
-    process: "원자재 1창고 (입고 보관)",
-    workerName: "설유설 책임",
-    notes: "초기 입고 검사 완료",
-    date: new Date().toISOString().slice(0, 10),
-    createdAt: `${new Date().toISOString().slice(0, 10)} 09:30:00`
-  },
-  {
-    id: "RL-1728956100000-102",
-    type: "IN",
-    rawBarcode: "FFW26A14W60593$W301",
-    itemCode: "FFW",
-    lotDate: "26A14",
-    lotFormatted: "2026-10-14",
-    shift: "주간(White)",
-    lineNo: "압출라인",
-    cavity: "01 (순번/캐비티)",
-    qty: 85.0,
-    unit: "kg",
-    process: "원자재 1창고 (입고 보관)",
-    workerName: "설유설 책임",
-    notes: "스폰지 연고무 입고",
-    date: new Date().toISOString().slice(0, 10),
-    createdAt: `${new Date().toISOString().slice(0, 10)} 10:15:00`
-  },
-  {
-    id: "RL-1728956200000-103",
-    type: "OUT",
-    rawBarcode: "FFW26A14W60712$2+02",
-    itemCode: "FFW",
-    lotDate: "26A14",
-    lotFormatted: "2026-10-14",
-    shift: "주간(White)",
-    lineNo: "6호기",
-    cavity: "02 (순번/캐비티)",
-    qty: 45.0,
-    unit: "kg",
-    process: "압출 6호기 (투입)",
-    workerName: "설유설 책임",
-    notes: "생산 긴급 투입",
-    date: new Date().toISOString().slice(0, 10),
-    createdAt: `${new Date().toISOString().slice(0, 10)} 11:00:00`
-  }
-];
+// 초기 기본 데이터는 완전히 빈 배열로 유지 (더미 데이터 배제)
+const DEFAULT_INITIAL_DATA = [];
 
-// 로컬 저장소에서 데이터 읽기
+/**
+ * 더미 데이터 및 유효하지 않은 항목 판별 함수
+ */
+export function isDummyRubberEntry(item) {
+  if (!item || typeof item !== "object") return true;
+  const id = String(item.id || "");
+  const raw = String(item.rawBarcode || "");
+  const notes = String(item.notes || "");
+
+  // 1. 레거시 시드 ID 또는 더미 식별자
+  if (
+    id.startsWith("RL-1728956") || // 초기 개발 시드 더미 ID
+    id.includes("dummy") ||
+    id.includes("mock") ||
+    id.includes("seed") ||
+    item.isDummy === true
+  ) {
+    return true;
+  }
+
+  // 2. 초기 샘플 데이터로 등록되었던 특정 바코드 & 비고 매칭
+  if (
+    (raw === "FFW26A14W60712$2+02" && (notes.includes("초기 입고 검사") || notes.includes("생산 긴급 투입"))) ||
+    (raw === "FFW26A14W60593$W301" && notes.includes("스폰지 연고무 입고"))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+// 로컬 저장소에서 데이터 읽기 (더미 데이터 자동 필터링 및 로컬스토리지 정리)
 export function getLocalRubberLedger() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        const cleanList = parsed.filter((item) => item && !isDummyRubberEntry(item));
+        if (cleanList.length !== parsed.length && typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
+        }
+        return cleanList;
+      }
     }
   } catch (e) {
     console.warn("Failed to read local rubber ledger:", e);
@@ -84,10 +66,15 @@ export function getLocalRubberLedger() {
   return DEFAULT_INITIAL_DATA;
 }
 
-// 로컬 저장소에 데이터 저장
+// 로컬 저장소에 데이터 저장 (더미 데이터 유입 차단)
 export function saveLocalRubberLedger(list) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    if (typeof window !== "undefined") {
+      const cleanList = Array.isArray(list)
+        ? list.filter((item) => item && !isDummyRubberEntry(item))
+        : [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
+    }
   } catch (e) {
     console.warn("Failed to save local rubber ledger:", e);
   }
@@ -193,10 +180,12 @@ export function playBeepSound(type = "success") {
   }
 }
 
-// 실시간 Firestore 구독 & 로컬 스토리지 동기화
+// 실시간 Firestore 구독 & 로컬 스토리지 동기화 (더미 배제 및 Firestore 우선 동기화)
 export function subscribeRubberLedger(callback) {
   let isUnsubscribed = false;
-  let localData = getLocalRubberLedger();
+
+  // 1. 로컬 캐시 초기 데이터 전달 (더미 제거 상태)
+  const localData = getLocalRubberLedger();
   callback(localData);
 
   try {
@@ -207,29 +196,30 @@ export function subscribeRubberLedger(callback) {
       rubberCol,
       (snapshot) => {
         if (isUnsubscribed) return;
-        const fbList = [];
+
+        const cleanFbList = [];
         snapshot.forEach((docSnap) => {
-          fbList.push({ id: docSnap.id, ...docSnap.data() });
+          const item = { id: docSnap.id, ...docSnap.data() };
+
+          if (isDummyRubberEntry(item)) {
+            // Firestore에 남아있는 더미/시드 문서는 영구 삭제
+            deleteDoc(doc(db, COLL_NAME, docSnap.id)).catch(() => {});
+          } else {
+            cleanFbList.push(item);
+          }
         });
 
-        if (fbList.length > 0) {
-          const map = new Map();
-          fbList.forEach((item) => map.set(item.id, item));
-          localData.forEach((localItem) => {
-            if (!map.has(localItem.id)) map.set(localItem.id, localItem);
-          });
-          const merged = Array.from(map.values()).sort((a, b) =>
-            (b.createdAt || "").localeCompare(a.createdAt || "")
-          );
-          saveLocalRubberLedger(merged);
-          callback(merged);
-        } else {
-          callback(localData);
-        }
+        // 최신 등록 순 정렬
+        const sorted = cleanFbList.sort((a, b) =>
+          (b.createdAt || "").localeCompare(a.createdAt || "")
+        );
+
+        saveLocalRubberLedger(sorted);
+        callback(sorted);
       },
       (error) => {
         console.warn("Firestore rubber ledger onSnapshot error (using local cache):", error);
-        callback(localData);
+        callback(getLocalRubberLedger());
       }
     );
 
@@ -285,7 +275,64 @@ export async function deleteRubberLedgerEntry(id) {
   }
 }
 
-// 통계 요약 계산 함수
+/**
+ * 기존 더미/샘플 데이터 완전 영구 삭제 (LocalStorage & Firestore)
+ */
+export async function purgeDummyRubberData() {
+  // 1. LocalStorage 클린업
+  if (typeof window !== "undefined") {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((item) => item && !isDummyRubberEntry(item));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+        }
+      } catch (e) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }
+
+  // 2. Firestore 더미 데이터 조회 후 영구 삭제
+  if (db) {
+    try {
+      const snap = await getDocs(collection(db, COLL_NAME));
+      snap.forEach((docSnap) => {
+        const item = { id: docSnap.id, ...docSnap.data() };
+        if (isDummyRubberEntry(item)) {
+          deleteDoc(doc(db, COLL_NAME, docSnap.id)).catch(() => {});
+        }
+      });
+    } catch (e) {
+      console.warn("purgeDummyRubberData error:", e);
+    }
+  }
+}
+
+/**
+ * 대장 전체 내역 초기화 (테스트 데이터 및 전체 삭제용)
+ */
+export async function clearAllRubberLedger() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  if (db) {
+    try {
+      const snap = await getDocs(collection(db, COLL_NAME));
+      const deletePromises = [];
+      snap.forEach((docSnap) => {
+        deletePromises.push(deleteDoc(doc(db, COLL_NAME, docSnap.id)));
+      });
+      await Promise.all(deletePromises);
+    } catch (e) {
+      console.warn("clearAllRubberLedger error:", e);
+    }
+  }
+}
+
+// 통계 요약 계산 함수 (더미 데이터 배제 및 정확한 재고 산출)
 export function calculateRubberStockSummary(entries = []) {
   const todayStr = new Date().toISOString().slice(0, 10);
   let totalInQty = 0;
@@ -295,33 +342,47 @@ export function calculateRubberStockSummary(entries = []) {
   let todayInCount = 0;
   let todayOutCount = 0;
 
-  entries.forEach((item) => {
-    const qty = Number(item.qty) || 0;
-    const isToday = (item.date || item.createdAt || "").startsWith(todayStr);
+  if (Array.isArray(entries)) {
+    entries.forEach((item) => {
+      if (!item || isDummyRubberEntry(item)) return;
+      const qty = Number(item.qty) || 0;
+      const isToday = (item.date || item.createdAt || "").startsWith(todayStr);
 
-    if (item.type === "IN") {
-      totalInQty += qty;
-      if (isToday) {
-        todayInQty += qty;
-        todayInCount++;
+      if (item.type === "IN") {
+        totalInQty += qty;
+        if (isToday) {
+          todayInQty += qty;
+          todayInCount++;
+        }
+      } else if (item.type === "OUT") {
+        totalOutQty += qty;
+        if (isToday) {
+          todayOutQty += qty;
+          todayOutCount++;
+        }
       }
-    } else if (item.type === "OUT") {
-      totalOutQty += qty;
-      if (isToday) {
-        todayOutQty += qty;
-        todayOutCount++;
-      }
-    }
-  });
+    });
+  }
+
+  const currentStock = totalInQty - totalOutQty;
+
+  const validEntries = Array.isArray(entries)
+    ? entries.filter((e) => e && !isDummyRubberEntry(e))
+    : [];
 
   return {
-    currentStock: Math.max(0, totalInQty - totalOutQty),
+    currentStock,
     totalInQty,
     totalOutQty,
     todayInQty,
     todayOutQty,
     todayInCount,
     todayOutCount,
-    totalRecords: entries.length
+    totalRecords: validEntries.length
   };
+}
+
+// 모듈 로드 시 자동 1회 더미 데이터 정화
+if (typeof window !== "undefined") {
+  purgeDummyRubberData().catch(() => {});
 }
