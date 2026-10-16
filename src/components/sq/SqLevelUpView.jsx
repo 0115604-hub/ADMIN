@@ -39,7 +39,7 @@ import { DigitalInspectionModal } from "./DigitalInspectionModal";
 import { HanulQualityIssueModal } from "../hanul/HanulQualityIssueModal";
 import { SqSharedDocModal } from "./SqSharedDocModal";
 
-export const SqLevelUpView = () => {
+export const SqLevelUpView = ({ onClose }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -250,6 +250,17 @@ export const SqLevelUpView = () => {
               <FileSpreadsheet className="w-4 h-4" />
               <span>엑셀 다운로드</span>
             </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                title="현황표 닫기 / 메인 화면으로 돌아가기"
+              >
+                <X className="w-4 h-4" />
+                <span>닫기 / 메인으로</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -2358,8 +2358,14 @@ export const AuthModal = () => {
 
       {/* 🎯 SQ Live 모니터링 및 진행현황 모달 (Admin SQ 추진판 내용 전체 표시) */}
       {isSqLevelUpModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-[1700px] max-h-[96vh] flex flex-col overflow-hidden animate-scaleIn">
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+          onClick={() => setIsSqLevelUpModalOpen(false)}
+        >
+          <div
+            className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-[1700px] max-h-[96vh] flex flex-col overflow-hidden animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-3 w-3">
@@ -2385,10 +2391,11 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => setIsSqLevelUpModalOpen(false)}
-                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md active:scale-95"
                   title="닫기"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
+                  <span>닫기</span>
                 </button>
               </div>
             </div>
@@ -2403,8 +2410,18 @@ export const AuthModal = () => {
                   </div>
                 }
               >
-                <SqLevelUpView />
+                <SqLevelUpView onClose={() => setIsSqLevelUpModalOpen(false)} />
               </Suspense>
+            </div>
+            <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
+              <span>(주)오륙 SQ LEVEL-UP TFT</span>
+              <button
+                type="button"
+                onClick={() => setIsSqLevelUpModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition-colors cursor-pointer"
+              >
+                창 닫기
+              </button>
             </div>
           </div>
         </div>

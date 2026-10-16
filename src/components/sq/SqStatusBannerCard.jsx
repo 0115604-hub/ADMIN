@@ -7,16 +7,19 @@ import {
   Layers,
   CheckCircle2,
   Clock,
-  FolderOpen
+  FolderOpen,
+  X
 } from "lucide-react";
 import { getLocalSqLevelUpItems, subscribeSqLevelUpItems, calculateSqKPIs } from "../../services/sqLevelUpService";
 import { SqSharedDocModal } from "./SqSharedDocModal";
 
 export const SqStatusBannerCard = ({
   onOpenSqModal,
+  onClose,
   className = "",
   compact = false
 }) => {
+  const [isDismissed, setIsDismissed] = useState(false);
   const [items, setItems] = useState(() => getLocalSqLevelUpItems());
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
@@ -30,6 +33,8 @@ export const SqStatusBannerCard = ({
   }, []);
 
   const kpis = calculateSqKPIs(items);
+
+  if (isDismissed) return null;
 
   return (
     <div
@@ -91,6 +96,18 @@ export const SqStatusBannerCard = ({
           >
             <span>현황표 상세보기</span>
             <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-100 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDismissed(true);
+              if (onClose) onClose();
+            }}
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800/90 hover:bg-rose-600 text-slate-400 hover:text-white transition-all cursor-pointer border border-slate-700/80 hover:border-rose-500 shadow-xs flex items-center justify-center shrink-0"
+            title="SQ 배너 닫기 (숨기기)"
+          >
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>

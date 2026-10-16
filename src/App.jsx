@@ -81,6 +81,13 @@ export const App = () => {
   const [showTopBtn, setShowTopBtn] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [showSqBanner, setShowSqBanner] = useState(() => {
+    try {
+      return localStorage.getItem("oryuk_hide_sq_banner") !== "true";
+    } catch (e) {
+      return true;
+    }
+  });
 
   const isFieldWorkerProfile = Boolean(
     !isAdmin && (
@@ -442,9 +449,17 @@ export const App = () => {
         />
 
         {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ 진행상황 현황표 배너/카드 */}
-        {!isFieldWorkerProfile && activeTab !== "sq_level_up" && activeTab !== "rubber_inventory" && (
+        {!isFieldWorkerProfile && showSqBanner && activeTab !== "sq_level_up" && activeTab !== "rubber_inventory" && (
           <div className="px-2 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-0">
-            <SqStatusBannerCard onOpenSqModal={() => setActiveTab("sq_level_up")} />
+            <SqStatusBannerCard
+              onOpenSqModal={() => setActiveTab("sq_level_up")}
+              onClose={() => {
+                setShowSqBanner(false);
+                try {
+                  localStorage.setItem("oryuk_hide_sq_banner", "true");
+                } catch (e) {}
+              }}
+            />
           </div>
         )}
 
@@ -481,7 +496,7 @@ export const App = () => {
                   )}
                   {activeTab === "sq_level_up" && (
                     <ErrorBoundary inline title="SQ 진행상황 현황표">
-                      <SqLevelUpView />
+                      <SqLevelUpView onClose={() => setActiveTab("worker_dashboard")} />
                     </ErrorBoundary>
                   )}
                   {activeTab === "hanul_tax_invoice" && (
@@ -536,7 +551,7 @@ export const App = () => {
 
                   {activeTab === "sq_level_up" && (
                     <ErrorBoundary inline title="SQ 진행상황 현황표">
-                      <SqLevelUpView />
+                      <SqLevelUpView onClose={() => setActiveTab("sales_purchase_analysis")} />
                     </ErrorBoundary>
                   )}
 

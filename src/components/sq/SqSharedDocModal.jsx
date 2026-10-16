@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   FolderOpen,
@@ -7,7 +8,6 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Lock,
   Eye,
   EyeOff,
   HelpCircle,
@@ -18,7 +18,17 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
   const [copiedField, setCopiedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const FTP_SERVER = "5604.ipdisk.co.kr";
   const FTP_PORT = "21915";
@@ -31,24 +41,37 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
   // 브라우저 호출용 인코딩 주소
   const BROWSER_FTP_URL = `ftp://${FTP_USER}:${encodeURIComponent(FTP_PW)}@${FTP_SERVER}:${FTP_PORT}/`;
 
-  const copyToClipboard = (text, fieldName) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error("No clipboard API");
+      }
+    } catch (err) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch (e) {}
+      document.body.removeChild(textarea);
+    }
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2500);
   };
 
-  const handleOpenWeb = () => {
-    window.open(WEB_URL, "_blank", "noopener,noreferrer");
-  };
-
-  const handleOpenFtpApp = () => {
-    window.location.href = BROWSER_FTP_URL;
-  };
-
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs animate-fadeIn"
-      onClick={onClose}
+      className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
     >
       <div
         className="relative max-w-xl w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scaleUp text-slate-800 dark:text-slate-100"
@@ -110,14 +133,15 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
               <span className="font-mono text-xs text-cyan-800 dark:text-cyan-300 font-semibold truncate">
                 {WEB_URL}
               </span>
-              <button
-                type="button"
-                onClick={handleOpenWeb}
-                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+              <a
+                href={WEB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-cyan-600/30 transition-all active:scale-95 cursor-pointer no-underline"
               >
-                <span>웹 문서함 새 탭에서 열기</span>
+                <span>🌐 웹 문서함 새 탭 열기</span>
                 <ExternalLink className="w-3.5 h-3.5" />
-              </button>
+              </a>
             </div>
           </div>
 
@@ -170,17 +194,16 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
                   3. FTP 전용 클라이언트 앱 (파일질라/알FTP)
                 </h4>
               </div>
-              <button
-                type="button"
-                onClick={handleOpenFtpApp}
-                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer transition-colors shadow-xs"
+              <a
+                href={BROWSER_FTP_URL}
+                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer transition-colors shadow-xs no-underline"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>FTP 연결 실행</span>
-              </button>
+              </a>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              PC에 FTP 기본 앱이 연결되어 있는 경우 버튼을 누르면 즉시 프로그램으로 연동됩니다.
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
+              ※ 크롬/엣지 등 최신 브라우저는 브라우저 내 FTP 직접 열기가 제한될 수 있으므로, <b>1번 웹 문서함 열기</b> 또는 <b>2번 윈도우 탐색기 주소 복사</b>를 권장합니다.
             </p>
 
             {/* Connection Credentials Grid */}
@@ -248,8 +271,11 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
           </span>
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold cursor-pointer transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold cursor-pointer transition-colors shadow-sm"
           >
             닫기
           </button>
@@ -257,6 +283,8 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default SqSharedDocModal;
