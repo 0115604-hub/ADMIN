@@ -2,8 +2,6 @@ import React from "react";
 import {
   CommonScheduleBar,
   WorkerScheduleCalendarSection,
-  HanulAndSevereDisasterSection,
-  SalesPurchaseSummarySection,
   AttendanceSummarySection,
   QualityStatusSection,
   ExtrusionDowntimeSection,
@@ -67,22 +65,8 @@ export const AdminDashboardView = ({
   handleNextWeek,
   myWeeklyCalendarDays,
 
-  // Hanul & Severe Disaster Props (Admin Review Mode)
-  isHanul,
-  handleOpenHanulSettlementModal,
-  setIsHanulQualityIssueModalOpen,
-  activeHanulQualityCount = 0,
-  handleOpenHanulReport,
-  SevereDisasterBar,
-
-  // 1. Sales & Purchase Props
-  monthTitle,
-  currentMonthData,
+  // Attendance & Common Date Props
   todayFormattedLabel,
-  formatAmount,
-  totalSales,
-  totalPurchases,
-  purchaseRatio,
 
   // 2. Attendance Props
   unwrittenCompanies = [],
@@ -194,29 +178,11 @@ export const AdminDashboardView = ({
         myWeeklyCalendarDays={myWeeklyCalendarDays}
       />
 
-      {/* 🌟 한울 외주가공 품질경보 / 일보 & 중대재해 안전판 (ADMIN 관제 모드) */}
-      <HanulAndSevereDisasterSection
-        isHanul={isHanul}
-        isAdmin={true}
-        handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
-        setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
-        activeHanulQualityCount={activeHanulQualityCount}
-        handleOpenHanulReport={handleOpenHanulReport}
-        currentProfile={currentProfile}
-        SevereDisasterBar={SevereDisasterBar}
-      />
-
-      {/* 1. 매입매출현황 요약 */}
-      <SalesPurchaseSummarySection
-        monthTitle={monthTitle}
-        currentMonthData={currentMonthData}
-        todayFormattedLabel={todayFormattedLabel}
-        onNavigateTab={onNavigateTab}
-        formatAmount={formatAmount}
-        totalSales={totalSales}
-        totalPurchases={totalPurchases}
-        purchaseRatio={purchaseRatio}
-      />
+      {/* 🚨 [ADMIN 대시보드 엄격 고정 정책 - 패널 추가 절대 금지]
+          사용자(대표님)의 명시적인 별도 오더가 없는 한,
+          다른 관리자 뱃지(한울, 협력사, 사내관리자 등)의 수정이나 신규 기능이 추가되더라도
+          본 ADMIN 대시보드(AdminDashboardView)에 임의로 패널을 추가하는 것을 엄격히 금지합니다.
+          (1번 SQ배너, 4번 한울품질경보, 5번 한울작업일보, 6번 안전판/매입매출 삭제 상태 영구 유지) */}
 
       {/* 2. 근태현황 및 관리 (전사 5개사 및 전체 미결재 특근보고서) */}
       <AttendanceSummarySection
