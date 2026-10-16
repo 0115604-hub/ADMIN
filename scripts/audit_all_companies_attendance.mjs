@@ -42,11 +42,11 @@ export async function runUnifiedAttendanceAudit(targetDay = 12, targetYear = 202
   const results = [];
 
   for (const comp of COMPANIES) {
-    const expectedCount = EXPECTED_HEADCOUNTS[comp] || 0;
-    grandTotalExpected += expectedCount;
-
     const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === comp);
     const workerCount = compWorkers.length;
+    // ⭐ [인원관리 단일 기준] 인원관리에 등록된 실시간 재직자 수가 전사 프로세스의 유일한 정원 기준
+    const expectedCount = workerCount;
+    grandTotalExpected += expectedCount;
     grandTotalMatrix += workerCount;
 
     let attendedCount = 0;

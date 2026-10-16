@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import { CheckCircle2, ArrowRight, Users } from "lucide-react";
 
 export const AttendanceSummarySection = ({
   todayFormattedLabel,
@@ -41,19 +41,36 @@ export const AttendanceSummarySection = ({
           )}
         </div>
 
-        {onNavigateTab && (
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
           <button
-            onClick={() => onNavigateTab("overtime_status")}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
+            type="button"
+            onClick={() => {
+              if (onNavigateTab) onNavigateTab("overtime_status");
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("oryuk_open_worker_management"));
+              }, 50);
+            }}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/80 dark:hover:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-black border border-purple-300 dark:border-purple-700 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+            title="전사 근로자 등록/삭제 및 인사카드 관리"
           >
-            <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-cyan-500"></span>
-            </span>
-            <span>근태 상세</span>
-            <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-600 dark:text-cyan-400" />
+            <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            <span>👥 인원관리</span>
           </button>
-        )}
+
+          {onNavigateTab && (
+            <button
+              onClick={() => onNavigateTab("overtime_status")}
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-cyan-500"></span>
+              </span>
+              <span>근태 상세</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-600 dark:text-cyan-400" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 5 Company + TOTAL Today Overview Cards - Simple & Slim 2-Metric Design */}

@@ -96,6 +96,7 @@ import {
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
+  saveLocalOvertimeReports,
   saveOvertimeReport,
   deleteOvertimeReport,
   subscribeOvertimeReports,
@@ -837,6 +838,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setMatrixViewMonth(prevYearMonth);
     }
   }, [prevYearMonth]);
+
+  // ⭐ [인원관리 단일 기준] 대시보드 및 외부에서 1클릭 인원관리 탭 직접 진입 리스너
+  useEffect(() => {
+    const handleNavWorkerMgmt = () => {
+      setActiveTab("detail");
+      setDetailSubTab("worker_management");
+    };
+    window.addEventListener("oryuk_open_worker_management", handleNavWorkerMgmt);
+    return () => window.removeEventListener("oryuk_open_worker_management", handleNavWorkerMgmt);
+  }, []);
 
   const [matrixYear, matrixMonthNum] = useMemo(() => {
     const ym = matrixViewMonth || prevYearMonth || "2026-09";
@@ -1857,6 +1868,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(updatedData);
     await handleSaveLedger(updatedData);
+
+    // ⭐ [인원관리 마스터 기준] 신규 근로자 기본 인사카드 자동 생성 및 클라우드 동기화
+    try {
+      const cardKey = `${cleanCompanyName(company)}_${name}`;
+      const initialCard = getWorkerPersonnelCard({
+        name,
+        company: cleanCompanyName(company),
+        dept,
+        line,
+        position
+      }, nextNo);
+      await saveWorkerPersonnelCard(cardKey, initialCard);
+      setPersonnelCardsMap((prev) => ({ ...prev, [cardKey]: initialCard }));
+    } catch (cardErr) {
+      console.warn("Auto save initial personnel card warning:", cardErr);
+    }
+
     setQuickNewWorkerName("");
     setQuickNewWorkerLine("");
     setPopupShowAddWorker(false);
@@ -1956,6 +1984,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         delete next[`${workerToDelete.rawCompany}_${name}`];
         return next;
       });
+
+      // 5. ⭐ [단일 마스터 원칙] 등록된 일일 보고서에서도 퇴사자 인원 자동 정리 (유령 데이터 방지)
+      if (Array.isArray(legacyReports)) {
+        const cleanComp = cleanCompanyName(company);
+        const updatedLegacyReports = legacyReports.map((r) => {
+          if (!r || cleanCompanyName(r.company) !== cleanComp) return r;
+          const filteredItems = (r.items || []).filter(
+            (it) => (it.workerName || it.name || "").trim() !== name.trim()
+          );
+          if (filteredItems.length === (r.items || []).length) return r;
+          const reindexedItems = filteredItems.map((it, i) => ({ ...it, no: i + 1 }));
+          const totalHours = reindexedItems.reduce((sum, it) => sum + (Number(it.hours) || 0), 0);
+          const totalOtHours = reindexedItems.reduce((sum, it) => sum + (Number(it.otHours) || 0), 0);
+          const updatedRep = {
+            ...r,
+            items: reindexedItems,
+            totalWorkers: reindexedItems.length,
+            attendedWorkers: reindexedItems.filter((it) => it.hours > 0).length,
+            totalHours,
+            otHours: totalOtHours,
+            cost: totalHours * 15000,
+            updatedAt: new Date().toISOString()
+          };
+          saveOvertimeReport(updatedRep).catch(() => {});
+          return updatedRep;
+        });
+        setLegacyReports(updatedLegacyReports);
+        saveLocalOvertimeReports(updatedLegacyReports);
+      }
 
       setWorkerToDelete(null);
       triggerToast(`🗑️ [${company}] ${name} ${position} 님이 마스터 인원 및 인사카드에서 영구 삭제되었습니다.`);

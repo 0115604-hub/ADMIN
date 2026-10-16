@@ -297,6 +297,53 @@ export const subscribeOvertimeReports = (callback) => {
   }
 };
 
+// ⭐ [수단 1: 단일 장부 일원화] 보고서에 등록된 당일 출근 코드를 스마트 원장 매트릭스로 100% 즉시 주입
+export const syncReportItemsToLedgerMatrix = async (report) => {
+  if (!report || !report.workDate || !Array.isArray(report.items) || report.items.length === 0) return;
+  try {
+    const [yStr, mStr, dStr] = report.workDate.split("-");
+    const ym = `${yStr}-${mStr}`;
+    const dayNum = parseInt(dStr, 10);
+    const cleanComp = cleanCompanyName(report.company || "");
+
+    const ledgerData = getLocalSmartOvertimeData(ym);
+    if (!ledgerData || !Array.isArray(ledgerData.attendanceMatrix)) return;
+
+    const matrix = [...ledgerData.attendanceMatrix];
+    let changed = false;
+
+    report.items.forEach((item) => {
+      const wName = (item.workerName || item.name || "").trim();
+      const code = item.attendanceCode || (item.hours > 0 ? (item.otHours > 0 ? "19" : "🟢") : "-");
+      const targetWorker = matrix.find(
+        (mw) => (mw.name || "").trim() === wName && cleanCompanyName(mw.company) === cleanComp
+      );
+      if (targetWorker) {
+        if (!targetWorker.daily) targetWorker.daily = {};
+        if (targetWorker.daily[dayNum] !== code || targetWorker.daily[String(dayNum)] !== code) {
+          targetWorker.daily[dayNum] = code;
+          targetWorker.daily[String(dayNum)] = code;
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      ledgerData.attendanceMatrix = matrix;
+      await saveSmartOvertimeData(ledgerData, ym, {
+        targetCompany: cleanComp,
+        auditMeta: {
+          operator: report.author || "관리자",
+          source: "REPORT_AUTO_SYNC",
+          reason: `${mStr}월 ${dStr}일 보고서 등록 연동`
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("syncReportItemsToLedgerMatrix warning:", err);
+  }
+};
+
 // Save (Add or Update) Overtime Report
 export const saveOvertimeReport = async (report) => {
   if (!report) return null;
@@ -390,13 +437,16 @@ export const saveOvertimeReport = async (report) => {
   } else {
     updatedReports = [cleanReport, ...currentReports];
   }
-
   // Sort by updatedAt descending
   updatedReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
   saveLocalOvertimeReports(updatedReports);
 
-  // 🔒 Authoritative Principle: saveOvertimeReport strictly saves the report document.
-  // It NEVER tampers with or overwrites the primary smart_overtime_ledger attendance matrix.
+  // ⭐ [수단 1: 단일 진실의 원천 원칙] 보고서 저장 시 스마트 원장 매트릭스로 당일 근태 코드를 반드시 즉각 동시 주입
+  try {
+    await syncReportItemsToLedgerMatrix(cleanReport);
+  } catch (e) {
+    console.warn("Auto-sync report to ledger matrix error:", e);
+  }
 
   // Sync to Cloud Firestore with recursive sanitization
   try {
