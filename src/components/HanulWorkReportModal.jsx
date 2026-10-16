@@ -920,26 +920,6 @@ export const HanulWorkReportModal = ({
               })}
             </div>
 
-            {/* 🌟 소재준비 공정일 때 드롭다운 선택기 (정치절단 / 단컷팅) */}
-            {processId === "소재준비" && (
-              <div className="flex items-center gap-1.5 sm:gap-2 bg-indigo-50 dark:bg-indigo-950/90 px-2 sm:px-3 py-0.5 sm:py-1 rounded-xl border-2 border-indigo-500 shadow-xs animate-fadeIn">
-                <span className="text-[10.5px] sm:text-[11px] font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1 shrink-0">
-                  <span className="hidden sm:inline">📄 일보:</span>
-                </span>
-                <div className="relative">
-                  <select
-                    value={subProcess}
-                    onChange={(e) => setSubProcess(e.target.value)}
-                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-indigo-600 text-indigo-950 dark:text-indigo-100 font-black text-[11px] sm:text-xs rounded-lg pl-2 sm:pl-3 pr-6 sm:pr-7 py-0.5 sm:py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
-                  >
-                    <option value="정치절단">✂️ 정치절단 일보</option>
-                    <option value="단컷팅">📐 단컷팅 일보</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-indigo-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            )}
-
             {/* 🌟 조인트 공정일 때 드롭다운 선택기 (4가지 조인트 일보) */}
             {processId === "조인트" && (
               <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/90 px-3 py-1 rounded-xl border-2 border-purple-500 shadow-xs animate-fadeIn">
@@ -1317,9 +1297,9 @@ export const HanulWorkReportModal = ({
             </div>
           ) : (
             <>
-          {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 (모바일에서는 간소화) */}
+          {/* 🌟 소재준비 공정일 때: 정치절단 / 단컷팅 일보 상단 안내 배너 & 원클릭 전환 탭 */}
           {processId === "소재준비" && (
-            <div className="hidden sm:flex p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/50 dark:via-blue-950/40 dark:to-indigo-950/50 border-2 border-indigo-400 dark:border-indigo-700 shadow-sm flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shrink-0">
                   {subProcess === "정치절단" ? <Scissors className="w-5 h-5" /> : <Layers className="w-5 h-5" />}
