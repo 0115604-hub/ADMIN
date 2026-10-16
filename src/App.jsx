@@ -21,6 +21,7 @@ const ElectronicApprovalView = lazy(() => import("./components/ElectronicApprova
 const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({ default: m.TelegramView || m.default })));
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
 const IncidentLogsView = lazy(() => import("./components/IncidentLogsView").then(m => ({ default: m.IncidentLogsView || m.default })));
+const RubberInventoryPanel = lazy(() => import("./components/RubberInventoryPanel").then(m => ({ default: m.RubberInventoryPanel || m.default })));
 const SqLevelUpView = lazy(() => import("./components/sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
 import { SqStatusBannerCard } from "./components/sq/SqStatusBannerCard";
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
@@ -373,6 +374,7 @@ export const App = () => {
     if (activeTab === "daily_quality") return "일일 품질현황";
     if (activeTab === "overtime_status") return "근태현황 및 관리";
     if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
+    if (activeTab === "rubber_inventory") return "연고무 입출고 대장 (바코드)";
     const meta = ADMIN_TABS.find((t) => t.id === activeTab);
     return meta ? meta.label : "현황";
   };
@@ -512,6 +514,11 @@ export const App = () => {
                       <IncidentLogsView />
                     </ErrorBoundary>
                   )}
+                  {activeTab === "rubber_inventory" && (
+                    <ErrorBoundary inline title="연고무 입출고 대장">
+                      <RubberInventoryPanel />
+                    </ErrorBoundary>
+                  )}
                 </>
               )}
 
@@ -578,6 +585,12 @@ export const App = () => {
                   {activeTab === "incident_logs" && (
                     <ErrorBoundary inline title="오류 및 조치 관리">
                       <IncidentLogsView />
+                    </ErrorBoundary>
+                  )}
+
+                  {activeTab === "rubber_inventory" && (
+                    <ErrorBoundary inline title="연고무 입출고 대장">
+                      <RubberInventoryPanel />
                     </ErrorBoundary>
                   )}
 

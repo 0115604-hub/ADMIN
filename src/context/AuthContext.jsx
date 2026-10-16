@@ -55,7 +55,7 @@ export const PLANTS = [
     badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
     workers: [
       { id: "sam_mj", name: "이명재", title: "이사", plant: "삼랑진공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "이", pin: "11" },
-      { id: "sam_yc", name: "설유철", title: "책임", plant: "삼랑진공장", assignedProcess: "압출동 관리", role: "OPERATOR", avatar: "설", pin: "11" },
+      { id: "sam_yc", name: "설유설", aliasName: "설유철", title: "책임", plant: "삼랑진공장", assignedProcess: "압출동 관리", role: "OPERATOR", avatar: "설", pin: "11" },
       { id: "sam_ks", name: "윤경수", title: "책임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "윤", pin: "11" },
       { id: "sam_cy", name: "이창엽", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
       { id: "sam_jy", name: "전재율", title: "책임", plant: "삼랑진공장", assignedProcess: "설비보전", role: "OPERATOR", avatar: "전", pin: "11" },
@@ -103,10 +103,15 @@ export const isManagerOrAdminUser = (profile, isAdmin = false) => {
   return true;
 };
 
-// ⭐ 압출동 작업자 판별 헬퍼 (설유철 책임은 관리자이므로 제외)
+// ⭐ 압출동 작업자 판별 헬퍼 (설유설/설유철 책임은 관리자이므로 제외)
+export const isSeolProfile = (profile) => {
+  if (!profile) return false;
+  return profile.name === "설유설" || profile.name === "설유철" || profile.id === "sam_yc";
+};
+
 export const isExtrusionWorkerProfile = (profile) => {
   if (!profile) return false;
-  if (profile.name === "설유철" || profile.id === "sam_yc") return false;
+  if (isSeolProfile(profile)) return false;
   if (profile.portalType === "extrusion") return true;
   if (profile.portalType === "hanul" || profile.portalType === "bulimtech" || profile.portalType === "machining") return false;
   return Boolean(

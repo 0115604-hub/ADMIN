@@ -17,9 +17,10 @@ import {
   Receipt,
   AlertTriangle,
   X,
-  Target
+  Target,
+  Barcode
 } from "lucide-react";
-import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
+import { useAuth, isManagerOrAdminUser, isExtrusionWorkerProfile, isSeolProfile } from "../context/AuthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
 
@@ -27,6 +28,7 @@ export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
   { id: "electronic_approval", label: "전자결재", icon: FileSignature },
   { id: "vehicle_sales", label: "매출매입분석", icon: BarChart3 },
+  { id: "rubber_inventory", label: "연고무 입출고 대장", icon: Barcode },
   { id: "hanul_tax_invoice", label: "한울세금계산서", icon: Receipt },
   { id: "incident_logs", label: "오류 및 조치 관리", icon: AlertTriangle },
   { id: "telegram", label: "텔레그램 연동 설정", icon: TelegramLogo },
@@ -37,6 +39,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const isInjoo = currentProfile?.name === "조인주";
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || currentProfile?.name?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
+  const isSeol = isSeolProfile(currentProfile);
 
   const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusion = isExtrusionWorkerProfile(currentProfile);
@@ -112,6 +115,18 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
             color: "emerald",
             activeClass: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-emerald-500/30",
             iconColor: "text-emerald-600 dark:text-emerald-400"
+          }
+        ]
+      : []),
+    ...(isSeol || isManager
+      ? [
+          {
+            id: "rubber_inventory",
+            label: "연고무 입출고 대장",
+            icon: Barcode,
+            color: "teal",
+            activeClass: "bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 ring-1 ring-teal-500/30",
+            iconColor: "text-teal-600 dark:text-teal-400"
           }
         ]
       : [])
