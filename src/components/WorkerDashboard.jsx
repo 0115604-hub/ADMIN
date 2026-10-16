@@ -50,16 +50,11 @@ import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityCo
 import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
 import {
-  CommonScheduleBar,
-  WorkerScheduleCalendarSection,
-  HanulAndSevereDisasterSection,
-  SalesPurchaseSummarySection,
-  AttendanceSummarySection,
-  QualityStatusSection,
-  ExtrusionDowntimeSection,
-  DailyWorkLogTableSection,
-  AdminAccessAndIncidentSection
-} from "./dashboard/sections";
+  HanulManagerDashboardView,
+  PartnerManagerDashboardView,
+  InternalManagerDashboardView,
+  AdminDashboardView
+} from "./dashboard/managers";
 import {
   subscribeHanulQualityIssues,
   getLocalHanulQualityIssues
@@ -1273,37 +1268,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         />
       ) : (
         <>
-          {/* 🌟 압출동 일반작업자 전용 상단 배너 */}
-          {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && currentProfile?.name !== "설유철" && currentProfile?.id !== "sam_yc" && (
-            <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-white/20 backdrop-blur-xs text-white shrink-0">
-                  <Cpu className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm sm:text-base leading-tight">
-                    🏭 삼랑진공장 압출동 작업자 모드 ({currentProfile.name}{currentProfile.title ? ` ${currentProfile.title}` : ""})
-                  </h3>
-                  <p className="text-xs text-teal-100 font-medium">
-                    압출 생산관리 탭에서 실시간 작업일보 작성 및 생산실적/비가동 분석을 확인하세요.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    localStorage.setItem("factory_extrusion_active_subtab", "production");
-                  } catch (e) {}
-                  if (onNavigateTab) onNavigateTab("extrusion_downtime");
-                }}
-                className="px-4 py-2 rounded-xl bg-white text-teal-800 font-black text-xs sm:text-sm hover:bg-teal-50 active:scale-95 transition-all shadow-sm shrink-0 cursor-pointer text-center"
-              >
-                🏭 압출 생산관리 및 작업일보 바로가기 ➡️
-              </button>
-            </div>
-          )}
-
           {/* 🛡️ [한림공장 TEST 전용] 관제 패널 */}
           {isTestUser && (
             <UnifiedAbnormalityControlPanel
@@ -1322,151 +1286,328 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             />
           )}
 
-          {/* 📌 사내 공통일정 */}
-          <CommonScheduleBar
-            isAdmin={isAdmin}
-            hasNewScheduleMessage={hasNewScheduleMessage}
-            allActiveCommonSchedules={allActiveCommonSchedules}
-            setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
-            todayDateStr={todayDateStr}
-            isGeneralManager={isGeneralManager}
-            handleDeleteCommonSchedule={handleDeleteCommonSchedule}
-            setCommonScheduleModalOpen={setCommonScheduleModalOpen}
-          />
-
-          {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 */}
-          <WorkerScheduleCalendarSection
-            workerPlant={workerPlant}
-            workerFullName={workerFullName}
-            onNavigateTab={onNavigateTab}
-            pendingCount={pendingCount}
-            holdCount={holdCount}
-            officialTitle={officialTitle}
-            isAdmin={isAdmin}
-            isManagerRole={isManagerRole}
-            scheduleLeaveType={scheduleLeaveType}
-            setScheduleLeaveType={setScheduleLeaveType}
-            scheduleSelectedDate={scheduleSelectedDate}
-            setScheduleSelectedDate={setScheduleSelectedDate}
-            scheduleReasonInput={scheduleReasonInput}
-            setScheduleReasonInput={setScheduleReasonInput}
-            handleRegisterSchedule={handleRegisterSchedule}
-            scheduleSaving={scheduleSaving}
-            scheduleCameraInputRef={scheduleCameraInputRef}
-            scheduleFileInputRef={scheduleFileInputRef}
-            handleScheduleFiles={handleScheduleFiles}
-            scheduleAttachedFiles={scheduleAttachedFiles}
-            isProcessingScheduleFiles={isProcessingScheduleFiles}
-            handleRemoveScheduleFile={handleRemoveScheduleFile}
-            setPreviewImageModal={setPreviewImageModal}
-            shareDropdownRef={shareDropdownRef}
-            isShareDropdownOpen={isShareDropdownOpen}
-            setIsShareDropdownOpen={setIsShareDropdownOpen}
-            sharedWorkers={sharedWorkers}
-            setSharedWorkers={setSharedWorkers}
-            toggleSharedWorker={toggleSharedWorker}
-            togglePlantSharedWorkers={togglePlantSharedWorkers}
-            currentProfile={currentProfile}
-            ADMIN_USERS={ADMIN_USERS}
-            PLANTS={PLANTS}
-            myActiveLeaves={myActiveLeaves}
-            todayDateStr={todayDateStr}
-            formatKSTDate={formatKSTDate}
-            setScheduleDetailModal={setScheduleDetailModal}
-            handleRequestDismissOrDelete={handleRequestDismissOrDelete}
-            showMiniCalendar={showMiniCalendar}
-            setShowMiniCalendar={setShowMiniCalendar}
-            scheduleWeekAnchor={scheduleWeekAnchor}
-            handlePrevWeek={handlePrevWeek}
-            handleResetToToday={handleResetToToday}
-            handleNextWeek={handleNextWeek}
-            myWeeklyCalendarDays={myWeeklyCalendarDays}
-          />
-
-          {/* 🌟 1. 한울 외주가공 지출내역 / 품질경보 / 일보 & 중대재해 안전판 */}
-          {(isHanul || isAdmin) && (
-            <HanulAndSevereDisasterSection
-              isHanul={isHanul}
+          {/* 👔 [역할별 격리된 관리자 대시보드 뷰 분기] */}
+          {isHanulManager ? (
+            /* 1. 한울 외주가공 관리자 뷰 (외주 정산, 품질 경보, 9BQC/LQ2a 일보, 한울 근태) */
+            <HanulManagerDashboardView
               isAdmin={isAdmin}
+              hasNewScheduleMessage={hasNewScheduleMessage}
+              allActiveCommonSchedules={allActiveCommonSchedules}
+              setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+              todayDateStr={todayDateStr}
+              isGeneralManager={isGeneralManager}
+              handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+              setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+              workerPlant={workerPlant}
+              workerFullName={workerFullName}
+              onNavigateTab={onNavigateTab}
+              pendingCount={pendingCount}
+              holdCount={holdCount}
+              officialTitle={officialTitle}
+              isManagerRole={isManagerRole}
+              scheduleLeaveType={scheduleLeaveType}
+              setScheduleLeaveType={setScheduleLeaveType}
+              scheduleSelectedDate={scheduleSelectedDate}
+              setScheduleSelectedDate={setScheduleSelectedDate}
+              scheduleReasonInput={scheduleReasonInput}
+              setScheduleReasonInput={setScheduleReasonInput}
+              handleRegisterSchedule={handleRegisterSchedule}
+              scheduleSaving={scheduleSaving}
+              scheduleCameraInputRef={scheduleCameraInputRef}
+              scheduleFileInputRef={scheduleFileInputRef}
+              handleScheduleFiles={handleScheduleFiles}
+              scheduleAttachedFiles={scheduleAttachedFiles}
+              isProcessingScheduleFiles={isProcessingScheduleFiles}
+              handleRemoveScheduleFile={handleRemoveScheduleFile}
+              setPreviewImageModal={setPreviewImageModal}
+              shareDropdownRef={shareDropdownRef}
+              isShareDropdownOpen={isShareDropdownOpen}
+              setIsShareDropdownOpen={setIsShareDropdownOpen}
+              sharedWorkers={sharedWorkers}
+              setSharedWorkers={setSharedWorkers}
+              toggleSharedWorker={toggleSharedWorker}
+              togglePlantSharedWorkers={togglePlantSharedWorkers}
+              currentProfile={currentProfile}
+              ADMIN_USERS={ADMIN_USERS}
+              PLANTS={PLANTS}
+              myActiveLeaves={myActiveLeaves}
+              formatKSTDate={formatKSTDate}
+              setScheduleDetailModal={setScheduleDetailModal}
+              handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+              showMiniCalendar={showMiniCalendar}
+              setShowMiniCalendar={setShowMiniCalendar}
+              scheduleWeekAnchor={scheduleWeekAnchor}
+              handlePrevWeek={handlePrevWeek}
+              handleResetToToday={handleResetToToday}
+              handleNextWeek={handleNextWeek}
+              myWeeklyCalendarDays={myWeeklyCalendarDays}
+              isHanul={isHanul}
               handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
               setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
               activeHanulQualityCount={activeHanulQualityCount}
               handleOpenHanulReport={handleOpenHanulReport}
-              currentProfile={currentProfile}
               SevereDisasterBar={SevereDisasterBar}
+              todayFormattedLabel={todayFormattedLabel}
+              filteredUnwrittenCompanies={filteredUnwrittenCompanies}
+              filteredCompanyOverviewStats={filteredCompanyOverviewStats}
+              pushModalHistory={pushModalHistory}
+              setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+              formatKoreanWorkDate={formatKoreanWorkDate}
             />
-          )}
-
-          {/* 🌟 한울/ADMIN 외 일반 관리자(이명재, 김동욱, 설유철, 전재율 등)를 위한 중대재해 안전판 */}
-          {!isHanul && !isAdmin && SevereDisasterBar && (
-            <SevereDisasterBar />
-          )}
-
-          {/* 1. 매입매출현황 요약 (외주 협력사 관리자에게는 재무 보안상 비노출) */}
-          {!isPartnerProfile && (
-            <SalesPurchaseSummarySection
+          ) : isPartnerProfile ? (
+            /* 2. 외주 협력사 관리자 뷰 (유성, 부림텍 등 - 소속 근태 및 공통 일정) */
+            <PartnerManagerDashboardView
+              isAdmin={isAdmin}
+              hasNewScheduleMessage={hasNewScheduleMessage}
+              allActiveCommonSchedules={allActiveCommonSchedules}
+              setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+              todayDateStr={todayDateStr}
+              isGeneralManager={isGeneralManager}
+              handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+              setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+              workerPlant={workerPlant}
+              workerFullName={workerFullName}
+              onNavigateTab={onNavigateTab}
+              pendingCount={pendingCount}
+              holdCount={holdCount}
+              officialTitle={officialTitle}
+              isManagerRole={isManagerRole}
+              scheduleLeaveType={scheduleLeaveType}
+              setScheduleLeaveType={setScheduleLeaveType}
+              scheduleSelectedDate={scheduleSelectedDate}
+              setScheduleSelectedDate={setScheduleSelectedDate}
+              scheduleReasonInput={scheduleReasonInput}
+              setScheduleReasonInput={setScheduleReasonInput}
+              handleRegisterSchedule={handleRegisterSchedule}
+              scheduleSaving={scheduleSaving}
+              scheduleCameraInputRef={scheduleCameraInputRef}
+              scheduleFileInputRef={scheduleFileInputRef}
+              handleScheduleFiles={handleScheduleFiles}
+              scheduleAttachedFiles={scheduleAttachedFiles}
+              isProcessingScheduleFiles={isProcessingScheduleFiles}
+              handleRemoveScheduleFile={handleRemoveScheduleFile}
+              setPreviewImageModal={setPreviewImageModal}
+              shareDropdownRef={shareDropdownRef}
+              isShareDropdownOpen={isShareDropdownOpen}
+              setIsShareDropdownOpen={setIsShareDropdownOpen}
+              sharedWorkers={sharedWorkers}
+              setSharedWorkers={setSharedWorkers}
+              toggleSharedWorker={toggleSharedWorker}
+              togglePlantSharedWorkers={togglePlantSharedWorkers}
+              currentProfile={currentProfile}
+              ADMIN_USERS={ADMIN_USERS}
+              PLANTS={PLANTS}
+              myActiveLeaves={myActiveLeaves}
+              formatKSTDate={formatKSTDate}
+              setScheduleDetailModal={setScheduleDetailModal}
+              handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+              showMiniCalendar={showMiniCalendar}
+              setShowMiniCalendar={setShowMiniCalendar}
+              scheduleWeekAnchor={scheduleWeekAnchor}
+              handlePrevWeek={handlePrevWeek}
+              handleResetToToday={handleResetToToday}
+              handleNextWeek={handleNextWeek}
+              myWeeklyCalendarDays={myWeeklyCalendarDays}
+              SevereDisasterBar={SevereDisasterBar}
+              todayFormattedLabel={todayFormattedLabel}
+              filteredUnwrittenCompanies={filteredUnwrittenCompanies}
+              filteredCompanyOverviewStats={filteredCompanyOverviewStats}
+              pushModalHistory={pushModalHistory}
+              setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+              formatKoreanWorkDate={formatKoreanWorkDate}
+            />
+          ) : isAdmin ? (
+            /* 3. 본사 총괄 관리자 뷰 (권태형, 최미영 등 - 전사 7개 섹션 풀 관제) */
+            <AdminDashboardView
+              isAdmin={isAdmin}
+              hasNewScheduleMessage={hasNewScheduleMessage}
+              allActiveCommonSchedules={allActiveCommonSchedules}
+              setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+              todayDateStr={todayDateStr}
+              isGeneralManager={isGeneralManager}
+              handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+              setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+              workerPlant={workerPlant}
+              workerFullName={workerFullName}
+              onNavigateTab={onNavigateTab}
+              pendingCount={pendingCount}
+              holdCount={holdCount}
+              officialTitle={officialTitle}
+              isManagerRole={isManagerRole}
+              scheduleLeaveType={scheduleLeaveType}
+              setScheduleLeaveType={setScheduleLeaveType}
+              scheduleSelectedDate={scheduleSelectedDate}
+              setScheduleSelectedDate={setScheduleSelectedDate}
+              scheduleReasonInput={scheduleReasonInput}
+              setScheduleReasonInput={setScheduleReasonInput}
+              handleRegisterSchedule={handleRegisterSchedule}
+              scheduleSaving={scheduleSaving}
+              scheduleCameraInputRef={scheduleCameraInputRef}
+              scheduleFileInputRef={scheduleFileInputRef}
+              handleScheduleFiles={handleScheduleFiles}
+              scheduleAttachedFiles={scheduleAttachedFiles}
+              isProcessingScheduleFiles={isProcessingScheduleFiles}
+              handleRemoveScheduleFile={handleRemoveScheduleFile}
+              setPreviewImageModal={setPreviewImageModal}
+              shareDropdownRef={shareDropdownRef}
+              isShareDropdownOpen={isShareDropdownOpen}
+              setIsShareDropdownOpen={setIsShareDropdownOpen}
+              sharedWorkers={sharedWorkers}
+              setSharedWorkers={setSharedWorkers}
+              toggleSharedWorker={toggleSharedWorker}
+              togglePlantSharedWorkers={togglePlantSharedWorkers}
+              currentProfile={currentProfile}
+              ADMIN_USERS={ADMIN_USERS}
+              PLANTS={PLANTS}
+              myActiveLeaves={myActiveLeaves}
+              formatKSTDate={formatKSTDate}
+              setScheduleDetailModal={setScheduleDetailModal}
+              handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+              showMiniCalendar={showMiniCalendar}
+              setShowMiniCalendar={setShowMiniCalendar}
+              scheduleWeekAnchor={scheduleWeekAnchor}
+              handlePrevWeek={handlePrevWeek}
+              handleResetToToday={handleResetToToday}
+              handleNextWeek={handleNextWeek}
+              myWeeklyCalendarDays={myWeeklyCalendarDays}
+              isHanul={isHanul}
+              handleOpenHanulSettlementModal={handleOpenHanulSettlementModal}
+              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+              activeHanulQualityCount={activeHanulQualityCount}
+              handleOpenHanulReport={handleOpenHanulReport}
+              SevereDisasterBar={SevereDisasterBar}
               monthTitle={monthTitle}
               currentMonthData={currentMonthData}
               todayFormattedLabel={todayFormattedLabel}
-              onNavigateTab={onNavigateTab}
               formatAmount={formatAmount}
               totalSales={totalSales}
               totalPurchases={totalPurchases}
               purchaseRatio={purchaseRatio}
-            />
-          )}
-
-          {/* 2. 근태현황 및 관리 (관리자별 소속사/공장 맞춤 필터링) */}
-          <AttendanceSummarySection
-            todayFormattedLabel={todayFormattedLabel}
-            unwrittenCompanies={filteredUnwrittenCompanies}
-            onNavigateTab={onNavigateTab}
-            companyOverviewStats={filteredCompanyOverviewStats}
-            pendingApprovalCards={filteredPendingApprovalCards}
-            pushModalHistory={pushModalHistory}
-            setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
-            formatKoreanWorkDate={formatKoreanWorkDate}
-          />
-
-          {/* 3. 금형별 일일품질 요약 (외주 협력사 관리자는 전용 품질경보/일보로 관리) */}
-          {!isPartnerProfile && (
-            <QualityStatusSection
+              filteredUnwrittenCompanies={filteredUnwrittenCompanies}
+              filteredCompanyOverviewStats={filteredCompanyOverviewStats}
+              filteredPendingApprovalCards={filteredPendingApprovalCards}
+              pushModalHistory={pushModalHistory}
+              setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+              formatKoreanWorkDate={formatKoreanWorkDate}
               selectedMonth={selectedMonth}
-              onNavigateTab={onNavigateTab}
               liveQualityCurrentMonthly={liveQualityCurrentMonthly}
               liveQualityPrevMonthly={liveQualityPrevMonthly}
               handleOpenQualityPopup={handleOpenQualityPopup}
-            />
-          )}
-
-          {/* 4. 압출동 주간 비가동내역 요약 (설유철, 이명재, 전재율, 본사 ADMIN 등 압출 관련자만 표출) */}
-          {!isPartnerProfile && (isExtrusionWorker || isMyeongjae || isJaeyul || isAdmin || !isHallim) && (
-            <ExtrusionDowntimeSection
-              onNavigateTab={onNavigateTab}
               extrusionSummaryList={extrusionSummaryList}
-            />
-          )}
-
-          {/* 5. 일일업무일지 현황 (오륙 내부 관리자 전용 - 한울 등 외주사는 전용 일보 대장으로 관리) */}
-          {!isPartnerProfile && (
-            <DailyWorkLogTableSection
               isMyeongjae={isMyeongjae}
               isDongwook={isDongwook}
-              isAdmin={isAdmin}
               pendingSamrangjinCount={pendingSamrangjinCount}
               pendingHallimCount={pendingHallimCount}
               setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
               filterPlant={filterPlant}
               setFilterPlant={setFilterPlant}
               workLogs={workLogs}
-              pushModalHistory={pushModalHistory}
               paginatedLogs={paginatedLogs}
               handleOpenLogDetail={handleOpenLogDetail}
               canApproveLog={canApproveLog}
               isWorkLogApproved={isWorkLogApproved}
               handleOpenEditModal={handleOpenEditModal}
               handleDeleteLog={handleDeleteLog}
+              filteredLogs={filteredLogs}
+              currentLogPage={currentLogPage}
+              setCurrentLogPage={setCurrentLogPage}
+              LOGS_PER_PAGE={LOGS_PER_PAGE}
+              totalLogPages={totalLogPages}
+              handleOpenWorkLogModal={handleOpenWorkLogModal}
+              accessLogs={accessLogs}
+              handleOpenWorkerLogs={handleOpenWorkerLogs}
+              formatRelativeAccessTime={formatRelativeAccessTime}
+            />
+          ) : (
+            /* 4. 사내 일반 관리자 뷰 (이명재, 김동욱, 설유철, 전재율, 조인주 등) */
+            <InternalManagerDashboardView
               currentProfile={currentProfile}
+              onNavigateTab={onNavigateTab}
+              isAdmin={isAdmin}
+              hasNewScheduleMessage={hasNewScheduleMessage}
+              allActiveCommonSchedules={allActiveCommonSchedules}
+              setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+              todayDateStr={todayDateStr}
+              isGeneralManager={isGeneralManager}
+              handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+              setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+              workerPlant={workerPlant}
+              workerFullName={workerFullName}
+              pendingCount={pendingCount}
+              holdCount={holdCount}
+              officialTitle={officialTitle}
+              isManagerRole={isManagerRole}
+              scheduleLeaveType={scheduleLeaveType}
+              setScheduleLeaveType={setScheduleLeaveType}
+              scheduleSelectedDate={scheduleSelectedDate}
+              setScheduleSelectedDate={setScheduleSelectedDate}
+              scheduleReasonInput={scheduleReasonInput}
+              setScheduleReasonInput={setScheduleReasonInput}
+              handleRegisterSchedule={handleRegisterSchedule}
+              scheduleSaving={scheduleSaving}
+              scheduleCameraInputRef={scheduleCameraInputRef}
+              scheduleFileInputRef={scheduleFileInputRef}
+              handleScheduleFiles={handleScheduleFiles}
+              scheduleAttachedFiles={scheduleAttachedFiles}
+              isProcessingScheduleFiles={isProcessingScheduleFiles}
+              handleRemoveScheduleFile={handleRemoveScheduleFile}
+              setPreviewImageModal={setPreviewImageModal}
+              shareDropdownRef={shareDropdownRef}
+              isShareDropdownOpen={isShareDropdownOpen}
+              setIsShareDropdownOpen={setIsShareDropdownOpen}
+              sharedWorkers={sharedWorkers}
+              setSharedWorkers={setSharedWorkers}
+              toggleSharedWorker={toggleSharedWorker}
+              togglePlantSharedWorkers={togglePlantSharedWorkers}
+              ADMIN_USERS={ADMIN_USERS}
+              PLANTS={PLANTS}
+              myActiveLeaves={myActiveLeaves}
+              formatKSTDate={formatKSTDate}
+              setScheduleDetailModal={setScheduleDetailModal}
+              handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+              showMiniCalendar={showMiniCalendar}
+              setShowMiniCalendar={setShowMiniCalendar}
+              scheduleWeekAnchor={scheduleWeekAnchor}
+              handlePrevWeek={handlePrevWeek}
+              handleResetToToday={handleResetToToday}
+              handleNextWeek={handleNextWeek}
+              myWeeklyCalendarDays={myWeeklyCalendarDays}
+              SevereDisasterBar={SevereDisasterBar}
+              monthTitle={monthTitle}
+              currentMonthData={currentMonthData}
+              todayFormattedLabel={todayFormattedLabel}
+              formatAmount={formatAmount}
+              totalSales={totalSales}
+              totalPurchases={totalPurchases}
+              purchaseRatio={purchaseRatio}
+              filteredUnwrittenCompanies={filteredUnwrittenCompanies}
+              filteredCompanyOverviewStats={filteredCompanyOverviewStats}
+              filteredPendingApprovalCards={filteredPendingApprovalCards}
+              pushModalHistory={pushModalHistory}
+              setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+              formatKoreanWorkDate={formatKoreanWorkDate}
+              selectedMonth={selectedMonth}
+              liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+              liveQualityPrevMonthly={liveQualityPrevMonthly}
+              handleOpenQualityPopup={handleOpenQualityPopup}
+              isExtrusionWorker={isExtrusionWorker}
+              isMyeongjae={isMyeongjae}
+              isJaeyul={isJaeyul}
+              isHallim={isHallim}
+              extrusionSummaryList={extrusionSummaryList}
+              isDongwook={isDongwook}
+              pendingSamrangjinCount={pendingSamrangjinCount}
+              pendingHallimCount={pendingHallimCount}
+              setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+              filterPlant={filterPlant}
+              setFilterPlant={setFilterPlant}
+              workLogs={workLogs}
+              paginatedLogs={paginatedLogs}
+              handleOpenLogDetail={handleOpenLogDetail}
+              canApproveLog={canApproveLog}
+              isWorkLogApproved={isWorkLogApproved}
+              handleOpenEditModal={handleOpenEditModal}
+              handleDeleteLog={handleDeleteLog}
               filteredLogs={filteredLogs}
               currentLogPage={currentLogPage}
               setCurrentLogPage={setCurrentLogPage}
@@ -1475,16 +1616,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               handleOpenWorkLogModal={handleOpenWorkLogModal}
             />
           )}
-
-          {/* 6. 실시간 접속기록 현황 & 7. 시스템 오류 및 조치 이력 관리 (ADMIN 전용) */}
-          <AdminAccessAndIncidentSection
-            isAdmin={isAdmin}
-            PLANTS={PLANTS}
-            accessLogs={accessLogs}
-            handleOpenWorkerLogs={handleOpenWorkerLogs}
-            formatRelativeAccessTime={formatRelativeAccessTime}
-            onNavigateTab={onNavigateTab}
-          />
         </>
       )}
 
