@@ -46,14 +46,43 @@ export function isDummyRubberEntry(item) {
   return false;
 }
 
-// 로컬 저장소에서 데이터 읽기 (더미 데이터 자동 필터링 및 로컬스토리지 정리)
+/**
+ * 기존에 잘못 파싱되어 저장되었던 데이터(예: 구분자가 +++이어서 기본라인으로 들어간 경우)를 자동 보정
+ */
+export function repairRubberEntry(item) {
+  if (!item || !item.rawBarcode) return item;
+  if (
+    item.lineNo === "기본라인" ||
+    item.lotDate === item.rawBarcode ||
+    item.cavity === "-" ||
+    item.cavity === "" ||
+    !item.lotDate
+  ) {
+    const parsed = parseRubberBarcode(item.rawBarcode);
+    if (parsed.recognized && parsed.lotDate && parsed.lotDate !== item.rawBarcode) {
+      return {
+        ...item,
+        itemCode: parsed.itemCode || item.itemCode,
+        lotDate: parsed.lotDate,
+        lotFormatted: parsed.lotFormatted || item.lotFormatted,
+        lineNo: parsed.lineNo || item.lineNo,
+        cavity: parsed.cavity || item.cavity
+      };
+    }
+  }
+  return item;
+}
+
+// 로컬 저장소에서 데이터 읽기 (더미 데이터 자동 필터링 및 레거시 데이터 자동 보정)
 export function getLocalRubberLedger() {
   try {
     const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        const cleanList = parsed.filter((item) => item && !isDummyRubberEntry(item));
+        const cleanList = parsed
+          .filter((item) => item && !isDummyRubberEntry(item))
+          .map((item) => repairRubberEntry(item));
         if (cleanList.length !== parsed.length && typeof window !== "undefined") {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
         }
@@ -98,13 +127,16 @@ export function parseRubberBarcode(raw) {
 
   if (!raw) return res;
 
-  // 1. 고객용 바코드 패턴 (예: FFW26A14W60593$W301, FFW26A14W60712$2+02, FFW26A14WS0712S2+04)
-  const mCustomer = raw.match(/^([A-Z]+)(\d{2})([1-9A-C])(\d{2})([A-Z])([0-9A-Z])?(\d{4})[\$S](.+)$/);
+  // 1. 고객용 바코드 패턴 (예: FFW26A14W60593$W301, FFW26A14W60712$2+02, FFW26A16W60052+++01, FFW26A14WS0712S2+04)
+  // 구분자: $, S, +, +++, -, _, / 등 유연하게 지원
+  const mCustomer = raw.match(/^([A-Z]+)(\d{2})([1-9A-C])(\d{2})([A-Z])([0-9A-Z])?(\d{4})([\$S\+\-_/]+)(.*)$/);
   if (mCustomer) {
-    const [_, item, yr, moCode, day, shift, line, time, tail] = mCustomer;
+    const [_, item, yr, moCode, day, shift, line, time, sep, rawTail] = mCustomer;
     let month = moCode === "A" ? 10 : moCode === "B" ? 11 : moCode === "C" ? 12 : parseInt(moCode, 10);
-    const yearFull = 2000 + parseInt(yr, 10);
-    const dateStr = `${yearFull}-${String(month).padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const yrNum = parseInt(yr, 10);
+    const yearFull = isNaN(yrNum) ? new Date().getFullYear() : 2000 + yrNum;
+    const dateStr = `${yearFull}-${String(month || 1).padStart(2, "0")}-${String(day || 1).padStart(2, "0")}`;
+    const cleanTail = (rawTail || "").replace(/^[\+\-_/]+/, "") || rawTail || sep;
 
     res.barcodeType = "고객용 바코드 (완성차/HKMC)";
     res.itemCode = item;
@@ -112,8 +144,8 @@ export function parseRubberBarcode(raw) {
     res.lotFormatted = dateStr;
     res.shift = shift === "W" ? "주간(White)" : shift === "N" ? "야간(Night)" : shift;
     res.lineNo = line ? (/\d/.test(line) ? `${line}호기` : `${line}라인`) : "압출라인";
-    res.time = `${time.substring(0, 2)}:${time.substring(2, 4)}`;
-    res.cavity = tail ? `${tail} (순번/캐비티)` : "-";
+    res.time = time && time.length >= 4 ? `${time.substring(0, 2)}:${time.substring(2, 4)}` : "";
+    res.cavity = cleanTail ? `${cleanTail} (순번/캐비티)` : "-";
     res.recognized = true;
     return res;
   }
@@ -198,16 +230,30 @@ export function subscribeRubberLedger(callback) {
         if (isUnsubscribed) return;
 
         const cleanFbList = [];
-        snapshot.forEach((docSnap) => {
-          const item = { id: docSnap.id, ...docSnap.data() };
+        const repairPromises = [];
 
-          if (isDummyRubberEntry(item)) {
+        snapshot.forEach((docSnap) => {
+          const rawItem = { id: docSnap.id, ...docSnap.data() };
+
+          if (isDummyRubberEntry(rawItem)) {
             // Firestore에 남아있는 더미/시드 문서는 영구 삭제
             deleteDoc(doc(db, COLL_NAME, docSnap.id)).catch(() => {});
           } else {
-            cleanFbList.push(item);
+            const repaired = repairRubberEntry(rawItem);
+            if (
+              repaired.lotDate !== rawItem.lotDate ||
+              repaired.lineNo !== rawItem.lineNo ||
+              repaired.cavity !== rawItem.cavity
+            ) {
+              repairPromises.push(setDoc(doc(db, COLL_NAME, rawItem.id), repaired, { merge: true }));
+            }
+            cleanFbList.push(repaired);
           }
         });
+
+        if (repairPromises.length > 0) {
+          Promise.all(repairPromises).catch(() => {});
+        }
 
         // 최신 등록 순 정렬
         const sorted = cleanFbList.sort((a, b) =>
