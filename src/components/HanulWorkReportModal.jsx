@@ -176,8 +176,88 @@ export const HanulWorkReportModal = ({
     } else {
       key = `${project}_${processId}`;
     }
-    return HANUL_SPECS[key] || HANUL_SPECS[`${project}_${processId}`] || [];
-  }, [project, processId, subProcess, jointType, inspectionType]);
+    const specs = HANUL_SPECS[key] || HANUL_SPECS[`${project}_${processId}`] || [];
+    if (processId === "소재준비" && subProcess === "정치절단") {
+      return cuttingPart === "RR"
+        ? specs.filter((s) => s.key.startsWith("rr"))
+        : specs.filter((s) => s.key.startsWith("frt"));
+    }
+    return specs;
+  }, [project, processId, subProcess, jointType, inspectionType, cuttingPart]);
+
+  // 🌟 동적 LOT 목록 및 실측 상태 (한울 모든 일보 공통 지원)
+  const [lotEntries, setLotEntries] = useState(() => [
+    {
+      id: "lot_1",
+      lotNo: "",
+      subLotNo: "",
+      measurements: {}
+    }
+  ]);
+
+  const handleAddLot = () => {
+    const nextIdx = lotEntries.length + 1;
+    const newId = `lot_${Date.now()}_${nextIdx}`;
+    setLotEntries((prev) => [
+      ...prev,
+      {
+        id: newId,
+        lotNo: "",
+        subLotNo: "",
+        measurements: {}
+      }
+    ]);
+  };
+
+  const handleRemoveLot = (idToRemove) => {
+    setLotEntries((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((item) => item.id !== idToRemove);
+    });
+  };
+
+  const handleUpdateLotField = (lotId, field, val) => {
+    setLotEntries((prev) =>
+      prev.map((item) => (item.id === lotId ? { ...item, [field]: val } : item))
+    );
+    if (lotEntries[0]?.id === lotId) {
+      if (field === "lotNo") {
+        setMaterialLot((prev) => ({ ...prev, start: val }));
+      } else if (field === "subLotNo") {
+        if (processId === "조인트") setJointLot(val);
+        if (processId === "검사") setPadLot(val);
+      }
+    }
+  };
+
+  const handleUpdateLotMeasurement = (lotId, specKey, timing, val) => {
+    setLotEntries((prev) =>
+      prev.map((item) => {
+        if (item.id !== lotId) return item;
+        const prevMeas = item.measurements || {};
+        const curSpec = prevMeas[specKey] || {};
+        return {
+          ...item,
+          measurements: {
+            ...prevMeas,
+            [specKey]: {
+              ...curSpec,
+              [timing]: val
+            }
+          }
+        };
+      })
+    );
+    if (lotEntries[0]?.id === lotId) {
+      setMeasurements((prev) => ({
+        ...prev,
+        [specKey]: {
+          ...(prev[specKey] || {}),
+          [timing]: val
+        }
+      }));
+    }
+  };
 
   const [measurements, setMeasurements] = useState({});
 
@@ -334,6 +414,23 @@ export const HanulWorkReportModal = ({
       if (editReport.production) setProduction(editReport.production);
       if (editReport.defects) setDefects(editReport.defects);
       if (editReport.measurements) setMeasurements(editReport.measurements);
+      if (Array.isArray(editReport.lotEntries) && editReport.lotEntries.length > 0) {
+        setLotEntries(editReport.lotEntries);
+      } else {
+        const initialLotNo =
+          editReport.materialLot?.start ||
+          (typeof editReport.materialLot === "string" ? editReport.materialLot : "") ||
+          Object.values(editReport.measurements || {}).map((m) => m?.lot).filter(Boolean)[0] ||
+          "";
+        setLotEntries([
+          {
+            id: "lot_1",
+            lotNo: initialLotNo,
+            subLotNo: editReport.jointLot || editReport.padLot || editReport.jointGradeLot || "",
+            measurements: editReport.measurements || {}
+          }
+        ]);
+      }
       if (editReport.conditions) setConditions(editReport.conditions);
       if (editReport.cleaningTimes) setCleaningTimes(editReport.cleaningTimes);
       if (editReport.notes) setNotes(editReport.notes);
@@ -366,6 +463,14 @@ export const HanulWorkReportModal = ({
         a: { start: "", mid: "", end: "" },
         b: { start: "", mid: "", end: "" }
       });
+      setLotEntries([
+        {
+          id: "lot_1",
+          lotNo: "",
+          subLotNo: "",
+          measurements: {}
+        }
+      ]);
       setInspProduction({
         col1: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
         col2: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
@@ -702,24 +807,25 @@ export const HanulWorkReportModal = ({
         worker: effectiveWorker,
         startTime,
         endTime,
-        machineNo: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : machineNo,
-        materialLot: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅")
-          ? {
-              start: Object.values(measurements).map(m => m?.lot).filter(Boolean)[0] || materialLot.start || "",
-              mid: Object.values(measurements).map(m => m?.lot).filter(Boolean)[1] || materialLot.mid || "",
-              end: Object.values(measurements).map(m => m?.lot).filter(Boolean)[2] || materialLot.end || ""
-            }
-          : materialLot,
-        jointLot: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : jointLot,
+        lotEntries,
+        machineNo: machineNo || "",
+        materialLot: {
+          start: lotEntries[0]?.lotNo || materialLot.start || "",
+          mid: lotEntries[1]?.lotNo || materialLot.mid || "",
+          end: lotEntries[2]?.lotNo || materialLot.end || ""
+        },
+        jointLot: lotEntries[0]?.subLotNo || jointLot || "",
         clipLot,
-        dollyNo: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : dollyNo,
+        dollyNo,
         extTimeRange,
         bladeChangeTime: (processId === "소재준비" && subProcess === "정치절단") ? bladeChangeTime : "",
         machineTrouble,
         production,
         totals,
         defects,
-        measurements,
+        measurements: (lotEntries[0]?.measurements && Object.keys(lotEntries[0].measurements).length > 0)
+          ? lotEntries[0].measurements
+          : measurements,
         conditions,
         cleaningTimes,
         notes,
@@ -753,6 +859,10 @@ export const HanulWorkReportModal = ({
 
   const handleExcelExport = () => {
     const effectiveWorker = customWorker.trim() || worker;
+    const effectiveMeasurements = (lotEntries[0]?.measurements && Object.keys(lotEntries[0].measurements).length > 0)
+      ? lotEntries[0].measurements
+      : measurements;
+
     exportHanulReportToExcel({
       project,
       projectName: currentProjectObj.name,
@@ -777,7 +887,13 @@ export const HanulWorkReportModal = ({
       production,
       totals,
       defects,
-      measurements,
+      measurements: effectiveMeasurements,
+      lotEntries,
+      materialLot: {
+        start: lotEntries[0]?.lotNo || materialLot.start || "",
+        mid: lotEntries[1]?.lotNo || materialLot.mid || "",
+        end: lotEntries[2]?.lotNo || materialLot.end || ""
+      },
       notes
     });
   };
@@ -1634,438 +1750,8 @@ export const HanulWorkReportModal = ({
               </div>
             </div>
 
-            {/* 🌟 9BQC 정치절단: 1번 설비호기, 칼날교체시간, 대차번호 삭제 -> 절단 부품 구분만 깔끔하게 유지 */}
-            {project === "9BQC" && processId === "소재준비" && subProcess === "정치절단" ? (
-              <div className="pt-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
-                      <Scissors className="w-3.5 h-3.5" />
-                    </span>
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      절단 부품 구분 선택
-                    </span>
-                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                      ({cuttingPart === "FRT" ? "FRT A / B / C 3단면" : "RR A / B 2단면"})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCuttingPart("FRT")}
-                      className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
-                        cuttingPart === "FRT"
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-indigo-600 border border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span>🚗 FRT (A/B/C)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCuttingPart("RR")}
-                      className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
-                        cuttingPart === "RR"
-                          ? "bg-purple-600 text-white shadow-xs"
-                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-purple-600 border border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span>⚡ RR (A/B)</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" ? (
-              /* 🌟 9BQC 단컷팅: 설비호기, 압출소재 LOT, 조인트 원재료, 대차번호 뱃지/입력 삭제 */
-              <div className="pt-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1 rounded-lg bg-sky-600 text-white shadow-2xs">
-                      <Scissors className="w-3.5 h-3.5" />
-                    </span>
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      9BQC 단컷팅 공정
-                    </span>
-                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">
-                      (FRT LH/RH 83mm • RR LH 68mm • RR RH 67mm)
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                    소재 LOT는 아래 <strong className="text-sky-600 dark:text-sky-400 font-bold">[3. 주요 규격 및 치수 검사]</strong>에서 부위별 실측과 함께 기록됩니다.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* LOT 번호 및 설비 호기 (타 공정용) */
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                    설비 호기 / 라인
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={processId === "조인트" ? "예: 사출 2호기 / 3호기" : "예: 사출 2호기, X부 LH"}
-                    value={machineNo}
-                    onChange={(e) => setMachineNo(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                    {processId === "조인트"
-                      ? (jointType === "FRT" ? "압출소재 LOT (FRT A/B/C)" : "압출소재 LOT (RR A/B)")
-                      : "압출소재 LOT (초/중/종)"}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={processId === "조인트" ? (jointType === "FRT" ? "A:09.12 / B:09.12" : "RR A:09.12 / B:09.12") : "초:09.12 / 종:09.12"}
-                    value={materialLot.start || ""}
-                    onChange={(e) => setMaterialLot((prev) => ({ ...prev, start: e.target.value }))}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                    {processId === "조인트"
-                      ? "조인트 재료명 (Grade)"
-                      : "조인트/원재료 LOT"}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={processId === "조인트" ? "예: SJ-4004B, W60664$OS" : "W60664$OS 등"}
-                    value={processId === "조인트" ? jointGradeName : jointLot}
-                    onChange={(e) => {
-                      if (processId === "조인트") {
-                        setJointGradeName(e.target.value);
-                      } else {
-                        setJointLot(e.target.value);
-                      }
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
-                    {processId === "조인트"
-                      ? "조인트 재료일자 (LOT)"
-                      : "대차번호 / 클립 LOT"}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={processId === "조인트" ? "예: 24.09.12 (재료일자)" : "대차 3호 / 2T000 WH"}
-                    value={processId === "조인트" ? jointGradeLot : (dollyNo || clipLot.start || "")}
-                    onChange={(e) => {
-                      if (processId === "조인트") {
-                        setJointGradeLot(e.target.value);
-                      } else {
-                        setDollyNo(e.target.value);
-                        setClipLot((prev) => ({ ...prev, start: e.target.value }));
-                      }
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 🌟 조인트 FIXED LH / RH 전용: 4. 부자재 LOT 관리 (Glass / D/V / BRACKET 초·중·종물) */}
-            {processId === "조인트" && (jointType === "FIXED_LH" || jointType === "FIXED_RH") && (
-              <div className="mt-2.5 pt-2.5 border-t border-purple-200 dark:border-purple-800/80 animate-fadeIn">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-purple-600" />
-                    <span>부자재 LOT 관리 — Glass / D/V / BRACKET (초물 · 중물 · 종물)</span>
-                  </span>
-                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950 px-2 py-0.5 rounded-full border border-purple-300 dark:border-purple-800">
-                    FIXED {jointType === "FIXED_LH" ? "LH" : "RH"} 일보 필수항목
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* Glass */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
-                      <span>🪟</span> <span>1. Glass (글라스) LOT</span>
-                    </span>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
-                        <input
-                          type="text"
-                          placeholder="초물 LOT"
-                          value={subMaterialsLot.glass?.start || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            glass: { ...(prev.glass || {}), start: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
-                        <input
-                          type="text"
-                          placeholder="중물 LOT"
-                          value={subMaterialsLot.glass?.mid || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            glass: { ...(prev.glass || {}), mid: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
-                        <input
-                          type="text"
-                          placeholder="종물 LOT"
-                          value={subMaterialsLot.glass?.end || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            glass: { ...(prev.glass || {}), end: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* D/V */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
-                      <span>⚙️</span> <span>2. D/V LOT</span>
-                    </span>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
-                        <input
-                          type="text"
-                          placeholder="초물 LOT"
-                          value={subMaterialsLot.dv?.start || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            dv: { ...(prev.dv || {}), start: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
-                        <input
-                          type="text"
-                          placeholder="중물 LOT"
-                          value={subMaterialsLot.dv?.mid || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            dv: { ...(prev.dv || {}), mid: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
-                        <input
-                          type="text"
-                          placeholder="종물 LOT"
-                          value={subMaterialsLot.dv?.end || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            dv: { ...(prev.dv || {}), end: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BRACKET */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-purple-900 dark:text-purple-300 flex items-center gap-1">
-                      <span>🔩</span> <span>3. BRACKET (브라켓) LOT</span>
-                    </span>
-                    <div className="grid grid-cols-3 gap-1">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">초물</span>
-                        <input
-                          type="text"
-                          placeholder="초물 LOT"
-                          value={subMaterialsLot.bracket?.start || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            bracket: { ...(prev.bracket || {}), start: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">중물</span>
-                        <input
-                          type="text"
-                          placeholder="중물 LOT"
-                          value={subMaterialsLot.bracket?.mid || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            bracket: { ...(prev.bracket || {}), mid: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block text-center">종물</span>
-                        <input
-                          type="text"
-                          placeholder="종물 LOT"
-                          value={subMaterialsLot.bracket?.end || ""}
-                          onChange={(e) => setSubMaterialsLot((prev) => ({
-                            ...prev,
-                            bracket: { ...(prev.bracket || {}), end: e.target.value }
-                          }))}
-                          className="w-full px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 🌟 검사 공정 전용: 압출소재 LOT (RR A, RR B 초/중/종) 및 부자재 LOT (패드 5T / D/V) */}
-            {processId === "검사" && (
-              <div className="mt-2.5 pt-2.5 border-t border-emerald-200 dark:border-emerald-800/80 animate-fadeIn space-y-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-black text-xs text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>검사 LOT 관리 — 압출소재(RR A/B) 및 부자재 (기록시간: 초 09:00 / 중 13:30 / 종 17:00)</span>
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
-                    {inspectionType === "LENGTH" ? "부자재: 패드 5T" : inspectionType.includes("FINAL") ? "부자재: D/V" : "압출소재: RR A/B"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* 압출소재 RR A */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
-                      🧱 압출소재 RR A (초/중/종)
-                    </span>
-                    <div className="grid grid-cols-3 gap-1">
-                      <input
-                        type="text"
-                        placeholder="초물"
-                        value={rrExtLot.a?.start || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          a: { ...(prev.a || {}), start: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                      <input
-                        type="text"
-                        placeholder="중물"
-                        value={rrExtLot.a?.mid || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          a: { ...(prev.a || {}), mid: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                      <input
-                        type="text"
-                        placeholder="종물"
-                        value={rrExtLot.a?.end || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          a: { ...(prev.a || {}), end: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 압출소재 RR B */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
-                      🧱 압출소재 RR B (초/중/종)
-                    </span>
-                    <div className="grid grid-cols-3 gap-1">
-                      <input
-                        type="text"
-                        placeholder="초물"
-                        value={rrExtLot.b?.start || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          b: { ...(prev.b || {}), start: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                      <input
-                        type="text"
-                        placeholder="중물"
-                        value={rrExtLot.b?.mid || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          b: { ...(prev.b || {}), mid: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                      <input
-                        type="text"
-                        placeholder="종물"
-                        value={rrExtLot.b?.end || ""}
-                        onChange={(e) => setRrExtLot((prev) => ({
-                          ...prev,
-                          b: { ...(prev.b || {}), end: e.target.value }
-                        }))}
-                        className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 부자재 LOT (패드 5T 또는 D/V) */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-1">
-                    <span className="font-black text-[11px] text-emerald-900 dark:text-emerald-300">
-                      {inspectionType === "LENGTH" ? "📦 부자재 LOT (패드 5T)" : inspectionType.includes("FINAL") ? "⚙️ 부자재 LOT (D/V)" : "📦 기타 부자재 LOT"}
-                    </span>
-                    {inspectionType.includes("FINAL") ? (
-                      <div className="grid grid-cols-3 gap-1">
-                        <input
-                          type="text"
-                          placeholder="초물 D/V"
-                          value={dvInspLot.start || ""}
-                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, start: e.target.value }))}
-                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                        />
-                        <input
-                          type="text"
-                          placeholder="중물 D/V"
-                          value={dvInspLot.mid || ""}
-                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, mid: e.target.value }))}
-                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                        />
-                        <input
-                          type="text"
-                          placeholder="종물 D/V"
-                          value={dvInspLot.end || ""}
-                          onChange={(e) => setDvInspLot((prev) => ({ ...prev, end: e.target.value }))}
-                          className="px-1.5 py-1 text-center text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                        />
-                      </div>
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder={inspectionType === "LENGTH" ? "예: 패드 5T LOT (24.09.12)" : "부자재 LOT 입력"}
-                        value={padLot}
-                        onChange={(e) => setPadLot(e.target.value)}
-                        className="w-full px-2 py-1 text-xs font-bold rounded-lg border border-emerald-200 bg-emerald-50/40 dark:bg-slate-800"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
+
 
           {/* B. 생산 수량 및 실시간 KPI (정품 / 불량 / 리워크 / 양품률) */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-3">
@@ -2202,26 +1888,14 @@ export const HanulWorkReportModal = ({
                 </div>
               </div>
             ) : processId === "소재준비" && subProcess === "정치절단" ? (
-              <div className="space-y-3.5">
-                {/* 🌟 1. 정치절단 부품 선택 (FRT vs RR) & 압출소재 투입 LOT 카드 */}
-                <div className="p-3 sm:p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border-2 border-indigo-200 dark:border-indigo-800/80 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-200/80 dark:border-indigo-800/60 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-2xs">
-                        <Scissors className="w-4 h-4" />
-                      </span>
-                      <div>
-                        <h5 className="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                          <span>🏷️ 투입 압출소재 LOT NO.</span>
-                          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                            ({cuttingPart === "FRT" ? "FRT A / B / C 3단면" : "RR A / B 2단면"})
-                          </span>
-                        </h5>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                          📱 칸을 누르면 휴대폰에 <b>큼직한 숫자 키패드</b>가 바로 뜹니다 (영문 입력 불필요)
-                        </p>
-                      </div>
-                    </div>
+              <div className="space-y-3">
+                {/* 🌟 정치절단 부품 선택 (FRT vs RR) & 절단 생산 수량 집계 */}
+                <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-800/80 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                  <div className="bg-slate-100 dark:bg-slate-800/80 px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 dark:border-indigo-900/60">
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Scissors className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span>정치절단 생산 수량 집계 ({cuttingPart === "FRT" ? "FRT 3단면" : "RR 2단면"})</span>
+                    </span>
 
                     {/* FRT / RR Switcher */}
                     <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-indigo-300 dark:border-indigo-700 shadow-2xs self-start sm:self-auto">
@@ -2250,113 +1924,8 @@ export const HanulWorkReportModal = ({
                     </div>
                   </div>
 
-                  {/* LOT 입력 줄들: FRT는 A,B,C 3줄 / RR은 A,B 2줄 */}
-                  <div className="space-y-2">
-                    {(cuttingPart === "FRT"
-                      ? [
-                          { key: "a", name: "A단면", spec: "881±3mm", border: "border-indigo-200 dark:border-indigo-800" },
-                          { key: "b", name: "B단면", spec: "608±5mm", border: "border-indigo-200 dark:border-indigo-800" },
-                          { key: "c", name: "C단면", spec: "582±5mm", border: "border-indigo-200 dark:border-indigo-800" }
-                        ]
-                      : [
-                          { key: "a", name: "A단면", spec: "488±3mm", border: "border-purple-200 dark:border-purple-800" },
-                          { key: "b", name: "B단면", spec: "658±5mm", border: "border-purple-200 dark:border-purple-800" }
-                        ]
-                    ).map((sec) => {
-                      const currentLots = cuttingLot[cuttingPart]?.[sec.key] || { start: "", mid: "", end: "" };
-                      return (
-                        <div
-                          key={sec.key}
-                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 p-2 px-3 rounded-xl border bg-white dark:bg-slate-900 ${sec.border} shadow-2xs`}
-                        >
-                          <div className="flex items-center gap-2 sm:w-44 shrink-0">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                            <span className="font-black text-xs text-slate-900 dark:text-white">
-                              {cuttingPart} {sec.name}
-                            </span>
-                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                              ({sec.spec})
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1.5 flex-1">
-                            <div>
-                              <input
-                                type="text"
-                                inputMode="tel"
-                                placeholder="초물 숫자 (예: 1013-1)"
-                                value={currentLots.start}
-                                onChange={(e) =>
-                                  setCuttingLot((prev) => ({
-                                    ...prev,
-                                    [cuttingPart]: {
-                                      ...prev[cuttingPart],
-                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), start: e.target.value }
-                                    }
-                                  }))
-                                }
-                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
-                              />
-                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 LOT</span>
-                            </div>
-                            <div>
-                              <input
-                                type="text"
-                                inputMode="tel"
-                                placeholder="중물 숫자"
-                                value={currentLots.mid}
-                                onChange={(e) =>
-                                  setCuttingLot((prev) => ({
-                                    ...prev,
-                                    [cuttingPart]: {
-                                      ...prev[cuttingPart],
-                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), mid: e.target.value }
-                                    }
-                                  }))
-                                }
-                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
-                              />
-                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 LOT</span>
-                            </div>
-                            <div>
-                              <input
-                                type="text"
-                                inputMode="tel"
-                                placeholder="종물 숫자"
-                                value={currentLots.end}
-                                onChange={(e) =>
-                                  setCuttingLot((prev) => ({
-                                    ...prev,
-                                    [cuttingPart]: {
-                                      ...prev[cuttingPart],
-                                      [sec.key]: { ...(prev[cuttingPart]?.[sec.key] || {}), end: e.target.value }
-                                    }
-                                  }))
-                                }
-                                className="w-full px-2 py-1.5 text-center text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white focus:border-indigo-500"
-                              />
-                              <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 LOT</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 🌟 2. 절단 작업량 & 초·중·종 치수(Dim's) 일체형 실측 표 */}
-                <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-800/80 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                  <div className="bg-slate-100 dark:bg-slate-800/80 px-3.5 py-2.5 flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/60">
-                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>📊</span>
-                      <span>절단 작업량 및 초·중·종 치수(Dim's) 검사 실측</span>
-                    </span>
-                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                      단위: 수량(EA) / 치수(mm)
-                    </span>
-                  </div>
-
                   <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-xs text-left border-collapse min-w-[620px]">
+                    <table className="w-full text-xs text-left border-collapse min-w-[500px]">
                       <thead>
                         <tr className="bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-black">
                           <th className="p-2.5 text-center bg-slate-200/50 dark:bg-slate-700/50">단면</th>
@@ -2367,29 +1936,26 @@ export const HanulWorkReportModal = ({
                           <th className="p-2.5 text-center bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 border-r border-emerald-200 dark:border-emerald-800">
                             불량 (EA)
                           </th>
-                          <th className="p-2.5 text-center bg-amber-50/70 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200" colSpan={3}>
-                            초 / 중 / 종 치수(Dim's) 실측
-                          </th>
-                          <th className="p-2.5 text-center">판정</th>
+                          <th className="p-2.5 text-center">총절단 (EA)</th>
+                          <th className="p-2.5 text-center">양품률</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                         {(cuttingPart === "FRT"
                           ? [
-                              { key: "frtA", name: "A단면", spec: "881±3", target: 881, tol: 3, genKey: "genuineA", badKey: "badA" },
-                              { key: "frtB", name: "B단면", spec: "608±5", target: 608, tol: 5, genKey: "genuineB", badKey: "badB" },
-                              { key: "frtC", name: "C단면", spec: "582±5", target: 582, tol: 5, genKey: "genuineC", badKey: "badC" }
+                              { key: "frtA", name: "A단면", spec: "881±3", genKey: "genuineA", badKey: "badA" },
+                              { key: "frtB", name: "B단면", spec: "608±5", genKey: "genuineB", badKey: "badB" },
+                              { key: "frtC", name: "C단면", spec: "582±5", genKey: "genuineC", badKey: "badC" }
                             ]
                           : [
-                              { key: "rrA", name: "A단면", spec: "488±3", target: 488, tol: 3, genKey: "genuineA", badKey: "badA" },
-                              { key: "rrB", name: "B단면", spec: "658±5", target: 658, tol: 5, genKey: "genuineB", badKey: "badB" }
+                              { key: "rrA", name: "A단면", spec: "488±3", genKey: "genuineA", badKey: "badA" },
+                              { key: "rrB", name: "B단면", spec: "658±5", genKey: "genuineB", badKey: "badB" }
                             ]
                         ).map((row) => {
-                          const curDims = measurements[row.key] || { start: "", mid: "", end: "" };
-                          const sOk = isDimOk(curDims.start, row.target, row.tol);
-                          const mOk = isDimOk(curDims.mid, row.target, row.tol);
-                          const eOk = isDimOk(curDims.end, row.target, row.tol);
-                          const rowVerdict = sOk && mOk && eOk;
+                          const g = Number(production[row.genKey]) || 0;
+                          const b = Number(production[row.badKey]) || 0;
+                          const tot = g + b;
+                          const yRate = tot > 0 ? ((g / tot) * 100).toFixed(1) + "%" : "-";
 
                           return (
                             <tr key={row.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
@@ -2399,7 +1965,7 @@ export const HanulWorkReportModal = ({
                               <td className="p-2.5 text-center font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                                 {row.spec}mm
                               </td>
-                              {/* 정품 수량 (inputmode="numeric") */}
+                              {/* 정품 수량 */}
                               <td className="p-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 border-l border-emerald-100 dark:border-emerald-900/40">
                                 <input
                                   type="number"
@@ -2412,10 +1978,10 @@ export const HanulWorkReportModal = ({
                                       [row.genKey]: parseInt(e.target.value, 10) || 0
                                     }))
                                   }
-                                  className="w-20 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500"
+                                  className="w-24 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500"
                                 />
                               </td>
-                              {/* 불량 수량 (inputmode="numeric") */}
+                              {/* 불량 수량 */}
                               <td className="p-2 text-center bg-rose-50/40 dark:bg-rose-950/20 border-r border-emerald-100 dark:border-emerald-900/40">
                                 <input
                                   type="number"
@@ -2428,86 +1994,16 @@ export const HanulWorkReportModal = ({
                                       [row.badKey]: parseInt(e.target.value, 10) || 0
                                     }))
                                   }
-                                  className="w-16 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-900 dark:text-rose-200 focus:ring-2 focus:ring-rose-500"
+                                  className="w-20 px-2 py-1.5 text-center font-black text-xs rounded-lg border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-900 dark:text-rose-200 focus:ring-2 focus:ring-rose-500"
                                 />
                               </td>
-                              {/* 초물 Dim's (inputmode="decimal") */}
-                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="초물"
-                                  value={curDims.start}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMeasurements((m) => ({
-                                      ...m,
-                                      [row.key]: { ...(m[row.key] || {}), start: val }
-                                    }));
-                                  }}
-                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
-                                    sOk
-                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
-                                  }`}
-                                />
-                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 (06:50)</span>
+                              {/* 총 절단 수량 */}
+                              <td className="p-2.5 text-center font-black text-slate-900 dark:text-white">
+                                {tot.toLocaleString()} EA
                               </td>
-                              {/* 중물 Dim's (inputmode="decimal") */}
-                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="중물"
-                                  value={curDims.mid}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMeasurements((m) => ({
-                                      ...m,
-                                      [row.key]: { ...(m[row.key] || {}), mid: val }
-                                    }));
-                                  }}
-                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
-                                    mOk
-                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
-                                  }`}
-                                />
-                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 (11:50)</span>
-                              </td>
-                              {/* 종물 Dim's (inputmode="decimal") */}
-                              <td className="p-2 text-center bg-amber-50/20 dark:bg-amber-950/10">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="종물"
-                                  value={curDims.end}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMeasurements((m) => ({
-                                      ...m,
-                                      [row.key]: { ...(m[row.key] || {}), end: val }
-                                    }));
-                                  }}
-                                  className={`w-18 px-2 py-1.5 text-center font-bold text-xs rounded-lg border transition ${
-                                    eOk
-                                      ? "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                      : "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-black ring-1 ring-rose-400"
-                                  }`}
-                                />
-                                <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 (18:50)</span>
-                              </td>
-                              {/* 판정 (OK / NG) */}
-                              <td className="p-2 text-center whitespace-nowrap">
-                                <span
-                                  className={`text-[11px] px-2.5 py-1 rounded-full font-black inline-flex items-center gap-1 ${
-                                    rowVerdict
-                                      ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
-                                      : "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 animate-pulse"
-                                  }`}
-                                >
-                                  {rowVerdict ? "✅ OK" : "❌ NG"}
-                                </span>
+                              {/* 양품률 */}
+                              <td className="p-2.5 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                                {yRate}
                               </td>
                             </tr>
                           );
@@ -2519,26 +2015,7 @@ export const HanulWorkReportModal = ({
                           const genSum = (Number(production.genuineA) || 0) + (Number(production.genuineB) || 0) + (isFrt ? (Number(production.genuineC) || 0) : 0);
                           const badSum = (Number(production.badA) || 0) + (Number(production.badB) || 0) + (isFrt ? (Number(production.badC) || 0) : 0);
                           const grossSum = genSum + badSum;
-                          const yieldRate = grossSum > 0 ? ((genSum / grossSum) * 100).toFixed(1) : "100.0";
-
-                          const rowsToCheck = isFrt
-                            ? [
-                                { key: "frtA", target: 881, tol: 3 },
-                                { key: "frtB", target: 608, tol: 5 },
-                                { key: "frtC", target: 582, tol: 5 }
-                              ]
-                            : [
-                                { key: "rrA", target: 488, tol: 3 },
-                                { key: "rrB", target: 658, tol: 5 }
-                              ];
-
-                          let overallOk = true;
-                          rowsToCheck.forEach((r) => {
-                            const m = measurements[r.key] || {};
-                            if (!isDimOk(m.start, r.target, r.tol) || !isDimOk(m.mid, r.target, r.tol) || !isDimOk(m.end, r.target, r.tol)) {
-                              overallOk = false;
-                            }
-                          });
+                          const yieldRate = grossSum > 0 ? ((genSum / grossSum) * 100).toFixed(1) + "%" : "100.0%";
 
                           return (
                             <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-indigo-400">
@@ -2550,18 +2027,11 @@ export const HanulWorkReportModal = ({
                               <td className="p-3 text-center text-rose-300 font-black text-sm">
                                 {badSum.toLocaleString()} EA
                               </td>
-                              <td className="p-3 text-center text-amber-300" colSpan={3}>
-                                총 절단량: <span className="text-white font-black">{grossSum.toLocaleString()} EA</span>{" "}
-                                (양품률: <span className="text-emerald-400 font-black">{yieldRate}%</span>)
+                              <td className="p-3 text-center text-white font-black">
+                                {grossSum.toLocaleString()} EA
                               </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`text-xs px-2.5 py-1 rounded-full font-black ${
-                                    overallOk ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse"
-                                  }`}
-                                >
-                                  {overallOk ? "전체 OK" : "공차 NG"}
-                                </span>
+                              <td className="p-3 text-center text-emerald-400 font-black">
+                                {yieldRate}
                               </td>
                             </tr>
                           );
@@ -2571,6 +2041,7 @@ export const HanulWorkReportModal = ({
                   </div>
                 </div>
               </div>
+
             ) : (
               /* LH / RH Inputs for 단컷팅, 조인트, 본드로봇, 검사 */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2727,198 +2198,251 @@ export const HanulWorkReportModal = ({
             </div>
           </div>
 
-          {/* C. 공정별 치수측정 & 조건 기록 (초물 / 중물 / 종물) */}
-          {currentSpecs.length > 0 && !(processId === "소재준비" && subProcess === "정치절단") && (
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2 gap-2">
-                <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Scissors className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>3. 주요 규격 및 치수 검사 (초물 06:50 / 중물 11:50 / 종물 18:50)</span>
-                </span>
+          {/* C. 공정별 주요 규격 실측 및 LOT 관리 (동적 Multi-LOT 패널) */}
+          {(() => {
+            const effectiveSpecs = currentSpecs.length > 0 ? currentSpecs : [
+              { key: "mainDim", label: "주요 규격 치수 실측", spec: "도면 공차 준수" },
+              { key: "appearance", label: "외관 및 밀착 상태", spec: "합격(양호)" }
+            ];
 
-                <div className="flex items-center gap-2">
-                  {/* 🌟 9BQC 단컷팅일 때 소재 LOT 일괄적용 툴바 */}
-                  {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
-                    <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                      <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-                        소재 LOT 일괄적용:
-                      </span>
-                      <input
-                        type="text"
-                        id="danCuttingBatchLotInput"
-                        placeholder="예: 261016-1"
-                        className="w-24 px-1.5 py-0.5 text-xs font-bold text-center rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const el = document.getElementById("danCuttingBatchLotInput");
-                          const val = el?.value?.trim();
-                          if (!val) return;
-                          setMeasurements((prev) => {
-                            const next = { ...prev };
-                            currentSpecs.forEach((sp) => {
-                              next[sp.key] = { ...(next[sp.key] || {}), lot: val };
-                            });
-                            return next;
-                          });
-                        }}
-                        className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition cursor-pointer"
-                      >
-                        전체적용
-                      </button>
+            return (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-4">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2.5 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
+                      <Scissors className="w-4 h-4" />
                     </div>
-                  )}
-                  <span className="text-[11px] text-slate-400 font-bold">
-                    단위: mm
-                  </span>
+                    <div>
+                      <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                        3. 주요 규격 실측 및 LOT 관리
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 block font-bold">
+                        초물 (06:50) • 중물 (11:50) • 종물 (18:50) 실측 및 LOT 번호 일체형 관리
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-black bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      총 {lotEntries.length}개 LOT
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddLot}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>LOT 추가</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-xs text-left border-collapse min-w-[560px]">
-                  <thead>
-                    <tr className="bg-slate-200/70 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-black">
-                      <th className="p-2 rounded-l-lg">검사 부위 및 항목</th>
-                      <th className="p-2 text-center">규격(Spec)</th>
-                      {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
-                        <th className="p-2 text-center bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border-x border-indigo-200 dark:border-indigo-800">
-                          소재 LOT (압출)
-                        </th>
-                      )}
-                      <th className="p-2 text-center">초물 (Start)</th>
-                      <th className="p-2 text-center">중물 (Middle)</th>
-                      <th className="p-2 text-center">종물 (Finish)</th>
-                      <th className="p-2 text-center rounded-r-lg">판정</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {currentSpecs.map((spec) => {
-                      const cur = measurements[spec.key] || { start: "", mid: "", end: "", lot: "" };
-                      const sOk = spec.target ? isDimOk(cur.start, spec.target, spec.tol) : true;
-                      const mOk = spec.target ? isDimOk(cur.mid, spec.target, spec.tol) : true;
-                      const eOk = spec.target ? isDimOk(cur.end, spec.target, spec.tol) : true;
-                      const hasAnyVal = Boolean(cur.start || cur.mid || cur.end);
-                      const rowOk = sOk && mOk && eOk;
+                {/* Dynamic LOT Panels */}
+                <div className="space-y-4">
+                  {lotEntries.map((entry, lotIdx) => {
+                    return (
+                      <div
+                        key={entry.id || `lot_${lotIdx}`}
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/90 dark:border-indigo-800/80 shadow-xs space-y-3"
+                      >
+                        {/* LOT Header Toolbar */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800 gap-2.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-2xs">
+                              LOT #{lotIdx + 1}
+                            </span>
 
-                      return (
-                        <tr key={spec.key} className="hover:bg-slate-100/50 dark:hover:bg-slate-800/30">
-                          <td className="p-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                            {spec.label}
-                          </td>
-                          <td className="p-2 text-center font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                            {spec.spec}
-                          </td>
-
-                          {/* 🌟 9BQC 단컷팅: 치수실측과 함께 소재 LOT 입력 */}
-                          {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
-                            <td className="p-1.5 text-center bg-indigo-50/40 dark:bg-indigo-950/20 border-x border-indigo-100 dark:border-indigo-900/40">
+                            {/* Main Material LOT NO Input */}
+                            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                              <label className="text-xs font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                {processId === "소재준비"
+                                  ? "소재 LOT NO (압출):"
+                                  : processId === "조인트"
+                                  ? "압출소재 LOT NO:"
+                                  : processId === "검사"
+                                  ? "압출소재 LOT NO:"
+                                  : "소재/제품 LOT NO:"}
+                              </label>
                               <input
                                 type="text"
-                                placeholder="소재 LOT (예: 1016-1)"
-                                value={cur.lot || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setMeasurements((m) => ({
-                                    ...m,
-                                    [spec.key]: { ...(m[spec.key] || {}), lot: val }
-                                  }));
-                                }}
-                                className="w-28 px-2 py-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-center font-bold text-xs text-indigo-950 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500"
+                                placeholder="예: 261016-1"
+                                value={entry.lotNo || ""}
+                                onChange={(e) => handleUpdateLotField(entry.id, "lotNo", e.target.value)}
+                                className="w-28 sm:w-36 px-2 py-0.5 rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-slate-900 text-xs font-black text-indigo-950 dark:text-indigo-200 text-center focus:ring-2 focus:ring-indigo-500"
                               />
-                            </td>
-                          )}
+                            </div>
 
-                          <td className="p-1.5 text-center">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="실측"
-                              value={cur.start}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setMeasurements((m) => ({
-                                  ...m,
-                                  [spec.key]: { ...(m[spec.key] || {}), start: val }
-                                }));
-                              }}
-                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
-                                sOk
-                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
-                              }`}
-                            />
-                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 (06:50)</span>
-                          </td>
-
-                          <td className="p-1.5 text-center">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="실측"
-                              value={cur.mid}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setMeasurements((m) => ({
-                                  ...m,
-                                  [spec.key]: { ...(m[spec.key] || {}), mid: val }
-                                }));
-                              }}
-                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
-                                mOk
-                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
-                              }`}
-                            />
-                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 (11:50)</span>
-                          </td>
-
-                          <td className="p-1.5 text-center">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="실측"
-                              value={cur.end}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setMeasurements((m) => ({
-                                  ...m,
-                                  [spec.key]: { ...(m[spec.key] || {}), end: val }
-                                }));
-                              }}
-                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
-                                eOk
-                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
-                              }`}
-                            />
-                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 (18:50)</span>
-                          </td>
-
-                          {/* 실시간 판정 (OK / NG) */}
-                          <td className="p-1.5 text-center whitespace-nowrap">
-                            {hasAnyVal ? (
-                              rowOk ? (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                                  OK
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                                  NG
-                                </span>
-                              )
-                            ) : (
-                              <span className="text-[10px] text-slate-400 font-bold">-</span>
+                            {/* Process-specific Sub LOT (원재료 / 부자재) */}
+                            {processId === "조인트" && (
+                              <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-xl border border-purple-200 dark:border-purple-800">
+                                <label className="text-xs font-black text-purple-900 dark:text-purple-200 whitespace-nowrap">
+                                  원재료 LOT NO:
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="예: SJ-4004B-01"
+                                  value={entry.subLotNo || ""}
+                                  onChange={(e) => handleUpdateLotField(entry.id, "subLotNo", e.target.value)}
+                                  className="w-28 sm:w-36 px-2 py-0.5 rounded-lg border border-purple-300 dark:border-purple-600 bg-white dark:bg-slate-900 text-xs font-black text-purple-950 dark:text-purple-200 text-center focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
                             )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+
+                            {processId === "검사" && (
+                              <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                <label className="text-xs font-black text-emerald-900 dark:text-emerald-200 whitespace-nowrap">
+                                  부자재 LOT (패드/DV):
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="예: PAD-5T-01"
+                                  value={entry.subLotNo || ""}
+                                  onChange={(e) => handleUpdateLotField(entry.id, "subLotNo", e.target.value)}
+                                  className="w-28 sm:w-36 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-600 bg-white dark:bg-slate-900 text-xs font-black text-emerald-950 dark:text-emerald-200 text-center focus:ring-2 focus:ring-emerald-500"
+                                />
+                              </div>
+                            )}
+
+                            {processId === "본드로봇" && (
+                              <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-xl border border-amber-200 dark:border-amber-800">
+                                <label className="text-xs font-black text-amber-900 dark:text-amber-200 whitespace-nowrap">
+                                  본드 LOT NO:
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="예: PRI-261016"
+                                  value={entry.subLotNo || ""}
+                                  onChange={(e) => handleUpdateLotField(entry.id, "subLotNo", e.target.value)}
+                                  className="w-28 sm:w-36 px-2 py-0.5 rounded-lg border border-amber-300 dark:border-amber-600 bg-white dark:bg-slate-900 text-xs font-black text-amber-950 dark:text-amber-200 text-center focus:ring-2 focus:ring-amber-500"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Delete LOT button */}
+                          {lotEntries.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLot(entry.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 transition cursor-pointer self-end md:self-auto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>이 LOT 삭제</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Measurement Table for this LOT */}
+                        <div className="overflow-x-auto custom-scrollbar">
+                          <table className="w-full text-xs text-left border-collapse min-w-[540px]">
+                            <thead>
+                              <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black">
+                                <th className="p-2 rounded-l-lg">검사 부위 및 항목</th>
+                                <th className="p-2 text-center">규격(Spec)</th>
+                                <th className="p-2 text-center">초물 (06:50)</th>
+                                <th className="p-2 text-center">중물 (11:50)</th>
+                                <th className="p-2 text-center">종물 (18:50)</th>
+                                <th className="p-2 text-center rounded-r-lg">판정</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {effectiveSpecs.map((spec) => {
+                                const cur = entry.measurements?.[spec.key] || { start: "", mid: "", end: "" };
+                                const sOk = spec.target ? isDimOk(cur.start, spec.target, spec.tol) : true;
+                                const mOk = spec.target ? isDimOk(cur.mid, spec.target, spec.tol) : true;
+                                const eOk = spec.target ? isDimOk(cur.end, spec.target, spec.tol) : true;
+                                const hasAnyVal = Boolean(cur.start || cur.mid || cur.end);
+                                const rowOk = sOk && mOk && eOk;
+
+                                return (
+                                  <tr key={spec.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                    <td className="p-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                      {spec.label}
+                                    </td>
+                                    <td className="p-2 text-center font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                                      {spec.spec}
+                                    </td>
+                                    <td className="p-1.5 text-center">
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="실측"
+                                        value={cur.start || ""}
+                                        onChange={(e) => handleUpdateLotMeasurement(entry.id, spec.key, "start", e.target.value)}
+                                        className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                          sOk
+                                            ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                            : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                                        }`}
+                                      />
+                                    </td>
+                                    <td className="p-1.5 text-center">
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="실측"
+                                        value={cur.mid || ""}
+                                        onChange={(e) => handleUpdateLotMeasurement(entry.id, spec.key, "mid", e.target.value)}
+                                        className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                          mOk
+                                            ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                            : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                                        }`}
+                                      />
+                                    </td>
+                                    <td className="p-1.5 text-center">
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="실측"
+                                        value={cur.end || ""}
+                                        onChange={(e) => handleUpdateLotMeasurement(entry.id, spec.key, "end", e.target.value)}
+                                        className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                          eOk
+                                            ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                            : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                                        }`}
+                                      />
+                                    </td>
+                                    <td className="p-1.5 text-center whitespace-nowrap">
+                                      {hasAnyVal ? (
+                                        rowOk ? (
+                                          <span className="px-2 py-0.5 rounded text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                            OK
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                            NG
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="text-[10px] text-slate-400 font-bold">-</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Bottom Wide Add LOT Button */}
+                  <button
+                    type="button"
+                    onClick={handleAddLot}
+                    className="w-full py-3 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/30 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer shadow-2xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ 새로운 LOT 추가하기 (새 소재/원재료 LOT 및 치수 실측)</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* D. 조인트 및 가류/사출 성형 조건 (조인트 공정 시 활성화) */}
           {(processId.includes("조인트") || processId.includes("본드")) && (

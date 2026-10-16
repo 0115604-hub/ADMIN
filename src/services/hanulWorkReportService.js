@@ -202,6 +202,33 @@ export const HANUL_SPECS = {
     { key: "rrA", label: "RR 완제품 치수", spec: "완제품 공차" },
     { key: "crossSection", label: "단면 상태 (이탈유무)", spec: "양호" }
   ],
+  "9BQC_조인트_FRT": [
+    { key: "rightAngle", label: "직각부 외관/치수", spec: "외관양호/밀착" },
+    { key: "obtuseAngle", label: "둔각부 외관/치수", spec: "외관양호/밀착" },
+    { key: "burr", label: "바리/버(Burr) 유무", spec: "없음(합격)" }
+  ],
+  "9BQC_조인트_FIXED_LH": [
+    { key: "glassAssembly", label: "글라스(Glass) 조립 상태", spec: "밀착 체결" },
+    { key: "dvAssembly", label: "D/V 조립 상태", spec: "밀착 체결" },
+    { key: "bracketAssembly", label: "브라켓(Bracket) 조립 상태", spec: "규격 체결" }
+  ],
+  "9BQC_조인트_FIXED_RH": [
+    { key: "glassAssembly", label: "글라스(Glass) 조립 상태", spec: "밀착 체결" },
+    { key: "dvAssembly", label: "D/V 조립 상태", spec: "밀착 체결" },
+    { key: "bracketAssembly", label: "브라켓(Bracket) 조립 상태", spec: "규격 체결" }
+  ],
+  "9BQC_조인트_RR": [
+    { key: "rrMolding", label: "RR 사출 성형부 치수", spec: "미성형/들뜸 없음" },
+    { key: "twistState", label: "제품 꼬임 상태", spec: "꼬임 없음(합격)" }
+  ],
+  "9BQC_조인트": [
+    { key: "jointMolding", label: "조인트 성형부 치수/외관", spec: "양호" },
+    { key: "burr", label: "바리/버(Burr) 유무", spec: "없음(합격)" }
+  ],
+  "9BQC_본드로봇": [
+    { key: "bondWidth", label: "본드 도포 폭", spec: "5±1mm", target: 5, tol: 1 },
+    { key: "bondAdhesion", label: "도포 균일도/부착성", spec: "끊김 없음(합격)" }
+  ],
   "LQ2A_소재준비_정치절단": [
     { key: "totalLength", label: "전장 길이", spec: "732±2mm", target: 732, tol: 2 },
     { key: "x1", label: "X1 치수", spec: "단차/위치" },
@@ -228,6 +255,14 @@ export const HANUL_SPECS = {
     { key: "x2", label: "X2 (LH/RH)", spec: "초/중/종" },
     { key: "x3", label: "X3 (LH/RH)", spec: "초/중/종" },
     { key: "x4", label: "X4 (LH/RH)", spec: "초/중/종" }
+  ],
+  "LQ2A_조인트": [
+    { key: "pressCure", label: "프레스 가류 성형 상태", spec: "상하판 200℃ 밀착" },
+    { key: "burr", label: "바리/버(Burr) 유무", spec: "없음(합격)" }
+  ],
+  "LQ2A_본드로봇": [
+    { key: "bondApp", label: "본드 도포 상태", spec: "균일 도포" },
+    { key: "clipAssembly", label: "클립 조립 상태", spec: "체결 양호" }
   ],
   // Fallbacks for legacy process IDs
   "9BQC_정재단": [
@@ -700,7 +735,27 @@ export const exportHanulReportToExcel = (report) => {
     ["특기사항", report.notes || "특이사항 없음"]
   ];
 
-  const allRows = [titleRow, [], ...metaRows, [], ...prodRows, [], ...defectRows, [], ...noteRows];
+  const lotRows = [];
+  if (Array.isArray(report.lotEntries) && report.lotEntries.length > 0) {
+    lotRows.push([]);
+    lotRows.push(["[주요 규격 실측 및 LOT 관리]"]);
+    report.lotEntries.forEach((entry, idx) => {
+      lotRows.push([
+        `LOT #${idx + 1}`,
+        `소재 LOT: ${entry.lotNo || "-"}`,
+        entry.subLotNo ? `원재료/부자재 LOT: ${entry.subLotNo}` : ""
+      ]);
+      lotRows.push(["검사 항목", "초물 (06:50)", "중물 (11:50)", "종물 (18:50)"]);
+      if (entry.measurements && typeof entry.measurements === "object") {
+        Object.entries(entry.measurements).forEach(([k, m]) => {
+          lotRows.push([k, m?.start || "-", m?.mid || "-", m?.end || "-"]);
+        });
+      }
+      lotRows.push([]);
+    });
+  }
+
+  const allRows = [titleRow, [], ...metaRows, [], ...prodRows, [], ...defectRows, [], ...noteRows, ...lotRows];
   const ws = XLSX.utils.aoa_to_sheet(allRows);
   XLSX.utils.book_append_sheet(wb, ws, "작업일보");
 
