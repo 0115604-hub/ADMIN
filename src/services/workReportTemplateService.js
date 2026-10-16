@@ -13,7 +13,7 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 
-export const TEMPLATE_STORAGE_KEY = "oruk_work_report_templates_v1";
+export const TEMPLATE_STORAGE_KEY = "oruk_work_report_templates_v2";
 const COLLECTION_NAME = "work_report_templates";
 
 // 5대 대분류 정의
@@ -57,13 +57,13 @@ export const REPORT_MAJOR_CATEGORIES = [
 
 // 초기 표준 템플릿 마스터 데이터 (5대 대분류 기본 탑재)
 export const DEFAULT_WORK_REPORT_TEMPLATES = [
-  // 1. 소재준비일보: 9BQC 정치절단 (방금 올려주신 705-02 REV.4 실물 양식)
+  // 1. 소재준비일보: 9BQC 정치절단 (705-02 REV.4 실물 양식 1:1 완벽 일치)
   {
     id: "tpl_mat_prep_9bqc_cutting",
     categoryId: "MATERIAL_PREP",
     categoryName: "소재준비일보",
     title: "소재 준비 작업 일보 (G/RUN)",
-    subTitle: "▣ 공정명 : 정치 절단",
+    subTitle: "▣공정명 : 정치 절단    ※Record Time : Start / Half / Finish",
     formNo: "705-02(REV.4)",
     companyName: "(주)오륙",
     carModel: "9BQC",
@@ -79,26 +79,38 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
       maintenance: true
     },
     specs: [
-      { id: "sp_1", section: "A단면", name: "A단면", frtSpec: "881 ± 3mm", frtTarget: 881, frtTol: 3, rrSpec: "488 ± 3mm(가절단)", rrTarget: 488, rrTol: 3 },
-      { id: "sp_2", section: "B단면", name: "B단면", frtSpec: "608 ± 5mm", frtTarget: 608, frtTol: 5, rrSpec: "658 ± 5mm", rrTarget: 658, rrTol: 5 },
-      { id: "sp_3", section: "C단면", name: "C단면", frtSpec: "582 ± 5mm", frtTarget: 582, frtTol: 5, rrSpec: "-", rrTarget: null, rrTol: null }
+      { id: "sp_1", section: "A", name: "A", frtSpec: "881 ± 3mm", frtTarget: 881, frtTol: 3, rrSpec: "488 ± 3mm(가절단)", rrTarget: 488, rrTol: 3 },
+      { id: "sp_2", section: "B", name: "B", frtSpec: "608 ± 5mm", frtTarget: 608, frtTol: 5, rrSpec: "658 ± 5mm", rrTarget: 658, rrTol: 5 },
+      { id: "sp_3", section: "C", name: "C", frtSpec: "582 ± 5mm", frtTarget: 582, frtTol: 5, rrSpec: "658 ± 6mm", rrTarget: 658, rrTol: 6 }
     ],
     defectCategories: [
       {
-        name: "압출소재 불량",
-        items: ["스코치", "외면 흠", "오염", "길이 미달", "와이어 노출"]
+        name: "압출소재 불량 (Extrusion Badness)",
+        items: [
+          "스코치(Scortch)",
+          "외면 흠(Scratch)",
+          "오염(Contamination)",
+          "길이 미달(Length Bad)",
+          "와이어 노출"
+        ]
       },
       {
-        name: "공정간 불량",
-        items: ["길이", "단컷팅", "기타"]
+        name: "공정간 불량(Process Badness)",
+        items: [
+          "길이 (Length Bad)",
+          "단컷팅(Step Cutt,g)",
+          "기타 ( Etc )"
+        ]
       }
     ],
     maintenanceConfig: {
       hasBladeChange: true,
+      bladeChangeTitle: "칼날교체 시간",
       hasTroubleAction: true,
+      troubleActionTitle: "설비 이상 조치사항",
       bladeWarningLimit: 50000
     },
-    updatedAt: "2026-10-16T15:30:00.000Z"
+    updatedAt: "2026-10-16T16:00:00.000Z"
   },
 
   // 2. 소재준비일보: 9BQC 단컷팅

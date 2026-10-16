@@ -430,10 +430,368 @@ export const WorkReportTemplateManagerView = () => {
 };
 
 // ============================================================================
+// Material Prep Standard A4 Sheet (705-02 REV.4 1:1 Pixel-Perfect Replica)
+// 블록 1: 작업시간 & 생산량 (구분: FRT/RR, A/B/C 계획·실적)
+// 블록 2: 정치 절단 길이 & LOT NO. (규격, 초/중/종 실측, LOT NO.)
+// 블록 3: 불량소재구분 (압출소재 불량 5종 + 공정간 불량 3종 매트릭스)
+// 블록 4: 칼날교체 & 설비이상 조치
+// ============================================================================
+export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false }) => {
+  const specs = template?.specs || [];
+  const defectCategories = template?.defectCategories || [];
+  const extrusionItems = defectCategories[0]?.items || [
+    "스코치(Scortch)",
+    "외면 흠(Scratch)",
+    "오염(Contamination)",
+    "길이 미달(Length Bad)",
+    "와이어 노출"
+  ];
+  const processItems = defectCategories[1]?.items || [
+    "길이 (Length Bad)",
+    "단컷팅(Step Cutt,g)",
+    "기타 ( Etc )"
+  ];
+
+  return (
+    <div className="w-full bg-white text-black p-4 sm:p-6 border-2 border-black font-sans text-xs space-y-2 select-text">
+      {/* Title & Approval Box */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 text-center pt-1">
+          <h1 className="text-xl sm:text-2xl font-black text-black inline-block tracking-wider border-b-[3px] border-double border-black pb-0.5">
+            {template?.title || "소재 준비 작업 일보 (G/RUN)"}
+          </h1>
+        </div>
+        <table className="border-collapse border border-black text-[11px] w-40 text-center font-bold shrink-0">
+          <thead>
+            <tr className="border-b border-black">
+              <th className="border-r border-black py-0.5 w-1/3">작 성</th>
+              <th className="border-r border-black py-0.5 w-1/3">검 토</th>
+              <th className="py-0.5 w-1/3">승 인</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="h-10 text-slate-300">
+              <td className="border-r border-black align-bottom pb-1">(인)</td>
+              <td className="border-r border-black align-bottom pb-1">(인)</td>
+              <td className="align-bottom pb-1">(인)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Subtitle / Meta row 1 */}
+      <div className="flex items-center justify-between text-xs font-bold text-black pt-1">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>▣공정명 : {template?.processName || "정치 절단"}</span>
+          <span className="text-[11px] text-slate-700">※Record Time : Start / Half / Finish</span>
+        </div>
+        <div className="text-[11px]">
+          작업일자(Date) : 20&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일
+        </div>
+      </div>
+
+      {/* Header Info Box (Car Model / Part Name / Worker) */}
+      <table className="w-full border-collapse border border-black text-xs font-bold">
+        <tbody>
+          <tr>
+            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">차종(Car model)</td>
+            <td className="border border-black w-[22%] p-1 text-center font-black">{template?.carModel || "9BQC"}</td>
+            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">품 명(Part name)</td>
+            <td className="border border-black w-[22%] p-1 text-center font-black">{template?.partName || "G/RUN"}</td>
+            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">작업자(Worker)</td>
+            <td className="border border-black w-[14%] p-1 text-center font-black"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ======================================================== */}
+      {/* 🧱 [블록 1: 작업시간 및 생산량] */}
+      {/* ======================================================== */}
+      {template?.blocks?.timeAndQty && (
+        <div className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              [블록 1] 작업시간 & 생산량
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black">
+                <th colSpan={2} className="border-r border-black p-1 w-1/3">구 분(Division)</th>
+                <th className="border-r border-black p-1 w-1/3">FRT</th>
+                <th className="p-1 w-1/3">RR</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-black">
+                <td className="border-r border-black bg-[#fef9c3] p-1 w-1/6 font-bold">작업시간(time)</td>
+                <td className="border-r border-black p-1 w-1/6 font-bold">시작(S)~종료(F)</td>
+                <td className="border-r border-black p-1">~</td>
+                <td className="p-1"></td>
+              </tr>
+              <tr className="border-b border-black">
+                <td rowSpan={3} className="border-r border-black bg-[#fef9c3] p-1 font-bold">
+                  생산량 (Q,ty)
+                </td>
+                <td className="border-r border-black p-1 font-bold">
+                  <div className="flex justify-between px-2 text-[11px]">
+                    <span>(계획/실적)</span>
+                    <span>A</span>
+                  </div>
+                </td>
+                <td className="border-r border-black p-1">/</td>
+                <td className="p-1">/</td>
+              </tr>
+              <tr className="border-b border-black">
+                <td className="border-r border-black p-1 font-bold">
+                  <div className="flex justify-between px-2 text-[11px]">
+                    <span>(Plan/Output)</span>
+                    <span>B</span>
+                  </div>
+                </td>
+                <td className="border-r border-black p-1">/</td>
+                <td className="p-1">/</td>
+              </tr>
+              <tr className="border-b border-black">
+                <td className="border-r border-black p-1 font-bold">
+                  <div className="flex justify-end px-2 text-[11px]">
+                    <span>C</span>
+                  </div>
+                </td>
+                <td className="border-r border-black p-1">/</td>
+                {/* Diagonal Cross-out (X) cell for Section C on RR */}
+                <td className="p-1 relative overflow-hidden h-6">
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                    <line x1="0" y1="0" x2="100%" y2="100%" stroke="black" strokeWidth="1" />
+                    <line x1="100%" y1="0" x2="0" y2="100%" stroke="black" strokeWidth="1" />
+                  </svg>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 🧱 [블록 2: 정치 절단 길이 & LOT NO.] */}
+      {/* ======================================================== */}
+      {template?.blocks?.specAndLot && (
+        <div className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              [블록 2] 정치 절단 길이 & LOT NO.
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black">
+                <th colSpan={2} className="border-r border-black p-1 w-[22%]">구 분(Division)</th>
+                <th className="border-r border-black p-1 w-[13%]">초물(Start)</th>
+                <th className="border-r border-black p-1 w-[13%]">중물(Half)</th>
+                <th className="border-r border-black p-1 w-[13%]">종물(Finish)</th>
+                <th className="border-r border-black p-1 w-[13%]">초물(Start)</th>
+                <th className="border-r border-black p-1 w-[13%]">중물(Half)</th>
+                <th className="p-1 w-[13%]">종물(Finish)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {specs.map((spec, sIdx) => {
+                const isFirst = sIdx === 0;
+                const totalSpecs = specs.length;
+                return (
+                  <React.Fragment key={spec.id || sIdx}>
+                    {/* Sub-row 1: 규격(Spec) */}
+                    <tr className="border-b border-black">
+                      {isFirst && (
+                        <td
+                          rowSpan={totalSpecs * 3}
+                          className="border-r border-black bg-[#fef9c3] p-1 font-bold w-[12%] text-center align-middle"
+                        >
+                          <div className="leading-snug">
+                            정치 절단<br />길이(Spec<br />cutting)
+                          </div>
+                        </td>
+                      )}
+                      <td rowSpan={3} className="border-r border-black p-1 w-[10%] text-center font-bold">
+                        {spec.section || spec.name || `Section ${sIdx + 1}`}
+                      </td>
+                      <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                        규격(Spec)
+                      </td>
+                      <td colSpan={3} className="border-r border-black p-0.5 text-center font-black text-indigo-900 bg-slate-50/50">
+                        {spec.frtSpec || "-"}
+                      </td>
+                      <td colSpan={3} className="p-0.5 text-center font-black text-indigo-900 bg-slate-50/50">
+                        {spec.rrSpec || "-"}
+                      </td>
+                    </tr>
+
+                    {/* Sub-row 2: 초/중/종 실측치 */}
+                    <tr className="border-b border-black">
+                      <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                        초/중/종
+                      </td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="p-0.5 h-5"></td>
+                    </tr>
+
+                    {/* Sub-row 3: LOT NO. */}
+                    <tr className="border-b border-black">
+                      <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                        LOT NO.
+                      </td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-5"></td>
+                      <td className="p-0.5 h-5"></td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 🧱 [블록 3: 불량소재구분 매트릭스] */}
+      {/* ======================================================== */}
+      {template?.blocks?.defectMatrix && (
+        <div className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              [블록 3] 불량소재 구분 매트릭스
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black">
+                <th colSpan={2} className="border-r border-black p-1 w-[25%]">불량소재구분</th>
+                <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
+                <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
+                <th className="border-r border-black p-1 w-[12.5%]">Section "C"</th>
+                <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
+                <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
+                <th className="p-1 w-[12.5%]">Section "C"</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* 압출소재 불량 (Extrusion Badness) */}
+              {extrusionItems.map((item, idx) => (
+                <tr key={`ext_${idx}`} className="border-b border-black">
+                  {idx === 0 && (
+                    <td
+                      rowSpan={extrusionItems.length}
+                      className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
+                    >
+                      <div className="leading-snug">
+                        압출소재<br />불량<br />(Extrusion<br />Badness)
+                      </div>
+                    </td>
+                  )}
+                  <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
+                    {item}
+                  </td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="p-0.5 h-4"></td>
+                </tr>
+              ))}
+
+              {/* 공정간 불량 (Process Badness) */}
+              {processItems.map((item, idx) => (
+                <tr key={`proc_${idx}`} className="border-b border-black">
+                  {idx === 0 && (
+                    <td
+                      rowSpan={processItems.length}
+                      className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
+                    >
+                      <div className="leading-snug">
+                        공정간<br />불량(Process<br />Badness)
+                      </div>
+                    </td>
+                  )}
+                  <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
+                    {item}
+                  </td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="border-r border-black p-0.5 h-4"></td>
+                  <td className="p-0.5 h-4"></td>
+                </tr>
+              ))}
+
+              {/* 불량 합계(Bad Sum) */}
+              <tr className="border-b border-black font-black bg-slate-50">
+                <td colSpan={2} className="border-r border-black p-1 text-center">
+                  불량 합계(Bad Sum)
+                </td>
+                <td className="border-r border-black p-1 h-5"></td>
+                <td className="border-r border-black p-1 h-5"></td>
+                <td className="border-r border-black p-1 h-5"></td>
+                <td className="border-r border-black p-1 h-5"></td>
+                <td className="border-r border-black p-1 h-5"></td>
+                <td className="p-1 h-5"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 🧱 [블록 4: 칼날교체 & 설비 이상 조치사항] */}
+      {/* ======================================================== */}
+      {template?.blocks?.maintenance && (
+        <div className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              [블록 4] 칼날교체 & 설비이상 조치
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs font-bold">
+            <tbody>
+              <tr>
+                <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
+                  칼날교체 시간
+                </td>
+                <td className="border-r border-black p-2 w-[25%] h-12"></td>
+                <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
+                  설비 이상 조치사항
+                </td>
+                <td className="p-2 w-[25%] h-12"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-black text-black">
+        <span>{template?.formNo || "705-02(REV.4)"}</span>
+        <span className="font-black text-sm">{template?.companyName || "(주)오륙"}</span>
+        <span>A4(210×297)</span>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // Lego Template Editor Modal (Lego Blocks + Real-time live A4 Sheet)
 // ============================================================================
 const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
   const [formData, setFormData] = useState(template);
+  const isMaterialPrep = formData.categoryId === "MATERIAL_PREP" || formData.divisionType === "SECTION_ABC";
 
   const updateField = (field, val) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
@@ -451,16 +809,17 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
 
   const handleAddSpec = () => {
     const nextIdx = (formData.specs || []).length + 1;
+    const letter = String.fromCharCode(64 + nextIdx);
     const newSpec = {
       id: `sp_${Date.now()}_${nextIdx}`,
-      section: `단면 ${String.fromCharCode(64 + nextIdx)}`,
-      name: `치수 항목 ${nextIdx}`,
-      frtSpec: "800 ± 3mm",
-      frtTarget: 800,
-      frtTol: 3,
-      rrSpec: "500 ± 3mm",
-      rrTarget: 500,
-      rrTol: 3
+      section: letter,
+      name: `Section "${letter}"`,
+      frtSpec: "600 ± 5mm",
+      frtTarget: 600,
+      frtTol: 5,
+      rrSpec: "600 ± 5mm",
+      rrTarget: 600,
+      rrTol: 5
     };
     setFormData((prev) => ({
       ...prev,
@@ -482,13 +841,16 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
     }));
   };
 
-  const handleAddDefect = () => {
-    const name = prompt("추가할 불량 항목명을 입력하세요 (예: 버(Burr), 찍힘, 단차 등):");
+  const handleAddDefect = (groupIndex = 0) => {
+    const defaultPrompt = groupIndex === 0 ? "압출소재 불량 항목명 (예: 크랙, 흑점 등):" : "공정간 불량 항목명 (예: 치수불량 등):";
+    const name = prompt(defaultPrompt);
     if (!name || !name.trim()) return;
     setFormData((prev) => {
       const cats = [...(prev.defectCategories || [])];
-      if (cats.length === 0) cats.push({ name: "주요 불량", items: [] });
-      cats[0] = { ...cats[0], items: [...(cats[0].items || []), name.trim()] };
+      if (!cats[groupIndex]) {
+        cats[groupIndex] = { name: groupIndex === 0 ? "압출소재 불량 (Extrusion Badness)" : "공정간 불량(Process Badness)", items: [] };
+      }
+      cats[groupIndex] = { ...cats[groupIndex], items: [...(cats[groupIndex].items || []), name.trim()] };
       return { ...prev, defectCategories: cats };
     });
   };
@@ -593,20 +955,31 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
 
             {/* Step 2: Lego Block Toggles */}
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
-                2. 레고 블록 ON/OFF 스위치
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                  2. 레고 블록 ON/OFF 스위치
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">실시간 우측 서식 연동</span>
+              </div>
               <div className="space-y-1.5">
-                {[
-                  { key: "timeAndQty", label: "⏱️ [블록 1] 작업시간 & 생산량 블록" },
-                  { key: "specAndLot", label: "📐 [블록 2] 주요 규격 실측 & LOT 번호 블록" },
-                  { key: "machineCondition", label: "🌡️ [블록 3] 성형/설비 조건 블록" },
-                  { key: "defectMatrix", label: "⚠️ [블록 4] 불량 세부 매트릭스 블록" },
-                  { key: "maintenance", label: "🔧 [블록 5] 설비보전 & 칼날교체 블록" }
-                ].map((b) => (
+                {(isMaterialPrep
+                  ? [
+                      { key: "timeAndQty", label: "⏱️ [블록 1] 작업시간 & 생산량 (FRT/RR, A/B/C 계획·실적)" },
+                      { key: "specAndLot", label: "📐 [블록 2] 정치 절단 길이 & LOT NO. (초/중/종 실측)" },
+                      { key: "defectMatrix", label: "⚠️ [블록 3] 불량소재구분 매트릭스 (압출 5종 + 공정간 3종)" },
+                      { key: "maintenance", label: "🔧 [블록 4] 칼날교체 & 설비이상 조치 블록" }
+                    ]
+                  : [
+                      { key: "timeAndQty", label: "⏱️ [블록 1] 작업시간 & 생산량 블록" },
+                      { key: "specAndLot", label: "📐 [블록 2] 주요 규격 실측 & LOT 번호 블록" },
+                      { key: "machineCondition", label: "🌡️ [블록 3] 성형/설비 조건 블록" },
+                      { key: "defectMatrix", label: "⚠️ [블록 4] 불량 세부 매트릭스 블록" },
+                      { key: "maintenance", label: "🔧 [블록 5] 설비보전 & 칼날교체 블록" }
+                    ]
+                ).map((b) => (
                   <label
                     key={b.key}
-                    className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-400 transition"
                   >
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{b.label}</span>
                     <input
@@ -624,43 +997,59 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
             {formData.blocks?.specAndLot && (
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                    3. 검사 규격(Spec) 항목
-                  </span>
+                  <div>
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                      3. 정치 절단 치수 규격(Spec) 설정
+                    </span>
+                    <span className="text-[10px] text-slate-400">FRT 및 RR 단면별 기준 규격</span>
+                  </div>
                   <button
                     onClick={handleAddSpec}
-                    className="px-2 py-0.5 rounded-lg bg-indigo-600 text-white text-[11px] font-black cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-indigo-600 text-white text-[11px] font-black cursor-pointer hover:bg-indigo-500"
                   >
-                    + 규격 추가
+                    + 단면 추가
                   </button>
                 </div>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {(formData.specs || []).map((s, idx) => (
                     <div
                       key={s.id}
-                      className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs flex items-center gap-1.5"
+                      className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
                     >
-                      <span className="w-5 text-center font-bold text-slate-400">{idx + 1}</span>
-                      <input
-                        type="text"
-                        value={s.name || ""}
-                        onChange={(e) => handleUpdateSpec(s.id, "name", e.target.value)}
-                        placeholder="단면/항목명"
-                        className="w-20 px-1 py-0.5 rounded border text-center font-bold"
-                      />
-                      <input
-                        type="text"
-                        value={s.frtSpec || ""}
-                        onChange={(e) => handleUpdateSpec(s.id, "frtSpec", e.target.value)}
-                        placeholder="규격 (예: 881±3mm)"
-                        className="flex-1 px-1 py-0.5 rounded border text-center font-bold text-indigo-600 dark:text-indigo-400"
-                      />
-                      <button
-                        onClick={() => handleRemoveSpec(s.id)}
-                        className="text-rose-500 font-bold px-1 hover:bg-rose-50 rounded cursor-pointer"
-                      >
-                        ×
-                      </button>
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-indigo-700 dark:text-indigo-300 text-xs">
+                          {s.section || s.name || `Section ${idx + 1}`} 단면
+                        </span>
+                        <button
+                          onClick={() => handleRemoveSpec(s.id)}
+                          className="text-rose-500 font-bold px-1 hover:bg-rose-50 rounded cursor-pointer"
+                          title="삭제"
+                        >
+                          × 단면 제거
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 block">FRT 규격</label>
+                          <input
+                            type="text"
+                            value={s.frtSpec || ""}
+                            onChange={(e) => handleUpdateSpec(s.id, "frtSpec", e.target.value)}
+                            placeholder="예: 881 ± 3mm"
+                            className="w-full px-2 py-1 rounded border text-center font-bold text-indigo-600 dark:text-indigo-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 block">RR 규격</label>
+                          <input
+                            type="text"
+                            value={s.rrSpec || ""}
+                            onChange={(e) => handleUpdateSpec(s.id, "rrSpec", e.target.value)}
+                            placeholder="예: 488 ± 3mm(가절단)"
+                            className="w-full px-2 py-1 rounded border text-center font-bold text-purple-600 dark:text-purple-400"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -669,35 +1058,69 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
 
             {/* Step 4: Defect Items Editor */}
             {formData.blocks?.defectMatrix && (
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                    4. 불량 집계 항목
+                    4. 불량 세부 매트릭스 항목
                   </span>
-                  <button
-                    onClick={handleAddDefect}
-                    className="px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[11px] font-black cursor-pointer"
-                  >
-                    + 불량 추가
-                  </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(formData.defectCategories || []).flatMap((c, cIdx) =>
-                    (c.items || []).map((item, itemIdx) => (
+
+                {/* Group 1: 압출소재 불량 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    <span>압출소재 불량 ({formData.defectCategories?.[0]?.items?.length || 0}개)</span>
+                    <button
+                      onClick={() => handleAddDefect(0)}
+                      className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black cursor-pointer hover:bg-rose-500"
+                    >
+                      + 항목 추가
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(formData.defectCategories?.[0]?.items || []).map((item, itemIdx) => (
                       <span
-                        key={`${cIdx}_${itemIdx}`}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                        key={`grp0_${itemIdx}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                       >
                         <span>{item}</span>
                         <button
-                          onClick={() => handleRemoveDefect(cIdx, itemIdx)}
+                          onClick={() => handleRemoveDefect(0, itemIdx)}
                           className="hover:text-black dark:hover:text-white font-black cursor-pointer"
                         >
                           ×
                         </button>
                       </span>
-                    ))
-                  )}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Group 2: 공정간 불량 */}
+                <div className="space-y-1.5 pt-1 border-t border-slate-200 dark:border-slate-700/60">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    <span>공정간 불량 ({formData.defectCategories?.[1]?.items?.length || 0}개)</span>
+                    <button
+                      onClick={() => handleAddDefect(1)}
+                      className="px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black cursor-pointer hover:bg-amber-500"
+                    >
+                      + 항목 추가
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(formData.defectCategories?.[1]?.items || []).map((item, itemIdx) => (
+                      <span
+                        key={`grp1_${itemIdx}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                      >
+                        <span>{item}</span>
+                        <button
+                          onClick={() => handleRemoveDefect(1, itemIdx)}
+                          className="hover:text-black dark:hover:text-white font-black cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -705,120 +1128,133 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
 
           {/* RIGHT: Live A4 Sheet Preview */}
           <div className="lg:col-span-7 p-4 sm:p-6 bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-start overflow-y-auto">
-            <span className="text-xs font-bold text-slate-500 mb-2">실시간 A4 종이 서식 미리보기</span>
-            <div className="w-full bg-white text-black p-5 rounded-2xl shadow-xl border border-slate-300 text-xs space-y-2 min-w-[500px]">
-              {/* Title & Approval */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1 text-center pt-1">
-                  <h2 className="text-xl font-black border-b-4 border-double border-black inline-block pb-0.5">
-                    {formData.title || "작업 일보"}
-                  </h2>
-                </div>
-                <table className="border-collapse border border-black text-[9px] w-32 shrink-0">
-                  <tr className="bg-slate-100 font-bold"><th className="border border-black">작 성</th><th className="border border-black">검 토</th><th className="border border-black">승 인</th></tr>
-                  <tr className="h-8 text-slate-400"><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td></tr>
-                </table>
-              </div>
+            <div className="flex items-center justify-between w-full mb-2">
+              <span className="text-xs font-black text-slate-600 dark:text-slate-400">
+                실시간 1:1 표준 A4 서식 연동 미리보기
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                705-02(REV.4) 규격
+              </span>
+            </div>
 
-              {/* Meta row */}
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span>▣ 공정명 : {formData.processName}</span>
-                <span>작업일자 : 2026년 10월 16일</span>
-              </div>
-              <table className="w-full border-collapse border border-black text-[10px]">
-                <tr>
-                  <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">차종</td>
-                  <td className="border border-black font-black p-1 text-center">{formData.carModel}</td>
-                  <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">품명</td>
-                  <td className="border border-black font-black p-1 text-center">{formData.partName}</td>
-                  <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">작업자</td>
-                  <td className="border border-black font-black p-1 text-center">박종미</td>
-                </tr>
-              </table>
-
-              {/* Block 1: Time & Qty */}
-              {formData.blocks?.timeAndQty && (
-                <div className="border border-black p-1.5 bg-yellow-50/40 text-[10px] space-y-1">
-                  <span className="font-black block text-slate-700">[블록 1: 작업시간 & 생산량 (계획/실적)]</span>
-                  <div className="grid grid-cols-3 gap-1 text-center font-bold">
-                    <div className="border p-1 bg-white">시간: 06:30 ~ 17:30</div>
-                    <div className="border p-1 bg-white">계획: 800 EA</div>
-                    <div className="border p-1 bg-white text-indigo-700 font-black">실적: 800 EA</div>
+            {/* RENDER 1:1 REPLICA FOR MATERIAL PREP */}
+            {isMaterialPrep ? (
+              <MaterialPrepStandardA4Sheet template={formData} showBlockBadges={true} />
+            ) : (
+              <div className="w-full bg-white text-black p-5 rounded-2xl shadow-xl border border-slate-300 text-xs space-y-2 min-w-[500px]">
+                {/* Title & Approval */}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 text-center pt-1">
+                    <h2 className="text-xl font-black border-b-4 border-double border-black inline-block pb-0.5">
+                      {formData.title || "작업 일보"}
+                    </h2>
                   </div>
-                </div>
-              )}
-
-              {/* Block 2: Spec & LOT */}
-              {formData.blocks?.specAndLot && (
-                <div className="border border-black p-1.5 space-y-1">
-                  <span className="font-black text-[10px] block text-slate-700">[블록 2: 주요 규격 치수 실측 & LOT 관리]</span>
-                  <table className="w-full border-collapse border border-black text-[9.5px]">
-                    <tr className="bg-yellow-100 font-bold">
-                      <th className="border border-black p-0.5">단면/항목</th>
-                      <th className="border border-black p-0.5">규격(Spec)</th>
-                      <th className="border border-black p-0.5">초물</th>
-                      <th className="border border-black p-0.5">중물</th>
-                      <th className="border border-black p-0.5">종물</th>
-                    </tr>
-                    {(formData.specs || []).map((s) => (
-                      <tr key={s.id}>
-                        <td className="border border-black p-0.5 text-center font-bold">{s.name}</td>
-                        <td className="border border-black p-0.5 text-center text-indigo-800 font-black">{s.frtSpec || s.spec}</td>
-                        <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                        <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                        <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                      </tr>
-                    ))}
+                  <table className="border-collapse border border-black text-[9px] w-32 shrink-0">
+                    <tr className="bg-slate-100 font-bold"><th className="border border-black">작 성</th><th className="border border-black">검 토</th><th className="border border-black">승 인</th></tr>
+                    <tr className="h-8 text-slate-400"><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td></tr>
                   </table>
                 </div>
-              )}
 
-              {/* Block 3: Machine Condition */}
-              {formData.blocks?.machineCondition && (
-                <div className="border border-black p-1.5 bg-amber-50/50 text-[10px]">
-                  <span className="font-black block text-amber-900 mb-0.5">[블록 3: 성형 / 사출 / 가류 조건]</span>
-                  <div className="grid grid-cols-4 gap-1 text-center font-bold text-[9px]">
-                    <div className="border p-1 bg-white">노즐: 220℃</div>
-                    <div className="border p-1 bg-white">실린더: 215℃</div>
-                    <div className="border p-1 bg-white">압력: 140 bar</div>
-                    <div className="border p-1 bg-white">시간: 90 sec</div>
-                  </div>
+                {/* Meta row */}
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span>▣ 공정명 : {formData.processName}</span>
+                  <span>작업일자 : 2026년 10월 16일</span>
                 </div>
-              )}
+                <table className="w-full border-collapse border border-black text-[10px]">
+                  <tr>
+                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">차종</td>
+                    <td className="border border-black font-black p-1 text-center">{formData.carModel}</td>
+                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">품명</td>
+                    <td className="border border-black font-black p-1 text-center">{formData.partName}</td>
+                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">작업자</td>
+                    <td className="border border-black font-black p-1 text-center">박종미</td>
+                  </tr>
+                </table>
 
-              {/* Block 4: Defect Matrix */}
-              {formData.blocks?.defectMatrix && (
-                <div className="border border-black p-1.5 space-y-1">
-                  <span className="font-black text-[10px] block text-slate-700">[블록 4: 불량 세부 매트릭스]</span>
-                  <div className="flex flex-wrap gap-1 text-[9px]">
-                    {(formData.defectCategories || []).flatMap((c) =>
-                      (c.items || []).map((item, idx) => (
-                        <span key={idx} className="border border-rose-300 px-1.5 py-0.5 bg-rose-50 rounded font-bold">
-                          {item}: 0
-                        </span>
-                      ))
-                    )}
+                {/* Block 1: Time & Qty */}
+                {formData.blocks?.timeAndQty && (
+                  <div className="border border-black p-1.5 bg-yellow-50/40 text-[10px] space-y-1">
+                    <span className="font-black block text-slate-700">[블록 1: 작업시간 & 생산량 (계획/실적)]</span>
+                    <div className="grid grid-cols-3 gap-1 text-center font-bold">
+                      <div className="border p-1 bg-white">시간: 06:30 ~ 17:30</div>
+                      <div className="border p-1 bg-white">계획: 800 EA</div>
+                      <div className="border p-1 bg-white text-indigo-700 font-black">실적: 800 EA</div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Block 5: Maintenance */}
-              {formData.blocks?.maintenance && (
-                <div className="border border-black p-1.5 text-[9.5px]">
-                  <div className="grid grid-cols-2 gap-1 font-bold">
-                    <div className="border p-1 bg-yellow-50">칼날교체: 08:30 완료</div>
-                    <div className="border p-1 bg-white">설비이상: 특이사항 없음</div>
+                {/* Block 2: Spec & LOT */}
+                {formData.blocks?.specAndLot && (
+                  <div className="border border-black p-1.5 space-y-1">
+                    <span className="font-black text-[10px] block text-slate-700">[블록 2: 주요 규격 치수 실측 & LOT 관리]</span>
+                    <table className="w-full border-collapse border border-black text-[9.5px]">
+                      <tr className="bg-yellow-100 font-bold">
+                        <th className="border border-black p-0.5">단면/항목</th>
+                        <th className="border border-black p-0.5">규격(Spec)</th>
+                        <th className="border border-black p-0.5">초물</th>
+                        <th className="border border-black p-0.5">중물</th>
+                        <th className="border border-black p-0.5">종물</th>
+                      </tr>
+                      {(formData.specs || []).map((s) => (
+                        <tr key={s.id}>
+                          <td className="border border-black p-0.5 text-center font-bold">{s.name}</td>
+                          <td className="border border-black p-0.5 text-center text-indigo-800 font-black">{s.frtSpec || s.spec}</td>
+                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
+                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
+                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
+                        </tr>
+                      ))}
+                    </table>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Footer */}
-              <div className="flex items-center justify-between text-[9px] font-bold pt-1 text-slate-500 border-t border-slate-300">
-                <span>{formData.formNo || "705-02(REV.4)"}</span>
-                <span className="font-black text-black">{formData.companyName || "(주)오륙"}</span>
-                <span>A4(210×297)</span>
+                {/* Block 3: Machine Condition */}
+                {formData.blocks?.machineCondition && (
+                  <div className="border border-black p-1.5 bg-amber-50/50 text-[10px]">
+                    <span className="font-black block text-amber-900 mb-0.5">[블록 3: 성형 / 사출 / 가류 조건]</span>
+                    <div className="grid grid-cols-4 gap-1 text-center font-bold text-[9px]">
+                      <div className="border p-1 bg-white">노즐: 220℃</div>
+                      <div className="border p-1 bg-white">실린더: 215℃</div>
+                      <div className="border p-1 bg-white">압력: 140 bar</div>
+                      <div className="border p-1 bg-white">시간: 90 sec</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Block 4: Defect Matrix */}
+                {formData.blocks?.defectMatrix && (
+                  <div className="border border-black p-1.5 space-y-1">
+                    <span className="font-black text-[10px] block text-slate-700">[블록 4: 불량 세부 매트릭스]</span>
+                    <div className="flex flex-wrap gap-1 text-[9px]">
+                      {(formData.defectCategories || []).flatMap((c) =>
+                        (c.items || []).map((item, idx) => (
+                          <span key={idx} className="border border-rose-300 px-1.5 py-0.5 bg-rose-50 rounded font-bold">
+                            {item}: 0
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Block 5: Maintenance */}
+                {formData.blocks?.maintenance && (
+                  <div className="border border-black p-1.5 text-[9.5px]">
+                    <div className="grid grid-cols-2 gap-1 font-bold">
+                      <div className="border p-1 bg-yellow-50">칼날교체: 08:30 완료</div>
+                      <div className="border p-1 bg-white">설비이상: 특이사항 없음</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="flex items-center justify-between text-[9px] font-bold pt-1 text-slate-500 border-t border-slate-300">
+                  <span>{formData.formNo || "705-02(REV.4)"}</span>
+                  <span className="font-black text-black">{formData.companyName || "(주)오륙"}</span>
+                  <span>A4(210×297)</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -830,6 +1266,8 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
 // A4 Print Preview Modal (Standard sheet ready for A4 printing)
 // ============================================================================
 const A4PrintPreviewModal = ({ template, onClose }) => {
+  const isMaterialPrep = template?.categoryId === "MATERIAL_PREP" || template?.divisionType === "SECTION_ABC";
+
   return (
     <div className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-white text-black w-full max-w-4xl max-h-[94vh] rounded-3xl p-5 sm:p-8 overflow-y-auto space-y-4 shadow-2xl text-left">
@@ -853,71 +1291,75 @@ const A4PrintPreviewModal = ({ template, onClose }) => {
         </div>
 
         {/* Paper Container */}
-        <div className="border-2 border-black p-6 rounded-none space-y-3 font-sans text-xs">
-          {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex-1 text-center pt-2">
-              <h1 className="text-2xl font-black border-b-4 border-double border-black inline-block pb-1">
-                {template.title}
-              </h1>
+        {isMaterialPrep ? (
+          <MaterialPrepStandardA4Sheet template={template} showBlockBadges={false} />
+        ) : (
+          <div className="border-2 border-black p-6 rounded-none space-y-3 font-sans text-xs">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex-1 text-center pt-2">
+                <h1 className="text-2xl font-black border-b-4 border-double border-black inline-block pb-1">
+                  {template.title}
+                </h1>
+              </div>
+              <table className="border-collapse border border-black text-xs w-40 text-center">
+                <tr className="bg-slate-100 font-bold"><th className="border border-black py-1">작 성</th><th className="border border-black py-1">검 토</th><th className="border border-black py-1">승 인</th></tr>
+                <tr className="h-12"><td className="border border-black">(인)</td><td className="border border-black">(인)</td><td className="border border-black">(인)</td></tr>
+              </table>
             </div>
-            <table className="border-collapse border border-black text-xs w-40 text-center">
-              <tr className="bg-slate-100 font-bold"><th className="border border-black py-1">작 성</th><th className="border border-black py-1">검 토</th><th className="border border-black py-1">승 인</th></tr>
-              <tr className="h-12"><td className="border border-black">(인)</td><td className="border border-black">(인)</td><td className="border border-black">(인)</td></tr>
+
+            <div className="flex items-center justify-between font-bold text-xs">
+              <span>▣ 공정명 : {template.processName}</span>
+              <span>작업일자 : 2026년 10월 16일</span>
+            </div>
+
+            <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+              <tr>
+                <td className="border border-black bg-slate-100 w-24 p-1">차종</td>
+                <td className="border border-black font-black p-1">{template.carModel}</td>
+                <td className="border border-black bg-slate-100 w-24 p-1">품 명</td>
+                <td className="border border-black font-black p-1">{template.partName}</td>
+                <td className="border border-black bg-slate-100 w-24 p-1">작업자</td>
+                <td className="border border-black font-black p-1">박종미</td>
+              </tr>
             </table>
-          </div>
 
-          <div className="flex items-center justify-between font-bold text-xs">
-            <span>▣ 공정명 : {template.processName}</span>
-            <span>작업일자 : 2026년 10월 16일</span>
-          </div>
-
-          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
-            <tr>
-              <td className="border border-black bg-slate-100 w-24 p-1">차종</td>
-              <td className="border border-black font-black p-1">{template.carModel}</td>
-              <td className="border border-black bg-slate-100 w-24 p-1">품 명</td>
-              <td className="border border-black font-black p-1">{template.partName}</td>
-              <td className="border border-black bg-slate-100 w-24 p-1">작업자</td>
-              <td className="border border-black font-black p-1">박종미</td>
-            </tr>
-          </table>
-
-          {/* Specs */}
-          {template.blocks?.specAndLot && (
-            <table className="w-full border-collapse border border-black text-xs text-center">
-              <thead>
-                <tr className="bg-yellow-200 font-black">
-                  <th className="border border-black p-1">검사 부위 및 항목</th>
-                  <th className="border border-black p-1">규격(Spec)</th>
-                  <th className="border border-black p-1">초물 (Start)</th>
-                  <th className="border border-black p-1">중물 (Middle)</th>
-                  <th className="border border-black p-1">종물 (Finish)</th>
-                  <th className="border border-black p-1">판정</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(template.specs || []).map((s) => (
-                  <tr key={s.id}>
-                    <td className="border border-black p-1 font-bold">{s.name}</td>
-                    <td className="border border-black p-1 font-black text-indigo-900">{s.frtSpec || s.spec}</td>
-                    <td className="border border-black p-1">-</td>
-                    <td className="border border-black p-1">-</td>
-                    <td className="border border-black p-1">-</td>
-                    <td className="border border-black p-1 font-bold text-emerald-700">OK</td>
+            {/* Specs */}
+            {template.blocks?.specAndLot && (
+              <table className="w-full border-collapse border border-black text-xs text-center">
+                <thead>
+                  <tr className="bg-yellow-200 font-black">
+                    <th className="border border-black p-1">검사 부위 및 항목</th>
+                    <th className="border border-black p-1">규격(Spec)</th>
+                    <th className="border border-black p-1">초물 (Start)</th>
+                    <th className="border border-black p-1">중물 (Middle)</th>
+                    <th className="border border-black p-1">종물 (Finish)</th>
+                    <th className="border border-black p-1">판정</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {(template.specs || []).map((s) => (
+                    <tr key={s.id}>
+                      <td className="border border-black p-1 font-bold">{s.name}</td>
+                      <td className="border border-black p-1 font-black text-indigo-900">{s.frtSpec || s.spec}</td>
+                      <td className="border border-black p-1">-</td>
+                      <td className="border border-black p-1">-</td>
+                      <td className="border border-black p-1">-</td>
+                      <td className="border border-black p-1 font-bold text-emerald-700">OK</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
 
-          {/* Footer */}
-          <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-black">
-            <span>{template.formNo || "705-02(REV.4)"}</span>
-            <span className="font-black text-sm">{template.companyName || "(주)오륙"}</span>
-            <span>A4(210×297)</span>
+            {/* Footer */}
+            <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-black">
+              <span>{template.formNo || "705-02(REV.4)"}</span>
+              <span className="font-black text-sm">{template.companyName || "(주)오륙"}</span>
+              <span>A4(210×297)</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

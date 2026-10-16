@@ -137,7 +137,8 @@ export const HANUL_SPECS = {
     { key: "frtB", label: "FRT B단면 (정치절단)", spec: "608±5mm", target: 608, tol: 5 },
     { key: "frtC", label: "FRT C단면 (정치절단)", spec: "582±5mm", target: 582, tol: 5 },
     { key: "rrA", label: "RR A단면 (가절단)", spec: "488±3mm", target: 488, tol: 3 },
-    { key: "rrB", label: "RR B단면 (정치절단)", spec: "658±5mm", target: 658, tol: 5 }
+    { key: "rrB", label: "RR B단면 (정치절단)", spec: "658±5mm", target: 658, tol: 5 },
+    { key: "rrC", label: "RR C단면 (정치절단)", spec: "658±6mm", target: 658, tol: 6 }
   ],
   "9BQC_소재준비_단컷팅": [
     { key: "frtLhA", label: "FRT LH - A", spec: "83mm", target: 83, tol: 2 },
