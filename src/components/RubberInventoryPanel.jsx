@@ -14,7 +14,10 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
-  Clock
+  Clock,
+  Image as ImageIcon,
+  Eye,
+  UploadCloud
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -56,6 +59,11 @@ export const RubberInventoryPanel = () => {
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const videoRef = useRef(null);
   const barcodeInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // 실시간 촬영 / 갤러리 업로드 첨부 사진 상태
+  const [attachedPhoto, setAttachedPhoto] = useState(null); // { url, name, detectedBarcode }
+  const [viewPhotoModal, setViewPhotoModal] = useState(null);
 
   // Firestore & LocalStorage 실시간 구독
   useEffect(() => {
@@ -105,6 +113,69 @@ export const RubberInventoryPanel = () => {
     }
   };
 
+  // 🌟 실시간 사진 촬영 및 갤러리 업로드 처리 (자동 바코드 스캔 & 캔버스 압축)
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target.result;
+      const img = new Image();
+      img.onload = async () => {
+        // 1. 캔버스를 통한 이미지 크기 최적화 (Firestore 1MB 한도 보호: 최대 너비 1200px)
+        const maxWidth = 1200;
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+
+        // 2. 바코드 디텍터 실행 (사진 내 바코드 자동 감지)
+        let detectedCode = "";
+        if ("BarcodeDetector" in window) {
+          try {
+            // @ts-ignore
+            const detector = new window.BarcodeDetector({
+              formats: ["code_128", "code_39", "ean_13", "qr_code"]
+            });
+            const barcodes = await detector.detect(canvas);
+            if (barcodes.length > 0) {
+              detectedCode = barcodes[0].rawValue;
+              setBarcodeInput(detectedCode);
+              handleParseBarcode(detectedCode);
+              playBeepSound("success");
+              showToast(`사진에서 바코드 자동 감지 완료: ${detectedCode}`);
+            } else {
+              showToast("사진이 첨부되었습니다 (바코드는 직접 입력 또는 스캔해 주세요)");
+            }
+          } catch (err) {
+            showToast("사진이 정상 첨부되었습니다");
+          }
+        } else {
+          showToast("사진이 정상 첨부되었습니다");
+        }
+
+        setAttachedPhoto({
+          url: compressedDataUrl,
+          name: file.name || "실시간_촬영_사진.jpg",
+          detectedBarcode: detectedCode
+        });
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   // 퀵 수량 추가 버튼 (+1, +5, +10, +50)
   const handleQuickQty = (addVal) => {
     setQty((prev) => {
@@ -147,6 +218,7 @@ export const RubberInventoryPanel = () => {
       process: processLocation,
       workerName: workerName || defaultWorkerName,
       notes: notes.trim(),
+      photo: attachedPhoto?.url || "",
       date: dateStr,
       createdAt: `${dateStr} ${timeStr}`
     };
@@ -160,6 +232,7 @@ export const RubberInventoryPanel = () => {
       setBarcodeInput("");
       setNotes("");
       setParsedInfo(null);
+      setAttachedPhoto(null);
       setQty(1);
       barcodeInputRef.current?.focus();
     } catch (err) {
@@ -430,14 +503,38 @@ export const RubberInventoryPanel = () => {
               ⚡ 바코드 스캔 및 입/출고 즉시 등록
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setCameraModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
-          >
-            <Camera className="w-4 h-4" />
-            카메라 바코드 스캔
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Hidden file input supporting camera & gallery */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+
+            {/* 카메라 실시간 바코드 스캔 배너/버튼 */}
+            <button
+              type="button"
+              onClick={() => setCameraModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+              title="웹캠/카메라로 실시간 바코드 스캔"
+            >
+              <Camera className="w-4 h-4" />
+              카메라 바코드 스캔
+            </button>
+
+            {/* 🌟 실시간촬영 파일 및 갤러리 업로드 배너/버튼 */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+              title="카메라 실시간 촬영 또는 갤러리/사진 파일 업로드"
+            >
+              <ImageIcon className="w-4 h-4" />
+              실시간촬영 / 갤러리 업로드
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-4">
@@ -446,6 +543,55 @@ export const RubberInventoryPanel = () => {
             <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-xs font-bold text-teal-800 dark:text-teal-200 flex items-center gap-2 animate-fadeIn">
               <Sparkles className="w-4 h-4 text-teal-600 animate-pulse" />
               {toastMessage}
+            </div>
+          )}
+
+          {/* 🌟 실시간 촬영 / 갤러리 첨부 사진 미리보기 배너 카드 */}
+          {attachedPhoto && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 flex items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3 min-w-0">
+                <img
+                  src={attachedPhoto.url}
+                  alt="첨부 사진"
+                  className="w-12 h-12 rounded-lg object-cover border border-emerald-400 dark:border-emerald-600 cursor-pointer shadow-xs shrink-0"
+                  onClick={() => setViewPhotoModal(attachedPhoto.url)}
+                  title="클릭하여 원본 사진 보기"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 truncate">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    사진 첨부 완료: <span className="font-mono">{attachedPhoto.name}</span>
+                  </p>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    {attachedPhoto.detectedBarcode ? (
+                      <span className="font-semibold text-sky-700 dark:text-sky-300">
+                        ⚡ 바코드 자동 추출 성공: {attachedPhoto.detectedBarcode}
+                      </span>
+                    ) : (
+                      "바코드가 자동 인식되지 않았습니다. 바코드 번호를 직접 입력하거나 스캔해 주세요."
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewPhotoModal(attachedPhoto.url)}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1 hover:bg-emerald-50 cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  크게보기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttachedPhoto(null)}
+                  className="p-1 rounded-lg text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950 cursor-pointer"
+                  title="사진 삭제"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -757,6 +903,7 @@ export const RubberInventoryPanel = () => {
               <tr>
                 <th className="py-2.5 px-3 whitespace-nowrap">등록 일시</th>
                 <th className="py-2.5 px-2 whitespace-nowrap">구분</th>
+                <th className="py-2.5 px-2 whitespace-nowrap">증빙사진</th>
                 <th className="py-2.5 px-3 text-left whitespace-nowrap">바코드 원문</th>
                 <th className="py-2.5 px-3 whitespace-nowrap">생산 LOT</th>
                 <th className="py-2.5 px-2 whitespace-nowrap">설비/호기</th>
@@ -772,13 +919,13 @@ export const RubberInventoryPanel = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-slate-400">
+                  <td colSpan={13} className="py-12 text-center text-slate-400">
                     데이터를 불러오는 중입니다...
                   </td>
                 </tr>
               ) : filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan={13} className="py-12 text-center text-slate-400 font-medium">
                     일치하는 입출고 내역 데이터가 없습니다.
                   </td>
                 </tr>
@@ -801,6 +948,21 @@ export const RubberInventoryPanel = () => {
                       >
                         {e.type === "IN" ? "🟢 입고" : "🔴 출고"}
                       </span>
+                    </td>
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      {e.photo ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewPhotoModal(e.photo)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] cursor-pointer border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs"
+                          title="첨부 사진 크게보기"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          사진보기
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">-</span>
+                      )}
                     </td>
                     <td className="py-2 px-3 text-left font-mono font-bold text-sky-700 dark:text-sky-300 whitespace-nowrap">
                       {e.rawBarcode || "-"}
@@ -879,6 +1041,51 @@ export const RubberInventoryPanel = () => {
 
             <div className="p-3.5 bg-slate-50 dark:bg-slate-800 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
               빨간색 박스 안에 바코드를 평평하게 맞추면 자동으로 인식됩니다.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 6. Fullscreen Photo Lightbox Modal */}
+      {viewPhotoModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setViewPhotoModal(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3.5 bg-slate-800 text-white flex items-center justify-between">
+              <span className="text-xs font-bold flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                연고무 현장 증빙 / 바코드 라벨 사진
+              </span>
+              <button
+                type="button"
+                onClick={() => setViewPhotoModal(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center bg-black max-h-[75vh] overflow-auto">
+              <img
+                src={viewPhotoModal}
+                alt="연고무 증빙 사진 원본"
+                className="max-h-[70vh] w-auto object-contain rounded-lg shadow-lg"
+              />
+            </div>
+            <div className="p-3 bg-slate-800/90 text-center text-xs text-slate-300 flex items-center justify-between px-4 border-t border-slate-700">
+              <span>현장 바코드 식별 및 입출고 증빙용 사진</span>
+              <a
+                href={viewPhotoModal}
+                download="rubber_label_proof.jpg"
+                className="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold inline-flex items-center gap-1 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                다운로드
+              </a>
             </div>
           </div>
         </div>
