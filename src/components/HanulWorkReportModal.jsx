@@ -952,6 +952,19 @@ export const HanulWorkReportModal = ({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {processId === "소재준비" && subProcess === "정치절단" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open("./oruk_cutting_report_standard.html", "_blank");
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-700/80 hover:bg-indigo-600 text-indigo-100 border border-indigo-400/50 text-xs font-bold transition-all cursor-pointer active:scale-95"
+                  title="표준 A4 양식 (705-02 REV.4) 실물 보기 및 인쇄"
+                >
+                  <Printer className="w-4 h-4 text-indigo-200" />
+                  <span>표준 A4 양식</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleExcelExport}
