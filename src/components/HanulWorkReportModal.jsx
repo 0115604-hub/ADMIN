@@ -702,11 +702,17 @@ export const HanulWorkReportModal = ({
         worker: effectiveWorker,
         startTime,
         endTime,
-        machineNo,
-        materialLot,
-        jointLot,
+        machineNo: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : machineNo,
+        materialLot: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅")
+          ? {
+              start: Object.values(measurements).map(m => m?.lot).filter(Boolean)[0] || materialLot.start || "",
+              mid: Object.values(measurements).map(m => m?.lot).filter(Boolean)[1] || materialLot.mid || "",
+              end: Object.values(measurements).map(m => m?.lot).filter(Boolean)[2] || materialLot.end || ""
+            }
+          : materialLot,
+        jointLot: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : jointLot,
         clipLot,
-        dollyNo,
+        dollyNo: (project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅") ? "" : dollyNo,
         extTimeRange,
         bladeChangeTime: (processId === "소재준비" && subProcess === "정치절단") ? bladeChangeTime : "",
         machineTrouble,
@@ -1686,6 +1692,26 @@ export const HanulWorkReportModal = ({
                     >
                       <span>⚡ RR (A/B)</span>
                     </button>
+                  </div>
+                </div>
+              </div>
+            ) : project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" ? (
+              /* 🌟 9BQC 단컷팅: 설비호기, 압출소재 LOT, 조인트 원재료, 대차번호 뱃지/입력 삭제 */
+              <div className="pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1 rounded-lg bg-sky-600 text-white shadow-2xs">
+                      <Scissors className="w-3.5 h-3.5" />
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      9BQC 단컷팅 공정
+                    </span>
+                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                      (FRT LH/RH 83mm • RR LH 68mm • RR RH 67mm)
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                    소재 LOT는 아래 <strong className="text-sky-600 dark:text-sky-400 font-bold">[3. 주요 규격 및 치수 검사]</strong>에서 부위별 실측과 함께 기록됩니다.
                   </div>
                 </div>
               </div>
@@ -2724,30 +2750,77 @@ export const HanulWorkReportModal = ({
           {/* C. 공정별 치수측정 & 조건 기록 (초물 / 중물 / 종물) */}
           {currentSpecs.length > 0 && !(processId === "소재준비" && subProcess === "정치절단") && (
             <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-2 gap-2">
                 <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Scissors className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   <span>3. 주요 규격 및 치수 검사 (초물 06:50 / 중물 11:50 / 종물 18:50)</span>
                 </span>
-                <span className="text-[11px] text-slate-400 font-bold">
-                  단위: mm
-                </span>
+
+                <div className="flex items-center gap-2">
+                  {/* 🌟 9BQC 단컷팅일 때 소재 LOT 일괄적용 툴바 */}
+                  {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
+                    <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                      <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                        소재 LOT 일괄적용:
+                      </span>
+                      <input
+                        type="text"
+                        id="danCuttingBatchLotInput"
+                        placeholder="예: 261016-1"
+                        className="w-24 px-1.5 py-0.5 text-xs font-bold text-center rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById("danCuttingBatchLotInput");
+                          const val = el?.value?.trim();
+                          if (!val) return;
+                          setMeasurements((prev) => {
+                            const next = { ...prev };
+                            currentSpecs.forEach((sp) => {
+                              next[sp.key] = { ...(next[sp.key] || {}), lot: val };
+                            });
+                            return next;
+                          });
+                        }}
+                        className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition cursor-pointer"
+                      >
+                        전체적용
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[11px] text-slate-400 font-bold">
+                    단위: mm
+                  </span>
+                </div>
               </div>
 
               <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-xs text-left border-collapse">
+                <table className="w-full text-xs text-left border-collapse min-w-[560px]">
                   <thead>
                     <tr className="bg-slate-200/70 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-black">
                       <th className="p-2 rounded-l-lg">검사 부위 및 항목</th>
                       <th className="p-2 text-center">규격(Spec)</th>
+                      {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
+                        <th className="p-2 text-center bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border-x border-indigo-200 dark:border-indigo-800">
+                          소재 LOT (압출)
+                        </th>
+                      )}
                       <th className="p-2 text-center">초물 (Start)</th>
                       <th className="p-2 text-center">중물 (Middle)</th>
-                      <th className="p-2 text-center rounded-r-lg">종물 (Finish)</th>
+                      <th className="p-2 text-center">종물 (Finish)</th>
+                      <th className="p-2 text-center rounded-r-lg">판정</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {currentSpecs.map((spec) => {
-                      const cur = measurements[spec.key] || { start: "", mid: "", end: "" };
+                      const cur = measurements[spec.key] || { start: "", mid: "", end: "", lot: "" };
+                      const sOk = spec.target ? isDimOk(cur.start, spec.target, spec.tol) : true;
+                      const mOk = spec.target ? isDimOk(cur.mid, spec.target, spec.tol) : true;
+                      const eOk = spec.target ? isDimOk(cur.end, spec.target, spec.tol) : true;
+                      const hasAnyVal = Boolean(cur.start || cur.mid || cur.end);
+                      const rowOk = sOk && mOk && eOk;
+
                       return (
                         <tr key={spec.key} className="hover:bg-slate-100/50 dark:hover:bg-slate-800/30">
                           <td className="p-2 font-bold text-slate-900 dark:text-white whitespace-nowrap">
@@ -2756,9 +2829,30 @@ export const HanulWorkReportModal = ({
                           <td className="p-2 text-center font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                             {spec.spec}
                           </td>
+
+                          {/* 🌟 9BQC 단컷팅: 치수실측과 함께 소재 LOT 입력 */}
+                          {project === "9BQC" && processId === "소재준비" && subProcess === "단컷팅" && (
+                            <td className="p-1.5 text-center bg-indigo-50/40 dark:bg-indigo-950/20 border-x border-indigo-100 dark:border-indigo-900/40">
+                              <input
+                                type="text"
+                                placeholder="소재 LOT (예: 1016-1)"
+                                value={cur.lot || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setMeasurements((m) => ({
+                                    ...m,
+                                    [spec.key]: { ...(m[spec.key] || {}), lot: val }
+                                  }));
+                                }}
+                                className="w-28 px-2 py-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-center font-bold text-xs text-indigo-950 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500"
+                              />
+                            </td>
+                          )}
+
                           <td className="p-1.5 text-center">
                             <input
                               type="text"
+                              inputMode="decimal"
                               placeholder="실측"
                               value={cur.start}
                               onChange={(e) => {
@@ -2768,12 +2862,19 @@ export const HanulWorkReportModal = ({
                                   [spec.key]: { ...(m[spec.key] || {}), start: val }
                                 }));
                               }}
-                              className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-center font-bold text-xs"
+                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                sOk
+                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                              }`}
                             />
+                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">초물 (06:50)</span>
                           </td>
+
                           <td className="p-1.5 text-center">
                             <input
                               type="text"
+                              inputMode="decimal"
                               placeholder="실측"
                               value={cur.mid}
                               onChange={(e) => {
@@ -2783,12 +2884,19 @@ export const HanulWorkReportModal = ({
                                   [spec.key]: { ...(m[spec.key] || {}), mid: val }
                                 }));
                               }}
-                              className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-center font-bold text-xs"
+                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                mOk
+                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                              }`}
                             />
+                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">중물 (11:50)</span>
                           </td>
+
                           <td className="p-1.5 text-center">
                             <input
                               type="text"
+                              inputMode="decimal"
                               placeholder="실측"
                               value={cur.end}
                               onChange={(e) => {
@@ -2798,8 +2906,30 @@ export const HanulWorkReportModal = ({
                                   [spec.key]: { ...(m[spec.key] || {}), end: val }
                                 }));
                               }}
-                              className="w-20 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-center font-bold text-xs"
+                              className={`w-20 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                                eOk
+                                  ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                  : "border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 ring-1 ring-rose-400"
+                              }`}
                             />
+                            <span className="text-[9px] text-slate-400 block text-center mt-0.5">종물 (18:50)</span>
+                          </td>
+
+                          {/* 실시간 판정 (OK / NG) */}
+                          <td className="p-1.5 text-center whitespace-nowrap">
+                            {hasAnyVal ? (
+                              rowOk ? (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                  OK
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                  NG
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-bold">-</span>
+                            )}
                           </td>
                         </tr>
                       );

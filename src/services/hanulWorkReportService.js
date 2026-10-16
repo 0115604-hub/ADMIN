@@ -582,6 +582,54 @@ export const exportHanulReportToExcel = (report) => {
       "-",
       allOk ? "OK" : "NG"
     ]);
+  } else if (report.processId === "소재준비" && report.subProcess === "단컷팅") {
+    const specs = [
+      { key: "frtLhA", name: "FRT LH - A", spec: "83mm", target: 83, tol: 2 },
+      { key: "frtLhB", name: "FRT LH - B", spec: "83mm", target: 83, tol: 2 },
+      { key: "frtRhA", name: "FRT RH - A", spec: "83mm", target: 83, tol: 2 },
+      { key: "frtRhB", name: "FRT RH - B", spec: "83mm", target: 83, tol: 2 },
+      { key: "rrLhA", name: "RR LH - A", spec: "68mm", target: 68, tol: 2 },
+      { key: "rrLhB", name: "RR LH - B", spec: "67mm", target: 67, tol: 2 },
+      { key: "rrRhA", name: "RR RH - A", spec: "68mm", target: 68, tol: 2 },
+      { key: "rrRhB", name: "RR RH - B", spec: "67mm", target: 67, tol: 2 }
+    ];
+
+    prodRows.push(["[단컷팅 생산 실적]"]);
+    prodRows.push(["구분", "정품(EA)", "불량(EA)", "리워크(EA)", "총생산(EA)", "양품률"]);
+    const gLh = Number(report.production?.genuineLH) || 0;
+    const bLh = Number(report.production?.badLH) || 0;
+    const rLh = Number(report.production?.reworkLH) || 0;
+    const totLh = gLh + bLh;
+    prodRows.push(["LH (FRT 83mm / RR 68mm)", gLh, bLh, rLh, totLh, totLh > 0 ? ((gLh/totLh)*100).toFixed(1) + "%" : "-"]);
+
+    const gRh = Number(report.production?.genuineRH) || 0;
+    const bRh = Number(report.production?.badRH) || 0;
+    const rRh = Number(report.production?.reworkRH) || 0;
+    const totRh = gRh + bRh;
+    prodRows.push(["RH (FRT 83mm / RR 67mm)", gRh, bRh, rRh, totRh, totRh > 0 ? ((gRh/totRh)*100).toFixed(1) + "%" : "-"]);
+
+    prodRows.push([]);
+    prodRows.push(["[주요 규격 치수 검사 및 소재 LOT]"]);
+    prodRows.push(["검사부위 및 항목", "규격(Spec)", "소재 LOT", "초물실측(06:50)", "중물실측(11:50)", "종물실측(18:50)", "판정"]);
+
+    specs.forEach((s) => {
+      const cur = report.measurements?.[s.key] || {};
+      const checkOk = (v) => {
+        if (!v || v === "") return true;
+        const n = parseFloat(v);
+        return !isNaN(n) && n >= (s.target - s.tol) && n <= (s.target + s.tol);
+      };
+      const rowOk = checkOk(cur.start) && checkOk(cur.mid) && checkOk(cur.end);
+      prodRows.push([
+        s.name,
+        s.spec,
+        cur.lot || "-",
+        cur.start || "-",
+        cur.mid || "-",
+        cur.end || "-",
+        rowOk ? "OK" : "NG"
+      ]);
+    });
   } else if (report.processId === "검사" && report.inspProduction) {
     const isFinal = (report.inspectionType || "").includes("FINAL");
     prodRows.push(["[검사 생산 실적]"]);
