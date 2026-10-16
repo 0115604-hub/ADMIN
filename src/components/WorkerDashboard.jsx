@@ -520,7 +520,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const cleanCompName = cleanCompanyName(name);
       const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
-      const hasDirectReport = (overtimeReports || []).some((r) => {
+      const directReport = (overtimeReports || []).find((r) => {
         if (!r) return false;
         const rDateKey = getReportDateSortKey(r);
         if (rDateKey !== todayStr) return false;
@@ -533,6 +533,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         }
         return false;
       });
+      const hasDirectReport = Boolean(directReport);
 
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
@@ -540,18 +541,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      // 🔒 [단일 진실의 원천 원칙] 원장에 등록된 작업원(compWorkers)이 존재하는 협력사는
-      // 당일 근태 대장에 실제 입력(enteredCount > 0)되어야만 '작성완료'로 판정합니다.
-      // 대장이 비어있는(enteredCount === 0) 상태에서 보고서만 임의 생성된 유령 보고서는 작성완료로 인정하지 않습니다.
-      const isWritten = compWorkers.length > 0 ? enteredCount > 0 : hasDirectReport;
+      // 보고서 등록 또는 원장 입력 시 작성완료로 안정적 판정
+      const isWritten = enteredCount > 0 || hasDirectReport;
       const shortName = name.replace(/[()주]/g, "");
 
-      const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
-      const attended = b ? (b.attended || 0) : 0;
-      const absent = b ? (b.absent || 0) : 0;
-      const otWorkers = b ? (b.otWorkers || 0) : 0;
-      const otHours = b ? (b.otHours || 0) : 0;
-      const totalHours = b ? (b.totalHours || 0) : 0;
+      const workers = b?.total && b.total > 0 ? b.total : (directReport?.totalWorkers || compWorkers.length);
+      const attended = b && b.attended !== undefined ? b.attended : (directReport?.attendedWorkers ?? enteredCount);
+      const absent = b && b.absent !== undefined ? b.absent : Math.max(0, workers - attended);
+      const otWorkers = b && b.otWorkers !== undefined ? b.otWorkers : (directReport?.items ? directReport.items.filter(it => (Number(it.otHours) || 0) > 0).length : 0);
+      const otHours = b && b.otHours !== undefined ? b.otHours : (directReport?.otHours || 0);
+      const totalHours = b && b.totalHours !== undefined ? b.totalHours : (directReport?.totalHours || (attended * 8 + otHours));
 
       const statusBadgeText = isWritten ? "작성완료" : "작성전";
       const statusBadgeClass = isWritten

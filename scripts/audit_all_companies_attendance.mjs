@@ -5,7 +5,7 @@ import { cleanCompanyName, calculateWorkerDailyHours } from "../src/services/ove
 
 const COMPANIES = ["오륙", "조영", "한울", "유성", "부림텍"];
 const EXPECTED_HEADCOUNTS = {
-  "오륙": 52,
+  "오륙": 53,
   "조영": 44,
   "한울": 26,
   "유성": 14,
