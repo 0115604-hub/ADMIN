@@ -22,6 +22,7 @@ const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
 const IncidentLogsView = lazy(() => import("./components/IncidentLogsView").then(m => ({ default: m.IncidentLogsView || m.default })));
 const SqLevelUpView = lazy(() => import("./components/sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
+const WorkReportTemplateManagerView = lazy(() => import("./components/WorkReportTemplateManagerView").then(m => ({ default: m.WorkReportTemplateManagerView || m.default })));
 import { SqStatusBannerCard } from "./components/sq/SqStatusBannerCard";
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
 const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
@@ -468,12 +469,17 @@ export const App = () => {
               {/* OPERATOR VIEWS (Full-Width Single-Page Experience) */}
               {isOperator && (
                 <>
-                  {(activeTab === "worker_dashboard" || !["electronic_approval", "vehicle_sales", "sales_purchase_analysis", "hanul_tax_invoice", "extrusion_downtime", "daily_quality", "overtime_status", "operator_workspace", "sq_level_up"].includes(activeTab)) && (
+                  {(activeTab === "worker_dashboard" || !["electronic_approval", "vehicle_sales", "sales_purchase_analysis", "hanul_tax_invoice", "extrusion_downtime", "daily_quality", "overtime_status", "operator_workspace", "sq_level_up", "work_report_templates"].includes(activeTab)) && (
                     <ErrorBoundary inline title="일일생산정보현황">
                       <WorkerDashboard
                         onBulkUpload={handleBulkUpload}
                         onNavigateTab={(tabId) => setActiveTab(tabId)}
                       />
+                    </ErrorBoundary>
+                  )}
+                  {activeTab === "work_report_templates" && (
+                    <ErrorBoundary inline title="일보 양식 관리">
+                      <WorkReportTemplateManagerView />
                     </ErrorBoundary>
                   )}
                   {activeTab === "electronic_approval" && (
@@ -539,6 +545,12 @@ export const App = () => {
                   {activeTab === "sq_level_up" && (
                     <ErrorBoundary inline title="SQ 진행상황 현황표">
                       <SqLevelUpView />
+                    </ErrorBoundary>
+                  )}
+
+                  {activeTab === "work_report_templates" && (
+                    <ErrorBoundary inline title="일보 양식 관리">
+                      <WorkReportTemplateManagerView />
                     </ErrorBoundary>
                   )}
 
