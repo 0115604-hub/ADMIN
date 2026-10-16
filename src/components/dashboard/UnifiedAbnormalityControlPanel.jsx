@@ -49,6 +49,21 @@ import {
   saveExtrusionQualityIssue
 } from "../../services/extrusionQualityIssueService";
 import {
+  subscribeHanulQualityIssues,
+  getLocalHanulQualityIssues,
+  saveHanulQualityIssue
+} from "../../services/hanulQualityIssueService";
+import {
+  subscribeYuseongQualityIssues,
+  getLocalYuseongQualityIssues,
+  saveYuseongQualityIssue
+} from "../../services/yuseongQualityIssueService";
+import {
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues,
+  saveMachiningQualityIssue
+} from "../../services/machiningQualityIssueService";
+import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints,
   registerToFourMLedger,
@@ -120,6 +135,9 @@ export const UnifiedAbnormalityControlPanel = ({
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [extrusionQualityAlerts, setExtrusionQualityAlerts] = useState(() => getLocalExtrusionQualityIssues());
+  const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
+  const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
+  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
   const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
@@ -167,9 +185,27 @@ export const UnifiedAbnormalityControlPanel = ({
       setLastRefreshedAt(new Date());
     });
 
-    // 3. Extrusion Quality Issues (압출 품질경보 실시간 수신)
+    // 3. Extrusion Quality Issues (압출 부적합경보 실시간 수신)
     const unsubExtQuality = subscribeExtrusionQualityIssues((alerts) => {
       setExtrusionQualityAlerts(alerts || []);
+      setLastRefreshedAt(new Date());
+    });
+
+    // 3-B. Hanul Quality Issues (한울 부적합경보 실시간 수신)
+    const unsubHanulQuality = subscribeHanulQualityIssues((alerts) => {
+      setHanulQualityIssues(alerts || []);
+      setLastRefreshedAt(new Date());
+    });
+
+    // 3-C. Yuseong Quality Issues (유성 부적합경보 실시간 수신)
+    const unsubYuseongQuality = subscribeYuseongQualityIssues((alerts) => {
+      setYuseongQualityIssues(alerts || []);
+      setLastRefreshedAt(new Date());
+    });
+
+    // 3-D. Machining Quality Issues (가공동 부적합경보 실시간 수신)
+    const unsubMachQuality = subscribeMachiningQualityIssues((alerts) => {
+      setMachiningQualityIssues(alerts || []);
       setLastRefreshedAt(new Date());
     });
 
@@ -221,6 +257,9 @@ export const UnifiedAbnormalityControlPanel = ({
       if (unsubIssues) unsubIssues();
       if (unsubExt) unsubExt();
       if (unsubExtQuality) unsubExtQuality();
+      if (unsubHanulQuality) unsubHanulQuality();
+      if (unsubYuseongQuality) unsubYuseongQuality();
+      if (unsubMachQuality) unsubMachQuality();
       if (unsubLedger) unsubLedger();
       if (unsubSmartOt) unsubSmartOt();
       if (unsubAbsenceLogs) unsubAbsenceLogs();
@@ -233,6 +272,9 @@ export const UnifiedAbnormalityControlPanel = ({
     setLastRefreshedAt(new Date());
     setUrgentIssues(getLocalUrgentIssues());
     setExtrusionQualityAlerts(getLocalExtrusionQualityIssues());
+    setHanulQualityIssues(getLocalHanulQualityIssues());
+    setYuseongQualityIssues(getLocalYuseongQualityIssues());
+    setMachiningQualityIssues(getLocalMachiningQualityIssues());
     setFourMLedgerRecords(getLocalFourMChangePoints());
     setSmartOvertimeData(getLocalSmartOvertimeData());
     setAbsenceLogsMap(getLocal4MAbsenceLogsMap());
@@ -300,13 +342,13 @@ export const UnifiedAbnormalityControlPanel = ({
         issue.isResolved || (issue.actionResult && issue.actionResult.trim())
       );
 
-      const displayTitle = issue.title || issue.content || "(품질경보 발령)";
+      const displayTitle = issue.title || issue.content || "(부적합경보 발령)";
       const displayContent = issue.content || issue.details || "";
 
       unified.push({
         id: `urg_${issue.id || issue._docId || Math.random()}`,
         fourM: "Method",
-        origin: "품질경보",
+        origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-800",
         plant: issue.plant || "삼랑진공장",
@@ -536,14 +578,14 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4. [Method] 압출 전용 품질 이슈 (품질경보)
+    // 4. [Method] 압출 전용 품질 이슈 (부적합경보)
     // -----------------------------------------------------------------------
     (extrusionQualityAlerts || []).forEach((alert) => {
-      if (alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
+      if (!alert || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
 
       const title = alert.title
-        ? `[품질경보] ${alert.title}`
-        : `[품질경보] ${alert.defectType || "압출 품질이상"}`;
+        ? `[부적합경보] ${alert.title}`
+        : `[부적합경보] ${alert.defectType || "압출 품질이상"}`;
       const content = alert.content || alert.details || alert.description || alert.defectType || "";
       const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
       const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
@@ -558,7 +600,7 @@ export const UnifiedAbnormalityControlPanel = ({
       unified.push({
         id: `ext_q_${alert.id}`,
         fourM: "Method",
-        origin: "품질경보",
+        origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
         plant: alert.plant || "삼랑진공장",
@@ -575,8 +617,152 @@ export const UnifiedAbnormalityControlPanel = ({
         actionImages: actionImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         isResolved: isResolved,
-        validation: isResolved ? "압출 품질경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
+        validation: isResolved ? "압출 부적합경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
         severity: "HIGH",
+        downtimeMinutes: 0,
+        scrapKg: 0,
+        raw: alert
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 4-B. [Method] 한울 외주가공 부적합경보
+    // -----------------------------------------------------------------------
+    (hanulQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const title = alert.title
+        ? `[한울 부적합] ${alert.title}`
+        : `[한울 부적합] ${alert.defectType || "한울 품질이상"}`;
+      const content = alert.content || alert.defectType || "";
+      const rawDate = alert.targetDate || alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
+      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+
+      const causeImages = Array.isArray(alert.causeImages)
+        ? alert.causeImages
+        : Array.isArray(alert.images)
+        ? alert.images
+        : [];
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      unified.push({
+        id: `hanul_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        sourceType: "QUALITY_ALERT",
+        badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
+        plant: alert.plant || "한림공장",
+        line: alert.line || "외주가공(한울)",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "한울 관리자",
+        title: title,
+        date: String(rawDate).slice(0, 10),
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        content: content,
+        actionResult: alert.actionResult || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionAt: alert.actionAt || alert.updatedAt || "",
+        images: causeImages,
+        actionImages: actionImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        isResolved: isResolved,
+        validation: isResolved ? "한울 부적합경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
+        severity: alert.severity || "HIGH",
+        downtimeMinutes: 0,
+        scrapKg: 0,
+        raw: alert
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 4-C. [Method] 유성 외주가공 부적합경보
+    // -----------------------------------------------------------------------
+    (yuseongQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const title = alert.title
+        ? `[유성 부적합] ${alert.title}`
+        : `[유성 부적합] ${alert.defectType || "유성 품질이상"}`;
+      const content = alert.content || alert.description || alert.defectType || "";
+      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
+      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+
+      const causeImages = Array.isArray(alert.causeImages)
+        ? alert.causeImages
+        : Array.isArray(alert.images)
+        ? alert.images
+        : [];
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      unified.push({
+        id: `ys_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        sourceType: "QUALITY_ALERT",
+        badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.project || alert.line || "외주가공(유성)",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "유성 관리자",
+        title: title,
+        date: String(rawDate).slice(0, 10),
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        content: content,
+        actionResult: alert.actionResult || alert.actionNotes || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionAt: alert.actionAt || alert.updatedAt || "",
+        images: causeImages,
+        actionImages: actionImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        isResolved: isResolved,
+        validation: isResolved ? "유성 부적합경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
+        severity: alert.severity || "HIGH",
+        downtimeMinutes: 0,
+        scrapKg: 0,
+        raw: alert
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 4-D. [Method] 가공동 부적합경보
+    // -----------------------------------------------------------------------
+    (machiningQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const title = alert.title
+        ? `[가공 부적합] ${alert.title}`
+        : `[가공 부적합] ${alert.defectType || "가공 품질이상"}`;
+      const content = alert.content || alert.defectType || "";
+      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
+      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+
+      const causeImages = Array.isArray(alert.causeImages)
+        ? alert.causeImages
+        : Array.isArray(alert.images)
+        ? alert.images
+        : [];
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      unified.push({
+        id: `mach_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        sourceType: "QUALITY_ALERT",
+        badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || "가공동",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "가공동",
+        title: title,
+        date: String(rawDate).slice(0, 10),
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        content: content,
+        actionResult: alert.actionResult || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionAt: alert.actionAt || alert.updatedAt || "",
+        images: causeImages,
+        actionImages: actionImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        isResolved: isResolved,
+        validation: isResolved ? "가공 부적합경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
+        severity: alert.severity || "HIGH",
         downtimeMinutes: 0,
         scrapKg: 0,
         raw: alert
@@ -778,7 +964,20 @@ export const UnifiedAbnormalityControlPanel = ({
         if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
         return String(b.id || "").localeCompare(String(a.id || ""));
       });
-  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, smartOvertimeData, absenceLogsMap, todayStr, personnelCardsMap]);
+  }, [
+    urgentIssues,
+    extrusionReports,
+    workLogs,
+    extrusionQualityAlerts,
+    hanulQualityIssues,
+    yuseongQualityIssues,
+    machiningQualityIssues,
+    fourMLedgerRecords,
+    smartOvertimeData,
+    absenceLogsMap,
+    todayStr,
+    personnelCardsMap
+  ]);
 
   // =========================================================================
   // 🔍 필터링 연산
@@ -806,7 +1005,11 @@ export const UnifiedAbnormalityControlPanel = ({
 
       // 3. 출처 구분 필터 (OFFICIAL_LEDGER 제외 시 적용)
       if (selectedOriginFilter !== "ALL" && selectedOriginFilter !== "OFFICIAL_LEDGER") {
-        if (rec.origin !== selectedOriginFilter) return false;
+        if (selectedOriginFilter === "부적합경보" || selectedOriginFilter === "품질경보") {
+          if (rec.origin !== "부적합경보" && rec.origin !== "품질경보") return false;
+        } else if (rec.origin !== selectedOriginFilter) {
+          return false;
+        }
       }
 
       // 4. 조치 상태 필터
@@ -948,7 +1151,8 @@ export const UnifiedAbnormalityControlPanel = ({
       if (selectedItemForDetail.sourceType === "QUALITY_ALERT") {
         const rawIssue = selectedItemForDetail.raw;
         if (rawIssue && rawIssue.id) {
-          if (String(selectedItemForDetail.id).startsWith("urg_")) {
+          const idStr = String(selectedItemForDetail.id);
+          if (idStr.startsWith("urg_")) {
             await updateUrgentIssueActionResult(
               rawIssue.id,
               actionInputText.trim(),
@@ -961,8 +1165,32 @@ export const UnifiedAbnormalityControlPanel = ({
               files: newActionImages,
               actionDate: nowStr
             }).catch(() => {});
-          } else if (String(selectedItemForDetail.id).startsWith("ext_q_")) {
+          } else if (idStr.startsWith("ext_q_")) {
             await saveExtrusionQualityIssue({
+              ...rawIssue,
+              actionResult: actionInputText.trim(),
+              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
+              status: "RESOLVED"
+            });
+          } else if (idStr.startsWith("hanul_q_")) {
+            await saveHanulQualityIssue({
+              ...rawIssue,
+              actionResult: actionInputText.trim(),
+              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
+              status: "RESOLVED"
+            });
+          } else if (idStr.startsWith("ys_q_")) {
+            await saveYuseongQualityIssue({
+              ...rawIssue,
+              actionResult: actionInputText.trim(),
+              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
+              status: "RESOLVED"
+            });
+          } else if (idStr.startsWith("mach_q_")) {
+            await saveMachiningQualityIssue({
               ...rawIssue,
               actionResult: actionInputText.trim(),
               actionAuthor: actionAuthorInput || "TEST 선임",

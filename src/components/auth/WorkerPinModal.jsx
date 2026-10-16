@@ -513,8 +513,9 @@ export const WorkerPinModal = ({
   const allUnified4MRecords = useMemo(() => {
     const unified = [];
     const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
+    const seenAlertIds = new Set();
 
-    // 1-1. 품질경보 (Method) - 전체 품질경보 3건 누락 없이 수집
+    // 1-1. 전사 긴급이슈 부적합경보 (Method)
     (sourceIssues || []).forEach((issue) => {
       if (!issue || issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
       const rawCat = String(issue.category || "").trim();
@@ -522,6 +523,7 @@ export const WorkerPinModal = ({
         rawCat === "품질경보" ||
         rawCat === "부적합경보" ||
         rawCat === "품질 경보" ||
+        rawCat === "부적합 경보" ||
         rawCat === "품질이슈" ||
         rawCat === "품질 이슈" ||
         rawCat.includes("품질") ||
@@ -536,6 +538,12 @@ export const WorkerPinModal = ({
 
       if (!isQualityAlert) return;
 
+      const rawId = String(issue.id || issue._docId || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId)) return;
+        seenAlertIds.add(rawId);
+      }
+
       const lineStr = String(issue.line || issue.process || "").trim();
       const titleStr = String(issue.title || "").trim();
       const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE") || titleStr.includes("압출");
@@ -543,15 +551,90 @@ export const WorkerPinModal = ({
       unified.push({
         id: `urg_${issue.id || issue._docId || Math.random()}`,
         fourM: "Method",
-        origin: "품질경보",
+        origin: "부적합경보",
         plant: issue.plant || "삼랑진공장",
         line: lineStr || (isExt ? "압출라인" : "가공/품질"),
-        title: issue.title || issue.content || "(품질경보 발령)",
+        title: issue.title || issue.content || "(부적합경보 발령)",
         content: issue.content || issue.details || "",
         actionResult: issue.actionResult || "",
         date: issue.date || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
         isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim())),
         isExtrusion: isExt
+      });
+    });
+
+    // 1-1-B. 한울 외주가공 부적합경보 (Method)
+    (hanulQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      const rawId = String(alert.id || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId) || seenAlertIds.has(`hanul_q_${rawId}`)) return;
+        seenAlertIds.add(rawId);
+        seenAlertIds.add(`hanul_q_${rawId}`);
+      }
+
+      unified.push({
+        id: `hanul_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        plant: alert.plant || "한림공장",
+        line: alert.line || "외주가공(한울)",
+        title: alert.title ? `[한울] ${alert.title}` : `[한울] ${alert.defectType || "품질이상"}`,
+        content: alert.content || alert.defectType || "",
+        actionResult: alert.actionResult || "",
+        date: alert.targetDate || alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
+        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isExtrusion: false
+      });
+    });
+
+    // 1-1-C. 유성 외주가공 부적합경보 (Method)
+    (yuseongQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      const rawId = String(alert.id || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId) || seenAlertIds.has(`ys_q_${rawId}`)) return;
+        seenAlertIds.add(rawId);
+        seenAlertIds.add(`ys_q_${rawId}`);
+      }
+
+      unified.push({
+        id: `ys_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.project || alert.line || "외주가공(유성)",
+        title: alert.title ? `[유성] ${alert.title}` : `[유성] ${alert.defectType || "품질이상"}`,
+        content: alert.content || alert.description || alert.defectType || "",
+        actionResult: alert.actionResult || alert.actionNotes || "",
+        date: alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
+        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isExtrusion: false
+      });
+    });
+
+    // 1-1-D. 가공동 부적합경보 (Method)
+    (machiningQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      const rawId = String(alert.id || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId) || seenAlertIds.has(`mach_q_${rawId}`)) return;
+        seenAlertIds.add(rawId);
+        seenAlertIds.add(`mach_q_${rawId}`);
+      }
+
+      unified.push({
+        id: `mach_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || "가공동",
+        title: alert.title ? `[가공] ${alert.title}` : `[가공] ${alert.defectType || "가공 품질이상"}`,
+        content: alert.content || alert.defectType || "",
+        actionResult: alert.actionResult || "",
+        date: alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
+        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isExtrusion: false
       });
     });
 
@@ -643,14 +726,21 @@ export const WorkerPinModal = ({
 
     // 1-4. 압출 품질이슈 (Method)
     (extrusionQualityIssues || []).forEach((alert) => {
-      if (String(alert.id).startsWith("demo_") || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2") return;
+      if (!alert || String(alert.id).startsWith("demo_") || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2") return;
+      const rawId = String(alert.id || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId) || seenAlertIds.has(`ext_q_${rawId}`)) return;
+        seenAlertIds.add(rawId);
+        seenAlertIds.add(`ext_q_${rawId}`);
+      }
+
       unified.push({
         id: `ext_q_${alert.id}`,
         fourM: "Method",
-        origin: "품질경보",
+        origin: "부적합경보",
         plant: alert.plant || "삼랑진공장",
         line: alert.line || alert.lineId || "압출라인",
-        title: alert.title || `[품질경보] ${alert.defectType}`,
+        title: alert.title || `[압출] ${alert.defectType || "압출 품질이상"}`,
         content: alert.content || alert.defectType || "",
         actionResult: alert.actionResult || alert.actionNotes || "",
         date: alert.date || todayKst,
@@ -757,17 +847,47 @@ export const WorkerPinModal = ({
     });
 
     return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, smartOvertimeData, absenceLogsMap, todayKst, personnelCardsMap]);
+  }, [
+    urgentIssues,
+    localUrgentIssues,
+    workLogs,
+    extrusionReports,
+    extrusionQualityIssues,
+    hanulQualityIssues,
+    yuseongQualityIssues,
+    machiningQualityIssues,
+    smartOvertimeData,
+    absenceLogsMap,
+    todayKst,
+    personnelCardsMap
+  ]);
 
-  // 🌟 최근 2건의 4M 변동점 발생공지 (압출동 작업자 및 관리자 공통 동일 노출)
+  // 🌟 4M 변동점 발생공지 (모든 부적합경보 100% 최우선 포함 + 최신 설비/인원/불량 변동점)
   const recent4MRecords = useMemo(() => {
-    return allUnified4MRecords.slice(0, 2);
+    // 1. 등록된 모든 부적합경보 (Method) - 누락 없이 전체 수집
+    const qualityAlerts = allUnified4MRecords.filter(
+      (r) => r.fourM === "Method" || r.origin === "부적합경보" || r.origin === "품질경보"
+    );
+
+    // 2. 기타 4M 변동점 (Machine, Man, Material)
+    const other4MRecords = allUnified4MRecords.filter(
+      (r) => r.fourM !== "Method" && r.origin !== "부적합경보" && r.origin !== "품질경보"
+    );
+
+    // 3. 부적합경보 정렬: 미조치건 우선 -> 최신순
+    const sortedQualityAlerts = [...qualityAlerts].sort((a, b) => {
+      if (a.isResolved !== b.isResolved) return a.isResolved ? 1 : -1;
+      return (b.date || "").localeCompare(a.date || "");
+    });
+
+    // ⭐ 부적합경보는 단 1건도 누락 없이 전부 상단에 올리고, 기타 4M 변동점 최근 10건 병합
+    return [...sortedQualityAlerts, ...other4MRecords.slice(0, 10)];
   }, [allUnified4MRecords]);
 
-  // 압출동 전용 변동점 발생공지 (동일 내용 2건)
+  // 압출동 전용 변동점 발생공지
   const extrusion4MRecords = recent4MRecords;
 
-  // 가공동 전용 변동점 발생공지 (동일 내용 2건)
+  // 가공동 전용 변동점 발생공지
   const processing4MRecords = recent4MRecords;
 
   // 관리자 전용 4M 통계
@@ -2080,63 +2200,86 @@ export const WorkerPinModal = ({
                                 📋 4M 변동점 발생공지
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                설비수리 • 비가동 • TPM • 불량손실 • 부적합경보
+                                부적합경보 전체 • 설비수리 • 비가동 • TPM • 불량손실
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1 text-[10px] font-bold">
+                          <div className="flex items-center gap-1 text-[10px] font-bold flex-wrap justify-end">
                             <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
                               ⭐ 대장 {stats4M.officialCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black shadow-xs">
+                              부적합 {stats4M.methodCount}
                             </span>
                             <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
                               설비 {stats4M.machineCount}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300">
-                              불량 {stats4M.materialCount}
+                            <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                              인원 {stats4M.manCount}
                             </span>
                             <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                              경보 {stats4M.methodCount}
+                              불량 {stats4M.materialCount}
                             </span>
                           </div>
                         </div>
 
                         {recent4MRecords.length > 0 ? (
-                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-                            {recent4MRecords.map((item) => (
-                              <div
-                                key={item.id}
-                                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-1 shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
-                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
-                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
-                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
-                                      "bg-rose-100 text-rose-800 border border-rose-300"
-                                    }`}>
-                                      {item.origin}
-                                    </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
-                                      {item.plant?.replace("공장", "")} • {item.line}
-                                    </span>
+                          <div className="space-y-1.5 max-h-56 sm:max-h-64 overflow-y-auto pr-0.5 custom-scrollbar">
+                            {recent4MRecords.map((item) => {
+                              const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.fourM === "Method";
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`p-2.5 rounded-xl bg-white dark:bg-slate-900 text-xs space-y-1 shadow-2xs border transition-all ${
+                                    isQuality
+                                      ? "border-rose-300 dark:border-rose-800/90 ring-1 ring-rose-300/40 dark:ring-rose-900/40 bg-rose-50/20"
+                                      : "border-indigo-100 dark:border-indigo-900/60"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
+                                        isQuality
+                                          ? "bg-rose-600 text-white shadow-xs"
+                                          : item.origin === "설비수리"
+                                          ? "bg-indigo-100 text-indigo-800 border border-indigo-300"
+                                          : item.origin === "비가동"
+                                          ? "bg-orange-100 text-orange-800 border border-orange-300"
+                                          : item.origin === "TPM 이상신고"
+                                          ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                          : item.origin === "불량손실"
+                                          ? "bg-rose-100 text-rose-800 border border-rose-300"
+                                          : "bg-purple-100 text-purple-800 border border-purple-300"
+                                      }`}>
+                                        {item.origin}
+                                      </span>
+                                      <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
+                                        {item.plant?.replace("공장", "")} • {item.line}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
                                   </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                  <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                  {item.content && item.content !== item.title && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                      {item.content}
+                                    </p>
+                                  )}
+                                  {item.actionResult ? (
+                                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                      ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
+                                    </div>
+                                  ) : (
+                                    isQuality && (
+                                      <div className="text-[10px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1 rounded-md border border-rose-200 dark:border-rose-800">
+                                        ↳ 🚨 <b>[조치대기]</b> 현장 조치 및 유효성 확인 대기중
+                                      </div>
+                                    )
+                                  )}
                                 </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
-                                {item.content && item.content !== item.title && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                                    {item.content}
-                                  </p>
-                                )}
-                                {item.actionResult && (
-                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="py-3 text-center text-xs text-slate-400 font-bold">
