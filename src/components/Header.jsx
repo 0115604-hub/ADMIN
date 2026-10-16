@@ -4,9 +4,10 @@ import {
   Calendar,
   ArrowLeft,
   Menu,
-  Plus
+  Plus,
+  Barcode
 } from "lucide-react";
-import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile } from "../context/AuthContext";
+import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile, isSeolProfile } from "../context/AuthContext";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
@@ -44,6 +45,7 @@ export const Header = ({
 
   const isManager = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
+  const isSeol = isSeolProfile(currentProfile);
   const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
   const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
     currentProfile?.portalType === "bulimtech" ||
@@ -152,6 +154,25 @@ export const Header = ({
                 title="오늘의 작업일보 작성"
               >
                 <span>✍️ 일보작성</span>
+              </button>
+            )}
+
+            {/* Quick Rubber Ledger Button for Seol or Managers */}
+            {(isSeol || isManager || isAdmin) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (setActiveTab) setActiveTab("rubber_inventory");
+                }}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0 ${
+                  activeTab === "rubber_inventory"
+                    ? "bg-teal-600 text-white shadow-teal-500/20 ring-2 ring-teal-400"
+                    : "bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-300 dark:border-teal-700"
+                }`}
+                title="연고무 입출고 대장 바로가기"
+              >
+                <Barcode className="w-3.5 h-3.5" />
+                <span>연고무 대장</span>
               </button>
             )}
           </div>
