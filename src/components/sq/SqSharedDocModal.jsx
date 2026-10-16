@@ -59,41 +59,9 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
     setTimeout(() => setCopiedField(null), 2500);
   };
 
-  // URL서비스(dirlist)로 자동 로그인 폼 전송
-  const handleAutoLogin = () => {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "http://5604.ipdisk.co.kr/login_handler.cgi";
-    form.target = "_blank";
-
-    const fields = {
-      access: "dirlist", // 관리 페이지 말고 'URL서비스' 선택
-      username: FTP_USER,
-      password: FTP_PW,
-      language: "kr_utf8",
-      init_status: "0",
-      captcha_on: "off",
-      captcha_file: "",
-      init_alert_msg: "",
-      redirect_dirlogin: "0",
-      relogin: "0",
-      logout: "0",
-      username_str: "",
-      register_on: "off",
-      my_url: "http://5604.ipdisk.co.kr/login.cgi"
-    };
-
-    Object.entries(fields).forEach(([key, val]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = key;
-      input.value = val;
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  // URL서비스(dirlist)로 자동 이동 (관리페이지 아닌 URL서비스 라디오버튼 자동선택 및 ID 자동입력)
+  const handleOpenDirect = () => {
+    window.open(DIRECT_LOGIN_URL, "_blank", "noopener,noreferrer");
   };
 
   const modalContent = (
@@ -163,33 +131,22 @@ export const SqSharedDocModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* 메인 자동 로그인 실행 버튼 */}
-            <div className="mt-4 pt-4 border-t border-cyan-500/20 flex flex-col sm:flex-row gap-2.5">
-              <button
-                type="button"
-                onClick={handleAutoLogin}
-                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 transition-all active:scale-98 cursor-pointer"
-                title="URL 서비스로 자동 로그인하여 새 창 열기"
-              >
-                <Sparkles className="w-4 h-4 text-cyan-200" />
-                <span>⚡ URL 서비스 자동 로그인으로 열기</span>
-                <ExternalLink className="w-4 h-4 text-cyan-100" />
-              </button>
-            </div>
-
-            {/* Fallback Direct Link Button */}
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
-              <span>수동 접속 링크:</span>
+            {/* 메인 URL 서비스 열기 버튼 */}
+            <div className="mt-4 pt-4 border-t border-cyan-500/20 flex flex-col gap-2">
               <a
                 href={DIRECT_LOGIN_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline flex items-center gap-1"
-                title="URL서비스가 자동 선택된 로그인 페이지 열기"
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 transition-all active:scale-98 cursor-pointer no-underline"
+                title="URL 서비스로 새 창 열기 (URL서비스 자동 선택 & ID 자동 입력)"
               >
-                <span>URL 서비스 기본 접속 페이지</span>
-                <ExternalLink className="w-3 h-3" />
+                <Sparkles className="w-4 h-4 text-cyan-200" />
+                <span>🌐 URL 서비스로 문서함 열기 (새 창)</span>
+                <ExternalLink className="w-4 h-4 text-cyan-100" />
               </a>
+              <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
+                ※ 클릭 시 관리 페이지 대신 <b>URL 서비스</b>가 자동 선택되며, ID(5604system)가 입력되어 열립니다. 아래 <b>비밀번호 복사</b> 후 붙여넣어 로그인하세요.
+              </p>
             </div>
           </div>
 
