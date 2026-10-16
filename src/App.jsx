@@ -119,7 +119,15 @@ export const App = () => {
   const mobileMenuOpenRef = useRef(mobileMenuOpen);
   const editingItemRef = useRef(editingItem);
 
-  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    try {
+      if (typeof window !== "undefined") {
+        window.__ORYUK_ACTIVE_TAB__ = activeTab;
+        sessionStorage.setItem("oryuk_current_active_tab", activeTab);
+      }
+    } catch (e) {}
+  }, [activeTab]);
   useEffect(() => { isAuthenticatedRef.current = isAuthenticated; }, [isAuthenticated]);
   useEffect(() => { modalOpenRef.current = modalOpen; }, [modalOpen]);
   useEffect(() => { excelModalOpenRef.current = excelModalOpen; }, [excelModalOpen]);

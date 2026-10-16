@@ -90,6 +90,61 @@ export const DEFAULT_INCIDENT_LOGS = [
     createdAt: "2026-10-15T11:00:00+09:00",
     resolvedAt: "2026-10-15T11:06:00+09:00",
     notes: "첫 화면 하단 관리자(정현규, 이상기 등)의 관리자 권한 완전 보존 및 4대 작업자(압출, 가공, 한울, 부림텍) 로그인 시 무오류 정상 작동 검증 완료"
+  },
+  {
+    id: "inc_20261016_01",
+    incidentNo: 5,
+    workDate: "2026-10-16",
+    category: "일일생산정보",
+    severity: "P0",
+    title: "한울 관리자/모바일 진입 시 E.reduce is not a function 런타임 크래시 조치",
+    plant: "한림공장 (한울)",
+    reporter: "한울 (hal_hu)",
+    symptoms: "TypeError: E.reduce is not a function\n    at WorkerDashboard-BS1Yj87-.js:39:5083\n    at Array.map (<anonymous>)\n    at gr (WorkerDashboard-BS1Yj87-.js:39:5051)",
+    rootCause: "WorkerDashboard 내 한울 외주 지출/비가동 flatRecords 배열 연산 시 데이터가 null/undefined이거나 배열이 아닌 객체로 유입될 때 reduce() 호출로 인한 런타임 크래시 발생",
+    resolution: "flatRecords 및 sheet rows Array.isArray() 안전 방어코드 적용, 역할별 전용 뷰 분리(HanulManagerDashboardView 등 4대 뷰 격리) 및 상태 스냅샷 자동 첨부 연동 완료",
+    actionCommit: "Commit cc3c152",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T09:00:00+09:00",
+    resolvedAt: "2026-10-16T09:10:00+09:00",
+    stateSnapshot: {
+      user: {
+        id: "hal_hu",
+        name: "한울",
+        company: "한울",
+        plant: "한림공장",
+        title: "대표이사",
+        role: "OPERATOR",
+        assignedProcess: "외주가공 (한울)",
+        isFieldWorker: false
+      },
+      view: {
+        activeTab: "worker_dashboard",
+        menuTitle: "일일생산정보현황",
+        url: "https://profit-and-loss-7d09b.web.app/"
+      },
+      device: {
+        isMobile: true,
+        deviceType: "모바일 (Mobile)",
+        screenSize: "390x844"
+      },
+      appState: {
+        selectedMonth: "2026-10",
+        timestamp: "2026-10-16 09:02:21"
+      },
+      oneLineSummary: JSON.stringify({
+        user: "한울(hal_hu) [한울/한림공장]",
+        tab: "worker_dashboard",
+        menu: "일일생산정보현황",
+        device: "Mobile (390x844)",
+        month: "2026-10",
+        time: "2026-10-16 09:02:21"
+      })
+    },
+    notes: "모바일 브라우저 캐시 및 한울 계정 진입 시 실시간 스냅샷 1줄 자동 첨부 검증 완료"
   }
 ];
 
@@ -249,6 +304,7 @@ export const saveIncidentLog = async (logItem) => {
       statusLabel: INCIDENT_STATUSES[logItem.status]?.label || "접수됨",
       mondayChecked: Boolean(logItem.mondayChecked),
       resolver: logItem.resolver || "",
+      stateSnapshot: logItem.stateSnapshot || null,
       createdAt: now,
       updatedAt: now,
       notes: logItem.notes || ""
@@ -303,6 +359,7 @@ export const exportIncidentLogsToExcel = (logs = []) => {
     "진행상태": INCIDENT_STATUSES[l.status]?.label || l.status || "",
     "공장/제보자": `${l.plant || ""} / ${l.reporter || ""}`,
     "오류제목": l.title || "",
+    "화면상태스냅샷": l.stateSnapshot?.oneLineSummary || (typeof l.stateSnapshot === "string" ? l.stateSnapshot : (l.stateSnapshot ? JSON.stringify(l.stateSnapshot) : "")),
     "현상및에러문구": l.symptoms || "",
     "근본원인분석": l.rootCause || "",
     "조치결과및커밋": l.resolution ? `${l.resolution} ${l.actionCommit ? `[${l.actionCommit}]` : ""}` : "",

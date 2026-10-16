@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Factory,
   Smartphone,
   Laptop,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Camera
 } from "lucide-react";
+import { getLocalIncidentLogs, subscribeIncidentLogs } from "../../../services/incidentLogService";
 
 export const AdminAccessAndIncidentSection = ({
   isAdmin,
@@ -16,6 +18,15 @@ export const AdminAccessAndIncidentSection = ({
   formatRelativeAccessTime,
   onNavigateTab
 }) => {
+  const [incidents, setIncidents] = useState(() => getLocalIncidentLogs());
+
+  useEffect(() => {
+    const unsub = subscribeIncidentLogs((newLogs) => {
+      setIncidents(newLogs);
+    });
+    return () => unsub();
+  }, []);
+
   if (!isAdmin) return null;
 
   return (
@@ -140,41 +151,40 @@ export const AdminAccessAndIncidentSection = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          <div
-            onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
-            className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                🟢 조치완료 • 전자결재
-              </span>
-              <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit 202ac86)</span>
+          {incidents.slice(0, 2).map((inc) => (
+            <div
+              key={inc.id}
+              onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
+              className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 rounded text-[10.5px] font-black border ${
+                    inc.status === "RESOLVED" || inc.status === "VERIFIED"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300"
+                      : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300"
+                  }`}>
+                    {inc.status === "RESOLVED" || inc.status === "VERIFIED" ? "🟢 조치완료" : "🚨 접수됨"} • {inc.category}
+                  </span>
+                  {inc.stateSnapshot && (
+                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                      <Camera className="w-2.5 h-2.5" />
+                      <span>스냅샷</span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono font-medium">
+                  {inc.workDate?.slice(5) || ""} {inc.actionCommit ? `(${inc.actionCommit})` : ""}
+                </span>
+              </div>
+              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                {inc.title}
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 font-mono">
+                {inc.stateSnapshot?.oneLineSummary ? `📸 ${inc.stateSnapshot.oneLineSummary}` : (inc.resolution || inc.symptoms || "")}
+              </p>
             </div>
-            <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-              전자결재 결재대기 카운트 동적 연동 및 협력사 보고서 자동 취합 누락 조치
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-              결재함 배지 카운트 실시간 동기화 및 협력사 특근/근태보고서 자동 연동 완료
-            </p>
-          </div>
-
-          <div
-            onClick={() => onNavigateTab && onNavigateTab("incident_logs")}
-            className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                🟢 조치완료 • 근태관리
-              </span>
-              <span className="text-[11px] text-slate-400 font-mono font-medium">10/15 (Commit cff95b6)</span>
-            </div>
-            <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-              근태 최종 저장 및 보고서 등록 시 TDZ ReferenceError 런타임 크래시 조치
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-              선언 순서 재배치로 런타임 에러 완전 제거 및 평일 미선택 정시 자동채우기 확인창 적용
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     </>

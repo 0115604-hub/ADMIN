@@ -1,13 +1,18 @@
 import React from "react";
-import { AlertTriangle, RefreshCw, Home, RotateCcw, Copy, Check } from "lucide-react";
+import { AlertTriangle, RefreshCw, Home, RotateCcw, Copy, Check, Camera, User, Smartphone, Layers } from "lucide-react";
 import { OryukLogo } from "./OryukLogo";
-import { db } from "../firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { captureStateSnapshot, autoReportRuntimeIncident } from "../services/errorSnapshotService";
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, copied: false };
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      copied: false,
+      snapshot: null
+    };
   }
 
   static getDerivedStateFromError(error) {
@@ -16,35 +21,27 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
-    if (!this.state.errorInfo) {
-      this.setState({ errorInfo });
-    }
+    
+    // 📸 화면 상태 스냅샷(State Snapshot) 즉시 캡처
+    const snapshot = captureStateSnapshot({
+      title: this.props.title || "Global System Error",
+      error,
+      errorInfo
+    });
 
-    // Safely record error details to Firestore for live diagnosis
+    this.setState({
+      errorInfo: errorInfo || this.state.errorInfo,
+      snapshot
+    });
+
+    // 🚨 ADMIN 오류 및 조치 관리에 자동 1건 접수 등록
     try {
-      let userProfile = null;
-      try {
-        const saved = localStorage.getItem("admin_user_profile");
-        if (saved) userProfile = JSON.parse(saved);
-      } catch (e) {}
-
-      const errorPayload = {
+      autoReportRuntimeIncident({
         title: this.props.title || "Global System Error",
-        message: String(error?.message || error || "Unknown Error"),
-        stack: String(error?.stack || "").slice(0, 2000),
-        componentStack: String(errorInfo?.componentStack || "").slice(0, 2000),
-        url: typeof window !== "undefined" ? window.location.href : "",
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
-        isMobile: typeof navigator !== "undefined" ? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) : false,
-        userName: userProfile?.name || "미로그인",
-        userId: userProfile?.id || "-",
-        plant: userProfile?.plant || "-",
-        role: userProfile?.role || "-",
-        timestamp: new Date().toISOString()
-      };
-
-      addDoc(collection(db, "system_runtime_errors"), errorPayload).catch((err) => {
-        console.warn("Failed to log error to Firestore:", err);
+        error,
+        errorInfo
+      }).catch((e) => {
+        console.warn("Auto error reporting warning:", e);
       });
     } catch (e) {
       console.warn("ErrorBoundary report failed:", e);
@@ -52,14 +49,14 @@ export class ErrorBoundary extends React.Component {
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, snapshot: null });
     if (this.props.onReset) {
       this.props.onReset();
     }
   };
 
   handleReload = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, snapshot: null });
     window.location.reload();
   };
 
@@ -71,12 +68,29 @@ export class ErrorBoundary extends React.Component {
     } catch (e) {
       console.warn("Storage clear error:", e);
     }
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, snapshot: null });
     window.location.href = window.location.origin + window.location.pathname;
   };
 
   handleCopyError = () => {
-    const errorDetails = `[오륙 시스템 오류 보고]\n메뉴: ${this.props.title || "전체 시스템"}\n내용: ${this.state.error?.message || this.state.error}\n스택:\n${this.state.error?.stack || ""}\n컴포넌트:\n${this.state.errorInfo?.componentStack || ""}`;
+    const snapshot = this.state.snapshot || captureStateSnapshot({
+      title: this.props.title || "전체 시스템",
+      error: this.state.error,
+      errorInfo: this.state.errorInfo
+    });
+
+    const errorDetails = [
+      `[오륙 시스템 오류 보고]`,
+      `메뉴: ${this.props.title || "전체 시스템"}`,
+      `내용: ${this.state.error?.message || this.state.error}`,
+      `📸 상태 스냅샷:`,
+      snapshot?.oneLineSummary || JSON.stringify(snapshot || {}),
+      `스택:`,
+      `${this.state.error?.stack || ""}`,
+      `컴포넌트:`,
+      `${this.state.errorInfo?.componentStack || ""}`
+    ].join("\n");
+
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(errorDetails);
@@ -144,10 +158,29 @@ export class ErrorBoundary extends React.Component {
                 <span>로그인 화면으로</span>
               </button>
             </div>
+            {/* 📸 당시 화면 상태 스냅샷 박스 */}
+            {this.state.snapshot && (
+              <div className="mt-3 text-left w-full max-w-lg p-2.5 rounded-xl bg-slate-950/80 border border-indigo-500/40 text-[11px] space-y-1 shadow-sm">
+                <div className="flex items-center justify-between text-indigo-300 font-bold border-b border-indigo-500/20 pb-1">
+                  <span className="flex items-center gap-1">
+                    <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>발생 당시 화면 상태 스냅샷 (State Snapshot)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">{this.state.snapshot.appState?.timestamp}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-slate-300 pt-1 text-[10.5px]">
+                  <div>👤 사용자: <strong className="text-white">{this.state.snapshot.user?.name}</strong> ({this.state.snapshot.user?.id})</div>
+                  <div>🏢 소속: <strong className="text-white">{this.state.snapshot.user?.company || "-"} / {this.state.snapshot.user?.plant || "-"}</strong></div>
+                  <div>📱 디바이스: <strong className="text-white">{this.state.snapshot.device?.deviceType}</strong> ({this.state.snapshot.device?.screenSize})</div>
+                  <div>📑 메뉴: <strong className="text-white">{this.state.snapshot.view?.menuTitle}</strong></div>
+                </div>
+              </div>
+            )}
+
             {this.state.error && (
-              <div className="mt-3.5 text-left w-full max-w-lg">
+              <div className="mt-2.5 text-left w-full max-w-lg">
                 <div className="text-[11px] font-bold text-slate-400 mb-1">오류 상세 내용:</div>
-                <pre className="p-2.5 rounded-xl bg-slate-950 text-[10.5px] text-rose-400 overflow-x-auto font-mono border border-rose-900/50 whitespace-pre-wrap max-h-40">
+                <pre className="p-2.5 rounded-xl bg-slate-950 text-[10.5px] text-rose-400 overflow-x-auto font-mono border border-rose-900/50 whitespace-pre-wrap max-h-36">
                   {String(this.state.error?.message || this.state.error)}
                   {this.state.error?.stack && `\n\n${this.state.error.stack}`}
                 </pre>
@@ -207,8 +240,27 @@ export class ErrorBoundary extends React.Component {
               </button>
             </div>
 
+            {/* 📸 당시 화면 상태 스냅샷 박스 */}
+            {this.state.snapshot && (
+              <div className="mt-3 text-left w-full p-3 rounded-2xl bg-slate-900 border border-indigo-500/30 text-[11px] space-y-1 shadow-inner">
+                <div className="flex items-center justify-between text-indigo-300 font-bold border-b border-indigo-500/20 pb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>발생 당시 화면 상태 스냅샷 (State Snapshot)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">{this.state.snapshot.appState?.timestamp}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-300 pt-1 text-[11px]">
+                  <div>👤 사용자: <strong className="text-white">{this.state.snapshot.user?.name}</strong> ({this.state.snapshot.user?.id})</div>
+                  <div>🏢 소속/공장: <strong className="text-white">{this.state.snapshot.user?.company || "-"} / {this.state.snapshot.user?.plant || "-"}</strong></div>
+                  <div>📱 디바이스: <strong className="text-white">{this.state.snapshot.device?.deviceType}</strong> ({this.state.snapshot.device?.screenSize})</div>
+                  <div>📑 메뉴: <strong className="text-white">{this.state.snapshot.view?.menuTitle}</strong></div>
+                </div>
+              </div>
+            )}
+
             {this.state.error && (
-              <details open className="mt-5 text-left w-full">
+              <details open className="mt-4 text-left w-full">
                 <summary className="text-[11px] text-slate-400 font-bold cursor-pointer hover:text-slate-300 mb-1">
                   오류 내용 및 상세 스택 (디버깅)
                 </summary>

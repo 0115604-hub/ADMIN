@@ -22,7 +22,9 @@ import {
   RefreshCw,
   Sparkles,
   Layers,
-  MessageSquare
+  MessageSquare,
+  Camera,
+  Copy
 } from "lucide-react";
 import {
   getLocalIncidentLogs,
@@ -34,6 +36,7 @@ import {
   SEVERITY_LEVELS,
   INCIDENT_STATUSES
 } from "../services/incidentLogService";
+import { captureStateSnapshot } from "../services/errorSnapshotService";
 import { useAuth } from "../context/AuthContext";
 
 export const IncidentLogsView = () => {
@@ -109,6 +112,7 @@ export const IncidentLogsView = () => {
     status: "RECEIVED",
     mondayChecked: false,
     resolver: currentProfile?.name || "시스템 관리자",
+    stateSnapshot: null,
     notes: ""
   });
 
@@ -128,6 +132,7 @@ export const IncidentLogsView = () => {
       status: "RECEIVED",
       mondayChecked: false,
       resolver: currentProfile?.name || "시스템 관리자",
+      stateSnapshot: null,
       notes: ""
     });
     setIsModalOpen(true);
@@ -380,6 +385,14 @@ export const IncidentLogsView = () => {
                           {item.category}
                         </span>
 
+                        {/* State Snapshot Badge */}
+                        {item.stateSnapshot && (
+                          <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[11px] border border-purple-200 dark:border-purple-800 flex items-center gap-1 shrink-0">
+                            <Camera className="w-3 h-3 text-purple-500" />
+                            <span>스냅샷 첨부</span>
+                          </span>
+                        )}
+
                         {/* Date & Plant */}
                         <span className="text-slate-400 font-medium text-xs flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" />
@@ -454,6 +467,82 @@ export const IncidentLogsView = () => {
                 {/* Expanded Detail Panel (Root Cause, Resolution, Symptoms) */}
                 {isExpanded && (
                   <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-950/40 space-y-3.5 text-xs sm:text-sm animate-fadeIn">
+                    {/* 📸 발생 당시 화면 상태 스냅샷 (State Snapshot) */}
+                    {item.stateSnapshot && (
+                      <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/70 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-indigo-200/60 dark:border-indigo-900/40">
+                          <span className="font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 text-xs sm:text-sm">
+                            <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>📸 발생 당시 화면 상태 스냅샷 (State Snapshot)</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const snapshotStr = typeof item.stateSnapshot === "string"
+                                ? item.stateSnapshot
+                                : (item.stateSnapshot.oneLineSummary || JSON.stringify(item.stateSnapshot, null, 2));
+                              navigator.clipboard.writeText(snapshotStr);
+                              triggerToast("📋 스냅샷 JSON 데이터가 클립보드에 복사되었습니다!");
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 hover:bg-indigo-200 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>스냅샷 JSON 복사</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
+                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">👤 로그인 사용자</span>
+                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                              {item.stateSnapshot.user?.name || item.reporter || "-"}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate font-mono">
+                              ID: {item.stateSnapshot.user?.id || "-"} ({item.stateSnapshot.user?.title || item.stateSnapshot.user?.role || "-"})
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
+                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">🏢 소속 / 사업장</span>
+                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                              {item.stateSnapshot.user?.company || "-"}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate">
+                              {item.stateSnapshot.user?.plant || "-"} ({item.stateSnapshot.user?.assignedProcess || "-"})
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
+                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">📑 진입 메뉴 / 탭</span>
+                            <span className="font-black text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm truncate block">
+                              {item.stateSnapshot.view?.menuTitle || item.category || "-"}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate font-mono">
+                              activeTab: {item.stateSnapshot.view?.activeTab || "-"}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
+                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">📱 기기 환경 & 조회월</span>
+                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                              {item.stateSnapshot.device?.deviceType || (item.stateSnapshot.device?.isMobile ? "모바일 (Mobile)" : "PC (Desktop)")}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate font-mono">
+                              {item.stateSnapshot.device?.screenSize || "-"} • 기준월: {item.stateSnapshot.appState?.selectedMonth || "-"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 1줄 압축 JSON 요약 */}
+                        {item.stateSnapshot.oneLineSummary && (
+                          <div className="p-2 rounded-xl bg-slate-900 text-slate-300 font-mono text-[10.5px] border border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
+                            <span className="shrink-0 text-amber-400 font-bold text-[10px]">1줄 요약:</span>
+                            <span className="truncate">{item.stateSnapshot.oneLineSummary}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Symptoms */}
                     {item.symptoms && (
                       <div className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/50 dark:border-rose-900/40">
@@ -615,6 +704,56 @@ export const IncidentLogsView = () => {
                   placeholder="예: 근태 최종 저장 시 ReferenceError 크래시 발생"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white"
                 />
+              </div>
+
+              {/* 📸 화면 상태 스냅샷 (State Snapshot) 자동 첨부 영역 */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-indigo-950 dark:text-indigo-200 font-bold flex items-center gap-1.5 text-xs">
+                    <Camera className="w-4 h-4 text-indigo-500" />
+                    <span>화면 상태 스냅샷 (State Snapshot)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const snap = captureStateSnapshot({ title: formData.title || formData.category });
+                      setFormData({
+                        ...formData,
+                        stateSnapshot: snap,
+                        reporter: formData.reporter || snap.user.name,
+                        plant: formData.plant === "본사 • 전사" && snap.user.plant !== "-" ? snap.user.plant : formData.plant
+                      });
+                      triggerToast("⚡ 현재 사용자/기기 화면 상태 스냅샷을 자동 추출하였습니다!");
+                    }}
+                    className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>현재 화면 상태 자동 캡처</span>
+                  </button>
+                </div>
+
+                {formData.stateSnapshot ? (
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 text-[11px] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        👤 {formData.stateSnapshot.user?.name} ({formData.stateSnapshot.user?.id}) • {formData.stateSnapshot.user?.company || "-"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {formData.stateSnapshot.device?.deviceType} ({formData.stateSnapshot.device?.screenSize})
+                      </span>
+                    </div>
+                    <div className="text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">
+                      activeTab: {formData.stateSnapshot.view?.activeTab} | 기준월: {formData.stateSnapshot.appState?.selectedMonth}
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400 font-mono text-[10px] truncate pt-0.5 border-t border-slate-100 dark:border-slate-800">
+                      1줄 요약: {formData.stateSnapshot.oneLineSummary}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    오류 발생 당시 로그인 사용자(currentProfile), 선택된 탭(activeTab), 모바일 기기 정보가 1줄 JSON으로 자동 첨부되어 빠른 원인 파악이 가능합니다.
+                  </p>
+                )}
               </div>
 
               <div>
