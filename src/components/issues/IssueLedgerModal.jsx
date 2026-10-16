@@ -105,7 +105,7 @@ export const IssueLedgerModal = ({
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                  품질경보 • 회의일정 • 사내공지 • 오픈이슈 관리목록
+                  부적합경보 • 회의일정 • 사내공지 • 오픈이슈 관리목록
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   총 {urgentIssues?.length || 0}건
@@ -144,9 +144,9 @@ export const IssueLedgerModal = ({
           </div>
         )}
 
-        {/* 🌟 Modal Category Tabs (순서: 품질경보 -> 회의일정 -> 오픈이슈 -> 사내공지 -> 종결삭제관리) */}
+        {/* 🌟 Modal Category Tabs (순서: 부적합경보 -> 회의일정 -> 오픈이슈 -> 사내공지 -> 종결삭제관리) */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto shrink-0">
-          {/* 1) 품질경보 */}
+          {/* 1) 부적합경보 */}
           <button
             type="button"
             onClick={() => {
@@ -160,7 +160,7 @@ export const IssueLedgerModal = ({
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            <span>🚨 품질경보</span>
+            <span>🚨 부적합경보</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200">
               {allQualityAlerts?.length || 0}
             </span>
@@ -270,7 +270,7 @@ export const IssueLedgerModal = ({
                   {ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
                     ? "종결 또는 삭제/만료된 내역이 없습니다."
                     : ledgerCategoryTab === "quality_alert"
-                    ? "현재 진행중인 품질경보 내역이 없습니다."
+                    ? "현재 진행중인 부적합경보 내역이 없습니다."
                     : ledgerCategoryTab === "meeting"
                     ? "현재 예정된 회의일정 내역이 없습니다."
                     : ledgerCategoryTab === "open_issue" || ledgerCategoryTab === "quality_issue"
@@ -285,7 +285,7 @@ export const IssueLedgerModal = ({
                 const isCurrent = selectedListItem?.id === it.id;
                 const isItMeeting = it.category === "회의일정" || it.category === "meeting" || String(it.category || "").includes("회의");
                 const isItNotice = it.category === "공지사항" || it.category === "사내공지" || it.category === "공유사항" || it.category === "notice" || String(it.category || "").includes("공지");
-                const isItQualityAlert = it.category === "품질경보" || it.category === "quality_alert" || String(it.category || "").includes("품질경보");
+                const isItQualityAlert = it.category === "품질경보" || it.category === "부적합경보" || it.category === "quality_alert" || String(it.category || "").includes("품질경보") || String(it.category || "").includes("부적합경보");
                 const todayStr = getKSTDateString();
                 const isItExpiredMeeting = isItMeeting && isMeetingExpired(it, 0);
                 const isItExpiredNotice = isItNotice && Boolean(it.expireDate && it.expireDate < todayStr && !it.isManuallyRestored);
@@ -320,7 +320,7 @@ export const IssueLedgerModal = ({
                         ? "bg-emerald-600"
                         : "bg-gradient-to-r from-blue-600 to-indigo-600"
                     }`}>
-                      {isItQualityAlert ? "🚨 품질경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                      {isItQualityAlert ? "🚨 부적합경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
                     </span>
                     {!isItQualityAlert && !isItMeeting && !isItNotice && (
                       (Array.isArray(it.replies) && it.replies.length > 0) ||

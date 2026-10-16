@@ -520,7 +520,7 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
       const replyCount = o.replies?.length || 0;
       const hasUpdate = (replyCount > 0) || (typeof o.actionResult === "string" && o.actionResult.trim().length > 0) || Boolean(o.updatedAt && o.createdAt && o.updatedAt !== o.createdAt) || Boolean(o.isUpdated);
       const updateIcon = hasUpdate ? " 🔄" : "";
-      return `• [${o.category === "품질경보" ? "품질" : "이슈"}] ${o.title || o.content}${d}${updateIcon}`;
+      return `• [${o.category === "품질경보" || o.category === "부적합경보" ? "부적합" : "이슈"}] ${o.title || o.content}${d}${updateIcon}`;
     }).join("\n");
     if (activeOpenIssues.length > 3) openIssueCompact += `\n• 외 ${activeOpenIssues.length - 3}건`;
   }
@@ -561,9 +561,9 @@ export const buildDailyClosingBriefingText = async (targetDateStr = null) => {
   const ctx = await fetchDirectFirestoreContext(targetDate);
   const dateFormatted = `${getKSTFormattedString(targetDate).split(" ")[0]}`;
 
-  // 1. 품질경보 변동
+  // 1. 품질/부적합경보 변동
   const qualityAlerts = (ctx.urgentIssues || []).filter((i) => {
-    if (i.category !== "품질경보" || isCeoPrivateItem(i)) return false;
+    if ((i.category !== "품질경보" && i.category !== "부적합경보") || isCeoPrivateItem(i)) return false;
     const isToday = i.createdAt?.startsWith(targetDate) || i.startDate === targetDate || i.actionAt?.startsWith(targetDate) || i.deletedAt?.startsWith(targetDate);
     const isUnresolved = !i.isDeleted && !i.isResolved;
     return isToday || isUnresolved;
@@ -573,7 +573,7 @@ export const buildDailyClosingBriefingText = async (targetDateStr = null) => {
   if (qualityAlerts.length > 0) {
     qualityLines = qualityAlerts.map((q) => {
       const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
-      const title = q.title || q.content || "품질경보";
+      const title = q.title || q.content || "부적합경보";
       const statusText = q.isDeleted ? "🛑 종결/삭제" : q.isResolved ? "✅ 조치완료" : "⏳ 조치대기";
       return ` • [${plant}] ${title} (상태: ${statusText})`;
     }).join("\n");
@@ -614,7 +614,7 @@ export const buildDailyClosingBriefingText = async (targetDateStr = null) => {
 <b>🌙 [오륙 생산관리] 일일 업무 마감 브리핑</b>
 <b>📅 ${dateFormatted}</b>
 ━━━━━━━━━━━━━━━━━━━━━
-🚨 <b>[1] 금일 품질경보 발생 및 조치현황</b>
+🚨 <b>[1] 금일 부적합경보 발생 및 조치현황</b>
 ${qualityLines}
 
 📋 <b>[2] 금일 회의 진행 및 결정사항</b>

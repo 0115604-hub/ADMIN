@@ -267,18 +267,24 @@ export const UnifiedAbnormalityControlPanel = ({
 
       const isQualityAlert =
         rawCat === "품질경보" ||
+        rawCat === "부적합경보" ||
         rawCat === "품질 경보" ||
+        rawCat === "부적합 경보" ||
         rawCat === "품질이슈" ||
         rawCat === "품질 이슈" ||
         catLower === "quality_alert" ||
         catLower === "quality_issue" ||
         catLower === "quality" ||
         rawCat.includes("품질경보") ||
+        rawCat.includes("부적합경보") ||
         rawCat.includes("품질") ||
+        rawCat.includes("부적합") ||
         issue.type === "QUALITY_ALERT" ||
         issue.type === "품질경보" ||
         titleLower.includes("품질경보") ||
-        contentLower.includes("품질경보");
+        titleLower.includes("부적합경보") ||
+        contentLower.includes("품질경보") ||
+        contentLower.includes("부적합경보");
 
       if (!isQualityAlert) return; // 품질경보만 엄선 수집
 
@@ -1059,14 +1065,14 @@ export const UnifiedAbnormalityControlPanel = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-black text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
-                  <span>📋 4M 변동점 관리대장 (설비수리·비가동·불량·품질경보)</span>
+                  <span>📋 4M 변동점 관리대장 (설비수리·비가동·불량·부적합경보)</span>
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500 text-white shadow-xs border border-indigo-400/40">
                   한림공장 TEST 관제
                 </span>
               </div>
               <p className="text-[11px] text-indigo-200/90 font-medium">
-                작업일보 <b>비가동·불량·TPM</b> + 전재율 <b>설비수리</b> + 관리자 <b>품질경보</b>를 취합하고 <b>변동점 관리대장</b>으로 공식 등록합니다.
+                작업일보 <b>비가동·불량·TPM</b> + 전재율 <b>설비수리</b> + 관리자 <b>부적합경보</b>를 취합하고 <b>변동점 관리대장</b>으로 공식 등록합니다.
               </p>
             </div>
           </div>

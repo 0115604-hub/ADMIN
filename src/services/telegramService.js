@@ -605,20 +605,20 @@ export const dispatchToTelegramRooms = async (message, images = [], customConfig
  * 1. 품질경보 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) => {
-  if (issueItem?.category !== "품질경보") {
+  if (issueItem?.category !== "품질경보" && issueItem?.category !== "부적합경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_ALERT" };
   }
 
   // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 품질경보 중복 발송 방지)
   const alertFingerprint = `quality_alert_${issueItem?.id || ""}_${issueItem?.title || ""}_${issueItem?.createdAt || ""}`;
   if (isDuplicateMessage(alertFingerprint, 60000)) {
-    console.log(`[Telegram] 품질경보 1회 발송 원칙 적용: 중복 발송 차단 (${alertFingerprint})`);
+    console.log(`[Telegram] 품질/부적합경보 1회 발송 원칙 적용: 중복 발송 차단 (${alertFingerprint})`);
     return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "현장작업자";
-  const title = issueItem?.title || issueItem?.content || "품질경보";
+  const title = issueItem?.title || issueItem?.content || "부적합경보";
   const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
   const images = (issueItem?.images || []).slice(0, 3);
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 현장 사진 ${images.length}장 첨부됨` : "";
@@ -626,9 +626,9 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
   const timeStr = issueItem?.time || getKSTTimeString();
 
   const message = `
-🚨 <b>[품질경보 등록] 긴급 확인 및 점검 요망</b>
+🚨 <b>[부적합경보 등록] 긴급 확인 및 점검 요망</b>
 ━━━━━━━━━━━━━━━━━━━━━
-• <b>구분:</b> 🚨 품질경보 신규 등록
+• <b>구분:</b> 🚨 부적합경보 신규 등록
 • <b>공장:</b> ${plant}
 • <b>작성자:</b> <b>${writer}</b>
 • <b>불량제목:</b> <b>${title}</b>
@@ -647,24 +647,24 @@ ${content ? `\n<b>[발생 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2. 품질경보 조치완료(조치결과) 등록 즉시 알림 (오륙 통합방 단 1회 발송)
+ * 2. 품질/부적합경보 조치완료(조치결과) 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetChatId = null) => {
-  if (issueItem?.category !== "품질경보") {
+  if (issueItem?.category !== "품질경보" && issueItem?.category !== "부적합경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_OPINION" };
   }
 
   // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 조치완료 중복 발송 방지)
   const actionFingerprint = `quality_action_${issueItem?.id || ""}_${opinionItem?.id || opinionItem?.createdAt || opinionItem?.content || ""}`;
   if (isDuplicateMessage(actionFingerprint, 60000)) {
-    console.log(`[Telegram] 품질경보 조치완료 1회 발송 원칙 적용: 중복 발송 차단 (${actionFingerprint})`);
+    console.log(`[Telegram] 품질/부적합경보 조치완료 1회 발송 원칙 적용: 중복 발송 차단 (${actionFingerprint})`);
     return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const plant = opinionItem?.plant || issueItem?.plant || "삼랑진공장";
   const writer = opinionItem?.author || opinionItem?.writer || "담당자";
   const writerTitle = opinionItem?.authorTitle ? ` ${opinionItem.authorTitle}` : "";
-  const title = issueItem?.title || issueItem?.content || "품질경보";
+  const title = issueItem?.title || issueItem?.content || "부적합경보";
   const content = opinionItem?.content || opinionItem?.text || opinionItem?.actionResult || "조치 완료";
   const dateStr = opinionItem?.actionDate || opinionItem?.createdAt?.slice(0, 10) || getKSTDateString();
   const timeStr = opinionItem?.createdAt && opinionItem.createdAt.length > 10 ? opinionItem.createdAt.slice(11, 16) : getKSTTimeString();
@@ -685,9 +685,9 @@ export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetC
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 조치 관련 사진 ${images.length}장 첨부됨` : "";
 
   const message = `
-🟢 <b>[품질경보 조치결과] 조치완료 안내</b>
+🟢 <b>[부적합경보 조치결과] 조치완료 안내</b>
 ━━━━━━━━━━━━━━━━━━━━━
-• <b>구분:</b> 🟢 품질경보 조치완료
+• <b>구분:</b> 🟢 부적합경보 조치완료
 • <b>공장:</b> ${plant}
 • <b>불량제목:</b> <b>${title}</b>
 ${issueItem?.content && issueItem.content !== title ? `• <b>발생내용:</b> ${issueItem.content}\n` : ""}• <b>조치자:</b> <b>${writer}${writerTitle}</b>
@@ -708,10 +708,10 @@ ${content}
 };
 
 /**
- * 2-1. 품질경보 조치완료 보고 즉시 알림
+ * 2-1. 부적합경보 조치완료 보고 즉시 알림
  */
 export const sendQualityActionTelegram = async (issueItem, actionResult = null, targetChatId = null) => {
-  if (issueItem?.category !== "품질경보") {
+  if (issueItem?.category !== "품질경보" && issueItem?.category !== "부적합경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_ALERT" };
   }
   return await sendQualityOpinionTelegram(issueItem, {
@@ -1435,9 +1435,9 @@ export const formatDailyClosingBriefing = (todayStr = null) => {
   const dateFormatted = `${getKSTFormattedString(targetDate).split(" ")[0]}`;
   const allUrgent = getLocalUrgentIssues();
 
-  // 1. 품질경보 변동 현황 (금일 등록, 금일 조치/의견 등록, 금일 종결, 또는 현재 미조치 상태)
+  // 1. 품질/부적합경보 변동 현황 (금일 등록, 금일 조치/의견 등록, 금일 종결, 또는 현재 미조치 상태)
   const qualityAlerts = allUrgent.filter((i) => {
-    if (i.category !== "품질경보") return false;
+    if (i.category !== "품질경보" && i.category !== "부적합경보") return false;
     const isTodayCreated = i.createdAt?.startsWith(targetDate) || i.startDate === targetDate || i.expireDate === targetDate;
     const isTodayAction = i.actionAt?.startsWith(targetDate);
     const isTodayReply = i.replies?.some((r) => r.actionDate === targetDate || r.createdAt?.startsWith(targetDate));
@@ -1454,7 +1454,7 @@ export const formatDailyClosingBriefing = (todayStr = null) => {
   if (qualityAlerts.length > 0) {
     qualityLines = qualityAlerts.map((q) => {
       const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
-      const title = q.title || q.content || "품질경보";
+      const title = q.title || q.content || "부적합경보";
       const isDel = Boolean(q.isDeleted);
       const isRes = Boolean(q.isResolved);
       const actionTimeStr = q.actionAt ? (q.actionAt.length > 10 ? ` (${q.actionAt.slice(11, 16) || q.actionAt.slice(5)})` : ` (${q.actionAt})`) : "";
@@ -1619,7 +1619,7 @@ export const formatDailyClosingBriefing = (todayStr = null) => {
 📅 ${dateFormatted} 일일 업무 마감 현황
 ━━━━━━━━━━━━━━━━━━━━
 
-🚨 [1] 품질경보 현황 (총 ${qualityAlerts.length}건)
+🚨 [1] 부적합경보 현황 (총 ${qualityAlerts.length}건)
 ${qualityLines}
 
 📅 [2] 회의일정 및 결과 (총 ${meetings.length}건)
@@ -1783,7 +1783,7 @@ export const testTelegramConnection = async (token, chatId) => {
 텔레그램 봇과 정상적으로 연결되었습니다.
 오륙통합방 발송 대상 알림 (5가지):
 
-• <b>1. 품질경보:</b> 신규 등록 즉시 알림
+• <b>1. 부적합경보:</b> 신규 등록 즉시 알림
 • <b>2. 품질의견:</b> 조치 의견 등록 즉시 알림
 • <b>3. 품질삭제:</b> 종결 및 삭제 즉시 알림
 • <b>4. 모닝브리핑:</b> 매일 07:40 통합 브리핑

@@ -33,7 +33,7 @@ import { useModalHistory } from "../../utils/modalHistory";
 export const getIssueOpinionCount = (item) => {
   if (!item) return 0;
   const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
-  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
+  if (item.category === "품질경보" || item.category === "부적합경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
     return replyCount;
   }
   const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
@@ -226,7 +226,7 @@ export const IssueEditModal = ({
                     ? "📢 사내공지"
                     : newIssueForm.category === "오픈이슈"
                     ? "📌 오픈이슈"
-                    : "🚨 품질경보"}
+                    : "🚨 부적합경보"}
                 </span>
                 <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {newIssueForm.plant}
@@ -446,7 +446,7 @@ export const IssueEditModal = ({
               <div className="flex items-center justify-between gap-1 flex-wrap">
                 <span className="font-black text-xs sm:text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
                   <MessageSquare className="w-4 h-4 text-blue-600" />
-                  <span>{newIssueForm.category === "품질경보" ? "조치결과 및 의견" : "의견"} ({editingIssue.replies?.length || 0}건)</span>
+                  <span>{(newIssueForm.category === "품질경보" || newIssueForm.category === "부적합경보") ? "조치결과 및 의견" : "의견"} ({editingIssue.replies?.length || 0}건)</span>
                 </span>
                 <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
                   * 첨부파일 없이 텍스트만 작성하거나 사진/엑셀을 함께 등록할 수 있습니다.
@@ -587,8 +587,8 @@ export const IssueEditModal = ({
                   <textarea
                     rows="3"
                     placeholder={
-                      newIssueForm.category === "품질경보"
-                        ? "품질경보 조치결과 및 개선 내용을 입력해 주세요. (등록 시 조치완료 텔레그램 실시간 1회 발송)"
+                      newIssueForm.category === "품질경보" || newIssueForm.category === "부적합경보"
+                        ? "부적합경보 조치결과 및 개선 내용을 입력해 주세요. (등록 시 조치완료 텔레그램 실시간 1회 발송)"
                         : "조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
                     }
                     value={actionOpinionForm.content}
@@ -660,12 +660,12 @@ export const IssueEditModal = ({
                     type="button"
                     onClick={onModalAddOpinion}
                     className={`px-4 py-2 rounded-xl text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all ${
-                      newIssueForm.category === "품질경보"
+                      newIssueForm.category === "품질경보" || newIssueForm.category === "부적합경보"
                         ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
                         : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
                     }`}
                   >
-                    <span>{newIssueForm.category === "품질경보" ? "조치결과 등록 🟢" : "의견등록"}</span>
+                    <span>{newIssueForm.category === "품질경보" || newIssueForm.category === "부적합경보" ? "조치결과 등록 🟢" : "의견등록"}</span>
                   </button>
                 </div>
 
@@ -750,17 +750,17 @@ export const IssueEditModal = ({
                 구분 (4대 분류)
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {/* 1) 품질경보 */}
+                {/* 1) 부적합경보 */}
                 <button
                   type="button"
                   onClick={() => onSwitchCategory("품질경보")}
                   className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
-                    newIssueForm.category === "품질경보"
+                    newIssueForm.category === "품질경보" || newIssueForm.category === "부적합경보"
                       ? "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
                       : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                   }`}
                 >
-                  <span>🚨 품질경보</span>
+                  <span>🚨 부적합경보</span>
                 </button>
 
                 {/* 2) 회의일정 */}
@@ -1802,15 +1802,15 @@ export const IssueEditModal = ({
                       />
                     </div>
                   ) : (
-                    /* 품질경보 */
+                    /* 부적합경보 */
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                          <span>품질경보 등록일</span>
+                          <span>부적합경보 등록일</span>
                         </label>
                         <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                          * 품질경보가 발행/등록된 일자입니다.
+                          * 부적합경보가 발행/등록된 일자입니다.
                         </p>
                       </div>
                       <input
@@ -2188,7 +2188,7 @@ export const IssueEditModal = ({
             )}
 
             {/* 7. 회신 및 참석 현황 (기존 항목 수정 시 노출 - 회의일정 및 사내공지 전용) */}
-            {editingIssue && newIssueForm.category !== "오픈이슈" && newIssueForm.category !== "품질경보" && (
+            {editingIssue && newIssueForm.category !== "오픈이슈" && newIssueForm.category !== "품질경보" && newIssueForm.category !== "부적합경보" && (
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -2329,7 +2329,7 @@ export const IssueEditModal = ({
                     ? "사내공지 등록"
                     : newIssueForm.category === "오픈이슈"
                     ? "오픈이슈 등록"
-                    : "품질경보 등록"}
+                    : "부적합경보 등록"}
                 </span>
               </button>
             </div>

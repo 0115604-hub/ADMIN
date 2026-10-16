@@ -97,7 +97,7 @@ export const RealtimeIssueBoard = ({
               onOpenNewIssue(targetCategory);
             }}
             className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-md"
-            title="신규 오픈이슈/공지/회의/품질경보 등록"
+            title="신규 오픈이슈/공지/회의/부적합경보 등록"
           >
             <Plus className="w-3.5 h-3.5 text-white" />
             <span>등록</span>
@@ -117,10 +117,10 @@ export const RealtimeIssueBoard = ({
         </div>
       </div>
 
-      {/* Category Filter Pills (순서: 품질경보 -> 회의일정 -> 오픈이슈 -> 사내공지) */}
+      {/* Category Filter Pills (순서: 부적합경보 -> 회의일정 -> 오픈이슈 -> 사내공지) */}
       {isIssueExpanded && activeIssues.length > 0 && (
         <div className="px-3 sm:px-4 py-2 flex items-center gap-1.5 overflow-x-auto border-b border-rose-100 dark:border-rose-900/30 text-[11px] scrollbar-none">
-          {/* 1) 품질경보 */}
+          {/* 1) 부적합경보 */}
           <button
             type="button"
             onClick={() => setOpenIssueCategoryFilter((prev) => (prev === "quality_alert" ? "all" : "quality_alert"))}
@@ -130,7 +130,7 @@ export const RealtimeIssueBoard = ({
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            <span>🚨 품질경보 ({qualityAlertCount})</span>
+            <span>🚨 부적합경보 ({qualityAlertCount})</span>
           </button>
 
           {/* 2) 회의일정 */}
@@ -198,7 +198,7 @@ export const RealtimeIssueBoard = ({
           {openIssueCategoryFilter === "open_issue" || openIssueCategoryFilter === "quality_issue" || openIssueCategoryFilter === "quality"
             ? "✨ 현재 진행중인 오픈이슈가 없습니다."
             : openIssueCategoryFilter === "quality_alert"
-            ? "✨ 현재 진행중인 품질경보가 없습니다."
+            ? "✨ 현재 진행중인 부적합경보가 없습니다."
             : openIssueCategoryFilter === "meeting"
             ? "✨ 현재 예정된 회의일정이 없습니다."
             : openIssueCategoryFilter === "notice"
@@ -214,7 +214,7 @@ export const RealtimeIssueBoard = ({
             const isMeeting = item.category === "회의일정";
             const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
             const isOpenIssue = item.category === "오픈이슈" || item.category === "품질이슈";
-            const isQualityAlert = item.category === "품질경보";
+            const isQualityAlert = item.category === "품질경보" || item.category === "부적합경보";
 
             const actionContent =
               (typeof item.actionResult === "string" && item.actionResult.trim().length > 0)
@@ -263,7 +263,7 @@ export const RealtimeIssueBoard = ({
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                     {isQualityAlert ? (
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                        🚨 품질경보
+                        🚨 부적합경보
                       </span>
                     ) : isMeeting ? (
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">

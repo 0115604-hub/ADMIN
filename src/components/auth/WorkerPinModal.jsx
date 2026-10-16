@@ -520,13 +520,17 @@ export const WorkerPinModal = ({
       const rawCat = String(issue.category || "").trim();
       const isQualityAlert =
         rawCat === "품질경보" ||
+        rawCat === "부적합경보" ||
         rawCat === "품질 경보" ||
         rawCat === "품질이슈" ||
         rawCat === "품질 이슈" ||
         rawCat.includes("품질") ||
+        rawCat.includes("부적합") ||
         rawCat.toLowerCase().includes("quality") ||
         String(issue.title || "").includes("품질경보") ||
+        String(issue.title || "").includes("부적합경보") ||
         String(issue.content || "").includes("품질경보") ||
+        String(issue.content || "").includes("부적합경보") ||
         issue.type === "QUALITY_ALERT" ||
         issue.type === "품질경보";
 
@@ -1055,7 +1059,7 @@ export const WorkerPinModal = ({
       if (item.isFirstScreenOrigin === false) return;
 
       const cat = String(item.category || "").trim();
-      const isQualityAlert = cat === "품질경보" || cat === "품질 경보" || cat === "quality_alert" || cat.includes("품질경보");
+      const isQualityAlert = cat === "품질경보" || cat === "부적합경보" || cat === "품질 경보" || cat === "quality_alert" || cat.includes("품질경보") || cat.includes("부적합경보");
       const isNotice = cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat === "notice" || cat.includes("공지");
 
       if (!isQualityAlert && !isNotice) return;
@@ -1075,7 +1079,7 @@ export const WorkerPinModal = ({
 
       list.push({
         id: uniqueKey,
-        category: isQualityAlert ? "품질경보" : "사내공지",
+        category: isQualityAlert ? "부적합경보" : "사내공지",
         isQualityAlert,
         isNotice,
         plant: item.plant || "전사",
@@ -1860,10 +1864,10 @@ export const WorkerPinModal = ({
                               </div>
                               <div>
                                 <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  📢 첫화면 품질경보 & 당일 공지
+                                  📢 첫화면 부적합경보 & 당일 공지
                                 </span>
                                 <span className="text-[10.5px] font-bold text-amber-700 dark:text-amber-300">
-                                  전사 품질경보 발령건 • 사내공지는 등록 당일(1일간) 한정 노출
+                                  전사 부적합경보 발령건 • 사내공지는 등록 당일(1일간) 한정 노출
                                 </span>
                               </div>
                             </div>
@@ -1941,13 +1945,13 @@ export const WorkerPinModal = ({
                           ) : (
                             <div className="py-6 text-center text-xs text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-amber-300 flex items-center justify-center gap-1.5">
                               <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                              <span>첫화면에 등록된 품질경보 또는 당일 공지사항이 없습니다.</span>
+                              <span>첫화면에 등록된 부적합경보 또는 당일 공지사항이 없습니다.</span>
                             </div>
                           )}
                         </div>
 
                         <div className="pt-2 border-t border-amber-200 dark:border-amber-900/50 flex items-center justify-between text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                          <span>첫화면 품질경보 실시간 연동</span>
+                          <span>첫화면 부적합경보 실시간 연동</span>
                           <span>공지는 등록 당일만 표시</span>
                         </div>
                       </div>
@@ -2076,7 +2080,7 @@ export const WorkerPinModal = ({
                                 📋 4M 변동점 발생공지
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
+                                설비수리 • 비가동 • TPM • 불량손실 • 부적합경보
                               </span>
                             </div>
                           </div>

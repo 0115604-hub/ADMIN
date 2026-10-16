@@ -219,7 +219,7 @@ export const sortIssuesByCustomPriority = (list = []) => {
 
   const getCategoryPriority = (item) => {
     const cat = item?.category || "";
-    if (cat === "품질경보") return 1;
+    if (cat === "품질경보" || cat === "부적합경보") return 1;
     if (cat === "회의일정") return 2;
     if (cat === "오픈이슈" || cat === "품질이슈") return 3;
     return 4; // 공지사항, 사내공지, 공유사항
@@ -363,7 +363,7 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
   if (!fullItem.isDeleted && !skipTelegram) {
     if (isTrulyNew) {
       // 1. 신규 등록 즉시 알림 (오직 신규 생성 시에만 발송)
-      if (fullItem.category === "품질경보") {
+      if (fullItem.category === "품질경보" || fullItem.category === "부적합경보") {
         sendQualityAlertTelegram(fullItem).catch((err) => {
           console.warn("Telegram alert error:", err);
         });
@@ -383,7 +383,7 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
       const progressChanged = prevItem?.progress !== undefined && fullItem.progress !== undefined && prevItem.progress !== fullItem.progress;
       const actionResultAdded = !prevItem?.actionResult && Boolean(fullItem.actionResult?.trim());
 
-      if (fullItem.category === "품질경보") {
+      if (fullItem.category === "품질경보" || fullItem.category === "부적합경보") {
         const actionResultChanged = Boolean(fullItem.actionResult?.trim()) && fullItem.actionResult !== prevItem?.actionResult;
         if (isNewlyResolved || actionResultAdded || actionResultChanged) {
           const actionImgs = (Array.isArray(fullItem.actionImages) && fullItem.actionImages.length > 0)
@@ -459,7 +459,7 @@ export const addIssueReply = async (issueId, replyData) => {
   };
 
   const updatedReplies = [...(target.replies || []), newReply];
-  const isQuality = target.category === "품질경보";
+  const isQuality = target.category === "품질경보" || target.category === "부적합경보";
 
   const updatedItem = {
     ...target,
@@ -481,7 +481,7 @@ export const addIssueReply = async (issueId, replyData) => {
 
   // 개별 의견/회신 전용 텔레그램 알림 발송
   try {
-    if (target.category === "품질경보") {
+    if (target.category === "품질경보" || target.category === "부적합경보") {
       sendQualityOpinionTelegram(target, newReply).catch(() => {});
     } else if (target.category === "오픈이슈" || target.category === "open_issue" || target.category === "품질이슈") {
       sendOpenIssueReplyTelegram(target, newReply).catch(() => {});
@@ -531,7 +531,7 @@ export const deleteIssueReply = async (issueId, replyId) => {
     updatedReplies = currentReplies.filter((r) => r.id !== replyId);
   }
 
-  const isQuality = target.category === "품질경보";
+  const isQuality = target.category === "품질경보" || target.category === "부적합경보";
   const lastReply = updatedReplies[updatedReplies.length - 1];
 
   const updatedItem = {
@@ -830,8 +830,8 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
 
   const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });
 
-  // Trigger real-time Telegram notification ONLY for 품질경보 조치완료 (사내공지/회의일정은 등록시만 발송)
-  if (trimmed && updatedTarget.category === "품질경보") {
+  // Trigger real-time Telegram notification ONLY for 품질경보/부적합경보 조치완료 (사내공지/회의일정은 등록시만 발송)
+  if (trimmed && (updatedTarget.category === "품질경보" || updatedTarget.category === "부적합경보")) {
     sendQualityActionTelegram(updatedTarget, {
       actionAuthor: updatedTarget.actionAuthor,
       actionContent: trimmed,

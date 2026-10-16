@@ -419,7 +419,7 @@ export const AuthModal = () => {
   };
 
   // Category matching helper
-  const isCatQualityAlert = (cat) => cat === "품질경보" || cat === "품질 경보" || cat === "quality_alert" || (typeof cat === "string" && cat.includes("품질경보"));
+  const isCatQualityAlert = (cat) => cat === "품질경보" || cat === "품질 경보" || cat === "부적합경보" || cat === "부적합 경보" || cat === "quality_alert" || (typeof cat === "string" && (cat.includes("품질경보") || cat.includes("부적합경보")));
   const isCatMeeting = (cat) => cat === "회의일정" || cat === "회의 일정" || cat === "meeting" || (typeof cat === "string" && cat.includes("회의"));
   const isCatNotice = (cat) => cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat === "notice" || (typeof cat === "string" && cat.includes("공지"));
   const isCatOpenIssue = (cat) => cat === "오픈이슈" || cat === "오픈 이슈" || cat === "품질이슈" || cat === "open_issue" || (!isCatQualityAlert(cat) && !isCatMeeting(cat) && !isCatNotice(cat));
@@ -1054,7 +1054,7 @@ export const AuthModal = () => {
     if (e) e.preventDefault();
     const content = actionOpinionForm.content.trim();
     const opinionFiles = actionOpinionForm.files || [];
-    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보";
+    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보" || (editingIssue?.category || newIssueForm.category) === "부적합경보";
     if (!content && opinionFiles.length === 0) {
       alert(isQualityAlert ? "조치결과 내용 또는 첨부파일을 입력해 주세요." : "조치 의견 내용 또는 첨부파일을 입력해 주세요.");
       return;
@@ -1084,7 +1084,7 @@ export const AuthModal = () => {
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
           setActionOpinionForm((prev) => ({ ...prev, content: "", files: [], author: "" }));
-          setRestoreToast(isQualityAlert ? "✅ 품질경보 조치결과가 성공적으로 등록되었습니다." : "✅ 의견이 성공적으로 등록되었습니다.");
+          setRestoreToast(isQualityAlert ? "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다." : "✅ 의견이 성공적으로 등록되었습니다.");
           setTimeout(() => setRestoreToast(""), 3500);
         }
       } catch (err) {
@@ -1119,7 +1119,7 @@ export const AuthModal = () => {
 
   const handleModalDeleteOpinion = async (opId, e) => {
     if (e) e.stopPropagation();
-    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보";
+    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보" || (editingIssue?.category || newIssueForm.category) === "부적합경보";
     const targetReply = (editingIssue?.replies || newIssueForm.replies || []).find((r) => r.id === opId);
     const authorName = targetReply?.author || "";
 
@@ -1671,7 +1671,7 @@ export const AuthModal = () => {
             onSelectCardCategory={(item) => {
               const isMeeting = item.category === "회의일정";
               const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-              const isQualityAlert = item.category === "품질경보";
+              const isQualityAlert = item.category === "품질경보" || item.category === "부적합경보";
               const catTab = isQualityAlert ? "quality_alert" : isMeeting ? "meeting" : isNotice ? "notice" : "open_issue";
               setLedgerCategoryTab(catTab);
               setSelectedListItem(null);
