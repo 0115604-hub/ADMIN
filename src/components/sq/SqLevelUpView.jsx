@@ -22,6 +22,7 @@ import {
   HelpCircle,
   Printer,
   Save,
+  FolderOpen,
   X
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ import {
 } from "../../services/sqLevelUpService";
 import { DigitalInspectionModal } from "./DigitalInspectionModal";
 import { HanulQualityIssueModal } from "../hanul/HanulQualityIssueModal";
+import { SqSharedDocModal } from "./SqSharedDocModal";
 
 export const SqLevelUpView = () => {
   const [items, setItems] = useState([]);
@@ -53,6 +55,7 @@ export const SqLevelUpView = () => {
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isQualityModalOpen, setIsQualityModalOpen] = useState(false);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   // Changes Registration State
@@ -230,6 +233,15 @@ export const SqLevelUpView = () => {
             >
               <FileText className="w-4 h-4 text-indigo-300" />
               <span>1-Page 개선대책서</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDocModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              title="SQ 공용문서함 (ipDISK / FTP) 열기"
+            >
+              <FolderOpen className="w-4 h-4 text-indigo-200" />
+              <span>📁 공용문서함 (FTP)</span>
             </button>
             <button
               onClick={() => exportSqToExcel(items)}
@@ -653,6 +665,11 @@ export const SqLevelUpView = () => {
           onClose={() => setIsQualityModalOpen(false)}
         />
       )}
+
+      <SqSharedDocModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
 
       {/* 1-Page Summary Executive Modal */}
       {isSummaryModalOpen && (

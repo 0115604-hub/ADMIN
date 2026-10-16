@@ -6,9 +6,11 @@ import {
   Smartphone,
   Layers,
   CheckCircle2,
-  Clock
+  Clock,
+  FolderOpen
 } from "lucide-react";
 import { getLocalSqLevelUpItems, subscribeSqLevelUpItems, calculateSqKPIs } from "../../services/sqLevelUpService";
+import { SqSharedDocModal } from "./SqSharedDocModal";
 
 export const SqStatusBannerCard = ({
   onOpenSqModal,
@@ -16,6 +18,7 @@ export const SqStatusBannerCard = ({
   compact = false
 }) => {
   const [items, setItems] = useState(() => getLocalSqLevelUpItems());
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeSqLevelUpItems((newItems) => {
@@ -69,7 +72,19 @@ export const SqStatusBannerCard = ({
         </div>
 
         {/* CTA Button */}
-        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDocModalOpen(true);
+            }}
+            className="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-indigo-900/80 hover:bg-indigo-800 text-indigo-100 border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs sm:text-sm shadow-md flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            title="SQ 공용문서함 (ipDISK / FTP) 열기"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-indigo-300" />
+            <span>📁 공용문서함</span>
+          </button>
           <button
             type="button"
             className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400/40 group-hover:ring-cyan-300 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95"
@@ -180,6 +195,11 @@ export const SqStatusBannerCard = ({
           />
         </div>
       </div>
+
+      <SqSharedDocModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
     </div>
   );
 };
