@@ -69,24 +69,24 @@ export const HanulAndSevereDisasterSection = ({
               </div>
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span className="font-black text-xs sm:text-sm text-white tracking-tight">
-                  한울품질경보등록
+                  한울 부적합경보 등록
                 </span>
                 <span className="hidden sm:inline text-[11px] text-purple-300 font-semibold truncate">
-                  (9BQC G/RUN & LQ2a Hood Side 품질경보 및 외주가공 실시간 관리)
+                  (9BQC G/RUN & LQ2a Hood Side 부적합경보 및 외주가공 실시간 관리)
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {/* 🚨 품질경보 입력 뱃지 */}
+              {/* 🚨 부적합경보 입력 뱃지 */}
               <button
                 type="button"
                 onClick={() => setIsHanulQualityIssueModalOpen(true)}
                 className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black shadow-md shadow-rose-950/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap animate-pulse"
-                title="한울 품질경보 및 품질이슈 등록/관리"
+                title="한울 부적합경보 및 품질이슈 등록/관리"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
-                <span>🚨 품질경보 입력</span>
+                <span>🚨 부적합경보 입력</span>
                 {activeHanulQualityCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
                     {activeHanulQualityCount}

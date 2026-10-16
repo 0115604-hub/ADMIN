@@ -27,6 +27,9 @@ const HanulQualityIssueModal = lazy(() =>
 const RecentWorkLogsSummaryModal = lazy(() =>
   import("../RecentWorkLogsSummaryModal").then((m) => ({ default: m.RecentWorkLogsSummaryModal || m.default }))
 );
+const YuseongWorkReportModal = lazy(() =>
+  import("../yuseong/YuseongWorkReportModal").then((m) => ({ default: m.YuseongWorkReportModal || m.default }))
+);
 
 export const DashboardModalsContainer = ({
   // 1. WorkLogDetailModal
@@ -220,7 +223,11 @@ export const DashboardModalsContainer = ({
   hanulReportProcess,
   hanulReportEditData,
   isHanulQualityIssueModalOpen,
-  setIsHanulQualityIssueModalOpen
+  setIsHanulQualityIssueModalOpen,
+  isYuseongWorkReportModalOpen,
+  setIsYuseongWorkReportModalOpen,
+  yuseongReportProject,
+  yuseongReportEditData
 }) => {
   return (
     <>
@@ -507,6 +514,19 @@ export const DashboardModalsContainer = ({
           <HanulQualityIssueModal
             isOpen={isHanulQualityIssueModalOpen}
             onClose={() => setIsHanulQualityIssueModalOpen(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* 🌟 유성 외주가공 작업일보 작성/수정 모달 (JK1 / CE1 / DT) */}
+      {isYuseongWorkReportModalOpen && (
+        <Suspense fallback={null}>
+          <YuseongWorkReportModal
+            isOpen={isYuseongWorkReportModalOpen}
+            onClose={() => setIsYuseongWorkReportModalOpen(false)}
+            initialProject={yuseongReportProject || "JK1"}
+            initialWorker={currentProfile?.name || "이성기"}
+            editReport={yuseongReportEditData}
           />
         </Suspense>
       )}

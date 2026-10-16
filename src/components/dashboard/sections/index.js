@@ -7,3 +7,5 @@ export { QualityStatusSection } from "./QualityStatusSection";
 export { ExtrusionDowntimeSection } from "./ExtrusionDowntimeSection";
 export { DailyWorkLogTableSection } from "./DailyWorkLogTableSection";
 export { AdminAccessAndIncidentSection } from "./AdminAccessAndIncidentSection";
+export { YuseongCustomSection } from "./YuseongCustomSection";
+export { BurimtechCustomSection } from "./BurimtechCustomSection";

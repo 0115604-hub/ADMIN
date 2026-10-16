@@ -45,7 +45,11 @@ import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { MachiningWorkerDashboardView } from "./machining/MachiningWorkerDashboardView";
 import { isMachiningWorkerProfile } from "../services/machiningQualityIssueService";
 import { YuseongWorkerDashboardView } from "./yuseong/YuseongWorkerDashboardView";
-import { isYuseongWorkerProfile } from "../services/yuseongQualityIssueService";
+import {
+  isYuseongWorkerProfile,
+  subscribeYuseongQualityIssues,
+  getLocalYuseongQualityIssues
+} from "../services/yuseongQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
@@ -426,6 +430,29 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setIsHanulSettlementModalOpen(true);
   };
 
+  const [isYuseongWorkReportModalOpen, setIsYuseongWorkReportModalOpen] = useState(false);
+  const [yuseongReportProject, setYuseongReportProject] = useState("JK1");
+  const [yuseongReportEditData, setYuseongReportEditData] = useState(null);
+  const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
+  useModalHistory(isYuseongWorkReportModalOpen, () => setIsYuseongWorkReportModalOpen(false), "workerDashboardYuseongReportModal");
+
+  useEffect(() => {
+    const unsub = subscribeYuseongQualityIssues((list) => {
+      setYuseongQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
+  const activeYuseongQualityCount = useMemo(() => {
+    return (yuseongQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
+  }, [yuseongQualityIssues]);
+
+  const handleOpenYuseongReport = (proj = "JK1", editData = null) => {
+    setYuseongReportProject(proj);
+    setYuseongReportEditData(editData);
+    setIsYuseongWorkReportModalOpen(true);
+  };
+
   const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
 
   const workerCard = useMemo(() => {
@@ -611,46 +638,38 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, [smartOvertimeData, overtimeReports]);
 
-  // 🌟 관리자별 맞춤 근태현황 필터링 (협력사는 자기 회사만, 공장 총괄은 해당 공장만, ADMIN은 전사)
+  // 🌟 관리자별 맞춤 근태현황: 공통사항(전사 5개사 TOTAL) 표출 + 본인 소속사 우선 정렬
   const filteredCompanyOverviewStats = useMemo(() => {
     if (!companyOverviewStats || companyOverviewStats.length === 0) return [];
-    if (isHanulManager || (isHanul && !isAdmin)) {
-      return companyOverviewStats.filter((c) => c.name === "한울" || c.shortName === "한울");
+
+    // 한울 관리자: 전사 5개사 TOTAL 표출 + 한울 우선 배치
+    if (isHanulManager || isHanul) {
+      const total = companyOverviewStats.find((c) => c.isTotal);
+      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "한울" || c.shortName === "한울"));
+      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
+      return [total, myComp, ...others].filter(Boolean);
     }
-    if (isBurimtechManager || (isBurimtech && !isAdmin)) {
-      return companyOverviewStats.filter((c) => c.name === "부림텍" || c.shortName === "부림텍");
+    // 부림텍 관리자: 전사 5개사 TOTAL 표출 + 부림텍 우선 배치
+    if (isBurimtechManager || isBurimtech) {
+      const total = companyOverviewStats.find((c) => c.isTotal);
+      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "부림텍" || c.shortName === "부림텍"));
+      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
+      return [total, myComp, ...others].filter(Boolean);
     }
-    if (isYuseongManager && !isAdmin) {
-      return companyOverviewStats.filter((c) => c.name === "유성" || c.shortName === "유성");
+    // 유성 관리자: 전사 5개사 TOTAL 표출 + 유성 우선 배치
+    if (isYuseongManager) {
+      const total = companyOverviewStats.find((c) => c.isTotal);
+      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "유성" || c.shortName === "유성"));
+      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
+      return [total, myComp, ...others].filter(Boolean);
     }
-    if (isSamrangjin && !isAdmin) {
-      return companyOverviewStats.filter((c) => c.isTotal || c.shortName === "오륙" || c.shortName === "유성");
-    }
-    if (isHallim && !isAdmin) {
-      return companyOverviewStats.filter((c) => c.isTotal || c.shortName === "조영" || c.shortName === "한울" || c.shortName === "부림텍");
-    }
+
     return companyOverviewStats;
-  }, [companyOverviewStats, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager, isSamrangjin, isHallim, isAdmin]);
+  }, [companyOverviewStats, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager]);
 
   const filteredUnwrittenCompanies = useMemo(() => {
-    if (!unwrittenCompanies || unwrittenCompanies.length === 0) return [];
-    if (isHanulManager || (isHanul && !isAdmin)) {
-      return unwrittenCompanies.filter((c) => c.shortName === "한울");
-    }
-    if (isBurimtechManager || (isBurimtech && !isAdmin)) {
-      return unwrittenCompanies.filter((c) => c.shortName === "부림텍");
-    }
-    if (isYuseongManager && !isAdmin) {
-      return unwrittenCompanies.filter((c) => c.shortName === "유성");
-    }
-    if (isSamrangjin && !isAdmin) {
-      return unwrittenCompanies.filter((c) => c.shortName === "오륙" || c.shortName === "유성");
-    }
-    if (isHallim && !isAdmin) {
-      return unwrittenCompanies.filter((c) => c.shortName === "조영" || c.shortName === "한울" || c.shortName === "부림텍");
-    }
-    return unwrittenCompanies;
-  }, [unwrittenCompanies, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager, isSamrangjin, isHallim, isAdmin]);
+    return unwrittenCompanies || [];
+  }, [unwrittenCompanies]);
 
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
 
@@ -1352,6 +1371,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               pushModalHistory={pushModalHistory}
               setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
               formatKoreanWorkDate={formatKoreanWorkDate}
+              selectedMonth={selectedMonth}
+              liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+              liveQualityPrevMonthly={liveQualityPrevMonthly}
+              handleOpenQualityPopup={handleOpenQualityPopup}
+              extrusionSummaryList={extrusionSummaryList}
+              isMyeongjae={isMyeongjae}
+              isDongwook={isDongwook}
+              pendingSamrangjinCount={pendingSamrangjinCount}
+              pendingHallimCount={pendingHallimCount}
+              setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+              filterPlant={filterPlant}
+              setFilterPlant={setFilterPlant}
+              workLogs={workLogs}
+              paginatedLogs={paginatedLogs}
+              handleOpenLogDetail={handleOpenLogDetail}
+              canApproveLog={canApproveLog}
+              isWorkLogApproved={isWorkLogApproved}
+              handleOpenEditModal={handleOpenEditModal}
+              handleDeleteLog={handleDeleteLog}
+              filteredLogs={filteredLogs}
+              currentLogPage={currentLogPage}
+              setCurrentLogPage={setCurrentLogPage}
+              LOGS_PER_PAGE={LOGS_PER_PAGE}
+              totalLogPages={totalLogPages}
+              handleOpenWorkLogModal={handleOpenWorkLogModal}
             />
           ) : isPartnerProfile ? (
             /* 2. 외주 협력사 관리자 뷰 (유성, 부림텍 등 - 소속 근태 및 공통 일정) */
@@ -1408,12 +1452,39 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               handleNextWeek={handleNextWeek}
               myWeeklyCalendarDays={myWeeklyCalendarDays}
               SevereDisasterBar={SevereDisasterBar}
+              handleOpenYuseongReport={handleOpenYuseongReport}
+              activeYuseongQualityCount={activeYuseongQualityCount}
               todayFormattedLabel={todayFormattedLabel}
               filteredUnwrittenCompanies={filteredUnwrittenCompanies}
               filteredCompanyOverviewStats={filteredCompanyOverviewStats}
               pushModalHistory={pushModalHistory}
               setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
               formatKoreanWorkDate={formatKoreanWorkDate}
+              selectedMonth={selectedMonth}
+              liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+              liveQualityPrevMonthly={liveQualityPrevMonthly}
+              handleOpenQualityPopup={handleOpenQualityPopup}
+              extrusionSummaryList={extrusionSummaryList}
+              isMyeongjae={isMyeongjae}
+              isDongwook={isDongwook}
+              pendingSamrangjinCount={pendingSamrangjinCount}
+              pendingHallimCount={pendingHallimCount}
+              setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+              filterPlant={filterPlant}
+              setFilterPlant={setFilterPlant}
+              workLogs={workLogs}
+              paginatedLogs={paginatedLogs}
+              handleOpenLogDetail={handleOpenLogDetail}
+              canApproveLog={canApproveLog}
+              isWorkLogApproved={isWorkLogApproved}
+              handleOpenEditModal={handleOpenEditModal}
+              handleDeleteLog={handleDeleteLog}
+              filteredLogs={filteredLogs}
+              currentLogPage={currentLogPage}
+              setCurrentLogPage={setCurrentLogPage}
+              LOGS_PER_PAGE={LOGS_PER_PAGE}
+              totalLogPages={totalLogPages}
+              handleOpenWorkLogModal={handleOpenWorkLogModal}
             />
           ) : isAdmin ? (
             /* 3. 본사 총괄 관리자 뷰 (권태형, 최미영 등 - 전사 7개 섹션 풀 관제) */
@@ -1786,6 +1857,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         hanulReportEditData={hanulReportEditData}
         isHanulQualityIssueModalOpen={isHanulQualityIssueModalOpen}
         setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+        isYuseongWorkReportModalOpen={isYuseongWorkReportModalOpen}
+        setIsYuseongWorkReportModalOpen={setIsYuseongWorkReportModalOpen}
+        yuseongReportProject={yuseongReportProject}
+        yuseongReportEditData={yuseongReportEditData}
       />
 
       {/* ⚡ 현장 모바일 초중종/TPM 간편 점검 모달 */}
