@@ -151,7 +151,10 @@ export const AdminAccessAndIncidentSection = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {incidents.slice(0, 2).map((inc) => (
+          {[...incidents]
+            .sort((a, b) => (b.incidentNo || 0) - (a.incidentNo || 0))
+            .slice(0, 2)
+            .map((inc) => (
             <div
               key={inc.id}
               onClick={() => onNavigateTab && onNavigateTab("incident_logs")}

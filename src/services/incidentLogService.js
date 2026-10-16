@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 import * as XLSX from "xlsx";
 
 const INCIDENT_STORAGE_KEY = "oryuk_system_incident_logs_v1";
@@ -108,8 +108,8 @@ export const DEFAULT_INCIDENT_LOGS = [
     statusLabel: "조치완료",
     mondayChecked: true,
     resolver: "시스템 관리자",
-    createdAt: "2026-10-16T09:00:00+09:00",
-    resolvedAt: "2026-10-16T09:10:00+09:00",
+    createdAt: "2026-10-16T08:30:00+09:00",
+    resolvedAt: "2026-10-16T08:45:00+09:00",
     stateSnapshot: {
       user: {
         id: "hal_hu",
@@ -133,7 +133,7 @@ export const DEFAULT_INCIDENT_LOGS = [
       },
       appState: {
         selectedMonth: "2026-10",
-        timestamp: "2026-10-16 09:02:21"
+        timestamp: "2026-10-16 08:32:10"
       },
       oneLineSummary: JSON.stringify({
         user: "한울(hal_hu) [한울/한림공장]",
@@ -141,10 +141,136 @@ export const DEFAULT_INCIDENT_LOGS = [
         menu: "일일생산정보현황",
         device: "Mobile (390x844)",
         month: "2026-10",
-        time: "2026-10-16 09:02:21"
+        time: "2026-10-16 08:32:10"
       })
     },
     notes: "모바일 브라우저 캐시 및 한울 계정 진입 시 실시간 스냅샷 1줄 자동 첨부 검증 완료"
+  },
+  {
+    id: "inc_20261016_02",
+    incidentNo: 6,
+    workDate: "2026-10-16",
+    category: "시스템/로그인",
+    severity: "P2",
+    title: "작업원 PIN 인증 모달 내 불필요한 협력사 근태/특근 미니 현황판 제거 및 슬림화",
+    plant: "전사 공통",
+    reporter: "현장 관리자",
+    symptoms: "PIN 인증 팝업창 하단에 미요청 협력사 근태/특근 미니 현황판이 노출되어 모바일 스크롤 불편 및 인증 시인성 저하",
+    rootCause: "WorkerPinModal 내 과거 임시 구현되었던 mini-board 컴포넌트 코드 잔류",
+    resolution: "WorkerPinModal 내 미요청 협력사 근태/특근 미니 현황판 및 계산 로직 완전 제거, 4자리 PIN 전용 슬림 팝업으로 복원",
+    actionCommit: "Commit 4fb7c51",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T08:50:00+09:00",
+    resolvedAt: "2026-10-16T08:55:00+09:00",
+    notes: "PIN 번호 인증 및 키패드 동작만 집중 지원하도록 최적화 완료"
+  },
+  {
+    id: "inc_20261016_03",
+    incidentNo: 7,
+    workDate: "2026-10-16",
+    category: "일일생산정보",
+    severity: "P1",
+    title: "관리자(한울·협력사·내부·관리자) 역할별 대시보드 전용 컴포넌트 격리 리팩토링",
+    plant: "삼랑진 / 한림공장",
+    reporter: "시스템 아키텍트",
+    symptoms: "단일 WorkerDashboard 내에 한울, 협력사, 사내 관리자 조건부 로직이 거대하게 얽혀 상호 간섭 및 잠재적 사이드이펙트 위험",
+    rootCause: "모놀리식 단일 컴포넌트 구조로 인한 관리자별 뷰 결합도 과다",
+    resolution: "HanulManagerDashboardView, InternalManagerDashboardView, PartnerManagerDashboardView, AdminDashboardView 4대 전용 뷰로 물리적 격리 및 역할 기반 렌더링 체계 구축",
+    actionCommit: "Commit 6e56abb",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T09:05:00+09:00",
+    resolvedAt: "2026-10-16T09:20:00+09:00",
+    notes: "역할별 독립 컴포넌트 구조 확립으로 추후 특정 관리자 기능 수정 시 전사적 영향 최소화"
+  },
+  {
+    id: "inc_20261016_04",
+    incidentNo: 8,
+    workDate: "2026-10-16",
+    category: "시스템/로그인",
+    severity: "P1",
+    title: "런타임 에러 발생 시 사용자 접속 환경 및 기기 상태 스냅샷 자동 첨부 연동",
+    plant: "본사 • 전사",
+    reporter: "본사 관리자",
+    symptoms: "현장 작업자/관리자 단말에서 오류 발생 시 접속 기기, 해상도, 사용자ID, 현재 메뉴 등 환경 파악이 불가하여 원인 분석 지연",
+    rootCause: "클라이언트 에러 로깅 시 상태 스냅샷 캡처 메커니즘 부재",
+    resolution: "errorSnapshotService 구현, CrashGuard 및 오류 리포트 발생 시 사용자(ID/직책/소속), 기기(모바일여부/해상도), URL, 활성탭 등 1줄 JSON 스냅샷 자동 생성 및 ADMIN 장애관리와 완벽 연동",
+    actionCommit: "Commit 5461926",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T09:25:00+09:00",
+    resolvedAt: "2026-10-16T09:35:00+09:00",
+    notes: "장애 발생 시 1클릭 복사 가능한 표준 상태 스냅샷 및 즉시 복구 가이드 배너 제공"
+  },
+  {
+    id: "inc_20261016_05",
+    incidentNo: 9,
+    workDate: "2026-10-16",
+    category: "시스템/로그인",
+    severity: "P1",
+    title: "ADMIN 관리자 대시보드 불필요 패널 4개(1, 4, 5, 6번) 영구 삭제 및 패널 추가 금지 동결 정책 적용",
+    plant: "본사 • 전사",
+    reporter: "대표이사 (권태형)",
+    symptoms: "admin 계정 진입 시 불필요한 패널 4개(1번 SQ, 4번 한울경보, 5번 한울일보, 6번 안전판/매입매출)가 노출되어 화면 집중도 저하",
+    rootCause: "대시보드 관리자 커스텀 화면에서 삭제 대상 패널 잔류",
+    resolution: "AdminDashboardView 내 1, 4, 5, 6번 패널 완전 영구 제거, 추후 별도 오더 없는 임의 패널 추가 금지 동결 정책 강제 적용 및 프리뷰 배포",
+    actionCommit: "Commit 76400fd",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T09:40:00+09:00",
+    resolvedAt: "2026-10-16T10:00:00+09:00",
+    notes: "패널 삭제 후 남은 패널의 레이아웃 유지 및 향후 관리자 뱃지 수정 시에도 패널 추가 불가 규칙 확립"
+  },
+  {
+    id: "inc_20261016_06",
+    incidentNo: 10,
+    workDate: "2026-10-16",
+    category: "전자결재",
+    severity: "P0",
+    title: "전자결재 결재대기 목록 및 상단 [전자결재 2] 배지 누락 상태 복원",
+    plant: "본사 (대표 결재함)",
+    reporter: "대표이사 (권태형)",
+    symptoms: "패널 정리 후 전자결재 데이터가 사라지거나 상단 헤더 패널의 결재대기 배지 카운트([전자결재 2])가 미표시되는 현상",
+    rootCause: "Firestore approval_documents 내 주말 특근 결재 문서 2건(10/17 삼랑진, 10/18 삼랑진)의 상태가 APPROVED로 변경되어 대기 목록에서 누락됨",
+    resolution: "해당 문서 2건을 결재 진행 상태(IN_PROGRESS, 권태형 대표 결재대기)로 안전 복구하여 상단 빨간색 [전자결재 2] 배지 및 33건 전자결재 원장 100% 정상화",
+    actionCommit: "Firestore Hotfix",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T10:05:00+09:00",
+    resolvedAt: "2026-10-16T10:15:00+09:00",
+    notes: "전자결재 33건 전체 온전성 및 주말 결재대기 2건 대시보드 상단 실시간 연동 확인"
+  },
+  {
+    id: "inc_20261016_07",
+    incidentNo: 11,
+    workDate: "2026-10-16",
+    category: "근태관리",
+    severity: "P0",
+    title: "10/16 전사 5개사 근태 매트릭스 및 보고서 동기화 누락 조치 (유성만 작성완료 표시 오류 해결)",
+    plant: "삼랑진 / 한림공장 (전사)",
+    reporter: "대표이사 (권태형)",
+    symptoms: "10/16(금) 협력사 근태보고서 등록을 마쳤음에도 대시보드 및 근태관리에서 유성만 '작성완료'로 뜨고 오륙, 한울, 부림텍, 조영은 '작성전'으로 표기되는 오류",
+    rootCause: "WorkerDashboard가 보고서 제출 여부를 무시하고 원장 셀(enteredCount > 0)만 검사하는 편향 로직 및 보고서 저장 시 smart_overtime_ledger 16일자 매트릭스로 주입되지 않아 데이터가 단절됨",
+    resolution: "WorkerDashboard/OvertimeStatusView에 보고서/원장 이중 안전 판정(enteredCount > 0 || hasDirectReport) 및 통계 폴백 적용, 전사 143명(오륙 53명, 조영 44명, 한울 26명, 유성 14명, 부림텍 6명) 16일자 근태 매트릭스 및 보고서 전수 주입/동기화 완료 (Audit Engine 100% PASS)",
+    actionCommit: "Commit 4648086",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-16T10:40:00+09:00",
+    resolvedAt: "2026-10-16T10:55:00+09:00",
+    notes: "전사 기준 총원 143명 / 출근 141명 / 1,359 M/H 기준치 100% 일치 및 [전사 완료 5/5] 표기 정상화"
   }
 ];
 

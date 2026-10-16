@@ -94,6 +94,11 @@ export const IncidentLogsView = () => {
         if (!titleMatch && !symptomsMatch && !causeMatch && !resolutionMatch && !reporterMatch) return false;
       }
       return true;
+    }).sort((a, b) => {
+      const dateA = a.workDate || a.createdAt || "";
+      const dateB = b.workDate || b.createdAt || "";
+      if (dateB !== dateA) return dateB.localeCompare(dateA);
+      return (b.incidentNo || 0) - (a.incidentNo || 0);
     });
   }, [logs, statusFilter, categoryFilter, severityFilter, searchQuery]);
 
