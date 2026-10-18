@@ -27,6 +27,30 @@ import {
   sortIssuesByLatest,
   isMeetingExpired
 } from "../services/urgentIssueService";
+import {
+  subscribeExtrusionQualityIssues,
+  getLocalExtrusionQualityIssues,
+  saveExtrusionQualityIssue,
+  deleteExtrusionQualityIssue
+} from "../services/extrusionQualityIssueService";
+import {
+  subscribeHanulQualityIssues,
+  getLocalHanulQualityIssues,
+  saveHanulQualityIssue,
+  deleteHanulQualityIssue
+} from "../services/hanulQualityIssueService";
+import {
+  subscribeYuseongQualityIssues,
+  getLocalYuseongQualityIssues,
+  saveYuseongQualityIssue,
+  deleteYuseongQualityIssue
+} from "../services/yuseongQualityIssueService";
+import {
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues,
+  saveMachiningQualityIssue,
+  deleteMachiningQualityIssue
+} from "../services/machiningQualityIssueService";
 import { OryukLogo } from "./OryukLogo";
 import {
   getLocalTelegramConfig,
@@ -142,6 +166,11 @@ export const AuthModal = () => {
 
   // Urgent Issues State
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
+  // 🌟 전 공정 부적합경보 실시간 수신 State (압출, 한울, 유성, 가공동)
+  const [extrusionQualityAlerts, setExtrusionQualityAlerts] = useState(() => getLocalExtrusionQualityIssues());
+  const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
+  const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
+  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
@@ -246,6 +275,27 @@ export const AuthModal = () => {
       setUrgentIssues(issues);
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsubExt = subscribeExtrusionQualityIssues((alerts) => {
+      setExtrusionQualityAlerts(alerts || []);
+    });
+    const unsubHanul = subscribeHanulQualityIssues((alerts) => {
+      setHanulQualityIssues(alerts || []);
+    });
+    const unsubYs = subscribeYuseongQualityIssues((alerts) => {
+      setYuseongQualityIssues(alerts || []);
+    });
+    const unsubMach = subscribeMachiningQualityIssues((alerts) => {
+      setMachiningQualityIssues(alerts || []);
+    });
+    return () => {
+      unsubExt();
+      unsubHanul();
+      unsubYs();
+      unsubMach();
+    };
   }, []);
 
 
@@ -474,25 +524,259 @@ export const AuthModal = () => {
     return true;
   };
 
-  // Active issues calculation (첫 화면 표시용 활성 이슈 - 첫 화면 등록 건만 한정!)
-  const activeIssues = useMemo(() => {
-    return urgentIssues.filter((item) => {
-      if (!item || item.isDeleted || !isFirstScreenIssue(item)) return false;
+  // Safe date normalizer (YYYY-MM-DD)
+  const normalizeDateStr = (raw, fallback = "") => {
+    if (!raw) return fallback;
+    if (typeof raw === "object" && raw.seconds) {
+      return new Date(raw.seconds * 1000).toISOString().slice(0, 10);
+    }
+    const str = String(raw).trim();
+    const match = str.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+    if (match) {
+      return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(match[3]).padStart(2, "0")}`;
+    }
+    return str.slice(0, 10) || fallback;
+  };
 
-      // 1. 회의일정: 회의 시작 시간 경과 시 첫 화면에서 자동 만료/제외 -> 종결삭제관리로 이동
-      if (isCatMeeting(item.category)) {
-        return !isMeetingExpired(item, 0);
-      }
+  // 🌟 전 공정(압출, 한울, 유성, 가공동) 부적합경보 실시간 데이터 규격 통일
+  const externalQualityAlerts = useMemo(() => {
+    const list = [];
 
-      // 2. 사내공지 / 공지사항: 만료일자(expireDate)가 지난 경우 첫 화면에서 자동 제외 (단, 수동 복구된 경우 제외)
-      if (isCatNotice(item.category)) {
-        if (item.expireDate && item.expireDate < todayDateStr && !item.isManuallyRestored) return false;
-      }
+    // 1. 압출 부적합경보
+    (extrusionQualityAlerts || []).forEach((alert) => {
+      if (!alert || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
+      if (alert.isDeleted === true || alert.status === "DELETED") return;
 
-      // 3. 품질경보 & 오픈이슈: 일자가 지나도 절대 자동 삭제되지 않고, 사용자가 직접 '조치완료' 또는 '삭제'하기 전까지 첫 화면에 항상 유지!
-      return true;
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      list.push({
+        id: `ext_q_${alert.id}`,
+        rawId: alert.id,
+        source: "extrusion",
+        category: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || alert.lineId || "압출라인",
+        author: alert.author || "설유철",
+        authorTitle: alert.authorTitle || "책임",
+        startDate: dateStr,
+        expireDate: dateStr,
+        date: dateStr,
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        title: alert.title || alert.defectType || "압출 부적합경보",
+        content: alert.content || alert.details || alert.description || alert.defectType || "",
+        actionResult: alert.actionResult || alert.actionNotes || alert.actionGuide || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionImages: actionImages,
+        images: causeImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        status: alert.status || "ACTIVE",
+        isResolved,
+        isDeleted: false,
+        isFirstScreenOrigin: true,
+        origin: "EXTRUSION_QUALITY",
+        createdAt: alert.createdAt || dateStr,
+        raw: alert
+      });
     });
-  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
+
+    // 2. 한울 외주가공 부적합경보
+    (hanulQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const dateStr = normalizeDateStr(alert.targetDate || alert.date || alert.createdAt, todayDateStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      list.push({
+        id: `hanul_q_${alert.id}`,
+        rawId: alert.id,
+        source: "hanul",
+        category: "부적합경보",
+        plant: alert.plant || "한림공장",
+        line: alert.line || "외주가공(한울)",
+        author: alert.author || "한울 관리자",
+        authorTitle: alert.authorTitle || "선임",
+        startDate: dateStr,
+        expireDate: dateStr,
+        date: dateStr,
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        title: alert.title || alert.defectType || "한울 외주 부적합경보",
+        content: alert.content || alert.defectType || "",
+        actionResult: alert.actionResult || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionImages: actionImages,
+        images: causeImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        status: alert.status || "ACTIVE",
+        isResolved,
+        isDeleted: false,
+        isFirstScreenOrigin: true,
+        origin: "HANUL_QUALITY",
+        createdAt: alert.createdAt || dateStr,
+        raw: alert
+      });
+    });
+
+    // 3. 유성 외주가공 부적합경보
+    (yuseongQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      list.push({
+        id: `ys_q_${alert.id}`,
+        rawId: alert.id,
+        source: "yuseong",
+        category: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.project || alert.line || "외주가공(유성)",
+        author: alert.author || "유성 관리자",
+        authorTitle: alert.authorTitle || "선임",
+        startDate: dateStr,
+        expireDate: dateStr,
+        date: dateStr,
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        title: alert.title || alert.defectType || "유성 외주 부적합경보",
+        content: alert.content || alert.description || alert.defectType || "",
+        actionResult: alert.actionResult || alert.actionNotes || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionImages: actionImages,
+        images: causeImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        status: alert.status || "ACTIVE",
+        isResolved,
+        isDeleted: false,
+        isFirstScreenOrigin: true,
+        origin: "YUSEONG_QUALITY",
+        createdAt: alert.createdAt || dateStr,
+        raw: alert
+      });
+    });
+
+    // 4. 가공동 부적합경보
+    (machiningQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
+      list.push({
+        id: `mach_q_${alert.id}`,
+        rawId: alert.id,
+        source: "machining",
+        category: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || "가공라인",
+        author: alert.author || "가공 관리자",
+        authorTitle: alert.authorTitle || "선임",
+        startDate: dateStr,
+        expireDate: dateStr,
+        date: dateStr,
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        title: alert.title || alert.defectType || "가공 부적합경보",
+        content: alert.content || alert.defectType || "",
+        actionResult: alert.actionResult || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionImages: actionImages,
+        images: causeImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        status: alert.status || "ACTIVE",
+        isResolved,
+        isDeleted: false,
+        isFirstScreenOrigin: true,
+        origin: "MACHINING_QUALITY",
+        createdAt: alert.createdAt || dateStr,
+        raw: alert
+      });
+    });
+
+    return list;
+  }, [extrusionQualityAlerts, hanulQualityIssues, yuseongQualityIssues, machiningQualityIssues, todayDateStr]);
+
+  // 🌟 전 공정 부적합경보 전체 (관리목록 대장용 - 최신순 정렬)
+  const allQualityAlerts = useMemo(() => {
+    const list = [];
+    const seenKeys = new Set();
+
+    // 1. 4개 공정/협력사 부적합경보 (압출, 한울, 유성, 가공동)
+    (externalQualityAlerts || []).forEach((item) => {
+      const key = `${(item.title || "").trim().toLowerCase()}_${item.startDate || item.date || ""}`;
+      seenKeys.add(key);
+      if (item.rawId) seenKeys.add(item.rawId);
+      if (item.id) seenKeys.add(item.id);
+      list.push(item);
+    });
+
+    // 2. Urgent issues 부적합경보
+    (urgentIssues || []).forEach((item) => {
+      if (!item || item.isDeleted === true || item.isDeleted === "true" || item.deleted === true) return;
+      if (!isCatQualityAlert(item.category)) return;
+
+      const key = `${(item.title || "").trim().toLowerCase()}_${(item.startDate || item.expireDate || item.date || "").slice(0, 10)}`;
+      const cleanId = String(item.id || item._docId || "");
+      if (seenKeys.has(key) || seenKeys.has(cleanId)) return;
+
+      list.push({
+        ...item,
+        category: "부적합경보",
+        isFirstScreenOrigin: true
+      });
+    });
+
+    return sortIssuesByLatest(list);
+  }, [externalQualityAlerts, urgentIssues]);
+
+  // Active issues calculation (첫 화면 표시용 활성 이슈 - 전 공정 미결 부적합경보 + 활성 회의/공지/오픈이슈)
+  const activeIssues = useMemo(() => {
+    const list = [];
+    const seenKeys = new Set();
+
+    // 1. 5개 공정 통합 부적합경보 중 활성(미결) 건
+    (allQualityAlerts || []).forEach((alert) => {
+      if (!alert || alert.isDeleted) return;
+      // status가 ACTIVE이거나 isResolved가 false인 경우 첫 화면에 무조건 노출
+      const isActive = alert.status === "ACTIVE" || !alert.isResolved;
+      if (isActive) {
+        const key = `${(alert.title || "").trim().toLowerCase()}_${alert.startDate || alert.date || ""}`;
+        seenKeys.add(key);
+        if (alert.rawId) seenKeys.add(alert.rawId);
+        if (alert.id) seenKeys.add(alert.id);
+        list.push(alert);
+      }
+    });
+
+    // 2. 회의, 공지, 오픈이슈 (첫 화면 등록 건)
+    (urgentIssues || []).forEach((item) => {
+      if (!item || item.isDeleted) return;
+      if (isCatQualityAlert(item.category)) return; // 부적합경보는 위에서 통합 수합 완료
+
+      if (!isFirstScreenIssue(item)) return;
+
+      // 1) 회의일정: 회의 시작 시간 경과 시 첫 화면에서 자동 만료/제외 -> 종결삭제관리로 이동
+      if (isCatMeeting(item.category)) {
+        if (isMeetingExpired(item, 0)) return;
+      }
+
+      // 2) 사내공지 / 공지사항: 만료일자(expireDate)가 지난 경우 첫 화면에서 자동 제외 (단, 수동 복구된 경우 제외)
+      if (isCatNotice(item.category)) {
+        if (item.expireDate && item.expireDate < todayDateStr && !item.isManuallyRestored) return;
+      }
+
+      // 3) 오픈이슈
+      list.push(item);
+    });
+
+    return sortIssuesByCustomPriority(list);
+  }, [allQualityAlerts, urgentIssues, todayDateStr, currentKstTimeStr]);
 
   // Metric counts
   const qualityAlertCount = useMemo(() => activeIssues.filter((i) => isCatQualityAlert(i.category)).length, [activeIssues]);
@@ -516,9 +800,6 @@ export const AuthModal = () => {
     }
     return activeIssues;
   }, [activeIssues, openIssueCategoryFilter]);
-
-  // Ledger categories (최신순 정렬 적용 - 첫 화면 등록 건만 한정!)
-  const allQualityAlerts = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatQualityAlert(i.category))), [urgentIssues]);
   const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatMeeting(i.category) && !isMeetingExpired(i, 0))), [urgentIssues, todayDateStr, currentKstTimeStr]);
   const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatOpenIssue(i.category))), [urgentIssues]);
   const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatNotice(i.category) && (!i.expireDate || i.expireDate >= todayDateStr || i.isManuallyRestored))), [urgentIssues, todayDateStr]);
@@ -760,37 +1041,80 @@ export const AuthModal = () => {
 
     setIsSavingIssue(true);
     try {
-      const itemToSave = {
-        ...(editingIssue || {}),
-        ...newIssueForm,
-        id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
-        category: newIssueForm.category || editingIssue?.category || "오픈이슈",
-        isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
-        deletedBy: "",
-        deletedAt: "",
-        isManuallyRestored: Boolean(editingIssue?.isManuallyRestored),
-        isFirstScreenOrigin: true, // 🌟 첫 화면에서 등록된 공식 이슈임을 명시
-        origin: "FIRST_SCREEN"
-      };
-      if (editingIssue?.createdAt) {
-        itemToSave.createdAt = editingIssue.createdAt;
-      } else if (!itemToSave.createdAt) {
-        delete itemToSave.createdAt;
-      }
+      const idStr = String(editingIssue?.id || "");
+      if (idStr.startsWith("ext_q_")) {
+        const targetId = editingIssue.rawId || idStr.replace("ext_q_", "");
+        const upObj = {
+          ...(editingIssue.raw || {}),
+          ...newIssueForm,
+          id: targetId,
+          updatedAt: new Date().toISOString()
+        };
+        await saveExtrusionQualityIssue(upObj);
+        setExtrusionQualityAlerts((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+      } else if (idStr.startsWith("hanul_q_")) {
+        const targetId = editingIssue.rawId || idStr.replace("hanul_q_", "");
+        const upObj = {
+          ...(editingIssue.raw || {}),
+          ...newIssueForm,
+          id: targetId,
+          updatedAt: new Date().toISOString()
+        };
+        await saveHanulQualityIssue(upObj);
+        setHanulQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+      } else if (idStr.startsWith("ys_q_")) {
+        const targetId = editingIssue.rawId || idStr.replace("ys_q_", "");
+        const upObj = {
+          ...(editingIssue.raw || {}),
+          ...newIssueForm,
+          id: targetId,
+          updatedAt: new Date().toISOString()
+        };
+        await saveYuseongQualityIssue(upObj);
+        setYuseongQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+      } else if (idStr.startsWith("mach_q_")) {
+        const targetId = editingIssue.rawId || idStr.replace("mach_q_", "");
+        const upObj = {
+          ...(editingIssue.raw || {}),
+          ...newIssueForm,
+          id: targetId,
+          updatedAt: new Date().toISOString()
+        };
+        await saveMachiningQualityIssue(upObj);
+        setMachiningQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+      } else {
+        const itemToSave = {
+          ...(editingIssue || {}),
+          ...newIssueForm,
+          id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
+          category: newIssueForm.category || editingIssue?.category || "오픈이슈",
+          isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
+          deletedBy: "",
+          deletedAt: "",
+          isManuallyRestored: Boolean(editingIssue?.isManuallyRestored),
+          isFirstScreenOrigin: true, // 🌟 첫 화면에서 등록된 공식 이슈임을 명시
+          origin: "FIRST_SCREEN"
+        };
+        if (editingIssue?.createdAt) {
+          itemToSave.createdAt = editingIssue.createdAt;
+        } else if (!itemToSave.createdAt) {
+          delete itemToSave.createdAt;
+        }
 
-      const isNew = !editingIssue || !editingIssue.id;
-      const saved = await saveUrgentIssue(itemToSave, { isNew });
-      if (saved) {
-        setUrgentIssues((prev) => {
-          const targetId = saved.id || saved._docId;
-          const idx = prev.findIndex((i) => i.id === targetId || (saved._docId && i._docId === saved._docId));
-          if (idx >= 0) {
-            const up = [...prev];
-            up[idx] = saved;
-            return sortIssuesByCustomPriority(up);
-          }
-          return sortIssuesByCustomPriority([saved, ...prev]);
-        });
+        const isNew = !editingIssue || !editingIssue.id;
+        const saved = await saveUrgentIssue(itemToSave, { isNew });
+        if (saved) {
+          setUrgentIssues((prev) => {
+            const targetId = saved.id || saved._docId;
+            const idx = prev.findIndex((i) => i.id === targetId || (saved._docId && i._docId === saved._docId));
+            if (idx >= 0) {
+              const up = [...prev];
+              up[idx] = saved;
+              return sortIssuesByCustomPriority(up);
+            }
+            return sortIssuesByCustomPriority([saved, ...prev]);
+          });
+        }
       }
 
       // Modal close handling: close both edit and list modal so the user sees the updated item immediately on the first screen
@@ -925,15 +1249,38 @@ export const AuthModal = () => {
     setDeleteModalData((prev) => ({ ...prev, isDeleting: true, errorMsg: "" }));
 
     try {
-      if (isHardDelete) {
-        await hardDeleteUrgentIssue(issue.id);
-        setUrgentIssues((prev) => prev.filter((i) => i.id !== issue.id));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 데이터베이스에서 영구 삭제되었습니다.`);
+      const idStr = String(issue.id || "");
+      if (idStr.startsWith("ext_q_")) {
+        const targetId = issue.rawId || idStr.replace("ext_q_", "");
+        await deleteExtrusionQualityIssue(targetId);
+        setExtrusionQualityAlerts((prev) => prev.filter((a) => a.id !== targetId));
+        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+      } else if (idStr.startsWith("hanul_q_")) {
+        const targetId = issue.rawId || idStr.replace("hanul_q_", "");
+        await deleteHanulQualityIssue(targetId);
+        setHanulQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
+        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+      } else if (idStr.startsWith("ys_q_")) {
+        const targetId = issue.rawId || idStr.replace("ys_q_", "");
+        await deleteYuseongQualityIssue(targetId);
+        setYuseongQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
+        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+      } else if (idStr.startsWith("mach_q_")) {
+        const targetId = issue.rawId || idStr.replace("mach_q_", "");
+        await deleteMachiningQualityIssue(targetId);
+        setMachiningQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
+        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
       } else {
-        const deleter = currentProfile?.name || (inputPin === "0090" ? "Admin" : issue.plant === "한림공장" ? "김동욱" : "이명재");
-        await deleteUrgentIssue(issue.id, deleter);
-        setUrgentIssues((prev) => prev.map((i) => (i.id === issue.id ? { ...i, isDeleted: true, deletedBy: deleter } : i)));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫화면에서 내려가 [종결삭제관리]로 이동 보존되었습니다.`);
+        if (isHardDelete) {
+          await hardDeleteUrgentIssue(issue.id);
+          setUrgentIssues((prev) => prev.filter((i) => i.id !== issue.id));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 데이터베이스에서 영구 삭제되었습니다.`);
+        } else {
+          const deleter = currentProfile?.name || (inputPin === "0090" ? "Admin" : issue.plant === "한림공장" ? "김동욱" : "이명재");
+          await deleteUrgentIssue(issue.id, deleter);
+          setUrgentIssues((prev) => prev.map((i) => (i.id === issue.id ? { ...i, isDeleted: true, deletedBy: deleter } : i)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫화면에서 내려가 [종결삭제관리]로 이동 보존되었습니다.`);
+        }
       }
       setTimeout(() => setRestoreToast(""), 3500);
       setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isHardDelete: false, isDeleting: false });
@@ -984,17 +1331,75 @@ export const AuthModal = () => {
 
     setIsSavingIssue(true);
     try {
-      const updated = await updateUrgentIssueActionResult(
-        actionModalData.issue.id,
-        actionModalData.actionResult,
-        actionModalData.actionAuthor,
-        actionModalData.actionImages || []
-      );
+      const issue = actionModalData.issue;
+      const idStr = String(issue.id || "");
+      const nowStr = new Date().toISOString();
 
-      if (updated) {
-        setUrgentIssues((prev) => prev.map((it) => (it.id === actionModalData.issue.id ? updated : it)));
-        if (selectedListItem && selectedListItem.id === actionModalData.issue.id) setSelectedListItem(updated);
-        if (editingIssue && editingIssue.id === actionModalData.issue.id) setEditingIssue(updated);
+      if (idStr.startsWith("ext_q_")) {
+        const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("ext_q_", ""),
+          actionResult: actionModalData.actionResult.trim(),
+          actionAuthor: actionModalData.actionAuthor.trim(),
+          actionImages: actionModalData.actionImages || [],
+          status: "RESOLVED",
+          updatedAt: nowStr
+        };
+        await saveExtrusionQualityIssue(updatedObj);
+        setExtrusionQualityAlerts((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("hanul_q_")) {
+        const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("hanul_q_", ""),
+          actionResult: actionModalData.actionResult.trim(),
+          actionAuthor: actionModalData.actionAuthor.trim(),
+          actionImages: actionModalData.actionImages || [],
+          status: "RESOLVED",
+          updatedAt: nowStr
+        };
+        await saveHanulQualityIssue(updatedObj);
+        setHanulQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("ys_q_")) {
+        const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("ys_q_", ""),
+          actionResult: actionModalData.actionResult.trim(),
+          actionAuthor: actionModalData.actionAuthor.trim(),
+          actionImages: actionModalData.actionImages || [],
+          status: "RESOLVED",
+          updatedAt: nowStr
+        };
+        await saveYuseongQualityIssue(updatedObj);
+        setYuseongQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("mach_q_")) {
+        const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("mach_q_", ""),
+          actionResult: actionModalData.actionResult.trim(),
+          actionAuthor: actionModalData.actionAuthor.trim(),
+          actionImages: actionModalData.actionImages || [],
+          status: "RESOLVED",
+          updatedAt: nowStr
+        };
+        await saveMachiningQualityIssue(updatedObj);
+        setMachiningQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else {
+        const updated = await updateUrgentIssueActionResult(
+          issue.id,
+          actionModalData.actionResult,
+          actionModalData.actionAuthor,
+          actionModalData.actionImages || []
+        );
+
+        if (updated) {
+          setUrgentIssues((prev) => prev.map((it) => (it.id === issue.id ? updated : it)));
+          if (selectedListItem && selectedListItem.id === issue.id) setSelectedListItem(updated);
+          if (editingIssue && editingIssue.id === issue.id) setEditingIssue(updated);
+        }
       }
 
       handleCloseActionModal();
@@ -1794,8 +2199,32 @@ export const AuthModal = () => {
               setNewIssueForm((prev) => ({ ...prev, isResolved: toggled }));
               const updated = { ...editingIssue, isResolved: toggled };
               setEditingIssue(updated);
-              setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
-              await saveUrgentIssue(updated);
+
+              const idStr = String(editingIssue.id || "");
+              if (idStr.startsWith("ext_q_")) {
+                const targetId = editingIssue.rawId || idStr.replace("ext_q_", "");
+                const upObj = { ...(editingIssue.raw || {}), ...updated, id: targetId, status: toggled ? "RESOLVED" : "ACTIVE" };
+                await saveExtrusionQualityIssue(upObj);
+                setExtrusionQualityAlerts((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+              } else if (idStr.startsWith("hanul_q_")) {
+                const targetId = editingIssue.rawId || idStr.replace("hanul_q_", "");
+                const upObj = { ...(editingIssue.raw || {}), ...updated, id: targetId, status: toggled ? "RESOLVED" : "ACTIVE" };
+                await saveHanulQualityIssue(upObj);
+                setHanulQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+              } else if (idStr.startsWith("ys_q_")) {
+                const targetId = editingIssue.rawId || idStr.replace("ys_q_", "");
+                const upObj = { ...(editingIssue.raw || {}), ...updated, id: targetId, status: toggled ? "RESOLVED" : "ACTIVE" };
+                await saveYuseongQualityIssue(upObj);
+                setYuseongQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+              } else if (idStr.startsWith("mach_q_")) {
+                const targetId = editingIssue.rawId || idStr.replace("mach_q_", "");
+                const upObj = { ...(editingIssue.raw || {}), ...updated, id: targetId, status: toggled ? "RESOLVED" : "ACTIVE" };
+                await saveMachiningQualityIssue(upObj);
+                setMachiningQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+              } else {
+                setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+                await saveUrgentIssue(updated);
+              }
             }}
           />
         </Suspense>

@@ -177,3 +177,17 @@ export const isYuseongWorkerProfile = (profile) => {
   if (comp.includes("유성")) return true;
   return false;
 };
+
+// Delete Yuseong Quality Issue
+export const deleteYuseongQualityIssue = async (id) => {
+  if (!id) return;
+  const localList = getLocalYuseongQualityIssues().filter((it) => it.id !== id);
+  saveLocalYuseongQualityIssues(localList);
+  if (db) {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore delete yuseong quality issue fallback:", e);
+    }
+  }
+};

@@ -563,6 +563,32 @@ export const WorkerPinModal = ({
       });
     });
 
+    // 1-1-A. 압출 부적합경보 (Method)
+    (extrusionQualityIssues || []).forEach((alert) => {
+      if (!alert || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
+      if (alert.isDeleted === true || alert.status === "DELETED") return;
+      const rawId = String(alert.id || "");
+      if (rawId) {
+        if (seenAlertIds.has(rawId) || seenAlertIds.has(`ext_q_${rawId}`)) return;
+        seenAlertIds.add(rawId);
+        seenAlertIds.add(`ext_q_${rawId}`);
+      }
+
+      unified.push({
+        id: `ext_q_${alert.id}`,
+        fourM: "Method",
+        origin: "부적합경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.lineName || alert.lineId || "압출라인",
+        title: alert.title ? `[압출] ${alert.title}` : `[압출] ${alert.defectType || "품질이상"}`,
+        content: alert.content || alert.description || alert.defectType || "",
+        actionResult: alert.actionResult || "",
+        date: alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
+        isResolved: alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && String(alert.actionResult).trim())),
+        isExtrusion: true
+      });
+    });
+
     // 1-1-B. 한울 외주가공 부적합경보 (Method)
     (hanulQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -583,7 +609,7 @@ export const WorkerPinModal = ({
         content: alert.content || alert.defectType || "",
         actionResult: alert.actionResult || "",
         date: alert.targetDate || alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
-        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isResolved: alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && String(alert.actionResult).trim())),
         isExtrusion: false
       });
     });
@@ -608,7 +634,7 @@ export const WorkerPinModal = ({
         content: alert.content || alert.description || alert.defectType || "",
         actionResult: alert.actionResult || alert.actionNotes || "",
         date: alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
-        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isResolved: alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && String(alert.actionResult).trim())),
         isExtrusion: false
       });
     });
@@ -633,7 +659,7 @@ export const WorkerPinModal = ({
         content: alert.content || alert.defectType || "",
         actionResult: alert.actionResult || "",
         date: alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayKst),
-        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult && String(alert.actionResult).trim()),
+        isResolved: alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && String(alert.actionResult).trim())),
         isExtrusion: false
       });
     });

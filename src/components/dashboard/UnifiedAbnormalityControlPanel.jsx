@@ -281,6 +281,20 @@ export const UnifiedAbnormalityControlPanel = ({
     setPersonnelCardsMap(getLocalPersonnelCardsMap());
   };
 
+  // Safe date normalizer (YYYY-MM-DD)
+  const normalizeDateStr = (raw, fallback = "") => {
+    if (!raw) return fallback;
+    if (typeof raw === "object" && raw.seconds) {
+      return new Date(raw.seconds * 1000).toISOString().slice(0, 10);
+    }
+    const str = String(raw).trim();
+    const match = str.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+    if (match) {
+      return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(match[3]).padStart(2, "0")}`;
+    }
+    return str.slice(0, 10) || fallback;
+  };
+
   const todayStr = useMemo(() => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -335,8 +349,8 @@ export const UnifiedAbnormalityControlPanel = ({
         issue.expireDate ||
         issue.startDate ||
         issue.targetDate ||
-        (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayStr);
-      const dateStr = String(rawDate).slice(0, 10);
+        (issue.createdAt ? issue.createdAt : todayStr);
+      const dateStr = normalizeDateStr(rawDate, todayStr);
 
       const isResolved = Boolean(
         issue.isResolved || (issue.actionResult && issue.actionResult.trim())
@@ -587,8 +601,8 @@ export const UnifiedAbnormalityControlPanel = ({
         ? `[부적합경보] ${alert.title}`
         : `[부적합경보] ${alert.defectType || "압출 품질이상"}`;
       const content = alert.content || alert.details || alert.description || alert.defectType || "";
-      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
-      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
 
       const causeImages = Array.isArray(alert.causeImages)
         ? alert.causeImages
@@ -607,7 +621,7 @@ export const UnifiedAbnormalityControlPanel = ({
         line: alert.line || alert.lineId || "압출라인",
         writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "설유철 책임",
         title: title,
-        date: String(rawDate).slice(0, 10),
+        date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
         content: content,
         actionResult: alert.actionResult || alert.actionNotes || alert.actionGuide || "",
@@ -635,8 +649,8 @@ export const UnifiedAbnormalityControlPanel = ({
         ? `[한울 부적합] ${alert.title}`
         : `[한울 부적합] ${alert.defectType || "한울 품질이상"}`;
       const content = alert.content || alert.defectType || "";
-      const rawDate = alert.targetDate || alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
-      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const dateStr = normalizeDateStr(alert.targetDate || alert.date || alert.createdAt, todayStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
 
       const causeImages = Array.isArray(alert.causeImages)
         ? alert.causeImages
@@ -655,7 +669,7 @@ export const UnifiedAbnormalityControlPanel = ({
         line: alert.line || "외주가공(한울)",
         writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "한울 관리자",
         title: title,
-        date: String(rawDate).slice(0, 10),
+        date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
         content: content,
         actionResult: alert.actionResult || "",
@@ -683,8 +697,8 @@ export const UnifiedAbnormalityControlPanel = ({
         ? `[유성 부적합] ${alert.title}`
         : `[유성 부적합] ${alert.defectType || "유성 품질이상"}`;
       const content = alert.content || alert.description || alert.defectType || "";
-      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
-      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
 
       const causeImages = Array.isArray(alert.causeImages)
         ? alert.causeImages
@@ -703,7 +717,7 @@ export const UnifiedAbnormalityControlPanel = ({
         line: alert.project || alert.line || "외주가공(유성)",
         writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "유성 관리자",
         title: title,
-        date: String(rawDate).slice(0, 10),
+        date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
         content: content,
         actionResult: alert.actionResult || alert.actionNotes || "",
@@ -731,8 +745,8 @@ export const UnifiedAbnormalityControlPanel = ({
         ? `[가공 부적합] ${alert.title}`
         : `[가공 부적합] ${alert.defectType || "가공 품질이상"}`;
       const content = alert.content || alert.defectType || "";
-      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
-      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayStr);
+      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
 
       const causeImages = Array.isArray(alert.causeImages)
         ? alert.causeImages
@@ -751,7 +765,7 @@ export const UnifiedAbnormalityControlPanel = ({
         line: alert.line || "가공동",
         writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "가공동",
         title: title,
-        date: String(rawDate).slice(0, 10),
+        date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
         content: content,
         actionResult: alert.actionResult || "",
@@ -995,7 +1009,15 @@ export const UnifiedAbnormalityControlPanel = ({
 
       // 1. 공장 필터
       if (selectedPlant !== "ALL") {
-        if (!rec.plant || !rec.plant.includes(selectedPlant.replace("공장", ""))) return false;
+        const pNorm = (rec.plant || "").toLowerCase();
+        const targetP = selectedPlant.replace("공장", "");
+        if (targetP === "한림") {
+          if (!pNorm.includes("한림") && !pNorm.includes("한울") && !pNorm.includes("부림")) return false;
+        } else if (targetP === "삼랑진") {
+          if (!pNorm.includes("삼랑진") && !pNorm.includes("압출") && !pNorm.includes("가공") && !pNorm.includes("유성")) return false;
+        } else {
+          if (!pNorm.includes(targetP)) return false;
+        }
       }
 
       // 2. 4M 구분 탭 필터 (OFFICIAL_LEDGER 제외 시 적용)
