@@ -13,7 +13,8 @@ import {
   calculateDailySummary,
   subscribeSmartOvertimeData,
   cleanCompanyName,
-  getReportDateSortKey
+  getReportDateSortKey,
+  reconcileMatrixWithReports
 } from "../services/overtimeSmartService.js";
 import {
   getLocalApprovalDocs,
@@ -532,7 +533,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
     const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
 
-    const matrix = rawMatrix;
+    const { matrix } = reconcileMatrixWithReports(rawMatrix, overtimeReports || [], todayYear, todayMonth);
     const daily = calculateDailySummary(matrix, todayDayNum, todayYear, todayMonth);
     const companyStyles = {
       "오륙": { dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },

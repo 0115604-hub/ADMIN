@@ -2,6 +2,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   getDocs,
   deleteDoc,
@@ -17,7 +18,9 @@ import {
   saveSmartOvertimeData,
   buildMatrixFromReports,
   cleanCompanyName,
-  cleanWorkerNameOnly
+  cleanWorkerNameOnly,
+  getFirestoreDocIdForMonth,
+  getStorageKeyForMonth
 } from "./overtimeSmartService";
 
 const COLLECTION_NAME = "overtime_reports";
@@ -297,7 +300,7 @@ export const subscribeOvertimeReports = (callback) => {
   }
 };
 
-// ⭐ [수단 1: 단일 장부 일원화] 보고서에 등록된 당일 출근 코드를 스마트 원장 매트릭스로 100% 즉시 주입
+// ⭐ [수단 1: 단일 장부 일원화] 보고서에 등록된 당일 출근 코드를 스마트 원장 매트릭스로 100% 즉시 주입 (Cloud Direct Sync)
 export const syncReportItemsToLedgerMatrix = async (report) => {
   if (!report || !report.workDate || !Array.isArray(report.items) || report.items.length === 0) return;
   try {
@@ -305,8 +308,27 @@ export const syncReportItemsToLedgerMatrix = async (report) => {
     const ym = `${yStr}-${mStr}`;
     const dayNum = parseInt(dStr, 10);
     const cleanComp = cleanCompanyName(report.company || "");
+    const docId = getFirestoreDocIdForMonth(ym);
+    const storageKey = getStorageKeyForMonth(ym);
 
-    const ledgerData = getLocalSmartOvertimeData(ym);
+    // 1. Authoritative Cloud Fetch: Fetch existing monthly ledger directly from Firestore
+    let ledgerData = null;
+    let cloudRef = null;
+    if (db) {
+      cloudRef = doc(db, "smart_overtime_ledger", docId);
+      try {
+        const snap = await getDoc(cloudRef);
+        if (snap.exists()) {
+          ledgerData = snap.data();
+        }
+      } catch (cloudErr) {
+        console.warn("Could not read smart_overtime_ledger directly from Firestore:", cloudErr);
+      }
+    }
+
+    if (!ledgerData || !Array.isArray(ledgerData.attendanceMatrix) || ledgerData.attendanceMatrix.length === 0) {
+      ledgerData = getLocalSmartOvertimeData(ym);
+    }
     if (!ledgerData || !Array.isArray(ledgerData.attendanceMatrix)) return;
 
     const matrix = [...ledgerData.attendanceMatrix];
@@ -314,9 +336,17 @@ export const syncReportItemsToLedgerMatrix = async (report) => {
 
     report.items.forEach((item) => {
       const wName = (item.workerName || item.name || "").trim();
+      if (!wName) return;
+      const cleanItName = cleanWorkerNameOnly(wName);
       const code = item.attendanceCode || (item.hours > 0 ? (item.otHours > 0 ? "19" : "🟢") : "-");
       const targetWorker = matrix.find(
-        (mw) => (mw.name || "").trim() === wName && cleanCompanyName(mw.company) === cleanComp
+        (mw) => {
+          const mwName = (mw.name || "").trim();
+          const cleanMwName = cleanWorkerNameOnly(mwName);
+          const nameMatch = mwName === wName || (cleanItName && cleanMwName === cleanItName);
+          if (!nameMatch) return false;
+          return cleanCompanyName(mw.company) === cleanComp;
+        }
       );
       if (targetWorker) {
         if (!targetWorker.daily) targetWorker.daily = {};
@@ -330,14 +360,24 @@ export const syncReportItemsToLedgerMatrix = async (report) => {
 
     if (changed) {
       ledgerData.attendanceMatrix = matrix;
-      await saveSmartOvertimeData(ledgerData, ym, {
-        targetCompany: cleanComp,
-        auditMeta: {
-          operator: report.author || "관리자",
-          source: "REPORT_AUTO_SYNC",
-          reason: `${mStr}월 ${dStr}일 보고서 등록 연동`
+      ledgerData.updatedAt = new Date().toISOString();
+
+      // 2. Direct Cloud Write to smart_overtime_ledger
+      if (cloudRef) {
+        try {
+          await setDoc(cloudRef, sanitizeForFirestore(ledgerData), { merge: true });
+        } catch (setErr) {
+          console.warn("Direct cloud write to smart_overtime_ledger error:", setErr);
         }
-      });
+      }
+
+      // 3. Local Storage and runtime event sync
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(ledgerData));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...ledgerData, yearMonth: ym } }));
+        }
+      } catch (lsErr) {}
     }
   } catch (err) {
     console.warn("syncReportItemsToLedgerMatrix warning:", err);

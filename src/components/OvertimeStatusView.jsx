@@ -92,7 +92,8 @@ import {
   exportSmartOvertimeToExcel,
   normalizeDept,
   ensureAllCompaniesPresent,
-  buildMatrixFromReports
+  buildMatrixFromReports,
+  reconcileMatrixWithReports
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
@@ -2234,12 +2235,46 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // 🔒 Authoritative Master Matrix: The ledger is the single source of truth.
-  // Direct user edits and confirmed registrations in the matrix are 100% authoritative
-  // and must NEVER be overwritten or mutated by historical reports.
-  const effectiveMatrix = useMemo(() => {
-    return smartData?.attendanceMatrix || smartData?.masterWorkers || [];
-  }, [smartData]);
+  // 🔒 Master Matrix with Dynamic Reconciliation & Auto-Healing Engine
+  // 1. smartData.attendanceMatrix is the baseline (persisted ledger)
+  // 2. Automatically heal any missing/unwritten cell if an approved report exists in legacyReports
+  const { effectiveMatrix, hasHealedMatrix } = useMemo(() => {
+    const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
+    const { matrix: reconciled, hasHealed } = reconcileMatrixWithReports(
+      rawMatrix,
+      legacyReports || [],
+      currentYear,
+      currentMonthNum
+    );
+    return { effectiveMatrix: reconciled, hasHealedMatrix: hasHealed };
+  }, [smartData, legacyReports, currentYear, currentMonthNum]);
+
+  // ⭐ Background Auto-Healing Write-Back: If any discrepancies between reports and ledger were healed,
+  // silently persist the healed matrix to Firestore smart_overtime_ledger
+  useEffect(() => {
+    if (hasHealedMatrix && effectiveMatrix && effectiveMatrix.length > 0) {
+      const ym = selectedMonth || `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
+      const timer = setTimeout(() => {
+        saveSmartOvertimeData(
+          {
+            ...smartData,
+            year: currentYear,
+            month: currentMonthNum,
+            attendanceMatrix: effectiveMatrix
+          },
+          ym,
+          {
+            auditMeta: {
+              operator: "시스템 (자동 치유 엔진)",
+              source: "AUTO_HEALING_SYNC",
+              reason: "보고서 등록 내역과 대장 간 불일치 자동 정합성 복구"
+            }
+          }
+        ).catch((err) => console.warn("Background auto-healing write-back error:", err));
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasHealedMatrix, effectiveMatrix, selectedMonth, currentYear, currentMonthNum]);
 
   // Calculations & Summaries for 5 Companies (실시간 보고서와 통합된 effectiveMatrix 기준)
   const dailySummary = useMemo(() => {
@@ -5923,7 +5958,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           selectedDay={selectedDay}
           currentYear={currentYear}
           currentMonth={currentMonthNum}
-          attendanceMatrix={smartData.attendanceMatrix || []}
+          attendanceMatrix={effectiveMatrix || smartData.attendanceMatrix || []}
           onSaveSyncWithReports={(lines) => {
             if (lines && lines.length > 0) {
               const logText = lines.join("\n");
@@ -5945,7 +5980,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         selectedDay={selectedDay}
         currentYear={currentYear}
         currentMonthNum={currentMonthNum}
-        attendanceMatrix={smartData?.attendanceMatrix || []}
+        attendanceMatrix={effectiveMatrix || smartData?.attendanceMatrix || []}
         legacyReports={legacyReports || []}
         onSelectCompany={(comp) => {
           setSelectedCompanyFilter(comp);
