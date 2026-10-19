@@ -10,6 +10,46 @@ import { db } from "../firebase.js";
 
 const COLLECTION_NAME = "four_m_change_points";
 const LOCAL_STORAGE_KEY = "factory_four_m_change_points_v1";
+const OVERRIDES_STORAGE_KEY = "factory_four_m_overrides_v1";
+
+// Helper: Read 4M manual overrides
+export const getFourMOverrides = () => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(OVERRIDES_STORAGE_KEY);
+      if (raw) return JSON.parse(raw) || {};
+    }
+  } catch (e) {
+    console.error("Local storage read error for 4M overrides:", e);
+  }
+  return {};
+};
+
+// Helper: Save 4M manual overrides
+export const saveFourMOverrides = (map) => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(map || {}));
+    }
+  } catch (e) {
+    console.error("Local storage write error for 4M overrides:", e);
+  }
+};
+
+// Helper: 4M Badge Color
+export const getFourMBadgeColor = (fourM) => {
+  switch (fourM) {
+    case "Machine":
+      return "bg-indigo-100 text-indigo-900 border-indigo-300";
+    case "Material":
+      return "bg-rose-100 text-rose-900 border-rose-300";
+    case "Man":
+      return "bg-sky-100 text-sky-900 border-sky-300";
+    case "Method":
+    default:
+      return "bg-amber-100 text-amber-900 border-amber-300";
+  }
+};
 
 // Helper: Read local storage
 export const getLocalFourMChangePoints = () => {
@@ -75,15 +115,53 @@ export const subscribeFourMChangePoints = (onUpdate) => {
 
 /**
  * 🌟 4M 변동점 카테고리 판별 (Machine / Material / Method / Man)
- * - 가류조, 온조기, 압출기, 모터, 설비 등: Machine
- * - 코팅, 원료, 클립, 불량, 스크래치, 자재 등: Material
- * - 결근, 인원, 대체, 교대 등: Man
- * - 작업표준, 조건, 공정, 레시피 등: Method
+ * - 1순위: 관리자 수동 재분류 override 맵 및 명시적 4M 설정값
+ * - 2순위: 키워드 기반 자동 판별
+ *   - 가류조, 온조기, 압출기, 모터, 설비 등: Machine
+ *   - 코팅, 원료, 클립, 불량, 스크래치, 자재 등: Material
+ *   - 결근, 인원, 대체, 교대 등: Man
+ *   - 작업표준, 조건, 공정, 레시피 등: Method
  */
 export const determineFourMCategory = (item) => {
   if (!item) return "Method";
-  if (item.fourM && ["Machine", "Man", "Material", "Method"].includes(item.fourM)) {
-    if (item.fourM !== "Method") return item.fourM;
+
+  // 1. 관리자 수동 재분류(Override) 맵 확인
+  const overrides = getFourMOverrides();
+  const possibleIds = [
+    item.id,
+    item.originalId,
+    item.rawId,
+    item.raw?.id,
+    item._docId,
+    item.customId
+  ].filter(Boolean);
+
+  for (const rawKey of possibleIds) {
+    const sId = String(rawKey).trim();
+    if (overrides[sId] && ["Machine", "Man", "Material", "Method"].includes(overrides[sId])) {
+      return overrides[sId];
+    }
+    const cleanId = sId
+      .replace(/^ledger_/, "")
+      .replace(/^urg_/, "")
+      .replace(/^ext_q_/, "")
+      .replace(/^hanul_q_/, "")
+      .replace(/^ys_q_/, "")
+      .replace(/^mach_q_/, "");
+    if (cleanId && overrides[cleanId] && ["Machine", "Man", "Material", "Method"].includes(overrides[cleanId])) {
+      return overrides[cleanId];
+    }
+  }
+
+  // 2. 항목 객체에 명시된 수동 4M 설정 확인
+  if (item.manualFourM && ["Machine", "Man", "Material", "Method"].includes(item.manualFourM)) {
+    return item.manualFourM;
+  }
+  if (item.isManualFourM && item.fourM && ["Machine", "Man", "Material", "Method"].includes(item.fourM)) {
+    return item.fourM;
+  }
+  if (item.isOfficialLedger && item.fourM && ["Machine", "Man", "Material", "Method"].includes(item.fourM)) {
+    return item.fourM;
   }
 
   const text = `${item.title || ""} ${item.content || ""} ${item.defectType || ""} ${item.details || ""} ${item.line || ""} ${item.origin || ""} ${item.category || ""}`.toLowerCase();
@@ -171,6 +249,166 @@ export const determineFourMCategory = (item) => {
 
   // 4. Method
   return "Method";
+};
+
+/**
+ * 🌟 4M 변동점 카테고리 수동 변경 및 영구 동기화
+ * - Machine / Material / Man / Method
+ * - 로컬 override 맵, four_m_change_points(Firestore/Local), urgent_issues 동시 반영
+ */
+export const updateFourMClassification = async (itemOrId, newFourM, modifierName = "관리자") => {
+  if (!newFourM || !["Machine", "Man", "Material", "Method"].includes(newFourM)) {
+    console.warn("Invalid 4M category:", newFourM);
+    return null;
+  }
+
+  const isObj = typeof itemOrId === "object" && itemOrId !== null;
+  const targetId = isObj
+    ? String(itemOrId.id || itemOrId.originalId || itemOrId.rawId || itemOrId.raw?.id || "").trim()
+    : String(itemOrId || "").trim();
+
+  if (!targetId) return null;
+
+  const rawId = isObj ? String(itemOrId.rawId || itemOrId.raw?.id || "").trim() : "";
+  const origId = isObj ? String(itemOrId.originalId || "").trim() : "";
+  const cleanId = targetId
+    .replace(/^ledger_/, "")
+    .replace(/^urg_/, "")
+    .replace(/^ext_q_/, "")
+    .replace(/^hanul_q_/, "")
+    .replace(/^ys_q_/, "")
+    .replace(/^mach_q_/, "");
+
+  // 1. 4M Overrides 맵에 영구 저장 (로컬 캐시 및 즉시 반영)
+  const overrides = getFourMOverrides();
+  const allKeyVariants = [
+    targetId,
+    `ledger_${targetId}`,
+    origId,
+    origId ? `ledger_${origId}` : "",
+    rawId,
+    rawId ? `ledger_${rawId}` : "",
+    cleanId,
+    cleanId ? `ledger_${cleanId}` : "",
+    cleanId ? `urg_${cleanId}` : ""
+  ].filter(Boolean);
+
+  allKeyVariants.forEach((k) => {
+    overrides[k] = newFourM;
+  });
+  saveFourMOverrides(overrides);
+
+  // 2. 공식 대장(four_m_change_points) 로컬 스토리지 및 Firestore 업데이트
+  const current = getLocalFourMChangePoints();
+  const now = new Date();
+  const nowStr = now.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const badgeColor = getFourMBadgeColor(newFourM);
+
+  let matchFound = false;
+  const updatedList = current.map((item) => {
+    const iId = String(item.id || "");
+    const iOrig = String(item.originalId || "");
+    const iRaw = String(item.rawId || "");
+    const isMatch =
+      allKeyVariants.includes(iId) ||
+      allKeyVariants.includes(iOrig) ||
+      allKeyVariants.includes(iRaw) ||
+      (cleanId && (iId.includes(cleanId) || iOrig.includes(cleanId) || iRaw.includes(cleanId)));
+
+    if (isMatch) {
+      matchFound = true;
+      return {
+        ...item,
+        fourM: newFourM,
+        badgeColor,
+        isManualFourM: true,
+        modifiedAt: nowStr,
+        modifiedBy: modifierName || "관리자"
+      };
+    }
+    return item;
+  });
+
+  // 대장에 미등록된 항목이더라도 4M을 수정하면 공식 대장에 등록
+  if (!matchFound && isObj) {
+    const sanitizedObj = {
+      ...itemOrId,
+      fourM: newFourM,
+      badgeColor,
+      isManualFourM: true,
+      modifiedAt: nowStr,
+      modifiedBy: modifierName || "관리자"
+    };
+    await registerToFourMLedger(sanitizedObj, modifierName);
+  } else {
+    saveLocalFourMChangePoints(updatedList);
+  }
+
+  // 3. Firestore four_m_change_points 컬렉션 문서 업데이트
+  if (db) {
+    const docIdsToUpdate = new Set();
+    if (targetId.startsWith("ledger_")) docIdsToUpdate.add(targetId);
+    else {
+      docIdsToUpdate.add(targetId);
+      docIdsToUpdate.add(`ledger_${targetId}`);
+    }
+    if (cleanId) docIdsToUpdate.add(`ledger_${cleanId}`);
+
+    for (const dId of docIdsToUpdate) {
+      try {
+        await setDoc(
+          doc(db, COLLECTION_NAME, dId),
+          {
+            fourM: newFourM,
+            badgeColor,
+            isManualFourM: true,
+            modifiedAt: nowStr,
+            modifiedBy: modifierName || "관리자"
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("Firestore update four_m_change_point error:", dId, e);
+      }
+    }
+
+    // 4. 원본 컬렉션(urgent_issues 등)이 존재할 경우 해당 문서도 동기화
+    try {
+      const urgentDocId = (isObj && isObj.raw?.id) || cleanId;
+      if (urgentDocId) {
+        await setDoc(
+          doc(db, "urgent_issues", urgentDocId),
+          {
+            fourM: newFourM,
+            isManualFourM: true,
+            modifiedAt: nowStr
+          },
+          { merge: true }
+        );
+      }
+    } catch (e) {
+      // safe fallback
+    }
+  }
+
+  // 5. 전역 윈도우 이벤트 발행
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("fourM_override_updated", {
+        detail: { id: targetId, newFourM }
+      })
+    );
+  }
+
+  return getLocalFourMChangePoints();
 };
 
 // Register (Copy) a Record into Official 4M Change Point Ledger
@@ -400,7 +638,13 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
   );
 
   const title = alertItem.title || alertItem.defectType || alertItem.content || "(부적합경보)";
-  const fourM = determineFourMCategory(alertItem);
+  const current = getLocalFourMChangePoints();
+  const existingInLedger = current.find(
+    (it) => it.id === id || it.originalId === id || it.rawId === rawId || it.id === `ledger_${id}`
+  );
+  const fourM = (existingInLedger?.isManualFourM && existingInLedger.fourM)
+    ? existingInLedger.fourM
+    : determineFourMCategory(alertItem);
   const isResolved = Boolean(
     alertItem.isResolved ||
     alertItem.status === "RESOLVED" ||

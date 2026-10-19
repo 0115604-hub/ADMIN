@@ -70,7 +70,9 @@ import {
   unregisterFromFourMLedger,
   determineFourMCategory,
   autoSyncAllQualityIssuesToFourMLedger,
-  syncQualityAlertToFourMLedger
+  syncQualityAlertToFourMLedger,
+  updateFourMClassification,
+  getFourMBadgeColor
 } from "../../services/fourMChangePointService";
 import {
   subscribeSmartOvertimeData,
@@ -142,6 +144,7 @@ export const UnifiedAbnormalityControlPanel = ({
   const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
   const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
+  const [fourMRevision, setFourMRevision] = useState(0);
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
   const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [isLoading, setIsLoading] = useState(true);
@@ -254,7 +257,13 @@ export const UnifiedAbnormalityControlPanel = ({
         setLastRefreshedAt(new Date());
       }
     };
+    const handleFourMOverrideEvent = () => {
+      setFourMLedgerRecords(getLocalFourMChangePoints());
+      setFourMRevision((r) => r + 1);
+      setLastRefreshedAt(new Date());
+    };
     window.addEventListener("oryuk_personnel_card_updated", handleCardEvent);
+    window.addEventListener("fourM_override_updated", handleFourMOverrideEvent);
 
     return () => {
       if (unsubIssues) unsubIssues();
@@ -268,6 +277,7 @@ export const UnifiedAbnormalityControlPanel = ({
       if (unsubAbsenceLogs) unsubAbsenceLogs();
       if (unsubCards) unsubCards();
       window.removeEventListener("oryuk_personnel_card_updated", handleCardEvent);
+      window.removeEventListener("fourM_override_updated", handleFourMOverrideEvent);
     };
   }, []);
 
@@ -1021,7 +1031,7 @@ export const UnifiedAbnormalityControlPanel = ({
       const origId = String(rec.originalId || "");
       const rawId = String(rec.rawId || "");
 
-      const alreadyExists = unified.some((u) => {
+      const existingIdx = unified.findIndex((u) => {
         const uId = String(u.id || "");
         const uOrig = String(u.originalId || "");
         const uRaw = String(u.raw?.id || "");
@@ -1036,7 +1046,17 @@ export const UnifiedAbnormalityControlPanel = ({
         );
       });
 
-      if (!alreadyExists) {
+      if (existingIdx >= 0) {
+        // 공식 대장에 지정된 4M 분류가 있다면 취합된 항목에 최우선 적용
+        if (rec.fourM && ["Machine", "Man", "Material", "Method"].includes(rec.fourM)) {
+          unified[existingIdx] = {
+            ...unified[existingIdx],
+            fourM: rec.fourM,
+            isManualFourM: true,
+            badgeColor: rec.badgeColor || getFourMBadgeColor(rec.fourM)
+          };
+        }
+      } else {
         unified.push({
           id: recId.startsWith("ledger_") ? recId : `ledger_${recId}`,
           originalId: origId || recId,
@@ -1044,15 +1064,7 @@ export const UnifiedAbnormalityControlPanel = ({
           fourM: rec.fourM || determineFourMCategory(rec),
           origin: rec.origin || "변동점대장",
           sourceType: rec.sourceType || "OFFICIAL_LEDGER",
-          badgeColor:
-            rec.badgeColor ||
-            (rec.fourM === "Machine"
-              ? "bg-indigo-100 text-indigo-900 border-indigo-300"
-              : rec.fourM === "Material"
-              ? "bg-rose-100 text-rose-900 border-rose-300"
-              : rec.fourM === "Man"
-              ? "bg-sky-100 text-sky-900 border-sky-300"
-              : "bg-amber-100 text-amber-900 border-amber-300"),
+          badgeColor: rec.badgeColor || getFourMBadgeColor(rec.fourM || "Method"),
           plant: rec.plant || "삼랑진공장",
           line: rec.line || "생산/품질",
           writer: rec.writer || rec.registeredBy || "관리자",
@@ -1109,7 +1121,8 @@ export const UnifiedAbnormalityControlPanel = ({
     smartOvertimeData,
     absenceLogsMap,
     todayStr,
-    personnelCardsMap
+    personnelCardsMap,
+    fourMRevision
   ]);
 
   // =========================================================================
@@ -1253,6 +1266,39 @@ export const UnifiedAbnormalityControlPanel = ({
     setSelectedItemForDetail(null);
     setActionInputText("");
     setActionPhotos([]);
+  };
+
+  // 🌟 4M 카테고리 수동 변경 핸들러 (Machine / Material / Man / Method)
+  const handleUpdateItemFourM = async (item, newFourM) => {
+    if (!item || !newFourM) return;
+    if (item.fourM === newFourM) return;
+
+    try {
+      const updatedList = await updateFourMClassification(
+        item,
+        newFourM,
+        currentProfile?.name || "TEST 선임"
+      );
+
+      if (updatedList) {
+        setFourMLedgerRecords(updatedList);
+      }
+
+      setSelectedItemForDetail((prev) => {
+        if (!prev) return null;
+        const pId = String(prev.id || "");
+        const itId = String(item.id || "");
+        if (pId === itId || (item.originalId && pId === item.originalId)) {
+          return { ...prev, fourM: newFourM, isManualFourM: true };
+        }
+        return prev;
+      });
+
+      setFourMRevision((r) => r + 1);
+    } catch (err) {
+      console.error("Failed to update 4M classification:", err);
+      alert("4M 분류 변경 중 오류가 발생했습니다.");
+    }
   };
 
   // 조치 사진 업로드 핸들러
@@ -1410,6 +1456,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
     const rows = filteredRecords.map((r, i) => ({
       "NO": i + 1,
+      "4M구분": r.fourM,
       "구분": `[${r.fourM}] ${r.origin}`,
       "일시": r.time ? `${r.date} ${r.time}` : r.date,
       "공장": r.plant,
@@ -1651,10 +1698,11 @@ export const UnifiedAbnormalityControlPanel = ({
               <thead>
                 <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]">
                   <th className="py-2.5 px-2 text-center w-8">NO</th>
-                  <th className="py-2.5 px-2 text-center w-24">구분</th>
+                  <th className="py-2.5 px-2 text-center w-36">4M 분류 (수정)</th>
+                  <th className="py-2.5 px-2 text-center w-20">출처</th>
                   <th className="py-2.5 px-2 text-center w-22">일시</th>
                   <th className="py-2.5 px-2 text-center w-14">공장</th>
-                  <th className="py-2.5 px-3 min-w-[320px] w-full">변동점내용</th>
+                  <th className="py-2.5 px-3 min-w-[300px] w-full">변동점내용</th>
                   <th className="py-2.5 px-2 text-center w-14">사진</th>
                   <th className="py-2.5 px-2 text-center w-20">진행상태</th>
                   <th className="py-2.5 px-2 text-center w-28">유효성검증</th>
@@ -1664,7 +1712,7 @@ export const UnifiedAbnormalityControlPanel = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-slate-400">
+                    <td colSpan={10} className="py-10 text-center text-slate-400">
                       <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
                       <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
                         해당 조건의 변동점 내역이 없습니다.
@@ -1705,7 +1753,30 @@ export const UnifiedAbnormalityControlPanel = ({
                           {idx + 1}
                         </td>
 
-                        {/* 2. 구분 */}
+                        {/* 2. 4M 분류 (직접 수정 셀렉트박스) */}
+                        <td className="py-2 px-1 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={item.fourM || "Method"}
+                            onChange={(e) => handleUpdateItemFourM(item, e.target.value)}
+                            className={`text-[11px] font-black py-1 px-1.5 rounded-lg border cursor-pointer outline-none transition-all shadow-2xs font-sans ${
+                              item.fourM === "Machine"
+                                ? "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700"
+                                : item.fourM === "Material"
+                                ? "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700"
+                                : item.fourM === "Man"
+                                ? "bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700"
+                                : "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                            }`}
+                            title="4M 카테고리 수정 (클릭하여 Machine / Material / Man / Method 직접 변경)"
+                          >
+                            <option value="Machine" className="bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-bold">⚙️ Machine (설비)</option>
+                            <option value="Material" className="bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 font-bold">🧱 Material (재료)</option>
+                            <option value="Man" className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-bold">👤 Man (인원)</option>
+                            <option value="Method" className="bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 font-bold">📐 Method (공법)</option>
+                          </select>
+                        </td>
+
+                        {/* 3. 출처 구분 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
                           <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>
                             {item.origin}
@@ -1842,7 +1913,26 @@ export const UnifiedAbnormalityControlPanel = ({
               className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-400 transition-all cursor-pointer space-y-1.5"
             >
               <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={item.fourM || "Method"}
+                    onChange={(e) => handleUpdateItemFourM(item, e.target.value)}
+                    className={`text-[10px] font-black py-0.5 px-1.5 rounded-lg border cursor-pointer outline-none ${
+                      item.fourM === "Machine"
+                        ? "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700"
+                        : item.fourM === "Material"
+                        ? "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700"
+                        : item.fourM === "Man"
+                        ? "bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700"
+                        : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                    }`}
+                    title="4M 카테고리 수정 (클릭하여 변경)"
+                  >
+                    <option value="Machine">⚙️ Machine</option>
+                    <option value="Material">🧱 Material</option>
+                    <option value="Man">👤 Man</option>
+                    <option value="Method">📐 Method</option>
+                  </select>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                     item.origin === "설비수리"
                       ? "bg-indigo-100 text-indigo-900 border-indigo-300"
@@ -1920,6 +2010,44 @@ export const UnifiedAbnormalityControlPanel = ({
                   <span className={`font-black ${selectedItemForDetail.isResolved ? "text-emerald-600" : "text-rose-600"}`}>
                     {selectedItemForDetail.isResolved ? "✅ 조치완료" : "🚨 미조치"}
                   </span>
+                </div>
+              </div>
+
+              {/* 4M 분류 변경 컨트롤 */}
+              <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>4M 카테고리 분류 변경 (수정)</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    현재 적용: <b className="text-indigo-600 dark:text-indigo-400 font-black">{selectedItemForDetail.fourM}</b>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {[
+                    { key: "Machine", label: "⚙️ Machine", desc: "설비·기계·수리", active: "bg-indigo-600 text-white border-indigo-700 ring-2 ring-indigo-400/50 shadow-xs" },
+                    { key: "Material", label: "🧱 Material", desc: "원료·자재·불량", active: "bg-rose-600 text-white border-rose-700 ring-2 ring-rose-400/50 shadow-xs" },
+                    { key: "Man", label: "👤 Man", desc: "결근·대체투입", active: "bg-sky-600 text-white border-sky-700 ring-2 ring-sky-400/50 shadow-xs" },
+                    { key: "Method", label: "📐 Method", desc: "공법·작업표준", active: "bg-amber-600 text-white border-amber-700 ring-2 ring-amber-400/50 shadow-xs" }
+                  ].map((m) => {
+                    const isSelected = selectedItemForDetail.fourM === m.key;
+                    return (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => handleUpdateItemFourM(selectedItemForDetail, m.key)}
+                        className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                          isSelected
+                            ? m.active
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750"
+                        }`}
+                      >
+                        <div className="font-black text-xs">{m.label}</div>
+                        <div className={`text-[10px] mt-0.5 truncate ${isSelected ? "text-white/90" : "text-slate-400"}`}>{m.desc}</div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -918,7 +918,7 @@ export const WorkerPinModal = ({
       const origId = String(rec.originalId || "");
       const rawId = String(rec.rawId || "");
 
-      const alreadyExists = unified.some((u) => {
+      const existingIdx = unified.findIndex((u) => {
         const uId = String(u.id || "");
         const uOrig = String(u.originalId || "");
         const uRaw = String(u.raw?.id || "");
@@ -933,7 +933,14 @@ export const WorkerPinModal = ({
         );
       });
 
-      if (!alreadyExists) {
+      if (existingIdx >= 0) {
+        if (rec.fourM && ["Machine", "Man", "Material", "Method"].includes(rec.fourM)) {
+          unified[existingIdx] = {
+            ...unified[existingIdx],
+            fourM: rec.fourM
+          };
+        }
+      } else {
         const lineStr = String(rec.line || "").trim();
         const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE");
         unified.push({
