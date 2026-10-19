@@ -296,7 +296,27 @@ export const getOptionMeta = (code) => {
   const found = ATTENDANCE_OPTIONS.find((o) => o.code === strCode);
   if (found) return found;
   if (strCode === "정시" || strCode === "17" || strCode === "🟢" || strCode.includes("정시") || strCode === "출근") return ATTENDANCE_OPTIONS[0];
-  if (strCode.includes("잔업") || strCode === "19" || strCode === "19시" || strCode === "21" || strCode === "21시" || strCode === "22" || strCode === "22시" || strCode === "야간" || strCode === "주야") {
+  if (strCode === "야간" || strCode.includes("야간")) {
+    return {
+      code: "야간",
+      label: "🌌 야간 (8H)",
+      shortLabel: "야간",
+      otHours: 0,
+      workHours: 8,
+      bg: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300"
+    };
+  }
+  if (strCode === "연차" || strCode.includes("연차")) {
+    return {
+      code: "연차",
+      label: "🌴 연차 (0H)",
+      shortLabel: "연차",
+      otHours: 0,
+      workHours: 0,
+      bg: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300"
+    };
+  }
+  if (strCode.includes("잔업") || strCode === "19" || strCode === "19시" || strCode === "21" || strCode === "21시" || strCode === "22" || strCode === "22시" || strCode === "주야") {
     const { weekdayOt, workHours } = calculateWorkerDailyHours(strCode);
     return {
       code: strCode,
@@ -308,7 +328,7 @@ export const getOptionMeta = (code) => {
     };
   }
   if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) return ATTENDANCE_OPTIONS[2];
-  if (strCode === "-" || strCode === "휴무" || strCode === "미출근" || strCode.includes("미출근") || strCode === "결근" || strCode.includes("결근") || strCode === "연차" || strCode.includes("연차") || strCode === "휴가" || strCode === "반차") {
+  if (strCode === "-" || strCode === "휴무" || strCode === "미출근" || strCode.includes("미출근") || strCode === "결근" || strCode.includes("결근") || strCode === "휴가" || strCode === "반차") {
     return ATTENDANCE_OPTIONS[3];
   }
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
