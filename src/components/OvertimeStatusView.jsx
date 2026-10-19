@@ -1102,7 +1102,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setHasUnsavedChanges(true);
     const targetComp = updatedMatrix[targetIdx]?.company;
     const workerName = updatedMatrix[targetIdx]?.name || "작업자";
-    triggerToast(`💾 ${workerName} [${finalCode || "미등록"}] 즉시 적용되었습니다.`);
+    triggerToast(`💾 ${workerName} [${finalCode || "선택없음"}] 즉시 적용되었습니다.`);
 
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
       targetCompany: targetComp,
@@ -2889,7 +2889,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-16">업체</th>
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-14">부서</th>
                               <th className="py-1.5 px-1 sm:px-1.5 w-14 sm:w-16">성명</th>
-                              <th className="py-1.5 px-0.5 sm:px-1.5 text-center" title="[근태 선택] 🟢출근·🌴연차·❌결근 (탭 순환 변환) | ⚡잔업(+2H~) | 🌙특근·🌌야간">{currentMonthNum}월 {selectedDay}일 근태 선택</th>
+                              <th className="py-1.5 px-0.5 sm:px-1.5 text-center" title="[근태 선택] 🟢출근·🌴연차·❌결근·선택없음 (탭 순환) | ⚡잔업(+2H~) | 🌙특근·🌌야간 (탭 변환)">{currentMonthNum}월 {selectedDay}일 근태 선택</th>
                               <th className="py-1.5 px-1 text-center w-10 sm:w-12">잔업</th>
                               <th className="py-1.5 px-0.5 text-center w-6 sm:w-7"></th>
                             </tr>
@@ -2943,16 +2943,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     {cleanWorkerName}
                                   </td>
 
-                                  {/* 근태 선택 항목: 1) [🟢 출근 / 🌴 연차 / ❌ 결근] 탭 변환, 2) [⚡ 잔업 (+⏱️)], 3) [🌙 특근 / 🌌 야간] 묶음 */}
+                                  {/* 근태 선택 항목: 1) [🟢 출근 / 🌴 연차 / ❌ 결근 / 선택없음] 탭 변환, 2) [⚡ 잔업 (+⏱️)], 3) [🌙 특근 or 🌌 야간] 단일 표시 */}
                                   <td className="py-1 px-0.5 sm:px-1 text-center whitespace-nowrap">
                                     <div className="flex items-center justify-center gap-1">
-                                      {isUnselected && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-amber-950 text-amber-300 border border-amber-800/80 shrink-0 animate-pulse">
-                                          미선택
-                                        </span>
-                                      )}
-
-                                      {/* 1. 🟢 출근 / 🌴 연차 / ❌ 결근 (1개 묶음 버튼 - 탭할 때 순환 변환) */}
+                                      {/* 1. 🟢 출근 / 🌴 연차 / ❌ 결근 / 선택없음 (1개 묶음 버튼 - 탭할 때 순환 변환) */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2962,7 +2956,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                           } else if (strVal === "연차" || strVal.includes("연차")) {
                                             next = "결근";
                                           } else if (strVal === "결근" || strVal === "휴무" || strVal === "-" || strVal.includes("결근")) {
-                                            next = "정시";
+                                            next = ""; // 선택없음 (해제)
                                           } else {
                                             next = "정시";
                                           }
@@ -2974,8 +2968,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                             : (strVal === "연차" || strVal.includes("연차"))
                                             ? "연차 휴가 (0H) [탭: ❌ 결근으로 변환]"
                                             : (strVal === "결근" || strVal === "휴무" || strVal === "-" || strVal.includes("결근"))
-                                            ? "결근/휴무 (0H) [탭: 🟢 출근으로 변환]"
-                                            : "출근/연차/결근 (탭 순환: 🟢 출근 ➔ 🌴 연차 ➔ ❌ 결근)"
+                                            ? "결근/휴무 (0H) [탭: 선택없음(해제)으로 변환]"
+                                            : "출근/연차/결근/선택없음 (탭 순환: 🟢 출근 ➔ 🌴 연차 ➔ ❌ 결근 ➔ 선택없음)"
                                         }
                                         className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                           (strVal === "정시" || strVal === "🟢" || strVal === "17" || strVal === "출근")
@@ -2984,14 +2978,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                             ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400 scale-102"
                                             : (strVal === "결근" || strVal === "휴무" || strVal === "-" || strVal.includes("결근"))
                                             ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400 scale-102"
-                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                                            : isUnselected
+                                            ? "bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-700/80 font-bold"
+                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700"
                                         }`}
                                       >
-                                        {(strVal === "연차" || strVal.includes("연차"))
+                                        {(strVal === "정시" || strVal === "🟢" || strVal === "17" || strVal === "출근")
+                                          ? "🟢 출근"
+                                          : (strVal === "연차" || strVal.includes("연차"))
                                           ? "🌴 연차"
                                           : (strVal === "결근" || strVal === "휴무" || strVal === "-" || strVal.includes("결근"))
                                           ? "❌ 결근"
-                                          : "🟢 출근"}
+                                          : (ot > 0 || strVal.includes("잔업") || strVal === "19" || strVal === "21" || strVal === "22")
+                                          ? "🟢 출근"
+                                          : "선택없음"}
                                       </button>
 
                                       {/* 2. ⚡ 잔업 (8H + 잔업시간, 원클릭 순환 및 ⏱️직접입력) */}
@@ -3029,39 +3029,37 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         </button>
                                       </div>
 
-                                      {/* 3. 🌙 특근 & 🌌 야간 (묶음 배치 - 공간 확보) */}
-                                      <div className="inline-flex rounded-lg shadow-xs overflow-hidden border border-slate-700">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const next = (strVal === "특근" || strVal === "주말특근" || strVal.includes("특근")) ? "" : "특근";
-                                            handleUpdateWorkerDayAttendance(worker, next);
-                                          }}
-                                          title="주말 및 휴일 특근 (8H)"
-                                          className={`px-1.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                                            strVal === "특근" || strVal === "주말특근" || strVal.includes("특근")
-                                              ? "bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-400 scale-102"
-                                              : "bg-slate-800/80 hover:bg-slate-700 text-slate-300"
-                                          }`}
-                                        >
-                                          🌙 특근
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const next = (strVal === "야간" || strVal.includes("야간")) ? "" : "야간";
-                                            handleUpdateWorkerDayAttendance(worker, next);
-                                          }}
-                                          title="야간 근무 (8H, 야간가산)"
-                                          className={`px-1.5 py-1 text-xs font-bold transition-all cursor-pointer border-l border-slate-700 ${
-                                            strVal === "야간" || strVal.includes("야간")
-                                              ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400 scale-102"
-                                              : "bg-slate-800/80 hover:bg-slate-700 text-slate-300"
-                                          }`}
-                                        >
-                                          🌌 야간
-                                        </button>
-                                      </div>
+                                      {/* 3. 🌙 특근 / 🌌 야간 (단일 버튼 - 둘 중 하나만 표시, 탭 순환 변환) */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          let next = "특근";
+                                          if (strVal === "특근" || strVal === "주말특근" || strVal.includes("특근")) {
+                                            next = "야간";
+                                          } else if (strVal === "야간" || strVal.includes("야간")) {
+                                            next = ""; // 선택없음 (해제)
+                                          } else {
+                                            next = "특근";
+                                          }
+                                          handleUpdateWorkerDayAttendance(worker, next);
+                                        }}
+                                        title={
+                                          (strVal === "특근" || strVal === "주말특근" || strVal.includes("특근"))
+                                            ? "주말/휴일 특근 (8H) [탭: 🌌 야간으로 변환]"
+                                            : (strVal === "야간" || strVal.includes("야간"))
+                                            ? "야간 근무 (8H, 야간가산) [탭: 선택없음(해제)으로 변환]"
+                                            : "특근/야간 (탭 순환: 🌙 특근 ➔ 🌌 야간 ➔ 선택없음)"
+                                        }
+                                        className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                          (strVal === "특근" || strVal === "주말특근" || strVal.includes("특근"))
+                                            ? "bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-400 scale-102"
+                                            : (strVal === "야간" || strVal.includes("야간"))
+                                            ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400 scale-102"
+                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                                        }`}
+                                      >
+                                        {(strVal === "야간" || strVal.includes("야간")) ? "🌌 야간" : "🌙 특근"}
+                                      </button>
                                     </div>
                                   </td>
 
