@@ -284,18 +284,10 @@ export const COMPANY_THEMES = {
 };
 
 export const ATTENDANCE_OPTIONS = [
-  { code: "🟢", label: "🟢 정시 (8H, 잔업0H)", shortLabel: "정시", otHours: 0, workHours: 8, bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300" },
-  { code: "19", label: "🟡 19시 (+2H 잔업, 10H)", shortLabel: "19시(+2H)", otHours: 2, workHours: 10, bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300" },
-  { code: "21", label: "🟠 21시 (+4H 잔업, 12H)", shortLabel: "21시(+4H)", otHours: 4, workHours: 12, bg: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border-orange-300" },
-  { code: "22", label: "🔴 22시 (+5H 잔업, 13H)", shortLabel: "22시(+5H)", otHours: 5, workHours: 13, bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300" },
-  { code: "특근", label: "🌙 주말특근 (8H, 특근)", shortLabel: "주말특근", otHours: 8, workHours: 8, bg: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-300" },
-  { code: "야간", label: "🌌 야간근무 (8H, 야간)", shortLabel: "야간근무", otHours: 0, workHours: 8, bg: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300" },
-  { code: "주야", label: "⚡ 주야맞교대 (+4H, 12H)", shortLabel: "주야교대", otHours: 4, workHours: 12, bg: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300" },
-  { code: "-", label: "- 휴무/공휴일 (0H)", shortLabel: "휴무", otHours: 0, workHours: 0, bg: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-300" },
-  { code: "휴가", label: "🏖️ 휴가 (휴무, 0H)", shortLabel: "휴가", otHours: 0, workHours: 0, bg: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300" },
-  { code: "연차", label: "🌴 연차휴가 (휴무, 0H)", shortLabel: "연차", otHours: 0, workHours: 0, bg: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300" },
-  { code: "반차", label: "⛅ 오전/오후 반차 (4H)", shortLabel: "반차", otHours: 0, workHours: 4, bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300" },
-  { code: "결근", label: "❌ 결근/무단결근 (0H)", shortLabel: "결근", otHours: 0, workHours: 0, bg: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border-red-300" }
+  { code: "정시", label: "🟢 출근 (정시, 8H)", shortLabel: "정시", otHours: 0, workHours: 8, bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300" },
+  { code: "잔업", label: "⚡ 잔업 (8H + 잔업)", shortLabel: "잔업", otHours: 2, workHours: 10, bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300" },
+  { code: "특근", label: "🌙 특근 (주말/휴일, 8H)", shortLabel: "특근", otHours: 8, workHours: 8, bg: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-300" },
+  { code: "결근", label: "❌ 결근/휴무 (0H)", shortLabel: "결근/휴무", otHours: 0, workHours: 0, bg: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-300" }
 ];
 
 export const getOptionMeta = (code) => {
@@ -303,29 +295,22 @@ export const getOptionMeta = (code) => {
   const strCode = String(code).trim();
   const found = ATTENDANCE_OPTIONS.find((o) => o.code === strCode);
   if (found) return found;
-  if (strCode === "정시" || strCode === "17" || strCode === "🟢" || strCode.includes("정시")) return ATTENDANCE_OPTIONS[0];
-  if (strCode === "19시" || strCode === "19" || strCode.includes("19")) return ATTENDANCE_OPTIONS[1];
-  if (strCode === "21시" || strCode === "21" || strCode.includes("21")) return ATTENDANCE_OPTIONS[2];
-  if (strCode === "22시" || strCode === "22" || strCode.includes("22")) return ATTENDANCE_OPTIONS[3];
-  if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) return ATTENDANCE_OPTIONS[4];
-  if (strCode === "야간" || strCode.includes("야간")) return ATTENDANCE_OPTIONS[5];
-  if (strCode === "주야" || strCode.includes("주야")) return ATTENDANCE_OPTIONS[6];
-  if (strCode === "-" || strCode === "휴무" || strCode === "미출근" || strCode.includes("미출근")) return ATTENDANCE_OPTIONS[7];
-  if (strCode === "휴가" || strCode.includes("휴가")) return ATTENDANCE_OPTIONS[8];
-  if (strCode === "연차" || strCode.includes("연차")) return ATTENDANCE_OPTIONS[9];
-  if (strCode === "반차" || strCode.includes("반차")) return ATTENDANCE_OPTIONS[10];
-  if (
-    strCode === "결근" ||
-    strCode.includes("결근") ||
-    strCode === "병결" ||
-    strCode.includes("병결") ||
-    strCode === "사결" ||
-    strCode.includes("사결") ||
-    strCode === "공결" ||
-    strCode.includes("공결") ||
-    strCode === "병가" ||
-    strCode.includes("병가")
-  ) return ATTENDANCE_OPTIONS[11];
+  if (strCode === "정시" || strCode === "17" || strCode === "🟢" || strCode.includes("정시") || strCode === "출근") return ATTENDANCE_OPTIONS[0];
+  if (strCode.includes("잔업") || strCode === "19" || strCode === "19시" || strCode === "21" || strCode === "21시" || strCode === "22" || strCode === "22시" || strCode === "야간" || strCode === "주야") {
+    const { weekdayOt, workHours } = calculateWorkerDailyHours(strCode);
+    return {
+      code: strCode,
+      label: `⚡ 잔업 (+${weekdayOt}H, 총${workHours}H)`,
+      shortLabel: weekdayOt > 0 ? `잔업(+${weekdayOt}H)` : "잔업",
+      otHours: weekdayOt,
+      workHours,
+      bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300"
+    };
+  }
+  if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) return ATTENDANCE_OPTIONS[2];
+  if (strCode === "-" || strCode === "휴무" || strCode === "미출근" || strCode.includes("미출근") || strCode === "결근" || strCode.includes("결근") || strCode === "연차" || strCode.includes("연차") || strCode === "휴가" || strCode === "반차") {
+    return ATTENDANCE_OPTIONS[3];
+  }
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
 };
 
@@ -373,6 +358,12 @@ export const calculateWorkerDailyHours = (code) => {
   if (strCode === "🟢" || strCode === "정시" || strCode === "17" || strCode.includes("정시") || strCode.includes("🟢") || strCode === "출근") {
     return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 8 };
   }
+  // Custom overtime direct hours: e.g. 잔업(+3H), 잔업(3), 잔업3, 잔업+2, etc.
+  const customOtMatch = strCode.match(/잔업\s*\(?\+?(\d+(?:\.\d+)?)\s*H?\)?/i);
+  if (customOtMatch) {
+    const otH = parseFloat(customOtMatch[1]) || 2;
+    return { isAttended: true, weekdayOt: otH, weekendOt: 0, nightDay: 0, workHours: 8 + otH };
+  }
   if (strCode === "19" || strCode === "19시" || strCode.includes("19")) {
     return { isAttended: true, weekdayOt: 2, weekendOt: 0, nightDay: 0, workHours: 10 };
   }
@@ -383,13 +374,18 @@ export const calculateWorkerDailyHours = (code) => {
     return { isAttended: true, weekdayOt: 5, weekendOt: 0, nightDay: 0, workHours: 13 };
   }
   if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) {
-    return { isAttended: true, weekdayOt: 0, weekendOt: 8, nightDay: 0, workHours: 8 };
+    const customSpMatch = strCode.match(/특근\s*\(?\+?(\d+(?:\.\d+)?)\s*H?\)?/i);
+    const spH = customSpMatch ? (parseFloat(customSpMatch[1]) || 8) : 8;
+    return { isAttended: true, weekdayOt: 0, weekendOt: spH, nightDay: 0, workHours: spH };
   }
   if (strCode === "야간" || strCode.includes("야간")) {
     return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 1, workHours: 8 };
   }
   if (strCode === "주야" || strCode.includes("주야")) {
     return { isAttended: true, weekdayOt: 4, weekendOt: 0, nightDay: 1, workHours: 12 };
+  }
+  if (strCode === "잔업") {
+    return { isAttended: true, weekdayOt: 2, weekendOt: 0, nightDay: 0, workHours: 10 };
   }
   return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 8 };
 };
@@ -1159,6 +1155,7 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
 
       const changedAudits = [];
       let existingAuditLogs = [];
+      let existingApprovalStatus = {};
 
       // Concurrency protection & audit diffing: merge with remote doc so one company never wipes out another company's attendance
       try {
@@ -1166,6 +1163,9 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
         if (cloudSnap.exists()) {
           const cloudData = cloudSnap.data();
           existingAuditLogs = Array.isArray(cloudData?.recentAuditLogs) ? cloudData.recentAuditLogs : [];
+          existingApprovalStatus = (cloudData && typeof cloudData.companyApprovalStatus === "object" && cloudData.companyApprovalStatus !== null)
+            ? cloudData.companyApprovalStatus
+            : {};
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
             mergedMatrix = mergedMatrix.map((localW) => {
               const cloudW = cloudData.attendanceMatrix.find(
@@ -1274,6 +1274,11 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
 
       const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 100);
 
+      const mergedApprovalStatus = {
+        ...existingApprovalStatus,
+        ...(normalizedData.companyApprovalStatus || {})
+      };
+
       await setDoc(
         ref,
         sanitizeForFirestore({
@@ -1281,6 +1286,7 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
           month: normalizedData.month || parseInt(ym.split("-")[1], 10) || 10,
           masterWorkers: normalizedData.masterWorkers || [],
           attendanceMatrix: mergedMatrix,
+          companyApprovalStatus: mergedApprovalStatus,
           recentAuditLogs: updatedAuditLogs,
           updatedAt: new Date().toISOString()
         }),
@@ -1288,7 +1294,7 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
       );
 
       // Immediately keep local storage & runtime listeners in sync with mergedMatrix
-      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix, recentAuditLogs: updatedAuditLogs };
+      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix, companyApprovalStatus: mergedApprovalStatus, recentAuditLogs: updatedAuditLogs };
       localStorage.setItem(key, JSON.stringify(finalData));
       if (ym === "2026-09" || ym === "2026_09") {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
@@ -1302,6 +1308,35 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
     console.error("Failed to save smart overtime data:", err);
     return false;
   }
+};
+
+export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, day, statusData) => {
+  const cleanComp = cleanCompanyName(company);
+  const approvalKey = `${cleanComp}_${day}`;
+  const currentStatusMap = currentLedger?.companyApprovalStatus || {};
+  const updatedStatusMap = {
+    ...currentStatusMap,
+    [approvalKey]: {
+      company: cleanComp,
+      day: Number(day),
+      ...statusData,
+      updatedAt: new Date().toISOString()
+    }
+  };
+  const updatedLedger = {
+    ...currentLedger,
+    companyApprovalStatus: updatedStatusMap
+  };
+  await saveSmartOvertimeData(updatedLedger, ym, {
+    targetCompany: cleanComp,
+    targetDay: day,
+    auditMeta: {
+      operator: statusData.operator || statusData.submittedBy || statusData.approvedBy || "관리자",
+      source: "APPROVAL_STATUS_UPDATE",
+      reason: `${cleanComp} Day ${day} 결재 상태: ${statusData.status}`
+    }
+  });
+  return updatedLedger;
 };
 
 export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => {
