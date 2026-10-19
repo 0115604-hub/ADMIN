@@ -74,13 +74,104 @@ export const KOREAN_PUBLIC_HOLIDAYS_2026 = new Set([
   "2026-03-01", "2026-03-02", // 삼일절 및 대체공휴일
   "2026-05-05", // 어린이날
   "2026-05-24", "2026-05-25", // 부처님오신날 및 대체공휴일
+  "2026-06-03", // 제9회 전국동시지방선거
   "2026-06-06", // 현충일
   "2026-08-15", "2026-08-17", // 광복절 및 대체공휴일
-  "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", // 추석 연휴
+  "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", // 추석 연휴 및 대체공휴일
   "2026-10-03", "2026-10-05", // 개천절 및 대체공휴일
   "2026-10-09", // 한글날
   "2026-12-25"  // 성탄절
 ]);
+
+export const KOREAN_HOLIDAY_NAMES_2026 = {
+  "2026-01-01": "신정",
+  "2026-02-16": "설날 전날",
+  "2026-02-17": "설날",
+  "2026-02-18": "설날 다음날",
+  "2026-03-01": "3·1절",
+  "2026-03-02": "3·1절 대체공휴일",
+  "2026-05-05": "어린이날",
+  "2026-05-24": "부처님오신날",
+  "2026-05-25": "부처님오신날 대체공휴일",
+  "2026-06-03": "지방선거",
+  "2026-06-06": "현충일",
+  "2026-08-15": "광복절",
+  "2026-08-17": "광복절 대체공휴일",
+  "2026-09-24": "추석 전날",
+  "2026-09-25": "추석",
+  "2026-09-26": "추석 다음날",
+  "2026-09-27": "추석 대체공휴일",
+  "2026-10-03": "개천절",
+  "2026-10-05": "개천절 대체공휴일",
+  "2026-10-09": "한글날",
+  "2026-12-25": "성탄절"
+};
+
+export const getKoreanHolidayInfo = (dateStrOrDay, year = 2026, month = 10) => {
+  let y = Number(year) || 2026;
+  let m = Number(month) || 10;
+  let d = null;
+
+  if (typeof dateStrOrDay === "number") {
+    d = dateStrOrDay;
+  } else if (dateStrOrDay) {
+    const rawStr = String(dateStrOrDay).trim();
+    const p = rawStr.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (p) {
+      y = parseInt(p[1], 10);
+      m = parseInt(p[2], 10);
+      d = parseInt(p[3], 10);
+    } else {
+      const mMatch = rawStr.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+      if (mMatch) {
+        if (mMatch[1]) y = parseInt(mMatch[1], 10);
+        m = parseInt(mMatch[2], 10);
+        d = parseInt(mMatch[3], 10);
+      }
+    }
+  }
+
+  if (!d) {
+    return {
+      isHoliday: false,
+      holidayName: "",
+      isWeekend: false,
+      isOffDay: false,
+      dayOfWeek: -1,
+      dayOfWeekStr: "",
+      fullLabel: "",
+      ymd: ""
+    };
+  }
+
+  const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const holidayName = KOREAN_HOLIDAY_NAMES_2026[ymd] || "";
+  const isHoliday = !!holidayName;
+
+  const dt = new Date(y, m - 1, d);
+  const dayOfWeek = !isNaN(dt.getTime()) ? dt.getDay() : -1;
+  const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dayOfWeekStr = dayOfWeek >= 0 ? dayOfWeekNames[dayOfWeek] : "";
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  let fullLabel = `${m}월 ${d}일 (${dayOfWeekStr}요일)`;
+  if (isHoliday) {
+    fullLabel += ` 🔴 [${holidayName}]`;
+  } else if (isWeekend) {
+    fullLabel += ` [${dayOfWeekStr === "일" ? "일요특근" : "토요특근"}]`;
+  }
+
+  return {
+    isHoliday,
+    holidayName,
+    isWeekend,
+    isOffDay: isHoliday || isWeekend,
+    dayOfWeek,
+    dayOfWeekStr,
+    fullLabel,
+    ymd
+  };
+};
 
 export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
   if (typeof dateStrOrDay === "number") {

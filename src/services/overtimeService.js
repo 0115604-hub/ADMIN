@@ -20,8 +20,13 @@ import {
   cleanCompanyName,
   cleanWorkerNameOnly,
   getFirestoreDocIdForMonth,
-  getStorageKeyForMonth
+  getStorageKeyForMonth,
+  KOREAN_PUBLIC_HOLIDAYS_2026,
+  KOREAN_HOLIDAY_NAMES_2026,
+  getKoreanHolidayInfo
 } from "./overtimeSmartService";
+
+export { KOREAN_PUBLIC_HOLIDAYS_2026, KOREAN_HOLIDAY_NAMES_2026, getKoreanHolidayInfo };
 
 const COLLECTION_NAME = "overtime_reports";
 const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v7_company_reports";
@@ -42,20 +47,6 @@ export const getPlantForCompany = (companyName) => {
   return "한림공장";
 };
 
-// ⭐ 2026년 대한민국 법정 공휴일 (설날, 추석, 개천절 대체공휴일 등 법정 공휴일 특근)
-export const KOREAN_PUBLIC_HOLIDAYS_2026 = new Set([
-  "2026-01-01", // 신정
-  "2026-02-16", "2026-02-17", "2026-02-18", // 설날 연휴
-  "2026-03-01", "2026-03-02", // 삼일절 및 대체공휴일
-  "2026-05-05", // 어린이날
-  "2026-05-24", "2026-05-25", // 부처님오신날 및 대체공휴일
-  "2026-06-06", // 현충일
-  "2026-08-15", "2026-08-17", // 광복절 및 대체공휴일
-  "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", // 추석 연휴 (9/24 목 ~ 9/27 일)
-  "2026-10-03", "2026-10-05", // 개천절(토) 및 대체공휴일(월 - 10/5)
-  "2026-10-09", // 한글날(금)
-  "2026-12-25"  // 성탄절
-]);
 
 // ⭐ Precise Date & Weekend/Holiday Overtime Helpers (토·일 주말 및 법정 공휴일은 특근으로 판정, 일반 평일은 100% 정상 근태)
 export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {

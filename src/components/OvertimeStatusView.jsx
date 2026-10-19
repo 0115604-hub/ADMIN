@@ -95,7 +95,9 @@ import {
   normalizeDept,
   ensureAllCompaniesPresent,
   buildMatrixFromReports,
-  reconcileMatrixWithReports
+  reconcileMatrixWithReports,
+  getKoreanHolidayInfo,
+  KOREAN_HOLIDAY_NAMES_2026
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
@@ -2136,17 +2138,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
   }, [effectiveMatrix, legacyReports, selectedDay, currentYear, currentMonthNum]);
 
-  // Filtered attendance rows for Daily Input and Summary tabs (회사별 1번부터 시작하는 순번 부여)
+  // Filtered attendance rows for Daily Input and Summary tabs (인사카드 마스터 기준 부서/직위/공정 100% 동기화)
   const filteredAttendanceWorkers = useMemo(() => {
     const compCounters = {};
     const matrixWithCompanyNo = (effectiveMatrix || []).map((w, originalIdx) => {
       const c = cleanCompanyName(w.company);
       compCounters[c] = (compCounters[c] || 0) + 1;
+      const cardKey = `${c}_${w.name}`;
+      const existingSavedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
+      const card = existingSavedCard
+        ? getWorkerPersonnelCard({ ...w, personnelCard: existingSavedCard }, compCounters[c])
+        : getWorkerPersonnelCard(w, compCounters[c]);
       return {
         ...w,
-        dept: normalizeDept(w.dept),
+        dept: card.dept || normalizeDept(w.dept),
+        position: card.position || w.position || "사원",
+        mainProcess: card.mainProcess || w.mainProcess || "",
+        empNo: card.empNo || w.empNo || "",
+        skillLevel: card.skillLevel || 1,
+        isMultiSkill: card.isMultiSkill || false,
         companyNo: compCounters[c],
-        originalMatrixIndex: originalIdx
+        originalMatrixIndex: originalIdx,
+        personnelCard: card,
+        card
       };
     });
 
@@ -2161,7 +2175,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       if (compDiff !== 0) return compDiff;
       return (a.companyNo || 0) - (b.companyNo || 0);
     });
-  }, [effectiveMatrix, selectedCompanyFilter]);
+  }, [effectiveMatrix, personnelCardsMap, selectedCompanyFilter]);
 
   // 🚨 미입력/누락된 근태 작업자 실시간 집계 (선택된 일자 및 조회 대상 기준)
   const missingAttendanceWorkers = useMemo(() => {
@@ -2173,7 +2187,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
   }, [filteredAttendanceWorkers, selectedDay]);
 
-  // Data for Company Popup Modal (간결화)
+  // Data for Company Popup Modal (인사카드 동기화)
   const popupCompanyData = useMemo(() => {
     if (!selectedCompanyPopup) return null;
     const company = selectedCompanyPopup;
@@ -2194,11 +2208,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
 
     const workers = (effectiveMatrix || [])
-      .map((w, originalMatrixIndex) => ({
-        ...w,
-        dept: normalizeDept(w.dept),
-        originalMatrixIndex
-      }))
+      .map((w, originalMatrixIndex) => {
+        const c = cleanCompanyName(w.company);
+        const cardKey = `${c}_${w.name}`;
+        const savedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
+        const card = savedCard
+          ? getWorkerPersonnelCard({ ...w, personnelCard: savedCard }, originalMatrixIndex + 1)
+          : getWorkerPersonnelCard(w, originalMatrixIndex + 1);
+        return {
+          ...w,
+          dept: card.dept || normalizeDept(w.dept),
+          position: card.position || w.position || "사원",
+          originalMatrixIndex,
+          personnelCard: card,
+          card
+        };
+      })
       .filter((w) => cleanCompanyName(w.company) === cleanComp)
       .map((w, cIdx) => ({
         ...w,
@@ -2210,7 +2235,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       breakdown,
       workers
     };
-  }, [selectedCompanyPopup, dailySummary, effectiveMatrix, selectedDay]);
+  }, [selectedCompanyPopup, dailySummary, effectiveMatrix, selectedDay, personnelCardsMap]);
 
   // Real-time Plant Summary for the Selected Upcoming Weekend
   const weekendPlantSummary = useMemo(() => {
@@ -2600,11 +2625,24 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     onChange={(e) => setSelectedDay(Number(e.target.value))}
                     className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-cyan-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40 rounded-xl px-3 py-1.5 cursor-pointer shadow-inner"
                   >
-                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={d} className="bg-slate-900 text-white font-bold py-1">
-                        {currentYear}년 {currentMonthNum}월 {d}일 ({getDayFullLabel(d)})
-                      </option>
-                    ))}
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
+                      const hInfo = getKoreanHolidayInfo(d, currentYear, currentMonthNum);
+                      return (
+                        <option
+                          key={d}
+                          value={d}
+                          className={`py-1 font-bold ${
+                            hInfo.isHoliday
+                              ? "bg-rose-950 text-rose-300 font-black"
+                              : hInfo.isWeekend
+                              ? "bg-purple-950 text-purple-200"
+                              : "bg-slate-900 text-white"
+                          }`}
+                        >
+                          {currentYear}년 {currentMonthNum}월 {d}일 ({getDayFullLabel(d)}){hInfo.isHoliday ? ` 🔴 [${hInfo.holidayName}]` : hInfo.isWeekend ? ` 🌙 [${hInfo.dayOfWeekStr}요특근]` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -2815,26 +2853,42 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <span className="text-xs font-bold text-slate-500">
                   (총 {filteredAttendanceWorkers.length}명)
                 </span>
-                {isWeekendDay(selectedDay) ? (
-                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-700/80 flex items-center gap-1">
-                    <span>🌙 주말/특근일 (특근 투입자만 선택)</span>
-                  </span>
-                ) : missingAttendanceWorkers.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleSetMissingWorkersRegular}
-                    className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse cursor-pointer shadow-xs active:scale-95 transition-all"
-                    title="클릭 시 미선택 인원만 정시(🟢)로 채웁니다 (기존 잔업/야간/결근 인원 보존)"
-                  >
-                    <AlertTriangle className="w-3 h-3 text-amber-400" />
-                    <span>미선택 {missingAttendanceWorkers.length}명 (클릭 시 미선택자만 정시 입력)</span>
-                  </button>
-                ) : (
-                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-700/80 flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-400" />
-                    <span>전원 입력완료</span>
-                  </span>
-                )}
+                {(() => {
+                  const hInfo = getKoreanHolidayInfo(selectedDay, currentYear, currentMonthNum);
+                  if (hInfo.isHoliday) {
+                    return (
+                      <span className="text-xs font-black px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-700/80 flex items-center gap-1 shadow-xs">
+                        <span>🔴 대한민국 법정공휴일 [{hInfo.holidayName}] (특근 투입자만 선택)</span>
+                      </span>
+                    );
+                  }
+                  if (hInfo.isWeekend) {
+                    return (
+                      <span className="text-xs font-black px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-700/80 flex items-center gap-1 shadow-xs">
+                        <span>🌙 주말 [{hInfo.dayOfWeekStr}요일] 특근일 (특근 투입자만 선택)</span>
+                      </span>
+                    );
+                  }
+                  if (missingAttendanceWorkers.length > 0) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={handleSetMissingWorkersRegular}
+                        className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse cursor-pointer shadow-xs active:scale-95 transition-all"
+                        title="클릭 시 미선택 인원만 정시(🟢)로 채웁니다 (기존 잔업/야간/결근 인원 보존)"
+                      >
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                        <span>미선택 {missingAttendanceWorkers.length}명 (클릭 시 미선택자만 정시 입력)</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-700/80 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span>전원 입력완료</span>
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <button
@@ -2861,7 +2915,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   }
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  <span>{isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 정시전체선택"}</span>
+                  <span>
+                    {(() => {
+                      const hInfo = getKoreanHolidayInfo(selectedDay, currentYear, currentMonthNum);
+                      if (hInfo.isHoliday) return `🔴 ${hInfo.holidayName} 특근전체`;
+                      if (hInfo.isWeekend) return "🌙 특근전체선택";
+                      return "🟢 정시전체선택";
+                    })()}
+                  </span>
                 </button>
               </div>
             </div>
@@ -2887,8 +2948,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <tr className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
                               <th className="py-1.5 px-1 text-center w-7 sm:w-8 text-slate-500 font-mono">No</th>
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-16">업체</th>
-                              <th className="hidden sm:table-cell py-1.5 px-1.5 w-14">부서</th>
-                              <th className="py-1.5 px-1 sm:px-1.5 w-14 sm:w-16">성명</th>
+                              <th className="hidden sm:table-cell py-1.5 px-1.5 w-16">부서</th>
+                              <th className="py-1.5 px-1 sm:px-1.5 w-24 sm:w-28">성명/직위(인사)</th>
                               <th className="py-1.5 px-0.5 sm:px-1.5 text-center" title="[근태 선택] 🟢출근·🌴연차·❌결근·선택없음 (탭 순환) | ⚡잔업(+2H~) | 🌙특근·🌌야간 (탭 변환)">{currentMonthNum}월 {selectedDay}일 근태 선택</th>
                               <th className="py-1.5 px-1 text-center w-10 sm:w-12">잔업</th>
                               <th className="py-1.5 px-0.5 text-center w-6 sm:w-7"></th>
@@ -2931,16 +2992,44 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     </span>
                                   </td>
 
-                                  {/* 부서 (모바일 숨김) */}
+                                  {/* 부서 / 주공정 (인사카드 기준) */}
                                   <td className="hidden sm:table-cell py-1 px-1.5">
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] whitespace-nowrap">
-                                      {worker.dept}
-                                    </span>
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] whitespace-nowrap">
+                                        {worker.dept}
+                                      </span>
+                                      {worker.mainProcess && worker.mainProcess !== worker.dept && (
+                                        <span className="text-[9.5px] font-medium text-slate-400 whitespace-nowrap truncate max-w-[70px]">
+                                          {worker.mainProcess}
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
 
-                                  {/* 성명 (이름만 표시) */}
-                                  <td className="py-1 px-1 sm:px-1.5 font-black text-xs text-slate-900 dark:text-white whitespace-nowrap">
-                                    {cleanWorkerName}
+                                  {/* 성명 / 직위 배지 / 인사카드 빠른 연동 */}
+                                  <td className="py-1 px-1 sm:px-1.5 whitespace-nowrap">
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenPersonnelCard(worker, worker.originalMatrixIndex)}
+                                        className="font-black text-xs text-slate-900 dark:text-white hover:text-cyan-500 hover:underline cursor-pointer flex items-center gap-0.5 text-left group"
+                                        title={`[인사카드 열기] ${worker.company} ${worker.dept} ${cleanWorkerName} ${worker.position || "사원"} (${worker.empNo || "사번미부여"})`}
+                                      >
+                                        <span>{cleanWorkerName}</span>
+                                        <span className="text-[10px] text-purple-400 group-hover:scale-125 transition-transform" title="인사카드 조회/수정">🪪</span>
+                                      </button>
+                                      {worker.position && (
+                                        <span className={`px-1 py-0.2 rounded text-[9.5px] font-bold border ${
+                                          worker.position.includes("책임") || worker.position.includes("팀장")
+                                            ? "bg-purple-950/70 text-purple-300 border-purple-800"
+                                            : worker.position.includes("선임") || worker.position.includes("반장") || worker.position.includes("조장")
+                                            ? "bg-blue-950/70 text-blue-300 border-blue-800"
+                                            : "bg-slate-800 text-slate-400 border-slate-700"
+                                        }`}>
+                                          {worker.position}
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
 
                                   {/* 근태 선택 항목: 1) [🟢 출근 / 🌴 연차 / ❌ 결근 / 선택없음] 탭 변환, 2) [⚡ 잔업 (+⏱️)], 3) [🌙 특근 or 🌌 야간] 단일 표시 */}
@@ -3179,11 +3268,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 onChange={(e) => setSelectedDay(Number(e.target.value))}
                 className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-slate-600 rounded-xl px-3 py-1.5 cursor-pointer"
               >
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d} className="bg-slate-900 text-white font-bold">
-                    {currentMonthNum}월 {d}일 ({getDayFullLabel(d)})
-                  </option>
-                ))}
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
+                  const hInfo = getKoreanHolidayInfo(d, currentYear, currentMonthNum);
+                  return (
+                    <option key={d} value={d} className="bg-slate-900 text-white font-bold">
+                      {currentMonthNum}월 {d}일 ({getDayFullLabel(d)}){hInfo.isHoliday ? ` 🔴 [${hInfo.holidayName}]` : hInfo.isWeekend ? ` 🌙 [${hInfo.dayOfWeekStr}요특근]` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -3354,10 +3446,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             const matrixWithCompanyNo = (activeDataset.attendanceMatrix || []).map((w, originalIdx) => {
               const c = cleanCompanyName(w.company);
               compCounters[c] = (compCounters[c] || 0) + 1;
+              const cardKey = `${c}_${w.name}`;
+              const savedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
+              const card = savedCard
+                ? getWorkerPersonnelCard({ ...w, personnelCard: savedCard }, compCounters[c])
+                : getWorkerPersonnelCard(w, compCounters[c]);
               return {
                 ...w,
+                dept: card.dept || normalizeDept(w.dept),
+                position: card.position || w.position || "사원",
                 companyNo: compCounters[c],
-                originalMatrixIndex: originalIdx
+                originalMatrixIndex: originalIdx,
+                personnelCard: card,
+                card
               };
             });
 
@@ -3576,16 +3677,30 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <th className="hidden sm:table-cell p-2 w-20">부서</th>
                         <th className="p-2 w-20 sticky left-10 sm:left-28 bg-slate-900 z-30">성명</th>
                         {Array.from({ length: matrixDaysInMonth }, (_, i) => i + 1).map((d) => {
-                          const dow = getMatrixDayLabel(d);
+                          const hInfo = getKoreanHolidayInfo(d, matrixYear, matrixMonthNum);
+                          const dow = hInfo.dayOfWeekStr || getMatrixDayLabel(d);
+                          const isHol = hInfo.isHoliday;
                           return (
                             <th
                               key={d}
-                              className={`p-1 text-center w-7 ${
-                                dow === "일" ? "bg-rose-950/80 text-rose-300" : dow === "토" ? "bg-blue-950/80 text-blue-300" : ""
+                              title={isHol ? `🔴 ${hInfo.holidayName} (대한민국 법정공휴일)` : hInfo.isWeekend ? `주말 (${dow}요일)` : `${matrixMonthNum}월 ${d}일 (${dow})`}
+                              className={`p-1 text-center w-7 transition-colors ${
+                                isHol
+                                  ? "bg-rose-900/90 text-rose-200 border-b-2 border-rose-500 font-black cursor-help"
+                                  : dow === "일"
+                                  ? "bg-rose-950/80 text-rose-300"
+                                  : dow === "토"
+                                  ? "bg-blue-950/80 text-blue-300"
+                                  : ""
                               }`}
                             >
-                              <span className="block text-[10px] font-mono leading-tight">{d}</span>
-                              <span className="block text-[8.5px] font-bold opacity-80">{dow}</span>
+                              <span className="block text-[10px] font-mono leading-tight flex items-center justify-center gap-0.5">
+                                {d}
+                                {isHol && <span className="text-[7px] text-rose-400">🔴</span>}
+                              </span>
+                              <span className="block text-[8.5px] font-bold opacity-80">
+                                {isHol ? (hInfo.holidayName.length > 3 ? hInfo.holidayName.slice(0, 2) : hInfo.holidayName) : dow}
+                              </span>
                             </th>
                           );
                         })}
@@ -3603,8 +3718,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                             <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
                             <td className="hidden sm:table-cell p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
-                            <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
-                            <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
+                            <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{w.dept || normalizeDept(w.dept)}</td>
+                            <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">
+                              <div className="flex items-center gap-1">
+                                <span>{cleanWorkerName}</span>
+                                {w.position && (
+                                  <span className={`text-[9.5px] px-1 py-0.2 rounded font-bold border ${
+                                    w.position.includes("책임") || w.position.includes("팀장")
+                                      ? "bg-purple-950/70 text-purple-300 border-purple-800"
+                                      : w.position.includes("선임") || w.position.includes("반장") || w.position.includes("조장")
+                                      ? "bg-blue-950/70 text-blue-300 border-blue-800"
+                                      : "bg-slate-800 text-slate-400 border-slate-700"
+                                  }`}>
+                                    {w.position}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             {Array.from({ length: matrixDaysInMonth }, (_, i) => i + 1).map((d) => {
                               const isWeekend = isMatrixWeekendDay(d);
                               let val = w.daily ? (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)]) : "";
