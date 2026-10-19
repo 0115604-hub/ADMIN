@@ -448,9 +448,9 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ 진행상황 현황표 배너/카드 */}
+        {/* 🎯 첫화면 상단(회사로고/헤더 바로 아래): SQ 진행상황 현황표 배너/카드 (첫화면 worker_dashboard에서만 노출, 요약본/상세보기에서는 삭제) */}
         {/* 🚨 [ADMIN 대시보드 엄격 정책] ADMIN(대표이사/전무)은 1번 SQ 진행상황 배너 표시 제외 (별도 오더 없이 패널 추가 금지) */}
-        {!isAdmin && !isFieldWorkerProfile && activeTab !== "sq_level_up" && (
+        {!isAdmin && !isFieldWorkerProfile && activeTab === "worker_dashboard" && (
           <div className="px-2 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-0">
             <SqStatusBannerCard onOpenSqModal={() => setActiveTab("sq_level_up")} />
           </div>

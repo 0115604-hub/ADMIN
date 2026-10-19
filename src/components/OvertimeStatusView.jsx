@@ -40,6 +40,7 @@ import {
   X,
   FileSpreadsheet,
   ArrowRight,
+  ArrowLeft,
   Sun,
   Moon,
   Zap,
@@ -1158,7 +1159,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return sum + (weekdayOt + weekendOt);
     }, 0);
 
-    const confirmMsg = `📤 [${comp} ${currentMonthNum}월 ${d}일 일일 근태 마감 상신]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H\n\n위 내용으로 마감 상신하시겠습니까?`;
+    const confirmMsg = `📤 [${comp} ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 등록]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H\n\n위 내용으로 등록하시겠습니까?`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsSaving(true);
@@ -1173,7 +1174,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       };
       const updated = await saveCompanyDayApprovalStatus(smartData, selectedMonth || "2026-10", comp, d, statusData);
       setSmartData(updated);
-      triggerToast(`📤 [${comp}] ${currentMonthNum}월 ${d}일 일일 근태가 마감 상신되었습니다.`);
+      triggerToast(`📤 [${comp}] ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 근태가 등록되었습니다.`);
     } catch (err) {
       console.error(err);
       alert("상신 중 오류가 발생했습니다: " + (err?.message || err));
@@ -2337,56 +2338,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40">
                   {currentMonthNum}월 {selectedDay}일 기준
                 </span>
-                {/* ⭐ 미작성 업체 표기 배지 */}
-                {unwrittenCompanies.length > 0 ? (
-                  <span
-                    className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-rose-500/25 text-rose-300 border border-rose-400/60 shrink-0 flex items-center gap-1"
-                    title="당일 근태대장 미작성 협력사 목록입니다."
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping shrink-0" />
-                    <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
-                  </span>
-                ) : (
-                  <span
-                    className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-emerald-500/25 text-emerald-300 border border-emerald-400/60 shrink-0 flex items-center gap-1"
-                    title="5개 협력사 전원 작성 완료되었습니다."
-                  >
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>5개사 전원 작성완료</span>
-                  </span>
-                )}
               </h1>
             </div>
           </div>
 
-          {/* 🧭 3대 뱃지 탭 네비게이션: [⚡ 근태등록] | [📊 상세] | [📑 근태보고서 관리] */}
+          {/* 🧭 탭 네비게이션: [📊 상세] | [📑 근태보고서 관리] */}
           <div className="flex items-center gap-1.5 bg-slate-950/90 p-1 rounded-2xl border border-slate-800 shrink-0 shadow-inner">
-            {/* 1. 근태등록 */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("daily_input")}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                activeTab === "daily_input"
-                  ? "bg-white text-slate-950 shadow-md font-black"
-                  : "bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80"
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>근태등록</span>
-              {hasUnsavedChanges && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-bold animate-pulse">
-                  미저장
-                </span>
-              )}
-            </button>
-
-            {/* 2. 상세 */}
+            {/* 1. 상세 */}
             <button
               type="button"
               onClick={() => {
-                setActiveTab("detail");
-                setDetailSubTab("monthly_matrix");
-                setMatrixViewMonth(prevYearMonth || "2026-09");
+                if (activeTab === "detail" || activeTab === "monthly_matrix" || activeTab === "daily_summary" || activeTab === "worker_management") {
+                  setActiveTab("daily_input");
+                } else {
+                  setActiveTab("detail");
+                  setDetailSubTab("monthly_matrix");
+                  setMatrixViewMonth(prevYearMonth || "2026-09");
+                }
               }}
               className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                 activeTab === "detail" || activeTab === "monthly_matrix" || activeTab === "daily_summary" || activeTab === "worker_management"
@@ -2398,7 +2366,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <span>상세</span>
             </button>
 
-            {/* 3. 근태보고서 관리 */}
+            {/* 2. 근태보고서 관리 */}
             <button
               type="button"
               onClick={() => setActiveTab("legacy_reports")}
@@ -2417,18 +2385,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               }`}>
                 {legacyReports.length}건
               </span>
-            </button>
-
-            {/* 4. 전사 5개사 일괄 정합성 단일 검증 버튼 */}
-            <button
-              type="button"
-              onClick={() => setIsAuditModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/80 transition-all cursor-pointer shadow-md hover:shadow-emerald-950/50 active:scale-95 ml-1"
-              title="오륙, 유성, 조영, 한울, 부림텍 5개 협력사(143명)의 총원, 출근, 공수, 노무비 및 결재 보고서 일치 여부를 단일 기준으로 일괄 동시 검증합니다."
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>전사 5개사 일괄검증</span>
-              <span className="px-1.5 py-0.2 rounded-md bg-emerald-800/80 text-[10px] text-white font-mono font-bold">143명</span>
             </button>
           </div>
         </div>
@@ -2759,10 +2715,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       onClick={handleSubmitCompanyDayAttendance}
                       disabled={isSaving}
                       className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950"
-                      title="당일 근태 입력을 마감하고 관리자에게 최종 승인을 상신합니다."
+                      title="당일 근태 입력을 등록하고 상신합니다."
                     >
                       <Send className="w-4 h-4" />
-                      <span>📤 [{currentComp}] 일일 근태 마감 상신</span>
+                      <span>📤 [{currentComp}] 오늘({getDayLabel(selectedDay)}) 등록</span>
                     </button>
                   );
                 })()}
@@ -3203,6 +3159,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         <div className="space-y-4">
           {/* Sub-Tab Navigation Bar within Detail */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-700/80 w-fit flex-wrap shadow-sm">
+            <button
+              type="button"
+              onClick={() => setActiveTab("daily_input")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs text-cyan-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer border border-cyan-500/30"
+              title="당일 근태 등록 화면으로 이동합니다."
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>오늘 등록으로</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
