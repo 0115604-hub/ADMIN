@@ -362,6 +362,22 @@ export const purgeAllFourMChangePoints = async () => {
  */
 export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부적합경보") => {
   if (!alertItem) return null;
+
+  // 🔒 오픈이슈, 회의일정, 공지사항은 4M 변동점 대장 등록 원천 배제
+  const cat = String(alertItem.category || "").trim();
+  if (
+    cat === "오픈이슈" ||
+    cat === "open_issue" ||
+    cat.includes("오픈이슈") ||
+    cat === "회의일정" ||
+    cat.includes("회의") ||
+    cat === "공지사항" ||
+    cat === "사내공지" ||
+    cat === "공유사항"
+  ) {
+    return null;
+  }
+
   const isHardDelete = Boolean(
     alertItem.hardDelete === true ||
     alertItem.isHardDeleted === true
@@ -471,24 +487,34 @@ export const autoSyncAllQualityIssuesToFourMLedger = async (qualityLists = {}) =
     allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "가공라인", plant: item.plant || "삼랑진공장" });
   });
 
-  // 5. Urgent issues (첫화면 품질경보, 부적합, 결함/이상 오픈이슈 전체)
+  // 5. Urgent issues (오직 관리자 품질경보/부적합경보만 엄선 - 오픈이슈/회의/공지 완전 배제)
   (urgentIssues || []).forEach((item) => {
     if (!item) return;
     const cat = String(item.category || "").trim();
+    if (
+      cat === "오픈이슈" ||
+      cat === "open_issue" ||
+      cat.includes("오픈이슈") ||
+      cat === "회의일정" ||
+      cat.includes("회의") ||
+      cat === "공지사항" ||
+      cat === "사내공지" ||
+      cat === "공유사항"
+    ) {
+      return;
+    }
+
     const title = String(item.title || "").toLowerCase();
     const content = String(item.content || "").toLowerCase();
     const isQuality =
       cat.includes("품질") ||
       cat.includes("부적합") ||
-      cat.includes("오픈이슈") ||
-      cat.includes("open_issue") ||
       item.type === "QUALITY_ALERT" ||
       title.includes("가류조") ||
       title.includes("코팅") ||
       title.includes("클립") ||
       title.includes("불량") ||
       title.includes("이상") ||
-      title.includes("설변") ||
       content.includes("가류조") ||
       content.includes("코팅") ||
       content.includes("클립");

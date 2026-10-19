@@ -331,6 +331,20 @@ export const UnifiedAbnormalityControlPanel = ({
       const isDel = issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true;
 
       const rawCat = String(issue.category || "").trim();
+      // 🔒 오픈이슈, 회의일정, 사내공지는 4M 변동점 관리대장에서 완전 제외
+      if (
+        rawCat === "오픈이슈" ||
+        rawCat === "open_issue" ||
+        rawCat.includes("오픈이슈") ||
+        rawCat === "회의일정" ||
+        rawCat.includes("회의") ||
+        rawCat === "공지사항" ||
+        rawCat === "사내공지" ||
+        rawCat === "공유사항"
+      ) {
+        return;
+      }
+
       const catLower = rawCat.toLowerCase();
       const titleLower = String(issue.title || "").toLowerCase();
       const contentLower = String(issue.content || "").toLowerCase();
@@ -349,7 +363,6 @@ export const UnifiedAbnormalityControlPanel = ({
         rawCat.includes("부적합경보") ||
         rawCat.includes("품질") ||
         rawCat.includes("부적합") ||
-        rawCat.includes("오픈이슈") ||
         issue.type === "QUALITY_ALERT" ||
         issue.type === "품질경보" ||
         titleLower.includes("품질경보") ||
@@ -989,6 +1002,21 @@ export const UnifiedAbnormalityControlPanel = ({
     // -----------------------------------------------------------------------
     (fourMLedgerRecords || []).forEach((rec) => {
       if (!rec) return;
+      const cat = String(rec.category || rec.sourceCategory || rec.raw?.category || "").trim();
+      const origin = String(rec.origin || "").trim();
+      if (
+        cat === "오픈이슈" ||
+        cat === "open_issue" ||
+        cat.includes("오픈이슈") ||
+        origin === "오픈이슈" ||
+        cat === "회의일정" ||
+        cat.includes("회의") ||
+        cat === "공지사항" ||
+        cat === "사내공지"
+      ) {
+        return;
+      }
+
       const recId = String(rec.id || "");
       const origId = String(rec.originalId || "");
       const rawId = String(rec.rawId || "");

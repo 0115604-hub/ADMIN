@@ -412,25 +412,23 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     }
   }
 
-  // 🌟 공식 4M 변동점 대장에 자동 동기화 (품질경보, 부적합, 결함/이상 오픈이슈)
+  // 🌟 공식 4M 변동점 대장에 자동 동기화 (오직 품질경보/부적합경보만 동기화 - 오픈이슈, 회의, 공지 완전 제외)
   const catStr = String(fullItem.category || "").trim();
-  const titleStr = String(fullItem.title || "").toLowerCase();
-  const contentStr = String(fullItem.content || "").toLowerCase();
-  const isQualAlert =
-    catStr.includes("품질") ||
-    catStr.includes("부적합") ||
+  const isOpenIssueOrNotice =
+    catStr === "오픈이슈" ||
+    catStr === "open_issue" ||
     catStr.includes("오픈이슈") ||
-    catStr.includes("open_issue") ||
-    fullItem.type === "QUALITY_ALERT" ||
-    titleStr.includes("가류조") ||
-    titleStr.includes("코팅") ||
-    titleStr.includes("클립") ||
-    titleStr.includes("불량") ||
-    titleStr.includes("이상") ||
-    titleStr.includes("설변") ||
-    contentStr.includes("가류조") ||
-    contentStr.includes("코팅") ||
-    contentStr.includes("클립");
+    catStr === "회의일정" ||
+    catStr.includes("회의") ||
+    catStr === "공지사항" ||
+    catStr === "사내공지" ||
+    catStr === "공유사항";
+
+  const isQualAlert =
+    !isOpenIssueOrNotice &&
+    (catStr.includes("품질") ||
+      catStr.includes("부적합") ||
+      fullItem.type === "QUALITY_ALERT");
 
   if (isQualAlert) {
     try {
