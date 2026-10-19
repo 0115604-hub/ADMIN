@@ -6,7 +6,7 @@ import {
   getDocs,
   onSnapshot
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 
 const COLLECTION_NAME = "four_m_change_points";
 const LOCAL_STORAGE_KEY = "factory_four_m_change_points_v1";
@@ -14,10 +14,12 @@ const LOCAL_STORAGE_KEY = "factory_four_m_change_points_v1";
 // Helper: Read local storage
 export const getLocalFourMChangePoints = () => {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
     }
   } catch (e) {
     console.error("Local storage read error for 4M change points:", e);
@@ -28,7 +30,9 @@ export const getLocalFourMChangePoints = () => {
 // Helper: Save local storage
 export const saveLocalFourMChangePoints = (items) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items || []));
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items || []));
+    }
   } catch (e) {
     console.error("Local storage write error for 4M change points:", e);
   }
@@ -84,29 +88,40 @@ export const determineFourMCategory = (item) => {
 
   const text = `${item.title || ""} ${item.content || ""} ${item.defectType || ""} ${item.details || ""} ${item.line || ""} ${item.origin || ""} ${item.category || ""}`.toLowerCase();
 
-  // 1. Man
+  // 1. Man (결근, 대체투입, 작업자 교체 등 인원 변동)
   if (
     text.includes("결근") ||
-    text.includes("대체") ||
-    text.includes("작업자") ||
-    text.includes("인원") ||
-    text.includes("작업 실수") ||
-    text.includes("휴가") ||
+    text.includes("대체투입") ||
+    text.includes("대체 투입") ||
+    text.includes("인원교체") ||
+    text.includes("작업자교체") ||
+    text.includes("작업자 변경") ||
+    text.includes("작업자변경") ||
+    text.includes("신규 작업자") ||
+    text.includes("신규작업자") ||
     text.includes("신규 투입") ||
-    text.includes("작업자변경")
+    text.includes("신규투입") ||
+    text.includes("작업 실수") ||
+    text.includes("작업자 부주의") ||
+    text.includes("미숙련") ||
+    text.includes("휴가") ||
+    (text.includes("인원") && (text.includes("부족") || text.includes("변동") || text.includes("대체")))
   ) {
     return "Man";
   }
 
-  // 2. Machine (가류조, 온조기, 압출기, 모터, RPM, 설비 등)
+  // 2. Machine (가류조, 온조기, 압출기, 모터, RPM, 설비, 머신 등)
   if (
     text.includes("가류조") ||
     text.includes("온조기") ||
     text.includes("압출기") ||
     text.includes("인취기") ||
+    text.includes("머신기") ||
+    text.includes("머신") ||
     text.includes("설비") ||
     text.includes("기계") ||
     text.includes("금형") ||
+    text.includes("치구") ||
     text.includes("로봇") ||
     text.includes("모터") ||
     text.includes("rpm") ||
@@ -119,7 +134,8 @@ export const determineFourMCategory = (item) => {
     text.includes("보전") ||
     text.includes("단선") ||
     text.includes("누유") ||
-    text.includes("과열")
+    text.includes("과열") ||
+    text.includes("라인정지")
   ) {
     return "Machine";
   }
@@ -146,7 +162,9 @@ export const determineFourMCategory = (item) => {
     text.includes("도포") ||
     text.includes("단면") ||
     text.includes("탄화") ||
-    text.includes("스코치")
+    text.includes("스코치") ||
+    text.includes("nct") ||
+    text.includes("선별")
   ) {
     return "Material";
   }
@@ -344,20 +362,26 @@ export const purgeAllFourMChangePoints = async () => {
  */
 export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부적합경보") => {
   if (!alertItem) return null;
+  const isHardDelete = Boolean(
+    alertItem.hardDelete === true ||
+    alertItem.isHardDeleted === true
+  );
+  const id = String(alertItem.id || alertItem._docId || alertItem.customId || "").trim();
+  const rawId = String(alertItem.rawId || alertItem.id || "").trim();
+
+  // 오직 영구삭제(hard delete)인 경우에만 4M 관리대장에서 영구 제외
+  if (isHardDelete) {
+    await unregisterFromFourMLedger(id);
+    if (rawId && rawId !== id) await unregisterFromFourMLedger(rawId);
+    return null;
+  }
+
   const isDel = Boolean(
     alertItem.isDeleted === true ||
     alertItem.isDeleted === "true" ||
     alertItem.deleted === true ||
     alertItem.status === "DELETED"
   );
-  const id = String(alertItem.id || alertItem._docId || alertItem.customId || "").trim();
-  const rawId = String(alertItem.rawId || alertItem.id || "").trim();
-
-  if (isDel) {
-    await unregisterFromFourMLedger(id);
-    if (rawId && rawId !== id) await unregisterFromFourMLedger(rawId);
-    return null;
-  }
 
   const title = alertItem.title || alertItem.defectType || alertItem.content || "(부적합경보)";
   const fourM = determineFourMCategory(alertItem);
@@ -366,6 +390,7 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
     alertItem.status === "RESOLVED" ||
     alertItem.status === "CLOSED" ||
     alertItem.status === "DONE" ||
+    isDel || // 첫화면에서 관리자가 조치완료 후 종결/삭제한 건은 4M 대장에 '조치완료'로 영구 보존
     (alertItem.actionResult && String(alertItem.actionResult).trim().length > 0)
   );
 
@@ -385,14 +410,14 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
         ? "bg-sky-100 text-sky-900 border-sky-300"
         : "bg-amber-100 text-amber-900 border-amber-300",
     plant: alertItem.plant || (String(alertItem.line || "").includes("한림") || String(alertItem.line || "").includes("한울") ? "한림공장" : "삼랑진공장"),
-    line: alertItem.line || alertItem.lineName || alertItem.project || "품질/제조",
+    line: alertItem.line || alertItem.lineName || alertItem.project || (fourM === "Machine" ? "압출설비라인" : "가공/품질라인"),
     writer: alertItem.author ? `${alertItem.author} ${alertItem.authorTitle || ""}`.trim() : "품질관리자",
     title: title,
     date: alertItem.date || alertItem.targetDate || alertItem.startDate || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
     time: alertItem.time || "",
     content: alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "",
-    actionResult: alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || "",
-    actionAuthor: alertItem.actionAuthor || alertItem.author || "",
+    actionResult: alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || (isResolved ? "조치 및 선별 완료" : ""),
+    actionAuthor: alertItem.actionAuthor || alertItem.author || (isResolved ? "관리자" : ""),
     actionAt: alertItem.actionAt || alertItem.resolvedAt || alertItem.updatedAt || "",
     images: Array.isArray(alertItem.causeImages) ? alertItem.causeImages : (Array.isArray(alertItem.images) ? alertItem.images : []),
     actionImages: Array.isArray(alertItem.actionImages) ? alertItem.actionImages : [],
@@ -446,11 +471,28 @@ export const autoSyncAllQualityIssuesToFourMLedger = async (qualityLists = {}) =
     allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "가공라인", plant: item.plant || "삼랑진공장" });
   });
 
-  // 5. Urgent issues (quality alert category)
+  // 5. Urgent issues (첫화면 품질경보, 부적합, 결함/이상 오픈이슈 전체)
   (urgentIssues || []).forEach((item) => {
     if (!item) return;
     const cat = String(item.category || "").trim();
-    const isQuality = cat.includes("품질") || cat.includes("부적합") || item.type === "QUALITY_ALERT";
+    const title = String(item.title || "").toLowerCase();
+    const content = String(item.content || "").toLowerCase();
+    const isQuality =
+      cat.includes("품질") ||
+      cat.includes("부적합") ||
+      cat.includes("오픈이슈") ||
+      cat.includes("open_issue") ||
+      item.type === "QUALITY_ALERT" ||
+      title.includes("가류조") ||
+      title.includes("코팅") ||
+      title.includes("클립") ||
+      title.includes("불량") ||
+      title.includes("이상") ||
+      title.includes("설변") ||
+      content.includes("가류조") ||
+      content.includes("코팅") ||
+      content.includes("클립");
+
     if (isQuality) {
       allAlerts.push({ ...item, origin: "부적합경보" });
     }

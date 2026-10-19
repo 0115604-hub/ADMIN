@@ -412,6 +412,35 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     }
   }
 
+  // 🌟 공식 4M 변동점 대장에 자동 동기화 (품질경보, 부적합, 결함/이상 오픈이슈)
+  const catStr = String(fullItem.category || "").trim();
+  const titleStr = String(fullItem.title || "").toLowerCase();
+  const contentStr = String(fullItem.content || "").toLowerCase();
+  const isQualAlert =
+    catStr.includes("품질") ||
+    catStr.includes("부적합") ||
+    catStr.includes("오픈이슈") ||
+    catStr.includes("open_issue") ||
+    fullItem.type === "QUALITY_ALERT" ||
+    titleStr.includes("가류조") ||
+    titleStr.includes("코팅") ||
+    titleStr.includes("클립") ||
+    titleStr.includes("불량") ||
+    titleStr.includes("이상") ||
+    titleStr.includes("설변") ||
+    contentStr.includes("가류조") ||
+    contentStr.includes("코팅") ||
+    contentStr.includes("클립");
+
+  if (isQualAlert) {
+    try {
+      const { syncQualityAlertToFourMLedger } = await import("./fourMChangePointService");
+      await syncQualityAlertToFourMLedger(fullItem);
+    } catch (e) {
+      console.warn("syncQualityAlertToFourMLedger in saveUrgentIssue warning:", e);
+    }
+  }
+
   return fullItem;
 };
 
@@ -471,8 +500,9 @@ export const addIssueReply = async (issueId, replyData) => {
           actionImages: newReply.files || [],
           actionAt: newReply.actionDate || nowStr,
           isResolved: true,
-          isDeleted: false,
-          isManuallyRestored: true
+          // 🔒 관리자가 이미 삭제/종결한 건은 삭제 상태(isDeleted: true)를 온전히 유지하여 첫화면 재공지 방지
+          isDeleted: target.isDeleted === true ? true : false,
+          isManuallyRestored: false
         }
       : {})
   };
@@ -652,6 +682,14 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Direct doc deleteDoc fallback:", e);
     }
 
+    // 영구삭제 시 4M 관리대장에서도 영구 제거
+    try {
+      const { unregisterFromFourMLedger } = await import("./fourMChangePointService");
+      await unregisterFromFourMLedger(strId);
+    } catch (e) {
+      console.warn("unregisterFromFourMLedger on hard delete warning:", e);
+    }
+
     return sorted;
   } catch (err) {
     console.error("hardDeleteUrgentIssue error:", err);
@@ -824,8 +862,9 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     actionImages: actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []),
     actionAt: trimmed ? nowStr : "",
     isResolved: Boolean(trimmed),
-    isDeleted: false,
-    isManuallyRestored: true
+    // 🔒 관리자가 이미 삭제/종결한 건은 삭제 상태(isDeleted: true)를 온전히 유지하여 첫화면 재공지 방지
+    isDeleted: target.isDeleted === true ? true : false,
+    isManuallyRestored: false
   };
 
   const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });

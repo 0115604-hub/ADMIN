@@ -324,11 +324,11 @@ export const UnifiedAbnormalityControlPanel = ({
     const unified = [];
 
     // -----------------------------------------------------------------------
-    // 1. [Method] 관리자 품질경보만 취합 (오픈이슈, 회의일정, 사내공지 제외!)
+    // 1. [Method/Machine/Material] 관리자 품질경보 및 부적합/결함 변동점 취합
     // -----------------------------------------------------------------------
     (urgentIssues || []).forEach((issue) => {
       if (!issue) return;
-      if (issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
+      const isDel = issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true;
 
       const rawCat = String(issue.category || "").trim();
       const catLower = rawCat.toLowerCase();
@@ -349,14 +349,21 @@ export const UnifiedAbnormalityControlPanel = ({
         rawCat.includes("부적합경보") ||
         rawCat.includes("품질") ||
         rawCat.includes("부적합") ||
+        rawCat.includes("오픈이슈") ||
         issue.type === "QUALITY_ALERT" ||
         issue.type === "품질경보" ||
         titleLower.includes("품질경보") ||
         titleLower.includes("부적합경보") ||
-        contentLower.includes("품질경보") ||
-        contentLower.includes("부적합경보");
+        titleLower.includes("가류조") ||
+        titleLower.includes("코팅") ||
+        titleLower.includes("클립") ||
+        titleLower.includes("불량") ||
+        titleLower.includes("이상") ||
+        contentLower.includes("가류조") ||
+        contentLower.includes("코팅") ||
+        contentLower.includes("클립");
 
-      if (!isQualityAlert) return; // 품질경보만 엄선 수집
+      if (!isQualityAlert) return; // 품질/부적합 및 결함 이상만 수집
 
       const rawDate =
         issue.date ||
@@ -367,7 +374,7 @@ export const UnifiedAbnormalityControlPanel = ({
       const dateStr = normalizeDateStr(rawDate, todayStr);
 
       const isResolved = Boolean(
-        issue.isResolved || (issue.actionResult && issue.actionResult.trim())
+        issue.isResolved || (issue.actionResult && issue.actionResult.trim()) || isDel
       );
 
       const displayTitle = issue.title || issue.content || "(부적합경보 발령)";
@@ -974,6 +981,71 @@ export const UnifiedAbnormalityControlPanel = ({
             raw: { ...w, personnelCard: card }
           });
         }
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // 6. [4M Ledger] 공식 4M 변동점 관리대장(four_m_change_points) 등록 건 직접 수합
+    // -----------------------------------------------------------------------
+    (fourMLedgerRecords || []).forEach((rec) => {
+      if (!rec) return;
+      const recId = String(rec.id || "");
+      const origId = String(rec.originalId || "");
+      const rawId = String(rec.rawId || "");
+
+      const alreadyExists = unified.some((u) => {
+        const uId = String(u.id || "");
+        const uOrig = String(u.originalId || "");
+        const uRaw = String(u.raw?.id || "");
+        return (
+          uId === recId ||
+          uId === origId ||
+          uId === `urg_${origId}` ||
+          uId === `urg_${recId}` ||
+          (origId && (uOrig === origId || uId === origId || uRaw === origId)) ||
+          (rawId && (uRaw === rawId || uId === rawId || uOrig === rawId)) ||
+          (origId && uId.includes(origId))
+        );
+      });
+
+      if (!alreadyExists) {
+        unified.push({
+          id: recId.startsWith("ledger_") ? recId : `ledger_${recId}`,
+          originalId: origId || recId,
+          rawId: rawId,
+          fourM: rec.fourM || determineFourMCategory(rec),
+          origin: rec.origin || "변동점대장",
+          sourceType: rec.sourceType || "OFFICIAL_LEDGER",
+          badgeColor:
+            rec.badgeColor ||
+            (rec.fourM === "Machine"
+              ? "bg-indigo-100 text-indigo-900 border-indigo-300"
+              : rec.fourM === "Material"
+              ? "bg-rose-100 text-rose-900 border-rose-300"
+              : rec.fourM === "Man"
+              ? "bg-sky-100 text-sky-900 border-sky-300"
+              : "bg-amber-100 text-amber-900 border-amber-300"),
+          plant: rec.plant || "삼랑진공장",
+          line: rec.line || "생산/품질",
+          writer: rec.writer || rec.registeredBy || "관리자",
+          title: rec.title || "(변동점)",
+          date: rec.date || todayStr,
+          time: rec.time || "",
+          content: rec.content || "",
+          actionResult: rec.actionResult || "",
+          actionAuthor: rec.actionAuthor || "",
+          actionAt: rec.actionAt || "",
+          images: Array.isArray(rec.images) ? rec.images : [],
+          actionImages: Array.isArray(rec.actionImages) ? rec.actionImages : [],
+          replies: Array.isArray(rec.replies) ? rec.replies : [],
+          isResolved: Boolean(rec.isResolved),
+          validation: rec.validation || (rec.isResolved ? "조치 및 유효성 확인 완료" : "유효성 검증 대기중"),
+          severity: rec.severity || "NORMAL",
+          downtimeMinutes: Number(rec.downtimeMinutes) || 0,
+          scrapKg: Number(rec.scrapKg) || 0,
+          raw: rec,
+          isOfficialLedger: true
+        });
       }
     });
 

@@ -516,10 +516,13 @@ export const WorkerPinModal = ({
     const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
     const seenAlertIds = new Set();
 
-    // 1-1. 전사 긴급이슈 부적합경보 (Method)
+    // 1-1. 전사 긴급이슈 부적합경보 (Method/Machine/Material)
     (sourceIssues || []).forEach((issue) => {
-      if (!issue || issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
+      if (!issue) return;
+      const isDel = issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true;
       const rawCat = String(issue.category || "").trim();
+      const titleLower = String(issue.title || "").toLowerCase();
+      const contentLower = String(issue.content || "").toLowerCase();
       const isQualityAlert =
         rawCat === "품질경보" ||
         rawCat === "부적합경보" ||
@@ -529,11 +532,18 @@ export const WorkerPinModal = ({
         rawCat === "품질 이슈" ||
         rawCat.includes("품질") ||
         rawCat.includes("부적합") ||
+        rawCat.includes("오픈이슈") ||
         rawCat.toLowerCase().includes("quality") ||
-        String(issue.title || "").includes("품질경보") ||
-        String(issue.title || "").includes("부적합경보") ||
-        String(issue.content || "").includes("품질경보") ||
-        String(issue.content || "").includes("부적합경보") ||
+        titleLower.includes("품질경보") ||
+        titleLower.includes("부적합경보") ||
+        titleLower.includes("가류조") ||
+        titleLower.includes("코팅") ||
+        titleLower.includes("클립") ||
+        titleLower.includes("불량") ||
+        titleLower.includes("이상") ||
+        contentLower.includes("가류조") ||
+        contentLower.includes("코팅") ||
+        contentLower.includes("클립") ||
         issue.type === "QUALITY_ALERT" ||
         issue.type === "품질경보";
 
@@ -559,7 +569,7 @@ export const WorkerPinModal = ({
         content: issue.content || issue.details || "",
         actionResult: issue.actionResult || "",
         date: issue.date || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
-        isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim())),
+        isResolved: Boolean(issue.isResolved || (issue.actionResult && String(issue.actionResult).trim()) || isDel),
         isExtrusion: isExt
       });
     });
@@ -873,10 +883,52 @@ export const WorkerPinModal = ({
       }
     });
 
+    // 1-6. 공식 4M 관리대장(four_m_change_points) 등록 건 직접 수합
+    (fourMLedgerRecords || []).forEach((rec) => {
+      if (!rec) return;
+      const recId = String(rec.id || "");
+      const origId = String(rec.originalId || "");
+      const rawId = String(rec.rawId || "");
+
+      const alreadyExists = unified.some((u) => {
+        const uId = String(u.id || "");
+        const uOrig = String(u.originalId || "");
+        const uRaw = String(u.raw?.id || "");
+        return (
+          uId === recId ||
+          uId === origId ||
+          uId === `urg_${origId}` ||
+          uId === `urg_${recId}` ||
+          (origId && (uOrig === origId || uId === origId || uRaw === origId)) ||
+          (rawId && (uRaw === rawId || uId === rawId || uOrig === rawId)) ||
+          (origId && uId.includes(origId))
+        );
+      });
+
+      if (!alreadyExists) {
+        const lineStr = String(rec.line || "").trim();
+        const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE");
+        unified.push({
+          id: recId.startsWith("ledger_") ? recId : `ledger_${recId}`,
+          fourM: rec.fourM || determineFourMCategory(rec),
+          origin: rec.origin || "변동점대장",
+          plant: rec.plant || "삼랑진공장",
+          line: rec.line || (isExt ? "압출라인" : "가공/품질"),
+          title: rec.title || "(변동점)",
+          content: rec.content || "",
+          actionResult: rec.actionResult || "",
+          date: rec.date || todayKst,
+          isResolved: Boolean(rec.isResolved),
+          isExtrusion: isExt
+        });
+      }
+    });
+
     return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [
     urgentIssues,
     localUrgentIssues,
+    fourMLedgerRecords,
     workLogs,
     extrusionReports,
     extrusionQualityIssues,
