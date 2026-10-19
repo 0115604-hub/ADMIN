@@ -533,62 +533,73 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
     const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
 
-    const { matrix } = reconcileMatrixWithReports(rawMatrix, overtimeReports || [], todayYear, todayMonth);
+    // 🌟 10월 이후는 smart_overtime_ledger가 단일 원천이므로 과거 보고서 보정(reconcile)을 거치지 않음
+    const isNewArchitecture = todayYear > 2026 || (todayYear === 2026 && todayMonth >= 10);
+    const matrix = isNewArchitecture
+      ? rawMatrix
+      : (reconcileMatrixWithReports(rawMatrix, overtimeReports || [], todayYear, todayMonth).matrix || rawMatrix);
+
     const daily = calculateDailySummary(matrix, todayDayNum, todayYear, todayMonth);
     const companyStyles = {
       "오륙": { dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "유성": { dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" },
       "조영": { dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
       "한울": { dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
-      "부림텍": { dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
-      "유성": { dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
+      "부림텍": { dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" }
     };
 
-    const companies = ["오륙", "조영", "한울", "부림텍", "유성"].map((name) => {
+    // ⭐ 순서 표준화: 오륙 -> 유성 -> 조영 -> 한울 -> 부림텍
+    const companies = ["오륙", "유성", "조영", "한울", "부림텍"].map((name) => {
       const styles = companyStyles[name] || companyStyles["오륙"];
       const cleanCompName = cleanCompanyName(name);
       const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
-      const directReport = (overtimeReports || []).find((r) => {
-        if (!r) return false;
-        const rDateKey = getReportDateSortKey(r);
-        if (rDateKey !== todayStr) return false;
-        const rComp = cleanCompanyName(r.company || "");
-        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
-          return rComp === cleanCompName;
-        }
-        if (Array.isArray(r.companies) && r.companies.length > 0) {
-          return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
-        }
-        return false;
-      });
-      const hasDirectReport = Boolean(directReport);
 
+      // 당일 원장 상의 근태 입력 인원수 (단일 진실 원천)
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
         const str = String(v ?? "").trim();
         return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      // 보고서 등록 또는 원장 입력 시 작성완료로 안정적 판정
-      const isWritten = enteredCount > 0 || hasDirectReport;
+      // 1단계 심플 결재 상태 확인 (APPROVED: 마감, SUBMITTED: 상신대기, DRAFT: 작성중)
+      const approvalKey = `${cleanCompName}_${todayDayNum}`;
+      const approvalInfo = smartOvertimeData?.companyApprovalStatus?.[approvalKey] || {};
+      const approvalStatus = approvalInfo.status || "DRAFT";
+
+      const isApproved = approvalStatus === "APPROVED";
+      const isSubmitted = approvalStatus === "SUBMITTED";
+      const isWritten = enteredCount > 0 || isApproved || isSubmitted;
       const shortName = name.replace(/[()주]/g, "");
 
-      const workers = b?.total && b.total > 0 ? b.total : (directReport?.totalWorkers || compWorkers.length);
-      const attended = b && b.attended !== undefined ? b.attended : (directReport?.attendedWorkers ?? enteredCount);
+      const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
+      const attended = b && b.attended !== undefined ? b.attended : enteredCount;
       const absent = b && b.absent !== undefined ? b.absent : Math.max(0, workers - attended);
-      const otWorkers = b && b.otWorkers !== undefined ? b.otWorkers : (directReport?.items ? directReport.items.filter(it => (Number(it.otHours) || 0) > 0).length : 0);
-      const otHours = b && b.otHours !== undefined ? b.otHours : (directReport?.otHours || 0);
-      const totalHours = b && b.totalHours !== undefined ? b.totalHours : (directReport?.totalHours || (attended * 8 + otHours));
+      const otWorkers = b && b.otWorkers !== undefined ? b.otWorkers : 0;
+      const otHours = b && b.otHours !== undefined ? b.otHours : 0;
+      const totalHours = b && b.totalHours !== undefined ? b.totalHours : (attended * 8 + otHours);
 
-      const statusBadgeText = isWritten ? "작성완료" : "작성전";
-      const statusBadgeClass = isWritten
-        ? "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-        : "bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold";
+      let statusBadgeText = "작성전";
+      let statusBadgeClass = "bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold";
+
+      if (isApproved) {
+        statusBadgeText = "승인(마감)";
+        statusBadgeClass = "bg-purple-100 dark:bg-purple-950/90 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700 font-black";
+      } else if (isSubmitted) {
+        statusBadgeText = "마감상신";
+        statusBadgeClass = "bg-blue-100 dark:bg-blue-950/90 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-black";
+      } else if (isWritten) {
+        statusBadgeText = "작성완료";
+        statusBadgeClass = "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700";
+      }
 
       return {
         name,
         shortName,
         isWritten,
+        isApproved,
+        isSubmitted,
+        approvalStatus,
         statusBadgeText,
         statusBadgeClass,
         workers,

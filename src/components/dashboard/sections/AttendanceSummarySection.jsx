@@ -78,7 +78,18 @@ export const AttendanceSummarySection = ({
         {companyOverviewStats.map((comp) => (
           <div
             key={comp.name}
-            onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
+            onClick={() => {
+              if (onNavigateTab) {
+                if (!comp.isTotal && comp.name) {
+                  try {
+                    window.sessionStorage?.setItem("oryuk_selected_company_filter", comp.name);
+                  } catch {
+                    // ignore
+                  }
+                }
+                onNavigateTab("overtime_status");
+              }
+            }}
             className={`p-2 sm:p-2.5 rounded-xl ${
               comp.isTotal
                 ? "bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-300/90 dark:border-cyan-700/80 shadow-xs"
@@ -116,10 +127,24 @@ export const AttendanceSummarySection = ({
                 >
                   {unwrittenCompanies.length === 0 ? "전사 완료" : `${5 - unwrittenCompanies.length}/5 완료`}
                 </span>
+              ) : comp.approvalStatus === "APPROVED" ? (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-400/50 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
+                  title="관리자/대표 최종 승인 완료 (마감)"
+                >
+                  <span>🔒 승인</span>
+                </span>
+              ) : comp.approvalStatus === "SUBMITTED" ? (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-400/50 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
+                  title="현장 마감 상신 완료 (승인 대기)"
+                >
+                  <span>📤 상신</span>
+                </span>
               ) : comp.isWritten ? (
                 <span
-                  className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
-                  title="작성완료"
+                  className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
+                  title="당일 근태 작성완료"
                 >
                   <span>✅</span>
                 </span>

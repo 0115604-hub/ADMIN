@@ -890,7 +890,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // 🔒 Freeze Lock State: Prevent accidental/tampered changes to finalized days
   const [isDayUnlockedForEdit, setIsDayUnlockedForEdit] = useState(false);
 
-  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("오륙");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState(() => {
+    try {
+      const saved = window.sessionStorage?.getItem("oryuk_selected_company_filter");
+      if (saved) {
+        window.sessionStorage?.removeItem("oryuk_selected_company_filter");
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return "오륙";
+  });
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
   const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
