@@ -67,7 +67,10 @@ import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints,
   registerToFourMLedger,
-  unregisterFromFourMLedger
+  unregisterFromFourMLedger,
+  determineFourMCategory,
+  autoSyncAllQualityIssuesToFourMLedger,
+  syncQualityAlertToFourMLedger
 } from "../../services/fourMChangePointService";
 import {
   subscribeSmartOvertimeData,
@@ -268,6 +271,17 @@ export const UnifiedAbnormalityControlPanel = ({
     };
   }, []);
 
+  // 🌟 전 공정 부적합경보를 공식 4M 변동점 관리대장에 자동 동기화
+  useEffect(() => {
+    autoSyncAllQualityIssuesToFourMLedger({
+      extrusionIssues: extrusionQualityAlerts,
+      yuseongIssues: yuseongQualityIssues,
+      hanulIssues: hanulQualityIssues,
+      machiningIssues: machiningQualityIssues,
+      urgentIssues: urgentIssues
+    }).catch(() => {});
+  }, [extrusionQualityAlerts, yuseongQualityIssues, hanulQualityIssues, machiningQualityIssues, urgentIssues]);
+
   const handleManualRefresh = () => {
     setLastRefreshedAt(new Date());
     setUrgentIssues(getLocalUrgentIssues());
@@ -361,7 +375,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
       unified.push({
         id: `urg_${issue.id || issue._docId || Math.random()}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(issue),
         origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-800",
@@ -613,7 +627,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
       unified.push({
         id: `ext_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
@@ -640,7 +654,7 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4-B. [Method] 한울 외주가공 부적합경보
+    // 4-B. 한울 외주가공 부적합경보
     // -----------------------------------------------------------------------
     (hanulQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -661,7 +675,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
       unified.push({
         id: `hanul_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
@@ -688,7 +702,7 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4-C. [Method] 유성 외주가공 부적합경보
+    // 4-C. 유성 외주가공 부적합경보
     // -----------------------------------------------------------------------
     (yuseongQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -709,7 +723,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
       unified.push({
         id: `ys_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
@@ -736,7 +750,7 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4-D. [Method] 가공동 부적합경보
+    // 4-D. 가공동 부적합경보
     // -----------------------------------------------------------------------
     (machiningQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -757,7 +771,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
       unified.push({
         id: `mach_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
@@ -971,7 +985,12 @@ export const UnifiedAbnormalityControlPanel = ({
     return unified
       .map((item) => ({
         ...item,
-        isRegisteredInLedger: ledgerSet.has(item.id) || ledgerSet.has(`ledger_${item.id}`) || Boolean(item.raw?.id && ledgerSet.has(item.raw.id))
+        isRegisteredInLedger:
+          ledgerSet.has(item.id) ||
+          ledgerSet.has(`ledger_${item.id}`) ||
+          Boolean(item.raw?.id && ledgerSet.has(item.raw.id)) ||
+          item.origin === "부적합경보" ||
+          item.sourceType === "QUALITY_ALERT"
       }))
       .sort((a, b) => {
         if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
@@ -1004,7 +1023,9 @@ export const UnifiedAbnormalityControlPanel = ({
     return allUnifiedRecords.filter((rec) => {
       // 0. 공식 변동점 관리대장 필터
       if (selectedOriginFilter === "OFFICIAL_LEDGER" || selected4MTab === "OFFICIAL_LEDGER") {
-        if (!ledgerSet.has(rec.id) && !ledgerSet.has(`ledger_${rec.id}`) && !Boolean(rec.raw?.id && ledgerSet.has(rec.raw.id)) && !rec.isOfficialLedger) return false;
+        const isRegistered = ledgerSet.has(rec.id) || ledgerSet.has(`ledger_${rec.id}`) || Boolean(rec.raw?.id && ledgerSet.has(rec.raw.id)) || rec.isOfficialLedger;
+        const isQualityAlert = rec.origin === "부적합경보" || rec.origin === "품질경보" || rec.sourceType === "QUALITY_ALERT";
+        if (!isRegistered && !isQualityAlert) return false;
       }
 
       // 1. 공장 필터
@@ -1186,6 +1207,14 @@ export const UnifiedAbnormalityControlPanel = ({
               content: `[4M 조치등록] ${actionInputText.trim()}`,
               files: newActionImages,
               actionDate: nowStr
+            }).catch(() => {});
+            await syncQualityAlertToFourMLedger({
+              ...rawIssue,
+              actionResult: actionInputText.trim(),
+              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionImages: newActionImages,
+              status: "RESOLVED",
+              isResolved: true
             }).catch(() => {});
           } else if (idStr.startsWith("ext_q_")) {
             await saveExtrusionQualityIssue({

@@ -80,7 +80,8 @@ import {
 } from "../../services/personnelCardService";
 import {
   subscribeFourMChangePoints,
-  getLocalFourMChangePoints
+  getLocalFourMChangePoints,
+  determineFourMCategory
 } from "../../services/fourMChangePointService";
 import {
   subscribeToExtrusionReports
@@ -550,7 +551,7 @@ export const WorkerPinModal = ({
 
       unified.push({
         id: `urg_${issue.id || issue._docId || Math.random()}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(issue),
         origin: "부적합경보",
         plant: issue.plant || "삼랑진공장",
         line: lineStr || (isExt ? "압출라인" : "가공/품질"),
@@ -563,7 +564,7 @@ export const WorkerPinModal = ({
       });
     });
 
-    // 1-1-A. 압출 부적합경보 (Method)
+    // 1-1-A. 압출 부적합경보
     (extrusionQualityIssues || []).forEach((alert) => {
       if (!alert || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
       if (alert.isDeleted === true || alert.status === "DELETED") return;
@@ -576,7 +577,7 @@ export const WorkerPinModal = ({
 
       unified.push({
         id: `ext_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         plant: alert.plant || "삼랑진공장",
         line: alert.lineName || alert.lineId || "압출라인",
@@ -589,7 +590,7 @@ export const WorkerPinModal = ({
       });
     });
 
-    // 1-1-B. 한울 외주가공 부적합경보 (Method)
+    // 1-1-B. 한울 외주가공 부적합경보
     (hanulQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
       const rawId = String(alert.id || "");
@@ -601,7 +602,7 @@ export const WorkerPinModal = ({
 
       unified.push({
         id: `hanul_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         plant: alert.plant || "한림공장",
         line: alert.line || "외주가공(한울)",
@@ -614,7 +615,7 @@ export const WorkerPinModal = ({
       });
     });
 
-    // 1-1-C. 유성 외주가공 부적합경보 (Method)
+    // 1-1-C. 유성 외주가공 부적합경보
     (yuseongQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
       const rawId = String(alert.id || "");
@@ -626,7 +627,7 @@ export const WorkerPinModal = ({
 
       unified.push({
         id: `ys_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         plant: alert.plant || "삼랑진공장",
         line: alert.project || alert.line || "외주가공(유성)",
@@ -639,7 +640,7 @@ export const WorkerPinModal = ({
       });
     });
 
-    // 1-1-D. 가공동 부적합경보 (Method)
+    // 1-1-D. 가공동 부적합경보
     (machiningQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
       const rawId = String(alert.id || "");
@@ -651,7 +652,7 @@ export const WorkerPinModal = ({
 
       unified.push({
         id: `mach_q_${alert.id}`,
-        fourM: "Method",
+        fourM: determineFourMCategory(alert),
         origin: "부적합경보",
         plant: alert.plant || "삼랑진공장",
         line: alert.line || "가공동",
@@ -890,14 +891,14 @@ export const WorkerPinModal = ({
 
   // 🌟 4M 변동점 발생공지 (모든 부적합경보 100% 최우선 포함 + 최신 설비/인원/불량 변동점)
   const recent4MRecords = useMemo(() => {
-    // 1. 등록된 모든 부적합경보 (Method) - 누락 없이 전체 수집
+    // 1. 등록된 모든 부적합경보 - 4M 분류(Machine/Material/Method)와 무관하게 100% 최우선 수집
     const qualityAlerts = allUnified4MRecords.filter(
-      (r) => r.fourM === "Method" || r.origin === "부적합경보" || r.origin === "품질경보"
+      (r) => r.origin === "부적합경보" || r.origin === "품질경보" || r.sourceType === "QUALITY_ALERT"
     );
 
-    // 2. 기타 4M 변동점 (Machine, Man, Material)
+    // 2. 기타 4M 변동점 (설비수리, 결근, 작업일보 등)
     const other4MRecords = allUnified4MRecords.filter(
-      (r) => r.fourM !== "Method" && r.origin !== "부적합경보" && r.origin !== "품질경보"
+      (r) => r.origin !== "부적합경보" && r.origin !== "품질경보" && r.sourceType !== "QUALITY_ALERT"
     );
 
     // 3. 부적합경보 정렬: 미조치건 우선 -> 최신순
@@ -2253,7 +2254,7 @@ export const WorkerPinModal = ({
                         {recent4MRecords.length > 0 ? (
                           <div className="space-y-1.5 max-h-56 sm:max-h-64 overflow-y-auto pr-0.5 custom-scrollbar">
                             {recent4MRecords.map((item) => {
-                              const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.fourM === "Method";
+                              const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.sourceType === "QUALITY_ALERT";
                               return (
                                 <div
                                   key={item.id}

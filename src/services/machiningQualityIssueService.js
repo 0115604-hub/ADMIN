@@ -9,6 +9,10 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { getKSTDateString } from "../utils/dateUtils";
+import {
+  syncQualityAlertToFourMLedger,
+  unregisterFromFourMLedger
+} from "./fourMChangePointService";
 
 const COLLECTION_NAME = "machining_quality_issues";
 const LOCAL_STORAGE_KEY = "factory_machining_quality_issues_v1";
@@ -72,26 +76,24 @@ export const subscribeMachiningQualityIssues = (onUpdate) => {
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
+            const data = d.data();
+            const isDel = Boolean(
+              data?.isDeleted === true ||
+              data?.deleted === true ||
+              data?.isDeleted === "true" ||
+              data?.status === "DELETED"
+            );
+            if (!isDel) {
+              remoteList.push({ id: d.id, ...data });
+            }
           });
         }
 
-        const localList = getLocalMachiningQualityIssues();
-        const map = new Map();
+        remoteList.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-        saveLocalMachiningQualityIssues(merged);
-        onUpdate(merged);
+        // Authoritative sync: remoteList overrides local to prevent zombie resurrection
+        saveLocalMachiningQualityIssues(remoteList);
+        onUpdate(remoteList);
       },
       (error) => {
         console.warn("Firestore machining_quality_issues sync warning:", error);
@@ -163,6 +165,11 @@ export const saveMachiningQualityIssue = async (issueData) => {
     }
   }
 
+  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
+  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
+    console.warn("4M ledger sync warning for machining quality issue:", e);
+  });
+
   return fullItem;
 };
 
@@ -202,6 +209,11 @@ export const resolveMachiningQualityIssue = async (id, resolutionNote, resolverN
     }
   }
 
+  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
+  syncQualityAlertToFourMLedger(updatedItem, "부적합경보").catch((e) => {
+    console.warn("4M ledger sync warning for machining quality issue resolve:", e);
+  });
+
   return updatedItem;
 };
 
@@ -211,8 +223,13 @@ export const deleteMachiningQualityIssue = async (id) => {
   const filtered = current.filter((i) => i.id !== id);
   saveLocalMachiningQualityIssues(filtered);
 
+  // 4M 변동점 대장에서도 즉시 등록 해제
+  unregisterFromFourMLedger(id).catch(() => {});
+  unregisterFromFourMLedger(`mach_q_${id}`).catch(() => {});
+
   if (db && id) {
     try {
+      await setDoc(doc(db, COLLECTION_NAME, id), { isDeleted: true, status: "DELETED" }, { merge: true });
       await deleteDoc(doc(db, COLLECTION_NAME, id));
     } catch (e) {
       console.warn("Firestore deleteMachiningQualityIssue fallback:", e);

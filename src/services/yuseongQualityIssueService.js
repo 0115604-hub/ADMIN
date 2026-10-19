@@ -9,6 +9,10 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { getKSTDateString } from "../utils/dateUtils";
+import {
+  syncQualityAlertToFourMLedger,
+  unregisterFromFourMLedger
+} from "./fourMChangePointService";
 
 const COLLECTION_NAME = "yuseong_quality_issues";
 const LOCAL_STORAGE_KEY = "factory_yuseong_quality_issues_v1";
@@ -71,26 +75,24 @@ export const subscribeYuseongQualityIssues = (onUpdate) => {
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
+            const data = d.data();
+            const isDel = Boolean(
+              data?.isDeleted === true ||
+              data?.deleted === true ||
+              data?.isDeleted === "true" ||
+              data?.status === "DELETED"
+            );
+            if (!isDel) {
+              remoteList.push({ id: d.id, ...data });
+            }
           });
         }
 
-        const localList = getLocalYuseongQualityIssues();
-        const map = new Map();
+        remoteList.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-        saveLocalYuseongQualityIssues(merged);
-        onUpdate(merged);
+        // Authoritative sync: remoteList overrides local to prevent zombie resurrection
+        saveLocalYuseongQualityIssues(remoteList);
+        onUpdate(remoteList);
       },
       (error) => {
         console.warn("Firestore yuseong_quality_issues sync warning:", error);
@@ -141,6 +143,11 @@ export const saveYuseongQualityIssue = async (issueData) => {
     }
   }
 
+  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
+  syncQualityAlertToFourMLedger(record, "부적합경보").catch((e) => {
+    console.warn("4M ledger sync warning for yuseong quality issue:", e);
+  });
+
   return record;
 };
 
@@ -183,8 +190,14 @@ export const deleteYuseongQualityIssue = async (id) => {
   if (!id) return;
   const localList = getLocalYuseongQualityIssues().filter((it) => it.id !== id);
   saveLocalYuseongQualityIssues(localList);
+
+  // 4M 변동점 대장에서도 즉시 등록 해제
+  unregisterFromFourMLedger(id).catch(() => {});
+  unregisterFromFourMLedger(`ys_q_${id}`).catch(() => {});
+
   if (db) {
     try {
+      await setDoc(doc(db, COLLECTION_NAME, id), { isDeleted: true, status: "DELETED" }, { merge: true });
       await deleteDoc(doc(db, COLLECTION_NAME, id));
     } catch (e) {
       console.warn("Firestore delete yuseong quality issue fallback:", e);

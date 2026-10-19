@@ -545,10 +545,10 @@ export const AuthModal = () => {
     // 1. 압출 부적합경보
     (extrusionQualityAlerts || []).forEach((alert) => {
       if (!alert || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
-      if (alert.isDeleted === true || alert.status === "DELETED") return;
+      if (alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
-      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -572,7 +572,7 @@ export const AuthModal = () => {
         actionImages: actionImages,
         images: causeImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
-        status: alert.status || "ACTIVE",
+        status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
         isDeleted: false,
         isFirstScreenOrigin: true,
@@ -584,10 +584,10 @@ export const AuthModal = () => {
 
     // 2. 한울 외주가공 부적합경보
     (hanulQualityIssues || []).forEach((alert) => {
-      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
 
       const dateStr = normalizeDateStr(alert.targetDate || alert.date || alert.createdAt, todayDateStr);
-      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -611,7 +611,7 @@ export const AuthModal = () => {
         actionImages: actionImages,
         images: causeImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
-        status: alert.status || "ACTIVE",
+        status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
         isDeleted: false,
         isFirstScreenOrigin: true,
@@ -623,10 +623,10 @@ export const AuthModal = () => {
 
     // 3. 유성 외주가공 부적합경보
     (yuseongQualityIssues || []).forEach((alert) => {
-      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
-      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -650,7 +650,7 @@ export const AuthModal = () => {
         actionImages: actionImages,
         images: causeImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
-        status: alert.status || "ACTIVE",
+        status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
         isDeleted: false,
         isFirstScreenOrigin: true,
@@ -662,10 +662,10 @@ export const AuthModal = () => {
 
     // 4. 가공동 부적합경보
     (machiningQualityIssues || []).forEach((alert) => {
-      if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
+      if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
-      const isResolved = alert.status === "RESOLVED" || (alert.status !== "ACTIVE" && Boolean(alert.actionResult && alert.actionResult.trim()));
+      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -689,7 +689,7 @@ export const AuthModal = () => {
         actionImages: actionImages,
         images: causeImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
-        status: alert.status || "ACTIVE",
+        status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
         isDeleted: false,
         isFirstScreenOrigin: true,
@@ -718,7 +718,7 @@ export const AuthModal = () => {
 
     // 2. Urgent issues 부적합경보
     (urgentIssues || []).forEach((item) => {
-      if (!item || item.isDeleted === true || item.isDeleted === "true" || item.deleted === true) return;
+      if (!item || item.isDeleted === true || item.isDeleted === "true" || item.deleted === true || item.status === "DELETED") return;
       if (!isCatQualityAlert(item.category)) return;
 
       const key = `${(item.title || "").trim().toLowerCase()}_${(item.startDate || item.expireDate || item.date || "").slice(0, 10)}`;
@@ -742,24 +742,31 @@ export const AuthModal = () => {
 
     // 1. 5개 공정 통합 부적합경보 중 활성(미결) 건
     (allQualityAlerts || []).forEach((alert) => {
-      if (!alert || alert.isDeleted) return;
-      // status가 ACTIVE이거나 isResolved가 false인 경우 첫 화면에 무조건 노출
-      const isActive = alert.status === "ACTIVE" || !alert.isResolved;
-      if (isActive) {
-        const key = `${(alert.title || "").trim().toLowerCase()}_${alert.startDate || alert.date || ""}`;
-        seenKeys.add(key);
-        if (alert.rawId) seenKeys.add(alert.rawId);
-        if (alert.id) seenKeys.add(alert.id);
-        list.push(alert);
-      }
+      if (!alert) return;
+      if (alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
+      
+      // 조치 완료된 부적합경보는 첫 화면 활성 목록에 절대 재공지되지 않음
+      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
+      if (isResolved) return;
+
+      const key = `${(alert.title || "").trim().toLowerCase()}_${alert.startDate || alert.date || ""}`;
+      seenKeys.add(key);
+      if (alert.rawId) seenKeys.add(alert.rawId);
+      if (alert.id) seenKeys.add(alert.id);
+      list.push(alert);
     });
 
     // 2. 회의, 공지, 오픈이슈 (첫 화면 등록 건)
     (urgentIssues || []).forEach((item) => {
-      if (!item || item.isDeleted) return;
+      if (!item) return;
+      if (item.isDeleted === true || item.isDeleted === "true" || item.deleted === true || item.status === "DELETED") return;
       if (isCatQualityAlert(item.category)) return; // 부적합경보는 위에서 통합 수합 완료
 
       if (!isFirstScreenIssue(item)) return;
+
+      // 조치 완료된 오픈이슈/회의/공지 등은 첫 화면 활성 목록에서 제외
+      const isResolved = Boolean(item.isResolved) || item.status === "RESOLVED" || item.status === "CLOSED" || item.status === "DONE" || Boolean(item.actionResult && item.actionResult.trim());
+      if (isResolved) return;
 
       // 1) 회의일정: 회의 시작 시간 경과 시 첫 화면에서 자동 만료/제외 -> 종결삭제관리로 이동
       if (isCatMeeting(item.category)) {
@@ -2196,8 +2203,8 @@ export const AuthModal = () => {
             onToggleResolvedStatus={async () => {
               if (!editingIssue) return;
               const toggled = !editingIssue.isResolved;
-              setNewIssueForm((prev) => ({ ...prev, isResolved: toggled }));
-              const updated = { ...editingIssue, isResolved: toggled };
+              setNewIssueForm((prev) => ({ ...prev, isResolved: toggled, status: toggled ? "RESOLVED" : "ACTIVE" }));
+              const updated = { ...editingIssue, isResolved: toggled, status: toggled ? "RESOLVED" : "ACTIVE" };
               setEditingIssue(updated);
 
               const idStr = String(editingIssue.id || "");

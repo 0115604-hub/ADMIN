@@ -69,6 +69,92 @@ export const subscribeFourMChangePoints = (onUpdate) => {
   }
 };
 
+/**
+ * 🌟 4M 변동점 카테고리 판별 (Machine / Material / Method / Man)
+ * - 가류조, 온조기, 압출기, 모터, 설비 등: Machine
+ * - 코팅, 원료, 클립, 불량, 스크래치, 자재 등: Material
+ * - 결근, 인원, 대체, 교대 등: Man
+ * - 작업표준, 조건, 공정, 레시피 등: Method
+ */
+export const determineFourMCategory = (item) => {
+  if (!item) return "Method";
+  if (item.fourM && ["Machine", "Man", "Material", "Method"].includes(item.fourM)) {
+    if (item.fourM !== "Method") return item.fourM;
+  }
+
+  const text = `${item.title || ""} ${item.content || ""} ${item.defectType || ""} ${item.details || ""} ${item.line || ""} ${item.origin || ""} ${item.category || ""}`.toLowerCase();
+
+  // 1. Man
+  if (
+    text.includes("결근") ||
+    text.includes("대체") ||
+    text.includes("작업자") ||
+    text.includes("인원") ||
+    text.includes("작업 실수") ||
+    text.includes("휴가") ||
+    text.includes("신규 투입") ||
+    text.includes("작업자변경")
+  ) {
+    return "Man";
+  }
+
+  // 2. Machine (가류조, 온조기, 압출기, 모터, RPM, 설비 등)
+  if (
+    text.includes("가류조") ||
+    text.includes("온조기") ||
+    text.includes("압출기") ||
+    text.includes("인취기") ||
+    text.includes("설비") ||
+    text.includes("기계") ||
+    text.includes("금형") ||
+    text.includes("로봇") ||
+    text.includes("모터") ||
+    text.includes("rpm") ||
+    text.includes("히터") ||
+    text.includes("센서") ||
+    text.includes("칠러") ||
+    text.includes("수리") ||
+    text.includes("tpm") ||
+    text.includes("정비") ||
+    text.includes("보전") ||
+    text.includes("단선") ||
+    text.includes("누유") ||
+    text.includes("과열")
+  ) {
+    return "Machine";
+  }
+
+  // 3. Material (코팅, 클립, 원료, 배합, 고무, 원자재, 소재, 불량 등)
+  if (
+    text.includes("코팅") ||
+    text.includes("클립") ||
+    text.includes("원료") ||
+    text.includes("배합") ||
+    text.includes("원자재") ||
+    text.includes("소재") ||
+    text.includes("불량") ||
+    text.includes("이물") ||
+    text.includes("스크래치") ||
+    text.includes("기포") ||
+    text.includes("누락") ||
+    text.includes("치수") ||
+    text.includes("박리") ||
+    text.includes("테이프") ||
+    text.includes("본드") ||
+    text.includes("철심") ||
+    text.includes("고무") ||
+    text.includes("도포") ||
+    text.includes("단면") ||
+    text.includes("탄화") ||
+    text.includes("스코치")
+  ) {
+    return "Material";
+  }
+
+  // 4. Method
+  return "Method";
+};
+
 // Register (Copy) a Record into Official 4M Change Point Ledger
 export const registerToFourMLedger = async (record, registeredBy = "관리자") => {
   if (!record) return null;
@@ -252,3 +338,131 @@ export const purgeAllFourMChangePoints = async () => {
   }
   return [];
 };
+
+/**
+ * 🌟 부적합경보/품질이슈를 공식 4M 변동점 관리대장에 자동 동기화 (단일 항목)
+ */
+export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부적합경보") => {
+  if (!alertItem) return null;
+  const isDel = Boolean(
+    alertItem.isDeleted === true ||
+    alertItem.isDeleted === "true" ||
+    alertItem.deleted === true ||
+    alertItem.status === "DELETED"
+  );
+  const id = String(alertItem.id || alertItem._docId || alertItem.customId || "").trim();
+  const rawId = String(alertItem.rawId || alertItem.id || "").trim();
+
+  if (isDel) {
+    await unregisterFromFourMLedger(id);
+    if (rawId && rawId !== id) await unregisterFromFourMLedger(rawId);
+    return null;
+  }
+
+  const title = alertItem.title || alertItem.defectType || alertItem.content || "(부적합경보)";
+  const fourM = determineFourMCategory(alertItem);
+  const isResolved = Boolean(
+    alertItem.isResolved ||
+    alertItem.status === "RESOLVED" ||
+    alertItem.status === "CLOSED" ||
+    alertItem.status === "DONE" ||
+    (alertItem.actionResult && String(alertItem.actionResult).trim().length > 0)
+  );
+
+  const ledgerRecord = {
+    id: id.startsWith("ledger_") ? id : `ledger_${id}`,
+    originalId: id,
+    rawId: rawId,
+    fourM: fourM,
+    origin: originName,
+    sourceType: "QUALITY_ALERT",
+    badgeColor:
+      fourM === "Machine"
+        ? "bg-indigo-100 text-indigo-900 border-indigo-300"
+        : fourM === "Material"
+        ? "bg-rose-100 text-rose-900 border-rose-300"
+        : fourM === "Man"
+        ? "bg-sky-100 text-sky-900 border-sky-300"
+        : "bg-amber-100 text-amber-900 border-amber-300",
+    plant: alertItem.plant || (String(alertItem.line || "").includes("한림") || String(alertItem.line || "").includes("한울") ? "한림공장" : "삼랑진공장"),
+    line: alertItem.line || alertItem.lineName || alertItem.project || "품질/제조",
+    writer: alertItem.author ? `${alertItem.author} ${alertItem.authorTitle || ""}`.trim() : "품질관리자",
+    title: title,
+    date: alertItem.date || alertItem.targetDate || alertItem.startDate || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
+    time: alertItem.time || "",
+    content: alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "",
+    actionResult: alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || "",
+    actionAuthor: alertItem.actionAuthor || alertItem.author || "",
+    actionAt: alertItem.actionAt || alertItem.resolvedAt || alertItem.updatedAt || "",
+    images: Array.isArray(alertItem.causeImages) ? alertItem.causeImages : (Array.isArray(alertItem.images) ? alertItem.images : []),
+    actionImages: Array.isArray(alertItem.actionImages) ? alertItem.actionImages : [],
+    replies: Array.isArray(alertItem.replies) ? alertItem.replies : [],
+    isResolved: isResolved,
+    validation: isResolved ? "부적합 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
+    severity: alertItem.severity || "HIGH",
+    downtimeMinutes: Number(alertItem.downtimeMinutes) || 0,
+    scrapKg: Number(alertItem.scrapKg) || 0,
+    isOfficialLedger: true
+  };
+
+  return await registerToFourMLedger(ledgerRecord, alertItem.author || "품질관리자");
+};
+
+/**
+ * 🌟 전 공정 부적합경보 전체를 4M 변동점 관리대장에 일괄 동기화
+ */
+export const autoSyncAllQualityIssuesToFourMLedger = async (qualityLists = {}) => {
+  const {
+    extrusionIssues = [],
+    yuseongIssues = [],
+    hanulIssues = [],
+    machiningIssues = [],
+    urgentIssues = []
+  } = qualityLists;
+
+  const allAlerts = [];
+
+  // 1. Extrusion
+  (extrusionIssues || []).forEach((item) => {
+    if (!item || item.id === "ext_qual_demo_1" || item.id === "ext_qual_demo_2") return;
+    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "압출라인", plant: item.plant || "삼랑진공장" });
+  });
+
+  // 2. Yuseong
+  (yuseongIssues || []).forEach((item) => {
+    if (!item) return;
+    allAlerts.push({ ...item, origin: "부적합경보", line: item.project || item.line || "외주가공(유성)", plant: item.plant || "삼랑진공장" });
+  });
+
+  // 3. Hanul
+  (hanulIssues || []).forEach((item) => {
+    if (!item) return;
+    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "외주가공(한울)", plant: item.plant || "한림공장" });
+  });
+
+  // 4. Machining
+  (machiningIssues || []).forEach((item) => {
+    if (!item) return;
+    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "가공라인", plant: item.plant || "삼랑진공장" });
+  });
+
+  // 5. Urgent issues (quality alert category)
+  (urgentIssues || []).forEach((item) => {
+    if (!item) return;
+    const cat = String(item.category || "").trim();
+    const isQuality = cat.includes("품질") || cat.includes("부적합") || item.type === "QUALITY_ALERT";
+    if (isQuality) {
+      allAlerts.push({ ...item, origin: "부적합경보" });
+    }
+  });
+
+  // Synchronize each alert
+  for (const alert of allAlerts) {
+    try {
+      await syncQualityAlertToFourMLedger(alert, alert.origin || "부적합경보");
+    } catch (e) {
+      console.warn("Auto sync quality alert to 4M ledger failed for item:", alert.id, e);
+    }
+  }
+};
+

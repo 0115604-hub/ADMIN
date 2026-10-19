@@ -7,6 +7,10 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import {
+  syncQualityAlertToFourMLedger,
+  unregisterFromFourMLedger
+} from "./fourMChangePointService";
 
 const COLLECTION_NAME = "extrusion_quality_issues";
 const LOCAL_STORAGE_KEY = "factory_extrusion_quality_issues_v2";
@@ -78,28 +82,24 @@ export const subscribeExtrusionQualityIssues = (onUpdate) => {
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
+            const data = d.data();
+            const isDel = Boolean(
+              data?.isDeleted === true ||
+              data?.deleted === true ||
+              data?.isDeleted === "true" ||
+              data?.status === "DELETED"
+            );
+            if (!isDel && d.id !== "ext_qual_demo_1" && d.id !== "ext_qual_demo_2") {
+              remoteList.push({ id: d.id, ...data });
+            }
           });
         }
 
-        const localList = getLocalExtrusionQualityIssues();
-        const map = new Map();
+        remoteList.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-        // 1. Seed with local
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        // 2. Merge remote
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-        saveLocalExtrusionQualityIssues(merged);
-        if (onUpdate) onUpdate(merged);
+        // Authoritative sync: remoteList overrides local to prevent resurrecting deleted zombie issues!
+        saveLocalExtrusionQualityIssues(remoteList);
+        if (onUpdate) onUpdate(remoteList);
       },
       (error) => {
         console.warn("Firestore extrusion quality issues sync warning:", error);
@@ -173,6 +173,11 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     console.warn("Firestore save extrusion quality issue fallback to local:", e);
   }
 
+  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
+  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
+    console.warn("4M ledger sync warning for extrusion quality issue:", e);
+  });
+
   return fullItem;
 };
 
@@ -219,10 +224,17 @@ export const deleteExtrusionQualityIssue = async (id) => {
   const updated = current.filter((it) => it.id !== id);
   saveLocalExtrusionQualityIssues(updated);
 
-  try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
-  } catch (e) {
-    console.warn("Firestore delete extrusion quality issue fallback to local:", e);
+  // 4M 변동점 대장에서도 즉시 등록 해제
+  unregisterFromFourMLedger(id).catch(() => {});
+  unregisterFromFourMLedger(`ext_q_${id}`).catch(() => {});
+
+  if (db) {
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, id), { isDeleted: true, status: "DELETED" }, { merge: true });
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore delete extrusion quality issue fallback to local:", e);
+    }
   }
 
   return updated;

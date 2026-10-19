@@ -8,6 +8,10 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { getKSTDateString } from "../utils/dateUtils";
+import {
+  syncQualityAlertToFourMLedger,
+  unregisterFromFourMLedger
+} from "./fourMChangePointService";
 
 const COLLECTION_NAME = "hanul_quality_issues";
 const LOCAL_STORAGE_KEY = "factory_hanul_quality_issues_v2";
@@ -72,28 +76,24 @@ export const subscribeHanulQualityIssues = (onUpdate) => {
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
+            const data = d.data();
+            const isDel = Boolean(
+              data?.isDeleted === true ||
+              data?.deleted === true ||
+              data?.isDeleted === "true" ||
+              data?.status === "DELETED"
+            );
+            if (!isDel) {
+              remoteList.push({ id: d.id, ...data });
+            }
           });
         }
 
-        const localList = getLocalHanulQualityIssues();
-        const map = new Map();
+        remoteList.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-        // 1. Seed with local
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        // 2. Merge remote
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-        saveLocalHanulQualityIssues(merged);
-        onUpdate(merged);
+        // Authoritative sync: remoteList overrides local to prevent zombie resurrection
+        saveLocalHanulQualityIssues(remoteList);
+        onUpdate(remoteList);
       },
       (error) => {
         console.warn("Firestore hanul_quality_issues sync warning:", error);
@@ -164,7 +164,11 @@ export const saveHanulQualityIssue = async (issueData) => {
     console.warn("Firestore saveHanulQualityIssue fallback to local:", e);
   }
 
-  // Dual-sync to urgentIssueService removed: 한울 품질경보는 한울 관리자 및 소속 인원에 한하여 공지되며 첫 화면 노출/합산에서 완전 분리
+  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
+  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
+    console.warn("4M ledger sync warning for hanul quality issue:", e);
+  });
+
   return fullItem;
 };
 
@@ -202,6 +206,9 @@ export const resolveHanulQualityIssue = async (id, resolutionNote, resolverName 
     console.warn("Firestore resolveHanulQualityIssue fallback:", e);
   }
 
+  // 🌟 4M 변동점 관리대장에도 조치완료 상태 동기화
+  syncQualityAlertToFourMLedger(updatedItem, "부적합경보").catch(() => {});
+
   return updatedItem;
 };
 
@@ -211,10 +218,17 @@ export const deleteHanulQualityIssue = async (id) => {
   const filtered = current.filter((i) => i.id !== id);
   saveLocalHanulQualityIssues(filtered);
 
-  try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
-  } catch (e) {
-    console.warn("Firestore deleteHanulQualityIssue fallback:", e);
+  // 4M 변동점 대장에서도 즉시 등록 해제
+  unregisterFromFourMLedger(id).catch(() => {});
+  unregisterFromFourMLedger(`hanul_q_${id}`).catch(() => {});
+
+  if (db) {
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, id), { isDeleted: true, status: "DELETED" }, { merge: true });
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore deleteHanulQualityIssue fallback:", e);
+    }
   }
 };
 

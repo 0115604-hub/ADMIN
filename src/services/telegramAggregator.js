@@ -390,8 +390,26 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
   const workLogLines = `${pendingLineStr}\n${unregisteredLineStr}`;
 
   // --- 5. 진행중인 오픈이슈 (대표이사 차단) ---
+  const isItemDeleted = (i) => Boolean(
+    !i ||
+    i.isDeleted === true ||
+    i.isDeleted === "true" ||
+    i.deleted === true ||
+    i.status === "DELETED"
+  );
+
+  const isItemResolved = (i) => Boolean(
+    i && (
+      i.isResolved === true ||
+      i.status === "RESOLVED" ||
+      i.status === "CLOSED" ||
+      i.status === "DONE" ||
+      (i.actionResult && String(i.actionResult).trim().length > 0)
+    )
+  );
+
   const activeOpenIssues = (ctx.urgentIssues || []).filter(
-    (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue") && !isCeoPrivateItem(i)
+    (i) => !isItemDeleted(i) && !isItemResolved(i) && (i.category === "오픈이슈" || i.category === "open_issue") && !isCeoPrivateItem(i)
   ).sort((a, b) => {
     const dateA = a.expireDate || a.targetDate || "9999-99-99";
     const dateB = b.expireDate || b.targetDate || "9999-99-99";
@@ -421,12 +439,12 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
     openIssueLines = oLines.slice(0, 5).join("\n") + (oLines.length > 5 ? `\n• 외 ${oLines.length - 5}건` : "");
   }
 
-  // --- 6. 회의 & 사내공지 (대표이사 차단) ---
+  // --- 6. 회의 & 사내공지 (대표이사 차단 & 조치완료/삭제 완벽 제외) ---
   const upcomingMeetings = (ctx.urgentIssues || []).filter(
-    (i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr && !isCeoPrivateItem(i)
+    (i) => !isItemDeleted(i) && !isItemResolved(i) && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr && !isCeoPrivateItem(i)
   );
   const activeNotices = (ctx.urgentIssues || []).filter(
-    (i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr) && !isCeoPrivateItem(i)
+    (i) => !isItemDeleted(i) && !isItemResolved(i) && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr) && !isCeoPrivateItem(i)
   );
 
   let noticeMeetingLines = "• 예정된 회의 및 공지사항 없음";
