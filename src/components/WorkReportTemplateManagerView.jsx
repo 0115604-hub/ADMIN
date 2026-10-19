@@ -30,8 +30,10 @@ import {
   deleteWorkReportTemplate,
   cloneWorkReportTemplate
 } from "../services/workReportTemplateService";
+import LegoWorkReportBuilder from "./lego/LegoWorkReportBuilder.jsx";
 
 export const WorkReportTemplateManagerView = () => {
+  const [managerViewMode, setManagerViewMode] = useState("LEGO_BUILDER"); // 'LEGO_BUILDER' | 'CATALOG'
   const [templates, setTemplates] = useState(() => getLocalWorkReportTemplates());
   const [selectedCategory, setSelectedCategory] = useState("MATERIAL_PREP");
   const [searchTerm, setSearchTerm] = useState("");
@@ -170,15 +172,47 @@ export const WorkReportTemplateManagerView = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* Header Banner */}
-      {/* ======================================================== */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-xl text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-sm">
-              <Layers className="w-5 h-5" />
-            </span>
+      {/* 🧭 Top Mode Switcher: [🧩 레고 블록 양식 조합기 ('레고 양식.xlsx' 16대 블록)] | [📋 5대 대분류 양식 대장] */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-700/80 w-fit flex-wrap shadow-sm">
+        <button
+          type="button"
+          onClick={() => setManagerViewMode("LEGO_BUILDER")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            managerViewMode === "LEGO_BUILDER"
+              ? "bg-cyan-500 text-slate-950 shadow-md font-black ring-2 ring-cyan-300"
+              : "text-slate-300 hover:text-white hover:bg-slate-800"
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>🧩 레고 블록 양식 조합기 ('레고 양식.xlsx' 16대 블록)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setManagerViewMode("CATALOG")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+            managerViewMode === "CATALOG"
+              ? "bg-white text-slate-950 shadow-md font-black"
+              : "text-slate-300 hover:text-white hover:bg-slate-800"
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
+          <span>📋 5대 공정별 표준 양식 보관함</span>
+        </button>
+      </div>
+
+      {managerViewMode === "LEGO_BUILDER" ? (
+        <LegoWorkReportBuilder />
+      ) : (
+        <>
+          {/* ======================================================== */}
+          {/* Header Banner */}
+          {/* ======================================================== */}
+          <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-xl text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-sm">
+                  <Layers className="w-5 h-5" />
+                </span>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               작업일보 양식 관리 (레고 블록형 커스텀 엔진)
             </h2>
@@ -424,6 +458,8 @@ export const WorkReportTemplateManagerView = () => {
             setPreviewTemplate(null);
           }}
         />
+      )}
+        </>
       )}
     </div>
   );
