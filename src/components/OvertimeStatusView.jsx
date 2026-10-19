@@ -1977,6 +1977,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
 
       return true;
+    }).sort((a, b) => {
+      const orderA = COMPANIES.indexOf(cleanCompanyName(a.company));
+      const orderB = COMPANIES.indexOf(cleanCompanyName(b.company));
+      const compDiff = (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+      if (compDiff !== 0) return compDiff;
+      return (a.companyNo || 0) - (b.companyNo || 0);
     });
   }, [smartData.attendanceMatrix, personnelCardsMap, workerMgmtCompanyFilter, workerMgmtSkillFilter, workerMgmtMultiSkillOnly, workerMgmtSearch]);
 
@@ -2137,7 +2143,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     if (selectedCompanyFilter !== "전체") {
       list = list.filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyFilter));
     }
-    return list;
+    return [...list].sort((a, b) => {
+      const orderA = COMPANIES.indexOf(cleanCompanyName(a.company));
+      const orderB = COMPANIES.indexOf(cleanCompanyName(b.company));
+      const compDiff = (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+      if (compDiff !== 0) return compDiff;
+      return (a.companyNo || 0) - (b.companyNo || 0);
+    });
   }, [effectiveMatrix, selectedCompanyFilter]);
 
   // 🚨 미입력/누락된 근태 작업자 실시간 집계 (선택된 일자 및 조회 대상 기준)
@@ -2376,7 +2388,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               type="button"
               onClick={() => setIsAuditModalOpen(true)}
               className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/80 transition-all cursor-pointer shadow-md hover:shadow-emerald-950/50 active:scale-95 ml-1"
-              title="오륙, 조영, 한울, 유성, 부림텍 5개 협력사(143명)의 총원, 출근, 공수, 노무비 및 결재 보고서 일치 여부를 단일 기준으로 일괄 동시 검증합니다."
+              title="오륙, 유성, 조영, 한울, 부림텍 5개 협력사(143명)의 총원, 출근, 공수, 노무비 및 결재 보고서 일치 여부를 단일 기준으로 일괄 동시 검증합니다."
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>전사 5개사 일괄검증</span>
@@ -2386,7 +2398,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         </div>
 
         {/* ========================================================================= */}
-        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 조영산업, 한울, 부림텍, 유성) - 미니멀 패널 */}
+        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 유성, 조영, 한울, 부림텍) - 미니멀 패널 */}
         {/* ========================================================================= */}
         <div className="hidden md:block pt-1">
           <div className="flex items-center justify-between pb-2">
@@ -2417,9 +2429,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 totalHours: 0
               };
               const dotColor = cleanComp === "오륙" ? "bg-blue-400" :
+                cleanComp === "유성" ? "bg-cyan-400" :
                 cleanComp === "조영" ? "bg-purple-400" :
-                cleanComp === "한울" ? "bg-emerald-400" :
-                cleanComp === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
+                cleanComp === "한울" ? "bg-emerald-400" : "bg-amber-400";
 
               const otWorkersCount = breakdown.otWorkers || 0;
               const absentCount = breakdown.absent || 0;
@@ -3318,6 +3330,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             const filteredMatrixList = matrixWithCompanyNo.filter((w) => {
               if (matrixCompanyFilter !== "전체" && cleanCompanyName(w.company) !== cleanCompanyName(matrixCompanyFilter)) return false;
               return true;
+            }).sort((a, b) => {
+              const orderA = COMPANIES.indexOf(cleanCompanyName(a.company));
+              const orderB = COMPANIES.indexOf(cleanCompanyName(b.company));
+              const compDiff = (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+              if (compDiff !== 0) return compDiff;
+              return (a.companyNo || 0) - (b.companyNo || 0);
             });
 
             // Calculate aggregated metrics for filtered workers based on matrixDaysInMonth

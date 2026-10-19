@@ -17,20 +17,20 @@ import {
 import { cleanCompanyName, calculateWorkerDailyHours } from "../services/overtimeSmartService.js";
 import { useModalHistory } from "../utils/modalHistory";
 
-const COMPANIES = ["오륙", "조영", "한울", "유성", "부림텍"];
+const COMPANIES = ["오륙", "유성", "조영", "한울", "부림텍"];
 const EXPECTED_HEADCOUNTS = {
   "오륙": 53,
+  "유성": 14,
   "조영": 44,
   "한울": 26,
-  "유성": 14,
   "부림텍": 6
 };
 
 const COMPANY_THEMES = {
   "오륙": { badge: "bg-blue-500/20 text-blue-300 border-blue-500/40", border: "border-blue-500/30", text: "text-blue-400" },
+  "유성": { badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40", border: "border-emerald-500/30", text: "text-emerald-400" },
   "조영": { badge: "bg-purple-500/20 text-purple-300 border-purple-500/40", border: "border-purple-500/30", text: "text-purple-400" },
   "한울": { badge: "bg-amber-500/20 text-amber-300 border-amber-500/40", border: "border-amber-500/30", text: "text-amber-400" },
-  "유성": { badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40", border: "border-emerald-500/30", text: "text-emerald-400" },
   "부림텍": { badge: "bg-slate-500/20 text-slate-300 border-slate-500/40", border: "border-slate-500/30", text: "text-slate-400" }
 };
 

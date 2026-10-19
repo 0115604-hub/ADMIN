@@ -15,7 +15,7 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils.js";
 const STORAGE_KEY = "oryuk_smart_overtime_data_v2_sept";
 const FIRESTORE_DOC_ID = "overtime_2026_09";
 
-export const COMPANIES = ["오륙", "조영", "유성", "한울", "부림텍"];
+export const COMPANIES = ["오륙", "유성", "조영", "한울", "부림텍"];
 
 export const getReportDateSortKey = (report) => {
   if (!report) return "0000-00-00";
@@ -1450,7 +1450,7 @@ export const exportSmartOvertimeToExcel = (data) => {
     daysHeader.push(`${month}월 ${d}일`);
   }
   const s2Rows = [
-    [`${year}년 ${month}월 5개사 통합 근태 및 잔업 스마트 종합관리대장 (오륙 / 조영 / 한울 / 부림텍 / 유성)`],
+    [`${year}년 ${month}월 5개사 통합 근태 및 잔업 스마트 종합관리대장 (오륙 / 유성 / 조영 / 한울 / 부림텍)`],
     [`※ [A4] 셀에서 일자(${month}월 1일~${month}월 ${daysInMonth}일)를 선택하면 5개사 전체 및 업체별 당일 실적이 실시간 자동 집계됩니다. (🟢=정시, 19=+2H, 21=+4H, 22=+5H)`],
     ["📅 조회 대상 일자", null, "👥 5개사 전사 총원", null, "🟢 정시근무(0H)", null, null, "🟡 19시(+2H)", null, null, "🟠 21시(+4H)", null, null, "🔴 22시(+5H)", null, null, "🌙 야간/특근", null, null, `⚡ ${month}월 평일잔업 누적`, null, null, null, `🎯 ${month}월 주말특근 누적`, null, null, null, `⏱ ${month}월 전사 총 누적 투입공수`],
     [`${month}월 ${sampleDay}일`, null, currentData.attendanceMatrix.length, null, daySummary.regularCount, null, null, daySummary.ot19Count, null, null, daySummary.ot21Count, null, null, daySummary.ot22Count, null, null, daySummary.specialNightCount, null, null, 1680, null, null, null, 440, null, null, null, 25200],
