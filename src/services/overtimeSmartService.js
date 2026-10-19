@@ -928,9 +928,9 @@ export const reconcileMatrixWithReports = (baseMatrix, reports, targetYear = nul
             else code = isWeekend ? "-" : "결근";
           }
 
-          // Hydrate if matrix cell is empty or if matrix was '-' while report has attended work
-          const isAttendedWork = code && code !== "-" && code !== "미출근" && code !== "결근";
-          if (isCurEmpty || (curStr === "-" && isAttendedWork)) {
+          // 🔒 Strict Preservation: ONLY hydrate if the matrix cell is truly empty/unwritten.
+          // Never overwrite an explicit entry (like '-', '결근', '연차', '반차', '정시', '19', '21', etc.)
+          if (isCurEmpty) {
             if (!targetW.daily) targetW.daily = {};
             targetW.daily[day] = code;
             targetW.daily[String(day)] = code;

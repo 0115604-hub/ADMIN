@@ -1025,7 +1025,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
   }, [legacyReports, selectedDay, currentYear, currentMonthNum, selectedCompanyFilter]);
 
-  const isDayLocked = Boolean(currentDayApprovedReport) && !isDayUnlockedForEdit;
+  // 🔒 Day Lock is strictly for finalized Weekend/Holiday Overtime Electronic Approvals.
+  // Weekday daily attendance must remain freely editable by authorized managers at all times.
+  const isWeekendSelected = isWeekendByDate(selectedDay || 1, currentYear, currentMonthNum);
+  const isDayLocked = isWeekendSelected && Boolean(currentDayApprovedReport) && !isDayUnlockedForEdit;
 
   // Sync state to local/cloud (Explicit Save Action)
   const handleSaveLedger = async (updatedData, targetYM = null) => {
@@ -1102,14 +1105,72 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     const targetComp = updatedMatrix[targetIdx]?.company;
+    const workerName = updatedMatrix[targetIdx]?.name || "작업자";
+    triggerToast(`💾 ${workerName} ${currentMonthNum}월 ${selectedDay}일 근태가 [${finalCode || "미등록"}]으로 즉시 적용되었습니다.`);
+
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
       targetCompany: targetComp,
+      targetDay: selectedDay,
+      clearedDay: (!finalCode || finalCode === "미입력") ? selectedDay : undefined,
       auditMeta: {
         operator: currentProfile?.name || "현장관리자",
         source: "CELL_1CLICK_UPDATE",
-        reason: `${updatedMatrix[targetIdx]?.name} Day ${selectedDay} 근태 변경: ${finalCode || "(미등록)"}`
+        reason: `${workerName} Day ${selectedDay} 근태 변경: ${finalCode || "(미등록)"}`
       }
     });
+
+    // ⭐ Synchronize to registered report document if one exists for this company and date
+    const d = selectedDay || 1;
+    const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const cleanTargetComp = cleanCompanyName(targetComp);
+    const existingRepIdx = (legacyReports || []).findIndex((r) => {
+      if (!r || r.isSynthesized) return false;
+      const rDateKey = getReportDateSortKey(r);
+      if (rDateKey !== targetDateStr) return false;
+      return cleanCompanyName(r.company || "") === cleanTargetComp;
+    });
+
+    if (existingRepIdx >= 0) {
+      const existingRep = legacyReports[existingRepIdx];
+      const cleanWName = cleanWorkerNameOnly(workerName);
+      const { workHours, weekdayOt, weekendOt } = calculateWorkerDailyHours(finalCode);
+
+      const updatedItems = (existingRep.items || []).map((it) => {
+        const itName = (it.workerName || it.name || "").trim();
+        const cleanIt = cleanWorkerNameOnly(itName);
+        if (itName === workerName.trim() || (cleanWName && cleanIt === cleanWName)) {
+          const isOff = finalCode === "결근" || finalCode === "병결" || finalCode === "사결" || finalCode === "공결" || finalCode === "연차" || finalCode === "휴가" || finalCode === "병가" || finalCode === "반차" || finalCode === "-" || finalCode === "휴무" || finalCode === "미출근" || !finalCode;
+          const startTime = isOff ? "-" : (finalCode === "야간" ? "20:00" : "08:00");
+          const endTime = isOff ? "-" : (finalCode === "19" ? "19:00" : finalCode === "21" ? "21:00" : finalCode === "22" ? "22:00" : finalCode === "야간" ? "05:00" : "17:00");
+          return {
+            ...it,
+            attendanceCode: finalCode,
+            attendanceLabel: finalCode === "🟢" ? "정시" : (finalCode || "-"),
+            hours: isOff ? 0 : workHours,
+            otHours: isOff ? 0 : (weekdayOt + weekendOt),
+            startTime,
+            endTime,
+            count: isOff ? 0 : 1
+          };
+        }
+        return it;
+      });
+
+      const updatedReport = {
+        ...existingRep,
+        items: updatedItems,
+        attendedWorkers: updatedItems.filter((it) => (Number(it.hours) || 0) > 0).length,
+        totalHours: updatedItems.reduce((s, it) => s + (Number(it.hours) || 0), 0),
+        otHours: updatedItems.reduce((s, it) => s + (Number(it.otHours) || 0), 0),
+        cost: updatedItems.reduce((s, it) => s + (Number(it.hours) || 0), 0) * 15000,
+        updatedAt: new Date().toISOString()
+      };
+
+      const nextLegacy = [...legacyReports];
+      nextLegacy[existingRepIdx] = updatedReport;
+      setLegacyReports(nextLegacy);
+      saveOvertimeReport(updatedReport).catch((e) => console.warn("Auto-sync cell edit to report error:", e));
+    }
   };
 
   // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day (Excluding Calendar Special Work Days)
@@ -1291,7 +1352,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       if (idx >= 0 && updatedMatrix[idx]) {
         const currentVal = String(updatedMatrix[idx].daily[selectedDay] || "").trim();
-        if (!currentVal || currentVal === "미입력" || currentVal === "-" || currentVal === "undefined" || currentVal === "null") {
+        if (!currentVal || currentVal === "미입력" || currentVal === "undefined" || currentVal === "null") {
           updatedMatrix[idx].daily[selectedDay] = targetCode;
           updatedMatrix[idx].daily[String(selectedDay)] = targetCode;
           updatedCount++;
@@ -1419,7 +1480,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
         const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
         const str = String(val || "").trim();
-        return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+        return !str || str === "미입력" || str === "undefined" || str === "null";
       });
 
       if (missingWorkers.length > 0) {
@@ -1460,7 +1521,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const attendedCount = (filteredAttendanceWorkers || []).filter(w => {
       let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const strVal = String(val || "").trim();
-      if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+      if (!isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null")) {
         val = "🟢";
       }
       const { isAttended, workHours } = calculateWorkerDailyHours(val);
@@ -1470,7 +1531,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const totalHours = (filteredAttendanceWorkers || []).reduce((sum, w) => {
       let val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const strVal = String(val || "").trim();
-      if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+      if (!isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null")) {
         val = "🟢";
       }
       const { workHours } = calculateWorkerDailyHours(val);
@@ -1532,7 +1593,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
         const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
         const str = String(val || "").trim();
-        return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+        return !str || str === "미입력" || str === "undefined" || str === "null";
       });
 
       if (missingWorkers.length > 0) {
@@ -1560,7 +1621,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         // 주말 및 법정 휴무일: 출근하지 않거나 미입력/결근인 인원은 결근이 아닌 정상 '휴무(-)'로 처리
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근" || !isAttended || workHours === 0)) {
           val = "-";
-        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null")) {
           // 평일 미입력은 정상 '정시(🟢)'로 안전 보정
           val = "🟢";
         }
@@ -1604,7 +1665,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         // 주말/휴무일 특근 시 미출근자는 결근이 아닌 미출근(-)로 강제 보정
         if (isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null" || strVal === "결근")) {
           val = "-";
-        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null")) {
+        } else if (!isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null")) {
           val = "🟢";
         }
         const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
@@ -1745,6 +1806,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
     setIsLegacyModalOpen(false);
     setSelectedLegacyReport(null);
+    setIsDayUnlockedForEdit(true);
     setActiveTab("daily_input");
     triggerToast(`✏️ ${report.workDate ? report.workDate.split("-")[1] + "월 " + report.workDate.split("-")[2] + "일" : ""} [${report.company || report.plant || "오륙"}] 근태 수정 화면으로 이동했습니다. 작업자 근태 변경 후 [수정 및 재등록]을 클릭하세요.`);
   };
@@ -2315,7 +2377,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)];
         const str = String(v ?? "").trim();
-        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
+        return str !== "" && str !== "미입력" && str !== "undefined" && str !== "null";
       }).length;
       return enteredCount === 0;
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
@@ -2348,7 +2410,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return (filteredAttendanceWorkers || []).filter((w) => {
       const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
       const str = String(val || "").trim();
-      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+      return !str || str === "미입력" || str === "undefined" || str === "null";
     });
   }, [filteredAttendanceWorkers, selectedDay]);
 
@@ -3060,7 +3122,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               const currentVal = (worker.daily && (worker.daily[selectedDay] !== undefined ? worker.daily[selectedDay] : worker.daily[String(selectedDay)])) ?? worker[selectedDay] ?? worker[String(selectedDay)] ?? "";
                               const strVal = String(currentVal || "").trim();
                               const isWk = isWeekendDay(selectedDay);
-                              const isUnselected = !isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null");
+                              const isUnselected = !isWk && (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null");
                               const isOffWeekend = isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "휴무" || strVal === "undefined" || strVal === "null");
                               const isRegularOrSpecial = strVal === "🟢" || strVal === "정시" || strVal === "17" || strVal === "특근" || strVal === "주말특근" || strVal.includes("정시") || strVal.includes("특근") || strVal === "출근";
                               const meta = getOptionMeta(currentVal);
@@ -3800,8 +3862,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 val = "-";
                               }
                               return (
-                                <td key={d} className="p-0.5 text-center font-mono text-[10px]">
-                                  <span className={`inline-block w-6 py-0.5 rounded font-bold ${
+                                <td
+                                  key={d}
+                                  onClick={() => {
+                                    setSelectedDay(d);
+                                    if (w.company && w.company !== "전체") {
+                                      setSelectedCompanyFilter(cleanCompanyName(w.company));
+                                    }
+                                    setIsDayUnlockedForEdit(true);
+                                    setActiveTab("daily_input");
+                                    triggerToast(`✏️ ${w.company} [${cleanWorkerName}] ${matrixMonthNum}월 ${d}일 근태 수정으로 이동했습니다.`);
+                                  }}
+                                  title={`${cleanWorkerName} (${w.company}) ${matrixMonthNum}월 ${d}일: ${val || "미입력"} (클릭 시 해당 일자 근태 수정으로 이동)`}
+                                  className="p-0.5 text-center font-mono text-[10px] cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                >
+                                  <span className={`inline-block w-6 py-0.5 rounded font-bold transition-transform hover:scale-115 ${
                                     val === "🟢" || val === "정시" ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" :
                                     val === "19" ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" :
                                     val === "21" ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300" :
