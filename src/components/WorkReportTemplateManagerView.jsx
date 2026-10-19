@@ -42,6 +42,7 @@ export const WorkReportTemplateManagerView = () => {
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [legoInitialData, setLegoInitialData] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeWorkReportTemplates((list) => {
@@ -163,6 +164,18 @@ export const WorkReportTemplateManagerView = () => {
     }
   };
 
+  // Open Template in Lego Block Builder for modular editing
+  const handleOpenInLegoBuilder = (tpl) => {
+    setLegoInitialData(tpl);
+    setManagerViewMode("LEGO_BUILDER");
+    showToast(`🧩 [${tpl.carModel} - ${tpl.partName}] 양식을 레고 블록 편집기로 불러왔습니다.`);
+  };
+
+  // Callback when saved from Lego Builder
+  const handleSaveFromLegoBuilder = (savedTpl) => {
+    showToast(`✅ [${savedTpl.title || "양식"}] 템플릿 보관함 동기화 완료`);
+  };
+
   return (
     <div className="space-y-5 animate-fadeIn p-2 sm:p-4 text-left">
       {/* Toast */}
@@ -201,7 +214,10 @@ export const WorkReportTemplateManagerView = () => {
       </div>
 
       {managerViewMode === "LEGO_BUILDER" ? (
-        <LegoWorkReportBuilder />
+        <LegoWorkReportBuilder
+          initialTemplateData={legoInitialData}
+          onSaveToTemplateManager={handleSaveFromLegoBuilder}
+        />
       ) : (
         <>
           {/* ======================================================== */}
@@ -390,7 +406,15 @@ export const WorkReportTemplateManagerView = () => {
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-4 gap-1.5">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  <button
+                    onClick={() => handleOpenInLegoBuilder(tpl)}
+                    className="p-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/60 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer col-span-2 sm:col-span-1 shadow-2xs border border-cyan-200 dark:border-cyan-800"
+                    title="레고 블록 양식 조합기에서 블록 선택 & 앱내 편집"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-cyan-600" />
+                    <span>블록편집</span>
+                  </button>
                   <button
                     onClick={() => {
                       setPreviewTemplate(tpl);
@@ -621,13 +645,10 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
           <table className="w-full border-collapse border border-black text-xs text-center font-bold">
             <thead>
               <tr className="bg-[#fef9c3] border-b border-black">
-                <th colSpan={2} className="border-r border-black p-1 w-[22%]">구 분(Division)</th>
-                <th className="border-r border-black p-1 w-[13%]">초물(Start)</th>
-                <th className="border-r border-black p-1 w-[13%]">중물(Half)</th>
-                <th className="border-r border-black p-1 w-[13%]">종물(Finish)</th>
-                <th className="border-r border-black p-1 w-[13%]">초물(Start)</th>
-                <th className="border-r border-black p-1 w-[13%]">중물(Half)</th>
-                <th className="p-1 w-[13%]">종물(Finish)</th>
+                <th colSpan={3} className="border-r border-black p-1 w-[28%]">구 분(Division)</th>
+                <th className="border-r border-black p-1 w-[24%]">초물(Start)</th>
+                <th className="border-r border-black p-1 w-[24%]">중물(Half)</th>
+                <th className="p-1 w-[24%]">종물(Finish)</th>
               </tr>
             </thead>
             <tbody>
@@ -641,51 +662,54 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
                       {isFirst && (
                         <td
                           rowSpan={totalSpecs * 3}
-                          className="border-r border-black bg-[#fef9c3] p-1 font-bold w-[12%] text-center align-middle"
+                          className="border-r border-black bg-[#fef9c3] p-1 font-bold w-[10%] text-center align-middle"
                         >
                           <div className="leading-snug">
                             정치 절단<br />길이(Spec<br />cutting)
                           </div>
                         </td>
                       )}
-                      <td rowSpan={3} className="border-r border-black p-1 w-[10%] text-center font-bold">
+                      <td rowSpan={3} className="border-r border-black p-1 w-[9%] text-center font-bold">
                         {spec.section || spec.name || `Section ${sIdx + 1}`}
                       </td>
-                      <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                      <td className="border-r border-black p-0.5 text-center text-[11px] font-bold w-[9%]">
                         규격(Spec)
                       </td>
-                      <td colSpan={3} className="border-r border-black p-0.5 text-center font-black text-indigo-900 bg-slate-50/50">
-                        {spec.frtSpec || "-"}
-                      </td>
                       <td colSpan={3} className="p-0.5 text-center font-black text-indigo-900 bg-slate-50/50">
-                        {spec.rrSpec || "-"}
+                        {spec.frtSpec || spec.spec || "-"}
                       </td>
                     </tr>
 
-                    {/* Sub-row 2: 초/중/종 실측치 */}
+                    {/* Sub-row 2: 초/중/종 실측치 (초물, 중물, 종물 3개만 기록) */}
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
                         초/중/종
                       </td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-6 text-center font-mono">
+                        {spec.startVal || spec.start1 || ""}
+                      </td>
+                      <td className="border-r border-black p-0.5 h-6 text-center font-mono">
+                        {spec.halfVal || spec.half1 || ""}
+                      </td>
+                      <td className="p-0.5 h-6 text-center font-mono">
+                        {spec.finishVal || spec.finish1 || ""}
+                      </td>
                     </tr>
 
-                    {/* Sub-row 3: LOT NO. */}
+                    {/* Sub-row 3: LOT NO. (3개 칸) */}
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
                         LOT NO.
                       </td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="border-r border-black p-0.5 h-5"></td>
-                      <td className="p-0.5 h-5"></td>
+                      <td className="border-r border-black p-0.5 h-6 text-center font-mono text-[10.5px]">
+                        {spec.lotStart || spec.lotNo || ""}
+                      </td>
+                      <td className="border-r border-black p-0.5 h-6 text-center font-mono text-[10.5px]">
+                        {spec.lotHalf || spec.lotNo || ""}
+                      </td>
+                      <td className="p-0.5 h-6 text-center font-mono text-[10.5px]">
+                        {spec.lotFinish || spec.lotNo || ""}
+                      </td>
                     </tr>
                   </React.Fragment>
                 );
