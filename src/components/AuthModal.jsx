@@ -1232,7 +1232,7 @@ export const AuthModal = () => {
     if (e) e.stopPropagation();
     setIsIssueModalOpen(false);
     setEditingIssue(null);
-    const isHard = forceHardDelete || ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted";
+    const isHard = Boolean(forceHardDelete || issue?.isDeleted);
     setDeleteModalData({
       isOpen: true,
       issue,
