@@ -1104,92 +1104,82 @@ export const LegoWorkReportBuilder = ({
       )}
 
       {/* ======================================================================= */}
-      {/* 🌟 Top Hero: 레고 블록 작업일보 컨트롤 패널 */}
+      {/* 🌟 Top Hero: 레고 블록 작업일보 컨트롤 패널 (컴팩트 고시인성 디자인) */}
       {/* ======================================================================= */}
-      <div className="bg-slate-900 dark:bg-slate-950 p-4 sm:p-5 rounded-3xl border border-slate-700 shadow-xl text-white space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="p-2 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white shadow-md">
-                <Layers className="w-5 h-5" />
-              </span>
-              <h1 className="text-base sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>🧩 레고 블록 작업일보 빌더 (LEGO Work Report)</span>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold">
-                  17대 실물 블록 완벽 탑재
-                </span>
+      <div className="bg-slate-900/95 dark:bg-slate-950 p-2.5 sm:p-3 rounded-2xl border border-slate-700/80 shadow-md text-white space-y-2">
+        {/* 상단 1열: 타이틀 + 뱃지 (좌측) & 핵심 액션 버튼 (우측) */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+          {/* 좌측: 타이틀 (절대 줄바꿈/깨짐 없이 한 줄 고정) */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="p-1.5 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white shadow-xs shrink-0">
+              <Layers className="w-4 h-4" />
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <h1 className="text-xs sm:text-sm font-black tracking-tight text-white whitespace-nowrap">
+                🧩 레고 블록 작업일보 빌더
               </h1>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold whitespace-nowrap">
+                17대 실물 블록
+              </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
-              <strong>"레고 양식.xlsx"</strong> 17장의 실물 사진을 통일된 규격으로 재해석했습니다.
-              <strong>행 추가 • 치수 변경 • 제목 수정</strong> 후 <strong>[작업일보 등록]</strong> 버튼을 누르면 일지로 공식 저장됩니다.
-            </p>
           </div>
 
-          {/* Top Actions Bar */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* 우측: 핵심 액션 버튼 (컴팩트 & 직관적 정렬) */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
             <button
               type="button"
               onClick={() => setShowPhotoRefModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/40 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
               title="17장 원본 사진 레고 블록 열람"
             >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>원본 사진 17종 대조</span>
+              <ImageIcon className="w-3 h-3" />
+              <span>사진 대조</span>
             </button>
 
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "DIGITAL" ? "PRINT_A4" : "DIGITAL")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap ${
                 viewMode === "PRINT_A4"
-                  ? "bg-purple-600 text-white ring-2 ring-purple-400"
+                  ? "bg-purple-600 text-white ring-1 ring-purple-400"
                   : "bg-slate-800 hover:bg-slate-700 text-slate-200"
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>{viewMode === "PRINT_A4" ? "🖥️ 디지털 뷰" : "🖨️ A4 서식"}</span>
+              <FileSpreadsheet className="w-3 h-3" />
+              <span>{viewMode === "PRINT_A4" ? "디지털뷰" : "A4서식"}</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600 text-xs font-black transition cursor-pointer flex items-center gap-1.5"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-3 h-3" />
               <span>인쇄/PDF</span>
             </button>
 
-            {/* 양식 보관함 바로가기 버튼 (DB 보관함 뱃지 탑재) */}
+            {/* 양식 보관함 바로가기 버튼 */}
             {onNavigateToCatalog && (
               <button
                 type="button"
                 onClick={onNavigateToCatalog}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-black transition cursor-pointer flex items-center gap-2 shadow-xs"
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
                 title="5대 공정별 표준 양식 보관함으로 이동"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" />
+                <Database className="w-3 h-3 text-cyan-400" />
                 <span>양식 보관함</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-cyan-500 to-blue-600 text-white flex items-center gap-1 shadow-xs">
-                  <Database className="w-2.5 h-2.5" />
-                  <span>DB 보관함</span>
-                </span>
               </button>
             )}
 
-            {/* Save as New Template in Catalog (5대 공정 양식 보관함에 공식 저장) */}
+            {/* Save as New Template in Catalog */}
             <button
               type="button"
               onClick={handleOpenSaveCatalogModal}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-2 shadow-md shadow-indigo-600/30 active:scale-95"
+              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] transition cursor-pointer flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
               title="현재 레고 블록 구성을 5대 공정별 표준 양식 보관함에 신규 템플릿으로 저장"
             >
-              <Layers className="w-3.5 h-3.5 text-cyan-300" />
-              <span>💾 템플릿 보관함 저장</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-400 text-slate-950 flex items-center gap-0.5">
-                <Database className="w-2.5 h-2.5" />
-                <span>DB 보관함</span>
-              </span>
+              <Layers className="w-3 h-3 text-cyan-300" />
+              <span>템플릿 저장</span>
             </button>
 
             {/* Official DB Save Button */}
@@ -1197,19 +1187,19 @@ export const LegoWorkReportBuilder = ({
               type="button"
               onClick={handleSaveOfficialWorkReport}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-95 disabled:opacity-50"
+              className="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95 disabled:opacity-50 whitespace-nowrap"
             >
-              <Save className="w-4 h-4" />
-              <span>{isSubmitting ? "저장 중..." : "✅ 작업일보 공식 등록 (DB 저장)"}</span>
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSubmitting ? "저장 중..." : "일보 공식 등록"}</span>
             </button>
           </div>
         </div>
 
-        {/* ⚡ 4대 프리셋 탭 */}
-        <div className="pt-2 border-t border-slate-800 flex items-center gap-2 overflow-x-auto pb-1">
-          <span className="text-xs font-black text-slate-400 shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>완성형 프리셋:</span>
+        {/* 하단 2열: ⚡ 4대 완성형 프리셋 탭 (슬림 스트립) */}
+        <div className="pt-1.5 border-t border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <span className="text-[11px] font-black text-slate-400 shrink-0 flex items-center gap-1 whitespace-nowrap">
+            <Sparkles className="w-3 h-3 text-cyan-400" />
+            <span>프리셋:</span>
           </span>
           {PRESET_REPORTS.map((preset) => {
             const isSelected = currentReport.id === preset.id;
@@ -1218,14 +1208,14 @@ export const LegoWorkReportBuilder = ({
                 key={preset.id}
                 type="button"
                 onClick={() => handleLoadPreset(preset.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                   isSelected
-                    ? "bg-cyan-500 text-slate-950 font-black shadow-md ring-2 ring-cyan-300 scale-102"
-                    : "bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700"
+                    ? "bg-cyan-500 text-slate-950 font-black shadow-xs ring-1 ring-cyan-300"
+                    : "bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800"
                 }`}
               >
                 <span>{preset.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                <span className={`text-[9px] px-1 py-0.2 rounded font-bold ${
                   isSelected ? "bg-slate-900 text-cyan-300" : "bg-slate-800 text-slate-400"
                 }`}>
                   {preset.badge}
