@@ -71,6 +71,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "정치 절단",
     subProcess: "정치절단",
     divisionType: "SECTION_ABC", // SECTION_ABC, LH_RH, 4_COLUMNS, SINGLE
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -127,6 +128,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "단컷팅",
     subProcess: "단컷팅",
     divisionType: "LH_RH",
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -172,6 +174,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "압출",
     subProcess: "본압출",
     divisionType: "LINE_NUMBER",
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -216,6 +219,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "조인트",
     subProcess: "FRT",
     divisionType: "LH_RH",
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -262,6 +266,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "후가공",
     subProcess: "본드로봇",
     divisionType: "LH_RH",
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -305,6 +310,7 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
     processName: "검사",
     subProcess: "최종검사",
     divisionType: "4_COLUMNS",
+    isDatabaseBacked: true,
     blocks: {
       timeAndQty: true,
       specAndLot: true,
@@ -503,16 +509,40 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
 
 ];
 
-// 로컬 스토리지 데이터 가져오기
+// 로컬 스토리지 데이터 가져오기 (기본 10대 공식 템플릿 및 DB 연동 마이그레이션 자동 보장)
 export const getLocalWorkReportTemplates = () => {
   try {
     const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-    if (!raw) return DEFAULT_WORK_REPORT_TEMPLATES;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_WORK_REPORT_TEMPLATES;
+    let cachedList = [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedList = parsed;
+      }
+    }
+
+    const tplMap = new Map();
+    // 1. 기본 10대 공식 템플릿 우선 등록 (모두 isDatabaseBacked: true)
+    DEFAULT_WORK_REPORT_TEMPLATES.forEach((tpl) => {
+      tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+    });
+
+    // 2. 사용자가 저장한 템플릿 및 변경사항 병합 (항상 isDatabaseBacked: true 부여)
+    cachedList.forEach((tpl) => {
+      const base = tplMap.get(tpl.id);
+      tplMap.set(tpl.id, {
+        ...(base || {}),
+        ...tpl,
+        isDatabaseBacked: true
+      });
+    });
+
+    const merged = Array.from(tplMap.values());
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(merged));
+    return merged;
   } catch (e) {
     console.warn("getLocalWorkReportTemplates fallback:", e);
-    return DEFAULT_WORK_REPORT_TEMPLATES;
+    return DEFAULT_WORK_REPORT_TEMPLATES.map((t) => ({ ...t, isDatabaseBacked: true }));
   }
 };
 
@@ -525,7 +555,7 @@ export const saveLocalWorkReportTemplates = (templates) => {
   }
 };
 
-// Firestore 실시간 구독 (없으면 기본값 동기화)
+// Firestore 실시간 구독 (기본 10종 템플릿 누락 시 자동 보충 및 DB 뱃지 부여)
 export const subscribeWorkReportTemplates = (callback) => {
   let isInitial = true;
   try {
@@ -534,19 +564,44 @@ export const subscribeWorkReportTemplates = (callback) => {
       q,
       (snapshot) => {
         if (!snapshot.empty) {
-          const list = snapshot.docs.map((docSnap) => ({
+          const snapshotList = snapshot.docs.map((docSnap) => ({
             id: docSnap.id,
-            ...docSnap.data()
+            ...docSnap.data(),
+            isDatabaseBacked: true
           }));
-          saveLocalWorkReportTemplates(list);
-          callback(list);
+
+          const tplMap = new Map();
+          DEFAULT_WORK_REPORT_TEMPLATES.forEach((tpl) => {
+            tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+          });
+          snapshotList.forEach((tpl) => {
+            const base = tplMap.get(tpl.id);
+            tplMap.set(tpl.id, {
+              ...(base || {}),
+              ...tpl,
+              isDatabaseBacked: true
+            });
+          });
+
+          const merged = Array.from(tplMap.values());
+          saveLocalWorkReportTemplates(merged);
+          callback(merged);
+
+          // Firestore에 누락된 표준 템플릿이 있다면 백그라운드 동기화
+          if (isInitial) {
+            DEFAULT_WORK_REPORT_TEMPLATES.forEach((defTpl) => {
+              if (!snapshotList.some((s) => s.id === defTpl.id)) {
+                setDoc(doc(db, COLLECTION_NAME, defTpl.id), sanitizeForFirestore({ ...defTpl, isDatabaseBacked: true })).catch(console.warn);
+              }
+            });
+          }
         } else if (isInitial) {
           // 컬렉션이 비어있으면 초기 템플릿 마이그레이션 저장
           const defaults = getLocalWorkReportTemplates();
           callback(defaults);
           // 백그라운드에서 기본 템플릿 Firestore 업로드
           Promise.all(
-            defaults.map((t) => setDoc(doc(db, COLLECTION_NAME, t.id), sanitizeForFirestore(t)))
+            defaults.map((t) => setDoc(doc(db, COLLECTION_NAME, t.id), sanitizeForFirestore({ ...t, isDatabaseBacked: true })))
           ).catch((err) => console.warn("Init templates upload error:", err));
         }
         isInitial = false;
@@ -571,6 +626,7 @@ export const saveWorkReportTemplate = async (template) => {
   const payload = {
     ...template,
     id: tplId,
+    isDatabaseBacked: true,
     updatedAt: now
   };
 
