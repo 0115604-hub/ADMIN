@@ -539,12 +539,6 @@ export const App = () => {
                     </ErrorBoundary>
                   )}
 
-                  {activeTab === "work_report_templates" && (
-                    <ErrorBoundary inline title="일보 양식 관리">
-                      <WorkReportTemplateManagerView />
-                    </ErrorBoundary>
-                  )}
-
                   {activeTab === "electronic_approval" && (
                     <ErrorBoundary inline title="전자결재">
                       <ElectronicApprovalView />

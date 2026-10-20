@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  AlertTriangle,
+  ClipboardList,
+  CheckCircle2,
   Plus,
-  Download,
   Search,
   Filter,
-  CheckCircle2,
-  Clock,
-  Flame,
-  Wrench,
   Calendar,
   FileSpreadsheet,
   Trash2,
@@ -17,34 +13,31 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  ShieldAlert,
-  ArrowRight,
   RefreshCw,
   Sparkles,
   Layers,
-  MessageSquare,
-  Camera,
-  Copy
+  Building2,
+  Clock,
+  UserCheck
 } from "lucide-react";
 import {
   getLocalIncidentLogs,
   saveIncidentLog,
   deleteIncidentLog,
   subscribeIncidentLogs,
+  resetToDefaultIncidentLogs,
   exportIncidentLogsToExcel,
   INCIDENT_CATEGORIES,
   SEVERITY_LEVELS,
   INCIDENT_STATUSES
 } from "../services/incidentLogService";
-import { captureStateSnapshot } from "../services/errorSnapshotService";
 import { useAuth } from "../context/AuthContext";
 
 export const IncidentLogsView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [logs, setLogs] = useState(() => getLocalIncidentLogs());
-  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL, ACTIVE, RESOLVED, MONDAY_CHECK
+  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL, ACTIVE, RESOLVED
   const [categoryFilter, setCategoryFilter] = useState("ALL");
-  const [severityFilter, setSeverityFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -67,31 +60,27 @@ export const IncidentLogsView = () => {
   const metrics = useMemo(() => {
     const total = logs.length;
     const active = logs.filter((l) => l.status === "RECEIVED" || l.status === "IN_PROGRESS").length;
-    const resolved = logs.filter((l) => l.status === "RESOLVED").length;
-    const verified = logs.filter((l) => l.status === "VERIFIED" || l.mondayChecked).length;
-    const p0Count = logs.filter((l) => l.severity === "P0").length;
-    const resolveRate = total > 0 ? Math.round(((resolved + verified) / total) * 100) : 100;
-    return { total, active, resolved, verified, p0Count, resolveRate };
+    const resolved = logs.filter((l) => l.status === "RESOLVED" || l.status === "VERIFIED").length;
+    const resolveRate = total > 0 ? Math.round((resolved / total) * 100) : 100;
+    return { total, active, resolved, resolveRate };
   }, [logs]);
 
   // Filtered List
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
       if (statusFilter === "ACTIVE" && !(l.status === "RECEIVED" || l.status === "IN_PROGRESS")) return false;
-      if (statusFilter === "RESOLVED" && l.status !== "RESOLVED") return false;
-      if (statusFilter === "MONDAY_CHECK" && !l.mondayChecked && l.status !== "VERIFIED") return false;
+      if (statusFilter === "RESOLVED" && !(l.status === "RESOLVED" || l.status === "VERIFIED")) return false;
 
       if (categoryFilter !== "ALL" && l.category !== categoryFilter) return false;
-      if (severityFilter !== "ALL" && l.severity !== severityFilter) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const titleMatch = (l.title || "").toLowerCase().includes(q);
-        const symptomsMatch = (l.symptoms || "").toLowerCase().includes(q);
-        const causeMatch = (l.rootCause || "").toLowerCase().includes(q);
-        const resolutionMatch = (l.resolution || "").toLowerCase().includes(q);
+        const orderMatch = (l.orderContent || l.symptoms || "").toLowerCase().includes(q);
+        const actionMatch = (l.actionResult || l.resolution || "").toLowerCase().includes(q);
+        const plantMatch = (l.plant || "").toLowerCase().includes(q);
         const reporterMatch = (l.reporter || "").toLowerCase().includes(q);
-        if (!titleMatch && !symptomsMatch && !causeMatch && !resolutionMatch && !reporterMatch) return false;
+        if (!titleMatch && !orderMatch && !actionMatch && !plantMatch && !reporterMatch) return false;
       }
       return true;
     }).sort((a, b) => {
@@ -100,24 +89,20 @@ export const IncidentLogsView = () => {
       if (dateB !== dateA) return dateB.localeCompare(dateA);
       return (b.incidentNo || 0) - (a.incidentNo || 0);
     });
-  }, [logs, statusFilter, categoryFilter, severityFilter, searchQuery]);
+  }, [logs, statusFilter, categoryFilter, searchQuery]);
 
   // Form State for Modal
   const [formData, setFormData] = useState({
     workDate: new Date().toISOString().slice(0, 10),
-    category: "근태관리",
+    category: "화면/패널개편",
     severity: "P1",
     plant: "본사 • 전사",
-    reporter: currentProfile?.name || "관리자",
+    reporter: currentProfile?.name || "대표이사",
     title: "",
-    symptoms: "",
-    rootCause: "",
-    resolution: "",
-    actionCommit: "",
-    status: "RECEIVED",
-    mondayChecked: false,
-    resolver: currentProfile?.name || "시스템 관리자",
-    stateSnapshot: null,
+    orderContent: "",
+    actionResult: "",
+    status: "RESOLVED",
+    resolver: "시스템 관리자",
     notes: ""
   });
 
@@ -125,19 +110,15 @@ export const IncidentLogsView = () => {
     setEditingItem(null);
     setFormData({
       workDate: new Date().toISOString().slice(0, 10),
-      category: "근태관리",
+      category: "화면/패널개편",
       severity: "P1",
       plant: "본사 • 전사",
-      reporter: currentProfile?.name || "관리자",
+      reporter: currentProfile?.name || "대표이사",
       title: "",
-      symptoms: "",
-      rootCause: "",
-      resolution: "",
-      actionCommit: "",
-      status: "RECEIVED",
-      mondayChecked: false,
-      resolver: currentProfile?.name || "시스템 관리자",
-      stateSnapshot: null,
+      orderContent: "",
+      actionResult: "",
+      status: "RESOLVED",
+      resolver: "시스템 관리자",
       notes: ""
     });
     setIsModalOpen(true);
@@ -146,7 +127,17 @@ export const IncidentLogsView = () => {
   const handleOpenEdit = (item) => {
     setEditingItem(item);
     setFormData({
-      ...item
+      workDate: item.workDate || new Date().toISOString().slice(0, 10),
+      category: item.category || "화면/패널개편",
+      severity: item.severity || "P1",
+      plant: item.plant || "본사 • 전사",
+      reporter: item.reporter || "대표이사",
+      title: item.title || "",
+      orderContent: item.orderContent || item.symptoms || "",
+      actionResult: item.actionResult || item.resolution || "",
+      status: item.status || "RESOLVED",
+      resolver: item.resolver || "시스템 관리자",
+      notes: item.notes || ""
     });
     setIsModalOpen(true);
   };
@@ -154,7 +145,7 @@ export const IncidentLogsView = () => {
   const handleSaveSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert("오류 제목을 입력해주세요.");
+      alert("오더 제목을 입력해주세요.");
       return;
     }
     const targetPayload = editingItem
@@ -163,35 +154,29 @@ export const IncidentLogsView = () => {
 
     await saveIncidentLog(targetPayload);
     setIsModalOpen(false);
-    triggerToast(editingItem ? "✅ 오류 내역이 수정되었습니다." : "🎉 새 오류 리포트가 등록되었습니다!");
+    triggerToast(editingItem ? "✅ 오더 및 조치 내역이 수정되었습니다." : "🎉 새 오더 내역이 등록되었습니다!");
   };
 
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`[${title}]\n\n이 오류 내역을 정말 삭제하시겠습니까?`)) return;
+    if (!window.confirm(`[${title}]\n\n이 항목을 목록에서 삭제하시겠습니까?`)) return;
     await deleteIncidentLog(id);
-    triggerToast("🗑️ 오류 내역이 삭제되었습니다.");
+    triggerToast("🗑️ 항목이 삭제되었습니다.");
+  };
+
+  const handleResetDefaults = async () => {
+    if (!window.confirm("지금까지의 최신 15건 누적 오더 및 조치 결과 기본 내역으로 동기화하시겠습니까?")) return;
+    await resetToDefaultIncidentLogs();
+    triggerToast("🔄 최신 15건 누적 내역으로 갱신 완료되었습니다.");
   };
 
   const handleQuickStatusChange = async (item, newStatus) => {
     const updated = {
       ...item,
       status: newStatus,
-      resolvedAt: newStatus === "RESOLVED" || newStatus === "VERIFIED" ? (item.resolvedAt || new Date().toISOString()) : item.resolvedAt,
-      mondayChecked: newStatus === "VERIFIED" ? true : item.mondayChecked
+      resolvedAt: newStatus === "RESOLVED" || newStatus === "VERIFIED" ? (item.resolvedAt || new Date().toISOString()) : item.resolvedAt
     };
     await saveIncidentLog(updated);
-    triggerToast(`상태가 [${INCIDENT_STATUSES[newStatus]?.label}]로 변경되었습니다.`);
-  };
-
-  const handleToggleMondayCheck = async (item) => {
-    const nextVal = !item.mondayChecked;
-    const updated = {
-      ...item,
-      mondayChecked: nextVal,
-      status: nextVal && item.status === "RESOLVED" ? "VERIFIED" : item.status
-    };
-    await saveIncidentLog(updated);
-    triggerToast(nextVal ? "🔍 월요 정기 재점검 완료로 표시되었습니다." : "월요 점검 체크가 해제되었습니다.");
+    triggerToast(`상태가 [${INCIDENT_STATUSES[newStatus]?.label || newStatus}]로 변경되었습니다.`);
   };
 
   return (
@@ -209,64 +194,66 @@ export const IncidentLogsView = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                <AlertTriangle className="w-5 h-5" />
+              <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <ClipboardList className="w-5 h-5" />
               </span>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                시스템 오류 및 조치 이력 관리
+                일일 오더 및 조치 결과 관리대장
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
-                월요 정기 품질 점검
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                일자별 누적 관리
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 mt-2 font-medium">
-              일주일간 발생한 기능 오류 및 현장 개선사항을 기록하고, 매주 월요일마다 원인 분석과 조치 결과를 재점검하여 시스템 무결성을 유지합니다.
+              매일 현장에서 내려진 지시 오더 내용과 시스템 반영 및 개선 조치 결과를 간결하고 명확하게 정리하여 누적 관리합니다.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <button
+              onClick={handleResetDefaults}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-md border border-slate-700 transition cursor-pointer"
+              title="최신 15건 누적 내역으로 새로고침"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+              <span>최신 내역 동기화</span>
+            </button>
             <button
               onClick={() => exportIncidentLogsToExcel(logs)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-400 font-black text-xs shadow-md border border-emerald-500/30 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-400 font-black text-xs shadow-md border border-emerald-500/30 transition cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>엑셀 다운로드</span>
             </button>
             <button
               onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-blue-500/25 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-blue-500/25 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>새 오류 등록</span>
+              <span>새 오더 등록</span>
             </button>
           </div>
         </div>
 
         {/* Real-time KPI Metric Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6 pt-5 border-t border-slate-700/60">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-700/60">
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-            <span className="text-[11px] font-bold text-slate-400 block">전체 누적 건수</span>
+            <span className="text-[11px] font-bold text-slate-400 block">전체 누적 오더</span>
             <div className="text-lg sm:text-2xl font-black text-white mt-0.5">{metrics.total}건</div>
-          </div>
-          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-            <span className="text-[11px] font-bold text-rose-300 flex items-center gap-1">
-              <span>🚨 조치 대기/진행중</span>
-            </span>
-            <div className="text-lg sm:text-2xl font-black text-rose-400 mt-0.5">{metrics.active}건</div>
           </div>
           <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
             <span className="text-[11px] font-bold text-emerald-300">🟢 조치 완료</span>
             <div className="text-lg sm:text-2xl font-black text-emerald-400 mt-0.5">{metrics.resolved}건</div>
           </div>
-          <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-            <span className="text-[11px] font-bold text-blue-300">🔍 월요 재점검 확인</span>
-            <div className="text-lg sm:text-2xl font-black text-blue-400 mt-0.5">{metrics.verified}건</div>
+          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+            <span className="text-[11px] font-bold text-rose-300">🚨 대기 / 조치중</span>
+            <div className="text-lg sm:text-2xl font-black text-rose-400 mt-0.5">{metrics.active}건</div>
           </div>
-          <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col justify-between">
+          <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col justify-between">
             <span className="text-[11px] font-bold text-indigo-300">조치 완료율</span>
             <div className="flex items-center justify-between">
               <span className="text-lg sm:text-2xl font-black text-indigo-400">{metrics.resolveRate}%</span>
-              <span className="text-[10px] text-slate-400">{metrics.resolved + metrics.verified}/{metrics.total}건</span>
+              <span className="text-[10px] text-slate-400">{metrics.resolved}/{metrics.total}건</span>
             </div>
           </div>
         </div>
@@ -279,9 +266,8 @@ export const IncidentLogsView = () => {
           <div className="flex flex-wrap items-center gap-1.5">
             {[
               { id: "ALL", label: "전체보기" },
-              { id: "ACTIVE", label: "🚨 조치대기/진행중", count: metrics.active },
               { id: "RESOLVED", label: "🟢 조치완료", count: metrics.resolved },
-              { id: "MONDAY_CHECK", label: "🔍 월요재점검 대상/완료", count: metrics.verified }
+              { id: "ACTIVE", label: "🚨 대기/진행중", count: metrics.active }
             ].map((btn) => (
               <button
                 key={btn.id}
@@ -311,17 +297,17 @@ export const IncidentLogsView = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="제목, 에러문구, 원인, 조치내용 검색..."
+              placeholder="오더 제목, 요청 내용, 조치 결과 검색..."
               className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
             />
           </div>
         </div>
 
-        {/* Secondary Category & Severity Dropdown Filters */}
+        {/* Secondary Category Filter */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
           <span className="text-slate-500 font-bold flex items-center gap-1">
             <Filter className="w-3.5 h-3.5" />
-            <span>상세분류:</span>
+            <span>업무 분류:</span>
           </span>
 
           <select
@@ -329,21 +315,10 @@ export const IncidentLogsView = () => {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 text-xs"
           >
-            <option value="ALL">전체 메뉴분류</option>
+            <option value="ALL">전체 업무 분류</option>
             {INCIDENT_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
-          </select>
-
-          <select
-            value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value)}
-            className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 text-xs"
-          >
-            <option value="ALL">전체 심각도</option>
-            <option value="P0">🔴 P0 (치명적/긴급)</option>
-            <option value="P1">🟡 P1 (중요/기능)</option>
-            <option value="P2">🔵 P2 (일반/화면)</option>
           </select>
 
           <span className="text-slate-400 ml-auto font-medium">
@@ -352,19 +327,18 @@ export const IncidentLogsView = () => {
         </div>
       </div>
 
-      {/* Incident Logs List */}
-      <div className="space-y-3">
+      {/* Incident / Order Logs List */}
+      <div className="space-y-4">
         {filteredLogs.length === 0 ? (
           <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-slate-400">
             <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-emerald-500/60" />
-            <p className="font-bold text-sm">해당 조건에 해당하는 오류 리포트가 없습니다.</p>
-            <p className="text-xs text-slate-400 mt-1">새로운 문제가 발생하면 우측 상단의 [+ 새 오류 등록] 버튼을 눌러 기록해주세요.</p>
+            <p className="font-bold text-sm">해당 조건에 해당하는 오더 내역이 없습니다.</p>
+            <p className="text-xs text-slate-400 mt-1">우측 상단의 [+ 새 오더 등록] 버튼을 눌러 기록해주세요.</p>
           </div>
         ) : (
           filteredLogs.map((item) => {
             const isExpanded = expandedId === item.id;
-            const sevMeta = SEVERITY_LEVELS[item.severity] || SEVERITY_LEVELS.P1;
-            const statMeta = INCIDENT_STATUSES[item.status] || INCIDENT_STATUSES.RECEIVED;
+            const statMeta = INCIDENT_STATUSES[item.status] || INCIDENT_STATUSES.RESOLVED;
 
             return (
               <div
@@ -372,237 +346,125 @@ export const IncidentLogsView = () => {
                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
               >
                 {/* Header Summary Row */}
-                <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-xs font-black shrink-0 mt-0.5">
-                      #{item.incidentNo || "-"}
-                    </span>
-
-                    <div className="space-y-1 min-w-0">
+                <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="space-y-1.5 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Severity Badge */}
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-black shrink-0 border ${sevMeta.color}`}>
-                          {item.severity}
+                        {/* Number */}
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs font-black shrink-0">
+                          #{item.incidentNo || "-"}
                         </span>
 
-                        {/* Category Badge */}
-                        <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-200 dark:border-indigo-800 shrink-0">
+                        {/* Date */}
+                        <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-black text-xs border border-blue-200 dark:border-blue-800 flex items-center gap-1 shrink-0">
+                          <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                          <span>{item.workDate}</span>
+                        </span>
+
+                        {/* Category */}
+                        <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 shrink-0">
                           {item.category}
                         </span>
 
-                        {/* State Snapshot Badge */}
-                        {item.stateSnapshot && (
-                          <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[11px] border border-purple-200 dark:border-purple-800 flex items-center gap-1 shrink-0">
-                            <Camera className="w-3 h-3 text-purple-500" />
-                            <span>스냅샷 첨부</span>
-                          </span>
-                        )}
-
-                        {/* Date & Plant */}
+                        {/* Plant & Reporter */}
                         <span className="text-slate-400 font-medium text-xs flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{item.workDate}</span>
                           <span>•</span>
                           <span>{item.plant}</span>
                           {item.reporter && <span>({item.reporter})</span>}
                         </span>
                       </div>
 
-                      <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
+                      {/* Title */}
+                      <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight pt-0.5">
                         {item.title}
                       </h3>
                     </div>
+
+                    {/* Actions & Status Dropdown */}
+                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                      <select
+                        value={item.status}
+                        onChange={(e) => handleQuickStatusChange(item, e.target.value)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black border cursor-pointer focus:outline-none transition-all ${statMeta.badge}`}
+                      >
+                        <option value="RESOLVED">🟢 조치완료</option>
+                        <option value="IN_PROGRESS">🟡 조치중</option>
+                        <option value="RECEIVED">🚨 접수됨</option>
+                        <option value="VERIFIED">🔍 점검완료</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleOpenEdit(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                        title="수정"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(item.id, item.title)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                        title="상세 메모 토글"
+                      >
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Actions & Status Dropdown */}
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                    {/* Monday Verified Indicator */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleMondayCheck(item)}
-                      title={item.mondayChecked ? "월요 정기 재점검 완료됨 (클릭 시 해제)" : "월요 정기 재점검 미완료 (클릭 시 완료)"}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer flex items-center gap-1 ${
-                        item.mondayChecked
-                          ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-400/60"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-600"
-                      }`}
-                    >
-                      <Check className={`w-3.5 h-3.5 ${item.mondayChecked ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`} />
-                      <span>{item.mondayChecked ? "월요점검 완료" : "월요점검 미완료"}</span>
-                    </button>
+                  {/* 2 Main Visual Boxes: [📋 요청 오더 내용] & [✅ 조치 및 반영 결과] */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3.5">
+                    {/* 📋 요청 오더 내용 */}
+                    <div className="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/25 border border-blue-200/60 dark:border-blue-900/40">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span className="font-black text-blue-900 dark:text-blue-200 text-xs tracking-tight">
+                          [📋 요청 오더 내용]
+                        </span>
+                      </div>
+                      <p className="text-slate-800 dark:text-slate-200 text-xs sm:text-[13px] leading-relaxed font-medium whitespace-pre-wrap">
+                        {item.orderContent || item.symptoms || "요청 내용이 기록되지 않았습니다."}
+                      </p>
+                    </div>
 
-                    {/* Status Select Badge */}
-                    <select
-                      value={item.status}
-                      onChange={(e) => handleQuickStatusChange(item, e.target.value)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black border cursor-pointer focus:outline-none transition-all ${statMeta.badge}`}
-                    >
-                      <option value="RECEIVED">🚨 접수됨</option>
-                      <option value="IN_PROGRESS">🟡 조치중</option>
-                      <option value="RESOLVED">🟢 조치완료</option>
-                      <option value="VERIFIED">🔍 월요점검완료</option>
-                    </select>
-
-                    <button
-                      onClick={() => handleOpenEdit(item)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition cursor-pointer"
-                      title="수정"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(item.id, item.title)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition cursor-pointer"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                      title="상세보기 토글"
-                    >
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    {/* ✅ 조치 및 반영 결과 */}
+                    <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/25 border border-emerald-200/60 dark:border-emerald-900/40">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="font-black text-emerald-900 dark:text-emerald-200 text-xs tracking-tight">
+                          [✅ 조치 및 반영 결과]
+                        </span>
+                      </div>
+                      <p className="text-slate-800 dark:text-slate-200 text-xs sm:text-[13px] leading-relaxed font-medium whitespace-pre-wrap">
+                        {item.actionResult || item.resolution || "조치 결과가 기록되지 않았습니다."}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Expanded Detail Panel (Root Cause, Resolution, Symptoms) */}
+                {/* Expanded Details (Notes, Timestamps) */}
                 {isExpanded && (
-                  <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-950/40 space-y-3.5 text-xs sm:text-sm animate-fadeIn">
-                    {/* 📸 발생 당시 화면 상태 스냅샷 (State Snapshot) */}
-                    {item.stateSnapshot && (
-                      <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/70 shadow-xs space-y-2">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-indigo-200/60 dark:border-indigo-900/40">
-                          <span className="font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 text-xs sm:text-sm">
-                            <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                            <span>📸 발생 당시 화면 상태 스냅샷 (State Snapshot)</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const snapshotStr = typeof item.stateSnapshot === "string"
-                                ? item.stateSnapshot
-                                : (item.stateSnapshot.oneLineSummary || JSON.stringify(item.stateSnapshot, null, 2));
-                              navigator.clipboard.writeText(snapshotStr);
-                              triggerToast("📋 스냅샷 JSON 데이터가 클립보드에 복사되었습니다!");
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 hover:bg-indigo-200 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] transition flex items-center gap-1 cursor-pointer active:scale-95"
-                          >
-                            <Copy className="w-3 h-3" />
-                            <span>스냅샷 JSON 복사</span>
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
-                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">👤 로그인 사용자</span>
-                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                              {item.stateSnapshot.user?.name || item.reporter || "-"}
-                            </span>
-                            <span className="text-[10px] text-slate-500 block truncate font-mono">
-                              ID: {item.stateSnapshot.user?.id || "-"} ({item.stateSnapshot.user?.title || item.stateSnapshot.user?.role || "-"})
-                            </span>
-                          </div>
-
-                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
-                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">🏢 소속 / 사업장</span>
-                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                              {item.stateSnapshot.user?.company || "-"}
-                            </span>
-                            <span className="text-[10px] text-slate-500 block truncate">
-                              {item.stateSnapshot.user?.plant || "-"} ({item.stateSnapshot.user?.assignedProcess || "-"})
-                            </span>
-                          </div>
-
-                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
-                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">📑 진입 메뉴 / 탭</span>
-                            <span className="font-black text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm truncate block">
-                              {item.stateSnapshot.view?.menuTitle || item.category || "-"}
-                            </span>
-                            <span className="text-[10px] text-slate-500 block truncate font-mono">
-                              activeTab: {item.stateSnapshot.view?.activeTab || "-"}
-                            </span>
-                          </div>
-
-                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 shadow-xs">
-                            <span className="text-[10px] text-slate-400 font-bold block mb-0.5">📱 기기 환경 & 조회월</span>
-                            <span className="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                              {item.stateSnapshot.device?.deviceType || (item.stateSnapshot.device?.isMobile ? "모바일 (Mobile)" : "PC (Desktop)")}
-                            </span>
-                            <span className="text-[10px] text-slate-500 block truncate font-mono">
-                              {item.stateSnapshot.device?.screenSize || "-"} • 기준월: {item.stateSnapshot.appState?.selectedMonth || "-"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 1줄 압축 JSON 요약 */}
-                        {item.stateSnapshot.oneLineSummary && (
-                          <div className="p-2 rounded-xl bg-slate-900 text-slate-300 font-mono text-[10.5px] border border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
-                            <span className="shrink-0 text-amber-400 font-bold text-[10px]">1줄 요약:</span>
-                            <span className="truncate">{item.stateSnapshot.oneLineSummary}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Symptoms */}
-                    {item.symptoms && (
-                      <div className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/50 dark:border-rose-900/40">
-                        <span className="font-black text-rose-800 dark:text-rose-300 block mb-1 flex items-center gap-1.5">
-                          <Flame className="w-3.5 h-3.5 text-rose-500" />
-                          <span>오류 현상 및 에러 문구 (Symptoms)</span>
-                        </span>
-                        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-mono text-[11px] sm:text-xs">
-                          {item.symptoms}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Root Cause */}
-                    {item.rootCause && (
-                      <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/40">
-                        <span className="font-black text-amber-800 dark:text-amber-300 block mb-1 flex items-center gap-1.5">
-                          <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
-                          <span>근본 원인 분석 (Root Cause Analysis)</span>
-                        </span>
-                        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                          {item.rootCause}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Resolution & Fix Commit */}
-                    {item.resolution && (
-                      <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/40">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                            <Wrench className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>조치 결과 및 해결 내역 (Resolution)</span>
-                          </span>
-                          {item.actionCommit && (
-                            <span className="px-2 py-0.5 rounded bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 font-mono text-[10px] font-black">
-                              {item.actionCommit}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                          {item.resolution}
-                        </p>
+                  <div className="p-4 bg-slate-50/70 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/80 text-xs space-y-2">
+                    <div className="flex flex-wrap items-center justify-between text-slate-500 gap-2">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>조치 담당자: <strong>{item.resolver || "시스템 관리자"}</strong></span>
                         {item.resolvedAt && (
-                          <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
-                            <span>조치 일시: {item.resolvedAt.replace("T", " ").slice(0, 16)}</span>
-                            {item.resolver && <span>• 조치자: {item.resolver}</span>}
-                          </div>
+                          <span>• 조치일시: {item.resolvedAt.replace("T", " ").slice(0, 16)}</span>
                         )}
                       </div>
-                    )}
-
+                    </div>
                     {item.notes && (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                        ※ 추가 메모: {item.notes}
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                        <span className="font-bold text-slate-400 block text-[11px] mb-0.5">※ 추가 참고 메모:</span>
+                        <span>{item.notes}</span>
                       </div>
                     )}
                   </div>
@@ -620,16 +482,16 @@ export const IncidentLogsView = () => {
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-500">
-                  <AlertTriangle className="w-4 h-4" />
+                  <ClipboardList className="w-4 h-4" />
                 </span>
                 <h2 className="font-black text-base text-slate-900 dark:text-white">
-                  {editingItem ? "오류 리포트 및 조치 결과 수정" : "신규 오류 리포트 등록"}
+                  {editingItem ? "오더 및 조치 결과 수정" : "신규 일일 오더 및 조치 등록"}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -638,7 +500,7 @@ export const IncidentLogsView = () => {
             <form onSubmit={handleSaveSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs sm:text-sm">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">발생 일자</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">일자</label>
                   <input
                     type="date"
                     required
@@ -649,7 +511,7 @@ export const IncidentLogsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">메뉴 분류</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">업무 분류</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -662,191 +524,124 @@ export const IncidentLogsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">심각도</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">진행 상태</label>
                   <select
-                    value={formData.severity}
-                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-rose-600"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black text-emerald-600"
                   >
-                    <option value="P0">🔴 P0 (치명적/업무중단)</option>
-                    <option value="P1">🟡 P1 (중요/기능결함)</option>
-                    <option value="P2">🔵 P2 (일반/화면개선)</option>
+                    <option value="RESOLVED">🟢 조치완료</option>
+                    <option value="IN_PROGRESS">🟡 조치중</option>
+                    <option value="RECEIVED">🚨 접수됨</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">발생 공장/부서</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">발생 사업장/공장</label>
                   <input
                     type="text"
                     value={formData.plant}
                     onChange={(e) => setFormData({ ...formData, plant: e.target.value })}
-                    placeholder="예: 삼랑진공장 / 한림공장 / 본사"
+                    placeholder="예: 본사 • 전사 / 삼랑진공장 / 한림공장"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">제보자 / 발견자</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">지시자 / 제보자</label>
                   <input
                     type="text"
                     value={formData.reporter}
                     onChange={(e) => setFormData({ ...formData, reporter: e.target.value })}
-                    placeholder="예: 조인주 선임, 관리자 등"
+                    placeholder="예: 대표이사 (권태형), 관리자 등"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">오류 제목 (핵심 요약)</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">오더 제목 (핵심 요약)</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="예: 근태 최종 저장 시 ReferenceError 크래시 발생"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white"
+                  placeholder="예: TEST 뱃지 레고블록 작업일보 빌더 1줄 바 개편 및 시인성 개선"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
                 />
               </div>
 
-              {/* 📸 화면 상태 스냅샷 (State Snapshot) 자동 첨부 영역 */}
-              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-indigo-950 dark:text-indigo-200 font-bold flex items-center gap-1.5 text-xs">
-                    <Camera className="w-4 h-4 text-indigo-500" />
-                    <span>화면 상태 스냅샷 (State Snapshot)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const snap = captureStateSnapshot({ title: formData.title || formData.category });
-                      setFormData({
-                        ...formData,
-                        stateSnapshot: snap,
-                        reporter: formData.reporter || snap.user.name,
-                        plant: formData.plant === "본사 • 전사" && snap.user.plant !== "-" ? snap.user.plant : formData.plant
-                      });
-                      triggerToast("⚡ 현재 사용자/기기 화면 상태 스냅샷을 자동 추출하였습니다!");
-                    }}
-                    className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>현재 화면 상태 자동 캡처</span>
-                  </button>
-                </div>
-
-                {formData.stateSnapshot ? (
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 text-[11px] space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        👤 {formData.stateSnapshot.user?.name} ({formData.stateSnapshot.user?.id}) • {formData.stateSnapshot.user?.company || "-"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {formData.stateSnapshot.device?.deviceType} ({formData.stateSnapshot.device?.screenSize})
-                      </span>
-                    </div>
-                    <div className="text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">
-                      activeTab: {formData.stateSnapshot.view?.activeTab} | 기준월: {formData.stateSnapshot.appState?.selectedMonth}
-                    </div>
-                    <div className="text-slate-500 dark:text-slate-400 font-mono text-[10px] truncate pt-0.5 border-t border-slate-100 dark:border-slate-800">
-                      1줄 요약: {formData.stateSnapshot.oneLineSummary}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    오류 발생 당시 로그인 사용자(currentProfile), 선택된 탭(activeTab), 모바일 기기 정보가 1줄 JSON으로 자동 첨부되어 빠른 원인 파악이 가능합니다.
-                  </p>
-                )}
-              </div>
-
+              {/* 📋 요청 오더 내용 */}
               <div>
-                <label className="block text-rose-600 dark:text-rose-400 font-bold mb-1">오류 현상 및 에러 문구</label>
+                <label className="block text-blue-700 dark:text-blue-300 font-black mb-1 flex items-center gap-1">
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>[📋 요청 오더 내용] (지시하거나 요청받은 핵심 사항)</span>
+                </label>
                 <textarea
                   rows={3}
-                  value={formData.symptoms}
-                  onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
-                  placeholder="어떤 버튼을 눌렀을 때 무슨 메시지가 뜨거나 어떻게 오작동했는지 적어주세요."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs font-medium"
+                  required
+                  value={formData.orderContent}
+                  onChange={(e) => setFormData({ ...formData, orderContent: e.target.value })}
+                  placeholder="현장 작업자나 관리자가 쉽게 이해할 수 있도록 간결하고 명확하게 지시 내용을 적어주세요."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-blue-200 dark:border-blue-900/50 font-medium text-xs sm:text-sm"
                 />
               </div>
 
+              {/* ✅ 조치 및 반영 결과 */}
               <div>
-                <label className="block text-amber-600 dark:text-amber-400 font-bold mb-1">근본 원인 분석 (Root Cause)</label>
+                <label className="block text-emerald-700 dark:text-emerald-300 font-black mb-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>[✅ 조치 및 반영 결과] (실제 시스템 수정 및 개선 결과)</span>
+                </label>
                 <textarea
-                  rows={2}
-                  value={formData.rootCause}
-                  onChange={(e) => setFormData({ ...formData, rootCause: e.target.value })}
-                  placeholder="오류가 발생하게 된 소스코드 결함, 데이터 누락, 동기화 문제 등의 원인"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
+                  rows={3}
+                  required
+                  value={formData.actionResult}
+                  onChange={(e) => setFormData({ ...formData, actionResult: e.target.value })}
+                  placeholder="시스템에 무엇이 어떻게 개선되고 반영되었는지를 간결하고 명확하게 적어주세요."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900/50 font-medium text-xs sm:text-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-emerald-600 dark:text-emerald-400 font-bold mb-1">조치 결과 및 해결 내역</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">조치 담당자</label>
                   <input
                     type="text"
-                    value={formData.resolution}
-                    onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-                    placeholder="예: 변수 선언 위치 수정 및 실서버 배포 완료"
+                    value={formData.resolver}
+                    onChange={(e) => setFormData({ ...formData, resolver: e.target.value })}
+                    placeholder="시스템 관리자"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">배포 커밋 / 버전</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">추가 비고 메모 (선택)</label>
                   <input
                     type="text"
-                    value={formData.actionCommit}
-                    onChange={(e) => setFormData({ ...formData, actionCommit: e.target.value })}
-                    placeholder="예: Commit cff95b6"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="참고사항 등"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">진행 상태</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-black"
-                  >
-                    <option value="RECEIVED">🚨 접수됨</option>
-                    <option value="IN_PROGRESS">🟡 조치중</option>
-                    <option value="RESOLVED">🟢 조치완료</option>
-                    <option value="VERIFIED">🔍 월요재점검완료</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-3 pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={formData.mondayChecked}
-                      onChange={(e) => setFormData({ ...formData, mondayChecked: e.target.checked })}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>월요일 정기 재점검 완료 확인</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition"
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black shadow-lg shadow-indigo-500/25 transition cursor-pointer"
                 >
-                  {editingItem ? "수정사항 저장" : "리포트 등록하기"}
+                  {editingItem ? "수정 완료" : "오더 등록하기"}
                 </button>
               </div>
             </form>
@@ -856,5 +651,3 @@ export const IncidentLogsView = () => {
     </div>
   );
 };
-
-export default IncidentLogsView;

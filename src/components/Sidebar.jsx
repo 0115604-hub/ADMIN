@@ -26,7 +26,6 @@ import { TelegramLogo } from "./TelegramLogo";
 
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
-  { id: "work_report_templates", label: "일보 양식 관리", icon: Layers },
   { id: "electronic_approval", label: "전자결재", icon: FileSignature },
   { id: "vehicle_sales", label: "매출매입분석", icon: BarChart3 },
   { id: "hanul_tax_invoice", label: "한울세금계산서", icon: Receipt },
