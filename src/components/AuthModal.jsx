@@ -25,7 +25,8 @@ import {
   deleteIssueReply,
   sortIssuesByCustomPriority,
   sortIssuesByLatest,
-  isMeetingExpired
+  isMeetingExpired,
+  isIssueClosed
 } from "../services/urgentIssueService";
 import {
   subscribeExtrusionQualityIssues,
@@ -716,9 +717,9 @@ export const AuthModal = () => {
       list.push(item);
     });
 
-    // 2. Urgent issues 부적합경보
+    // 2. Urgent issues 부적합경보 (종결/삭제 건도 대장 조회를 위해 수합)
     (urgentIssues || []).forEach((item) => {
-      if (!item || item.isDeleted === true || item.isDeleted === "true" || item.deleted === true || item.status === "DELETED") return;
+      if (!item) return;
       if (!isCatQualityAlert(item.category)) return;
 
       const key = `${(item.title || "").trim().toLowerCase()}_${(item.startDate || item.expireDate || item.date || "").slice(0, 10)}`;
@@ -807,27 +808,34 @@ export const AuthModal = () => {
     }
     return activeIssues;
   }, [activeIssues, openIssueCategoryFilter]);
-  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatMeeting(i.category) && !isMeetingExpired(i, 0))), [urgentIssues, todayDateStr, currentKstTimeStr]);
-  const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatOpenIssue(i.category))), [urgentIssues]);
-  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isFirstScreenIssue(i) && isCatNotice(i.category) && (!i.expireDate || i.expireDate >= todayDateStr || i.isManuallyRestored))), [urgentIssues, todayDateStr]);
-  const allClosedDeletedIssues = useMemo(() => {
-    const list = urgentIssues.filter((i) => {
-      if (!i || !isFirstScreenIssue(i)) return false;
-      if (i.isDeleted) return true;
-      if (isCatMeeting(i.category)) {
-        return isMeetingExpired(i, 0);
-      }
-      if (isCatNotice(i.category)) {
-        return Boolean(i.expireDate && i.expireDate < todayDateStr && !i.isManuallyRestored);
-      }
-      return false;
-    });
-    return sortIssuesByLatest(list);
-  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
+  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => isFirstScreenIssue(i) && isCatMeeting(i.category))), [urgentIssues]);
+  const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => isFirstScreenIssue(i) && isCatOpenIssue(i.category))), [urgentIssues]);
+  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => isFirstScreenIssue(i) && isCatNotice(i.category))), [urgentIssues]);
 
-  // Filtered issues for ledger modal (최신순 정렬 보장 - 첫 화면 등록 건만 한정!)
+  // 🌟 카테고리별 종료된 건수 (완료/만료/종결/삭제 - 대장 모달 탭 배지 표시용)
+  const closedQualityAlertCount = useMemo(() => {
+    return (allQualityAlerts || []).filter((it) => isIssueClosed(it, todayDateStr)).length;
+  }, [allQualityAlerts, todayDateStr]);
+
+  const closedMeetingCount = useMemo(() => {
+    return (allMeetings || []).filter((it) => isIssueClosed(it, todayDateStr)).length;
+  }, [allMeetings, todayDateStr]);
+
+  const closedQualityIssueCount = useMemo(() => {
+    return (allQualityIssues || []).filter((it) => isIssueClosed(it, todayDateStr)).length;
+  }, [allQualityIssues, todayDateStr]);
+
+  const closedNoticeCount = useMemo(() => {
+    return (allNotices || []).filter((it) => isIssueClosed(it, todayDateStr)).length;
+  }, [allNotices, todayDateStr]);
+
+  const totalClosedCount = useMemo(() => {
+    return closedQualityAlertCount + closedMeetingCount + closedQualityIssueCount + closedNoticeCount;
+  }, [closedQualityAlertCount, closedMeetingCount, closedQualityIssueCount, closedNoticeCount]);
+
+  // Filtered issues for ledger modal (최신순 정렬 보장 - 종결/삭제 건까지 카테고리별로 통합!)
   const filteredIssues = useMemo(() => {
-    let list = urgentIssues.filter(isFirstScreenIssue);
+    let list = [];
     if (ledgerCategoryTab === "quality_alert") {
       list = allQualityAlerts;
     } else if (ledgerCategoryTab === "meeting") {
@@ -836,8 +844,18 @@ export const AuthModal = () => {
       list = allQualityIssues;
     } else if (ledgerCategoryTab === "notice") {
       list = allNotices;
-    } else if (ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted") {
-      list = allClosedDeletedIssues;
+    } else {
+      // "all" tab
+      const seen = new Set();
+      const merged = [];
+      [...(allQualityAlerts || []), ...(allMeetings || []), ...(allQualityIssues || []), ...(allNotices || [])].forEach((item) => {
+        const id = item.id || item._docId || item.customId;
+        if (!seen.has(id)) {
+          seen.add(id);
+          merged.push(item);
+        }
+      });
+      list = merged;
     }
 
     if (selectedScheduleDate && (ledgerCategoryTab === "open_issue" || ledgerCategoryTab === "quality_issue" || ledgerCategoryTab === "meeting")) {
@@ -851,7 +869,7 @@ export const AuthModal = () => {
       });
     }
     return sortIssuesByLatest(list);
-  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, allQualityAlerts, allMeetings, allQualityIssues, allNotices, allClosedDeletedIssues]);
+  }, [ledgerCategoryTab, selectedScheduleDate, allQualityAlerts, allMeetings, allQualityIssues, allNotices]);
 
   // 7-day schedule strip for open issues
   const openIssueScheduleDays = useMemo(() => {
@@ -2242,7 +2260,11 @@ export const AuthModal = () => {
             allMeetings={allMeetings}
             allQualityIssues={allQualityIssues}
             allNotices={allNotices}
-            allClosedDeletedIssues={allClosedDeletedIssues}
+            closedQualityAlertCount={closedQualityAlertCount}
+            closedMeetingCount={closedMeetingCount}
+            closedQualityIssueCount={closedQualityIssueCount}
+            closedNoticeCount={closedNoticeCount}
+            totalClosedCount={totalClosedCount}
             selectedListItem={selectedListItem}
             openActionMenuId={openActionMenuId}
             setOpenActionMenuId={setOpenActionMenuId}

@@ -100,6 +100,31 @@ export const isMeetingExpired = (item, graceHours = 0) => {
   return nowKst >= expireTimeMs;
 };
 
+/**
+ * 항목이 종료(완료/만료/종결/삭제) 상태인지 종합 판별
+ * @param {Object} item
+ * @param {string} todayDateStr - YYYY-MM-DD
+ * @returns {boolean}
+ */
+export const isIssueClosed = (item, todayDateStr = "") => {
+  if (!item || typeof item !== "object") return false;
+  if (item.isDeleted === true || item.isDeleted === "true" || item.deleted === true || item.status === "DELETED") return true;
+  if (item.isResolved === true || item.status === "RESOLVED" || item.status === "CLOSED" || item.status === "DONE") return true;
+  if (typeof item.actionResult === "string" && item.actionResult.trim().length > 0) return true;
+
+  const cat = String(item.category || "").trim();
+  // 1. 회의일정: 회의 시작 시간 경과 시 종료
+  if (cat === "회의일정" || cat.includes("회의") || cat === "meeting") {
+    if (isMeetingExpired(item, 0)) return true;
+  }
+  // 2. 사내공지: 만료일자 경과 시 종료 (수동 복구건 제외)
+  if (cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat.includes("공지") || cat === "notice") {
+    const today = todayDateStr || getKSTDateString();
+    if (item.expireDate && item.expireDate < today && !item.isManuallyRestored) return true;
+  }
+  return false;
+};
+
 // Initial urgent issue samples (Empty by default to prevent zombie deleted items)
 export const INITIAL_URGENT_ISSUES = [];
 
