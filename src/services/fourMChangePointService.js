@@ -4,7 +4,8 @@ import {
   setDoc,
   deleteDoc,
   getDocs,
-  onSnapshot
+  onSnapshot,
+  runTransaction
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 
@@ -535,7 +536,8 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     line: record.line || existing?.line || "",
     writer: record.writer || existing?.writer || "",
     title: record.title || existing?.title || "",
-    date: record.date || existing?.date || nowStr.slice(0, 10),
+    // 🔒 [P2-5 & P2-6] 발생일자 및 최초등록일시 불변 락 (기존 등록건은 원천 불변)
+    date: existing?.date ? existing.date : (record.date || nowStr.slice(0, 10)),
     time: record.time || existing?.time || "",
     content: record.content !== undefined ? record.content : (existing?.content || ""),
     actionResult: record.actionResult || existing?.actionResult || "",
@@ -548,7 +550,7 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     severity: record.severity || existing?.severity || "NORMAL",
     downtimeMinutes: Number(record.downtimeMinutes !== undefined ? record.downtimeMinutes : existing?.downtimeMinutes) || 0,
     scrapKg: Number(record.scrapKg !== undefined ? record.scrapKg : existing?.scrapKg) || 0,
-    registeredAt: existing?.registeredAt || nowStr,
+    registeredAt: existing?.registeredAt ? existing.registeredAt : (record.registeredAt || nowStr),
     registeredBy: registeredBy || existing?.registeredBy || "관리자",
     isOfficialLedger: true
   };
@@ -558,6 +560,46 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     if (ledgerItem[k] === undefined) delete ledgerItem[k];
   });
 
+  // 1. [P2-6] Firestore 원자적 트랜잭션 (runTransaction) 적용으로 동시 수정 경합(Race Condition) 방어
+  if (db) {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, ledgerId);
+      const committedItem = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(docRef);
+        const remoteData = snap.exists() ? snap.data() : null;
+
+        // 원격 문서가 이미 존재하면 클라우드 발생일자 및 등록일시 절대 불변 보존
+        const enforcedDate = remoteData?.date || ledgerItem.date;
+        const enforcedRegisteredAt = remoteData?.registeredAt || ledgerItem.registeredAt;
+
+        const merged = {
+          ...remoteData,
+          ...ledgerItem,
+          date: enforcedDate,
+          registeredAt: enforcedRegisteredAt,
+          updatedAt: nowStr
+        };
+
+        Object.keys(merged).forEach((k) => {
+          if (merged[k] === undefined) delete merged[k];
+        });
+
+        transaction.set(docRef, merged, { merge: true });
+        return merged;
+      });
+
+      // 로컬 스토리지 캐시 동기화
+      const nextLocal = existingIdx >= 0
+        ? current.map((it, idx) => (idx === existingIdx ? committedItem : it))
+        : [committedItem, ...current];
+      saveLocalFourMChangePoints(nextLocal);
+      return committedItem;
+    } catch (e) {
+      console.warn("Firestore runTransaction 4M ledger fallback:", e);
+    }
+  }
+
+  // 오프라인 폴백
   let updated;
   if (existingIdx >= 0) {
     updated = [...current];
@@ -569,7 +611,7 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
   saveLocalFourMChangePoints(updated);
 
   try {
-    await setDoc(doc(db, COLLECTION_NAME, ledgerId), ledgerItem);
+    await setDoc(doc(db, COLLECTION_NAME, ledgerId), ledgerItem, { merge: true });
   } catch (e) {
     console.warn("Firestore save four_m_change_point fallback to local:", e);
   }

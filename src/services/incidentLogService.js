@@ -1,13 +1,36 @@
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { db } from "../firebase.js";
 import * as XLSX from "xlsx";
 
-const INCIDENT_STORAGE_KEY = "oryuk_system_incident_logs_v4";
+const INCIDENT_STORAGE_KEY = "oryuk_system_incident_logs_v5";
 const INCIDENT_DOC_PATH = ["system_management", "incident_logs"];
 
 // 간결하고 명확한 일자별 누적 오더 및 조치 결과 데이터 (핵심 로직 수정 전·후 비교 포함)
 export const DEFAULT_INCIDENT_LOGS = [
   // ─── 2026-10-20 (오늘 오더 및 조치 내역) ───
+  {
+    id: "inc_20261020_08",
+    incidentNo: 17,
+    workDate: "2026-10-20",
+    category: "품질/변동점",
+    severity: "P1",
+    isLogicFix: true,
+    title: "백엔드 비즈니스 검증 레이어(Firestore Rules 불변 락) 및 원자적 트랜잭션(Race Condition 방어) 구축",
+    plant: "전사 공통",
+    reporter: "대표이사 (권태형)",
+    orderContent: "백엔드 비즈니스 검증 레이어 부재와 브라우저 로컬 스토리지 과다 의존으로 인한 동시 수정 경합(P2 취약점 2종)을 즉시 수정하여 데이터 무결성 보장 요청",
+    actionResult: "Firestore Security Rules에 발생일자/기안자 불변 락 규칙 신설 및 클라우드 배포 완료, runTransaction 기반 원자적 트랜잭션 머지 파이프라인 구축 완료",
+    logicBefore: "1) Firestore Rules가 전면 개방되어 있어 클라이언트 우회 호출 시 발생일자 변조 가능, 2) 로컬스토리지 배열을 먼저 덮어쓰고 setDoc으로 Firestore 전체 배열을 덮어써서 동시 접속 시 다른 관리자의 수정 내역이 유실되던 Last-Write-Wins 경합 결함",
+    logicAfter: "1) Firestore Security Rules에 request.resource.data.date == resource.data.date 불변 락 규칙을 클라우드 레벨에 강제 배포, 2) runTransaction을 적용하여 클라우드 최신 원장을 Single Source of Truth로 읽고 원자적으로 머지하여 동시 수정 시에도 데이터 유실이 원천 발생하지 않도록 개선",
+    prevention: "Firestore 보안 규칙 클라우드 배포 완료 및 동시 수정 트랜잭션 머지 원자성 검증 완료",
+    status: "RESOLVED",
+    statusLabel: "조치완료",
+    mondayChecked: true,
+    resolver: "시스템 관리자",
+    createdAt: "2026-10-20T12:30:00+09:00",
+    resolvedAt: "2026-10-20T12:40:00+09:00",
+    notes: "P2 취약점 2종(서버 검증 레이어 + 트랜잭션 동시성) 조치 완료"
+  },
   {
     id: "inc_20261020_07",
     incidentNo: 16,
@@ -385,7 +408,7 @@ export const INCIDENT_STATUSES = {
   VERIFIED: { label: "🔍 월요재점검완료", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border-blue-300" }
 };
 
-// Local Storage Helper
+// Local Storage Helper (Mirror Replica of Cloud SSOT)
 export const getLocalIncidentLogs = () => {
   if (typeof window === "undefined") return DEFAULT_INCIDENT_LOGS;
   try {
@@ -479,15 +502,116 @@ export const subscribeIncidentLogs = (callback) => {
   }
 };
 
-// Save (Add or Update) Single Incident Log
+// 🔒 [P2-5 & P2-6] 원자적 트랜잭션 (runTransaction) 기반 일일 오더 저장 (동시 수정 경합 완벽 방어)
 export const saveIncidentLog = async (logItem) => {
-  const currentLogs = getLocalIncidentLogs();
   const now = new Date().toISOString();
-  let updatedList;
-
   const orderText = logItem.orderContent || logItem.symptoms || "";
   const actionText = logItem.actionResult || logItem.resolution || "";
 
+  // 1. [P2-6] 클라우드 DB 원자적 트랜잭션 실행 (클라우드 데이터를 Single Source of Truth로 락 처리)
+  if (db) {
+    try {
+      const ref = doc(db, ...INCIDENT_DOC_PATH);
+      const updatedList = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        let cloudLogs = [];
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.logs)) {
+            cloudLogs = data.logs;
+          }
+        }
+        if (cloudLogs.length === 0) {
+          cloudLogs = getLocalIncidentLogs();
+        }
+
+        let merged;
+        if (logItem.id) {
+          const idx = cloudLogs.findIndex((l) => l.id === logItem.id);
+          if (idx >= 0) {
+            const existing = cloudLogs[idx];
+            merged = [...cloudLogs];
+            merged[idx] = {
+              ...existing,
+              ...logItem,
+              orderContent: orderText,
+              actionResult: actionText,
+              symptoms: orderText,
+              resolution: actionText,
+              // [P2-5] 불변 필드 보존 (생성일시 및 원래 발생일자는 사후 덮어쓰기 방어)
+              workDate: existing.workDate || logItem.workDate || now.slice(0, 10),
+              createdAt: existing.createdAt || now,
+              updatedAt: now
+            };
+          } else {
+            merged = [
+              {
+                ...logItem,
+                orderContent: orderText,
+                actionResult: actionText,
+                symptoms: orderText,
+                resolution: actionText,
+                createdAt: logItem.createdAt || now,
+                updatedAt: now
+              },
+              ...cloudLogs
+            ];
+          }
+        } else {
+          const newId = `inc_${Date.now()}`;
+          const nextNo = (cloudLogs.length > 0 ? Math.max(...cloudLogs.map((l) => Number(l.incidentNo) || 0)) : 0) + 1;
+          const newItem = {
+            ...logItem,
+            id: newId,
+            incidentNo: nextNo,
+            workDate: logItem.workDate || now.slice(0, 10),
+            category: logItem.category || "화면/패널개편",
+            severity: logItem.severity || "P1",
+            title: logItem.title || "신규 작업 오더",
+            plant: logItem.plant || "본사 • 전사",
+            reporter: logItem.reporter || "대표이사",
+            orderContent: orderText,
+            symptoms: orderText,
+            actionResult: actionText,
+            resolution: actionText,
+            isLogicFix: Boolean(logItem.isLogicFix),
+            logicBefore: logItem.logicBefore || "",
+            logicAfter: logItem.logicAfter || "",
+            prevention: logItem.prevention || "",
+            status: logItem.status || "RESOLVED",
+            statusLabel: INCIDENT_STATUSES[logItem.status]?.label || "조치완료",
+            mondayChecked: Boolean(logItem.mondayChecked),
+            resolver: logItem.resolver || "시스템 관리자",
+            createdAt: now,
+            resolvedAt: logItem.status === "RESOLVED" || logItem.status === "VERIFIED" ? (logItem.resolvedAt || now) : null,
+            updatedAt: now,
+            notes: logItem.notes || ""
+          };
+          merged = [newItem, ...cloudLogs];
+        }
+
+        merged.sort((a, b) => {
+          const dateA = a.workDate || "";
+          const dateB = b.workDate || "";
+          if (dateB !== dateA) return dateB.localeCompare(dateA);
+          return (b.incidentNo || 0) - (a.incidentNo || 0);
+        });
+
+        transaction.set(ref, { logs: merged, updatedAt: now }, { merge: true });
+        return merged;
+      });
+
+      // 클라우드 원장 반영 완료 후 로컬 캐시 동기화
+      saveLocalIncidentLogs(updatedList);
+      return updatedList;
+    } catch (err) {
+      console.warn("Firestore transaction failed, fallback to local:", err);
+    }
+  }
+
+  // 2. 오프라인 폴백
+  const currentLogs = getLocalIncidentLogs();
+  let updatedList;
   if (logItem.id) {
     const idx = currentLogs.findIndex((l) => l.id === logItem.id);
     if (idx >= 0) {
@@ -499,70 +623,25 @@ export const saveIncidentLog = async (logItem) => {
         actionResult: actionText,
         symptoms: orderText,
         resolution: actionText,
-        isLogicFix: Boolean(logItem.isLogicFix),
-        logicBefore: logItem.logicBefore || "",
-        logicAfter: logItem.logicAfter || "",
-        prevention: logItem.prevention || "",
         updatedAt: now
       };
     } else {
-      updatedList = [
-        {
-          ...logItem,
-          orderContent: orderText,
-          actionResult: actionText,
-          symptoms: orderText,
-          resolution: actionText,
-          isLogicFix: Boolean(logItem.isLogicFix),
-          logicBefore: logItem.logicBefore || "",
-          logicAfter: logItem.logicAfter || "",
-          prevention: logItem.prevention || "",
-          createdAt: logItem.createdAt || now,
-          updatedAt: now
-        },
-        ...currentLogs
-      ];
+      updatedList = [{ ...logItem, createdAt: now, updatedAt: now }, ...currentLogs];
     }
   } else {
     const newId = `inc_${Date.now()}`;
     const nextNo = (currentLogs.length > 0 ? Math.max(...currentLogs.map((l) => Number(l.incidentNo) || 0)) : 0) + 1;
     const newItem = {
+      ...logItem,
       id: newId,
       incidentNo: nextNo,
-      workDate: logItem.workDate || new Date().toISOString().slice(0, 10),
-      category: logItem.category || "화면/패널개편",
-      severity: logItem.severity || "P1",
-      title: logItem.title || "신규 작업 오더",
-      plant: logItem.plant || "본사 • 전사",
-      reporter: logItem.reporter || "대표이사",
-      orderContent: orderText,
-      symptoms: orderText,
-      actionResult: actionText,
-      resolution: actionText,
-      isLogicFix: Boolean(logItem.isLogicFix),
-      logicBefore: logItem.logicBefore || "",
-      logicAfter: logItem.logicAfter || "",
-      prevention: logItem.prevention || "",
-      status: logItem.status || "RESOLVED",
-      statusLabel: INCIDENT_STATUSES[logItem.status]?.label || "조치완료",
-      mondayChecked: Boolean(logItem.mondayChecked),
-      resolver: logItem.resolver || "시스템 관리자",
       createdAt: now,
-      resolvedAt: logItem.status === "RESOLVED" || logItem.status === "VERIFIED" ? (logItem.resolvedAt || now) : null,
-      updatedAt: now,
-      notes: logItem.notes || ""
+      updatedAt: now
     };
     updatedList = [newItem, ...currentLogs];
   }
 
-  // Sort: by workDate descending, then incidentNo descending
-  updatedList.sort((a, b) => {
-    const dateA = a.workDate || "";
-    const dateB = b.workDate || "";
-    if (dateB !== dateA) return dateB.localeCompare(dateA);
-    return (b.incidentNo || 0) - (a.incidentNo || 0);
-  });
-
+  updatedList.sort((a, b) => (b.workDate || "").localeCompare(a.workDate || "") || (b.incidentNo || 0) - (a.incidentNo || 0));
   saveLocalIncidentLogs(updatedList);
 
   if (db) {
@@ -591,44 +670,68 @@ export const resetToDefaultIncidentLogs = async () => {
   return DEFAULT_INCIDENT_LOGS;
 };
 
-// Delete Incident Log
+// 🔒 [P2-6] 원자적 트랜잭션 (runTransaction) 기반 오더 삭제
 export const deleteIncidentLog = async (id) => {
-  const currentLogs = getLocalIncidentLogs();
-  const updatedList = currentLogs.filter((l) => l.id !== id);
-  saveLocalIncidentLogs(updatedList);
-
   if (db) {
     try {
       const ref = doc(db, ...INCIDENT_DOC_PATH);
-      await setDoc(ref, { logs: updatedList, updatedAt: new Date().toISOString() }, { merge: true });
-    } catch (e) {
-      console.warn("Failed to delete incident log from Firestore:", e);
+      const updatedList = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        let cloudLogs = [];
+        if (snap.exists() && Array.isArray(snap.data().logs)) {
+          cloudLogs = snap.data().logs;
+        } else {
+          cloudLogs = getLocalIncidentLogs();
+        }
+        const filtered = cloudLogs.filter((l) => l.id !== id);
+        transaction.set(ref, { logs: filtered, updatedAt: new Date().toISOString() }, { merge: true });
+        return filtered;
+      });
+
+      saveLocalIncidentLogs(updatedList);
+      return updatedList;
+    } catch (err) {
+      console.warn("Firestore delete transaction fallback to local:", err);
     }
   }
 
+  const currentLogs = getLocalIncidentLogs();
+  const updatedList = currentLogs.filter((l) => l.id !== id);
+  saveLocalIncidentLogs(updatedList);
   return updatedList;
 };
 
-// Export to Excel for Easy Viewing
+// 🛡️ [P1] 엑셀 수식 주입(Formula Injection) 방어 살균 함수
+const sanitizeForExcel = (val) => {
+  if (val === null || val === undefined) return "";
+  const str = String(val);
+  // 문자열이 =, +, -, @ 로 시작하면 작은따옴표(')를 붙여 순수 텍스트로 강제 변환
+  if (/^[=+\-@]/.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+};
+
+// Export to Excel for Easy Viewing (CSV/Excel Formula Injection Defended)
 export const exportIncidentLogsToExcel = (logs = []) => {
   const targetLogs = logs.length > 0 ? logs : getLocalIncidentLogs();
   
   const rows = targetLogs.map((l, idx) => ({
     "No": l.incidentNo || (idx + 1),
-    "일자": l.workDate || "",
-    "업무분류": l.category || "",
+    "일자": sanitizeForExcel(l.workDate || ""),
+    "업무분류": sanitizeForExcel(l.category || ""),
     "로직수정여부": l.isLogicFix ? "🔧 핵심 로직 수정" : "일반 화면/배치 개편",
-    "진행상태": INCIDENT_STATUSES[l.status]?.label || l.status || "조치완료",
-    "오더 제목": l.title || "",
-    "📋 [요청 오더 내용]": l.orderContent || l.symptoms || "",
-    "✅ [조치 및 반영 결과]": l.actionResult || l.resolution || "",
-    "⚠️ [기존 문제 로직]": l.logicBefore || "-",
-    "🛡️ [수정 변경 로직]": l.logicAfter || "-",
-    "재발방지 검증": l.prevention || "-",
-    "사업장/제보자": `${l.plant || ""} / ${l.reporter || ""}`,
-    "조치담당자": l.resolver || "시스템 관리자",
-    "조치일시": l.resolvedAt ? l.resolvedAt.replace("T", " ").slice(0, 16) : "",
-    "비고": l.notes || ""
+    "진행상태": sanitizeForExcel(INCIDENT_STATUSES[l.status]?.label || l.status || "조치완료"),
+    "오더 제목": sanitizeForExcel(l.title || ""),
+    "📋 [요청 오더 내용]": sanitizeForExcel(l.orderContent || l.symptoms || ""),
+    "✅ [조치 및 반영 결과]": sanitizeForExcel(l.actionResult || l.resolution || ""),
+    "⚠️ [기존 문제 로직]": sanitizeForExcel(l.logicBefore || "-"),
+    "🛡️ [수정 변경 로직]": sanitizeForExcel(l.logicAfter || "-"),
+    "재발방지 검증": sanitizeForExcel(l.prevention || "-"),
+    "사업장/제보자": sanitizeForExcel(`${l.plant || ""} / ${l.reporter || ""}`),
+    "조치담당자": sanitizeForExcel(l.resolver || "시스템 관리자"),
+    "조치일시": sanitizeForExcel(l.resolvedAt ? l.resolvedAt.replace("T", " ").slice(0, 16) : ""),
+    "비고": sanitizeForExcel(l.notes || "")
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows);

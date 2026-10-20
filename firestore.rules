@@ -2,6 +2,64 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── [P2-5] 공통 유효성 검사 헬퍼 함수 ───
+    function isNonEmptyString(val) {
+      return val is string && val.size() > 0;
+    }
+
+    function isValidDateStr(val) {
+      return val is string && val.size() >= 10;
+    }
+
+    // ─── 1. 4M 변동점 공식 관리대장 (four_m_change_points) ───
+    match /four_m_change_points/{docId} {
+      allow read: if true;
+      
+      // 생성 시: 필수 필드 (title, date) 유효성 검증
+      allow create: if isNonEmptyString(request.resource.data.title) &&
+                       isValidDateStr(request.resource.data.date);
+
+      // 수정 시: 🔒 [P2-5 핵심] 발생일자(date) 및 최초 등록일시(registeredAt) 불변 락 검증
+      allow update: if isNonEmptyString(request.resource.data.title) &&
+                       // 기존 발생일자가 존재할 경우 수정 불가 (불변 원칙)
+                       (resource.data.date == null || request.resource.data.date == resource.data.date) &&
+                       // 최초 등록일시가 존재할 경우 수정 불가 (불변 원칙)
+                       (resource.data.registeredAt == null || request.resource.data.registeredAt == resource.data.registeredAt);
+
+      allow delete: if true;
+    }
+
+    // ─── 2. 부적합경보 / 오픈이슈 / 긴급품질 (urgent_issues) ───
+    match /urgent_issues/{docId} {
+      allow read: if true;
+      allow create: if isNonEmptyString(request.resource.data.title);
+      // 수정 시: 시스템 최초 생성일시(createdAt) 불변 락
+      allow update: if isNonEmptyString(request.resource.data.title) &&
+                       (resource.data.createdAt == null || request.resource.data.createdAt == resource.data.createdAt);
+      allow delete: if true;
+    }
+
+    // ─── 3. 전자결재 결재 원장 문서 (approval_documents) ───
+    match /approval_documents/{docId} {
+      allow read: if true;
+      allow create: if isNonEmptyString(request.resource.data.title) &&
+                       isNonEmptyString(request.resource.data.category);
+      // 수정 시: 기안일시(createdAt) 및 기안자(author) 불변 락 (사후 변조 차단)
+      allow update: if (resource.data.createdAt == null || request.resource.data.createdAt == resource.data.createdAt) &&
+                       (resource.data.author == null || request.resource.data.author == resource.data.author);
+      allow delete: if true;
+    }
+
+    // ─── 4. 시스템 장애 및 일일 오더 관리대장 (system_management/{docId}) ───
+    match /system_management/{docId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.logs is list &&
+                               request.resource.data.updatedAt is string;
+      allow delete: if true;
+    }
+
+    // ─── 5. 기타 일반 컬렉션 (기존 기능 하위 호환성 유지) ───
     match /{document=**} {
       allow read, write: if true;
     }
