@@ -2053,11 +2053,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // 🔒 Master Matrix with Dynamic Reconciliation & Auto-Healing Engine
-  // 1. smartData.attendanceMatrix is the baseline (persisted ledger)
-  // 2. Automatically heal any missing/unwritten cell if an approved report exists in legacyReports
+  // 🔒 Master Matrix with Dynamic Reconciliation (2026년 10월 이후는 원장이 단일 진실 원천이므로 자동 치유 비활성화)
   const { effectiveMatrix, hasHealedMatrix } = useMemo(() => {
     const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
+    const isNewArchitecture = currentYear > 2026 || (currentYear === 2026 && currentMonthNum >= 10);
+    if (isNewArchitecture) {
+      return { effectiveMatrix: rawMatrix, hasHealedMatrix: false };
+    }
     const { matrix: reconciled, hasHealed } = reconcileMatrixWithReports(
       rawMatrix,
       legacyReports || [],
@@ -2067,10 +2069,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return { effectiveMatrix: reconciled, hasHealedMatrix: hasHealed };
   }, [smartData, legacyReports, currentYear, currentMonthNum]);
 
-  // ⭐ Background Auto-Healing Write-Back: If any discrepancies between reports and ledger were healed,
-  // silently persist the healed matrix to Firestore smart_overtime_ledger
+  // ⭐ Background Auto-Healing Write-Back (과거 9월 데이터 전용)
   useEffect(() => {
-    if (hasHealedMatrix && effectiveMatrix && effectiveMatrix.length > 0) {
+    const isNewArchitecture = currentYear > 2026 || (currentYear === 2026 && currentMonthNum >= 10);
+    if (!isNewArchitecture && hasHealedMatrix && effectiveMatrix && effectiveMatrix.length > 0) {
       const ym = selectedMonth || `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
       const timer = setTimeout(() => {
         saveSmartOvertimeData(
@@ -2085,7 +2087,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             auditMeta: {
               operator: "시스템 (자동 치유 엔진)",
               source: "AUTO_HEALING_SYNC",
-              reason: "보고서 등록 내역과 대장 간 불일치 자동 정합성 복구"
+              reason: "과거 월 보고서 등록 내역과 대장 간 불일치 자동 정합성 복구"
             }
           }
         ).catch((err) => console.warn("Background auto-healing write-back error:", err));

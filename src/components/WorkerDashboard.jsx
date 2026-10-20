@@ -569,7 +569,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
       const isApproved = approvalStatus === "APPROVED";
       const isSubmitted = approvalStatus === "SUBMITTED";
-      const isWritten = enteredCount > 0 || isApproved || isSubmitted;
+      const isWritten = (compWorkers.length > 0 && enteredCount >= compWorkers.length) || isApproved || isSubmitted;
+      const isPartiallyWritten = enteredCount > 0 && enteredCount < compWorkers.length;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
@@ -591,6 +592,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       } else if (isWritten) {
         statusBadgeText = "작성완료";
         statusBadgeClass = "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700";
+      } else if (isPartiallyWritten) {
+        statusBadgeText = `작성중(${enteredCount}/${compWorkers.length})`;
+        statusBadgeClass = "bg-cyan-100 dark:bg-cyan-950/90 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700 font-bold";
       }
 
       return {
