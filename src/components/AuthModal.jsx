@@ -1434,6 +1434,96 @@ export const AuthModal = () => {
     }
   };
 
+  // 🌟 [제1안] 원문 내용 수정 및 재등록 처리
+  const handleSaveIssueEdit = async (editedData) => {
+    if (!actionModalData.issue) return;
+    if (!editedData.title || !editedData.title.trim()) {
+      alert("제목을 입력해 주세요.");
+      return;
+    }
+    setIsSavingIssue(true);
+    try {
+      const issue = actionModalData.issue;
+      const idStr = String(issue.id || "");
+      const nowStr = new Date().toISOString();
+
+      if (idStr.startsWith("ext_q_")) {
+        const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("ext_q_", ""),
+          title: editedData.title.trim(),
+          content: (editedData.content || "").trim(),
+          defectType: editedData.title.trim(),
+          details: (editedData.content || "").trim(),
+          updatedAt: nowStr
+        };
+        await saveExtrusionQualityIssue(updatedObj);
+        setExtrusionQualityAlerts((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("hanul_q_")) {
+        const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("hanul_q_", ""),
+          title: editedData.title.trim(),
+          content: (editedData.content || "").trim(),
+          defectType: editedData.title.trim(),
+          updatedAt: nowStr
+        };
+        await saveHanulQualityIssue(updatedObj);
+        setHanulQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("ys_q_")) {
+        const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("ys_q_", ""),
+          title: editedData.title.trim(),
+          content: (editedData.content || "").trim(),
+          description: (editedData.content || "").trim(),
+          updatedAt: nowStr
+        };
+        await saveYuseongQualityIssue(updatedObj);
+        setYuseongQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else if (idStr.startsWith("mach_q_")) {
+        const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const updatedObj = {
+          ...rawAlert,
+          id: issue.rawId || idStr.replace("mach_q_", ""),
+          title: editedData.title.trim(),
+          content: (editedData.content || "").trim(),
+          defectType: editedData.title.trim(),
+          updatedAt: nowStr
+        };
+        await saveMachiningQualityIssue(updatedObj);
+        setMachiningQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+      } else {
+        const updatedTarget = {
+          ...issue,
+          title: editedData.title.trim(),
+          content: (editedData.content || "").trim(),
+          expireDate: editedData.expireDate || issue.expireDate,
+          meetingTime: editedData.meetingTime || issue.meetingTime,
+          meetingLocation: editedData.meetingLocation || issue.meetingLocation,
+          updatedAt: nowStr
+        };
+        const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });
+        if (saved) {
+          setUrgentIssues((prev) => prev.map((it) => (it.id === issue.id ? saved : it)));
+          if (selectedListItem && selectedListItem.id === issue.id) setSelectedListItem(saved);
+        }
+      }
+
+      handleCloseActionModal();
+      setRestoreToast(`✅ [${editedData.title.trim()}] 항목이 성공적으로 수정·재등록되었습니다.`);
+      setTimeout(() => setRestoreToast(""), 3500);
+    } catch (err) {
+      console.error("Save issue edit error:", err);
+      alert("항목 수정 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingIssue(false);
+    }
+  };
+
   // Ledger Action Menu Handlers
   const handleExecuteMeetingResult = (item, e) => {
     if (e) {
@@ -2091,14 +2181,8 @@ export const AuthModal = () => {
             onOpenNewIssue={handleOpenNewIssue}
             onOpenDeleteModal={handleOpenDeleteModal}
             onSelectCardCategory={(item) => {
-              const isMeeting = item.category === "회의일정";
-              const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-              const isQualityAlert = item.category === "품질경보" || item.category === "부적합경보";
-              const catTab = isQualityAlert ? "quality_alert" : isMeeting ? "meeting" : isNotice ? "notice" : "open_issue";
-              setLedgerCategoryTab(catTab);
-              setSelectedListItem(null);
-              setIssueModalPage(1);
-              setIsListModalOpen(true);
+              // 🌟 [제1안 원클릭 팝업]: 카드 클릭 시 대장 목록을 건너뛰고 간편 조치/수정 모달 즉시 열림
+              handleOpenActionModal(item);
             }}
           />
 
@@ -2247,7 +2331,7 @@ export const AuthModal = () => {
         </Suspense>
       )}
 
-      {/* 🌟 회의결과 / 조치결과 모달 */}
+      {/* 🌟 [제1안] 회의결과 / 조치결과 및 원문 수정등록 모달 */}
       {actionModalData?.isOpen && (
         <Suspense fallback={null}>
           <IssueActionModal
@@ -2255,6 +2339,11 @@ export const AuthModal = () => {
             setActionModalData={setActionModalData}
             onClose={handleCloseActionModal}
             onSaveActionResult={handleSaveActionResult}
+            onSaveIssueEdit={handleSaveIssueEdit}
+            onOpenLedger={() => {
+              handleCloseActionModal();
+              setIsListModalOpen(true);
+            }}
             allWorkers={allWorkers}
             isProcessingActionImages={isProcessingActionImages}
             onActionImageFiles={handleActionImageFiles}

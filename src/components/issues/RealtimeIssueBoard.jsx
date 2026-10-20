@@ -256,7 +256,7 @@ export const RealtimeIssueBoard = ({
                     ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
                     : "bg-blue-50/50 dark:bg-blue-950/25 border-blue-300 dark:border-blue-900/80 ring-1 ring-blue-400/20"
                 }`}
-                title="탭하여 목록(대장)으로 이동"
+                title="탭하여 상세 내용 확인 및 간편 조치/수정"
               >
                 {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 의견수 + 삭제버튼 */}
                 <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
