@@ -26,7 +26,8 @@ export const IssueActionModal = ({
   isProcessingActionImages,
   onActionImageFiles,
   onRemoveActionImage,
-  onPreviewImage
+  onPreviewImage,
+  isSaving = false
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -352,7 +353,7 @@ export const IssueActionModal = ({
         </div>
 
         {/* 2. Quick Action Input Form */}
-        <form onSubmit={onSaveActionResult} className="space-y-3 sm:space-y-4 text-xs">
+        <div className="space-y-3 sm:space-y-4 text-xs">
           <div className="bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/30 dark:to-teal-950/20 border-2 border-emerald-300 dark:border-emerald-800/60 rounded-2xl p-3.5 sm:p-4 space-y-3 shadow-2xs">
             <div className="flex items-center justify-between border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2">
               <div className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-200 font-black text-xs sm:text-sm">
@@ -364,42 +365,62 @@ export const IssueActionModal = ({
               </span>
             </div>
 
-            {/* 조치자 / 작성자 선택 */}
+            {/* 조치자 / 작성자 선택 (자동 기본값 지정 + 원터치 변경 및 직접 입력 지원) */}
             <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                {isMeetingAction ? "작성자 / 보고자" : "조치자"} (직접 선택)
-              </label>
-              <select
-                value={actionModalData.actionAuthor || ""}
-                onChange={(e) => setActionModalData((prev) => ({ ...prev, actionAuthor: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-white ${
-                  !actionModalData.actionAuthor
-                    ? "border-emerald-400 dark:border-emerald-600 ring-1 ring-emerald-400/40"
-                    : "border-slate-200 dark:border-slate-700"
-                }`}
-              >
-                <option value="">-- {isMeetingAction ? "작성자 / 보고자" : "조치자"} 직접 선택 --</option>
-                <optgroup label="👑 본사 임원진">
-                  {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
-                    <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="🏢 삼랑진공장">
-                  {allWorkers?.filter((w) => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
-                    <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="🏢 한림공장">
-                  {allWorkers?.filter((w) => w.plantName === "한림공장" && !w.isPartner).map((w) => (
-                    <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="🤝 협력업체">
-                  {allWorkers?.filter((w) => w.isPartner).map((w) => (
-                    <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
-                  ))}
-                </optgroup>
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300">
+                  {isMeetingAction ? "작성자 / 보고자" : "조치자"}
+                </label>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  (기본값 자동지정 • 직접 변경 가능)
+                </span>
+              </div>
+              <div className="flex gap-1.5">
+                <select
+                  value={actionModalData.actionAuthor || ""}
+                  onChange={(e) => setActionModalData((prev) => ({ ...prev, actionAuthor: e.target.value }))}
+                  className="flex-1 px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700"
+                >
+                  <option value={issue.actionAuthor || issue.author || "현장담당자"}>
+                    👤 기본: {issue.actionAuthor || issue.author || "현장담당자"}
+                  </option>
+                  {actionModalData.actionAuthor &&
+                    actionModalData.actionAuthor !== (issue.actionAuthor || issue.author || "현장담당자") &&
+                    !allWorkers?.some((w) => w.name === actionModalData.actionAuthor) && (
+                      <option value={actionModalData.actionAuthor}>
+                        ⭐ {actionModalData.actionAuthor} (직접 입력/선택)
+                      </option>
+                  )}
+                  <optgroup label="👑 본사 임원진">
+                    {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
+                      <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🏢 삼랑진공장">
+                    {allWorkers?.filter((w) => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                      <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🏢 한림공장">
+                    {allWorkers?.filter((w) => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                      <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🤝 협력업체">
+                    {allWorkers?.filter((w) => w.isPartner).map((w) => (
+                      <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <input
+                  type="text"
+                  placeholder="직접입력"
+                  value={actionModalData.actionAuthor || ""}
+                  onChange={(e) => setActionModalData((prev) => ({ ...prev, actionAuthor: e.target.value }))}
+                  className="w-24 sm:w-28 px-2.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  title="조치자 이름을 직접 입력할 수도 있습니다"
+                />
+              </div>
             </div>
 
             {/* 결과 상세 내용 */}
@@ -557,21 +578,35 @@ export const IssueActionModal = ({
                 <span>{isEditMode ? "수정내용 재등록" : "수정등록"}</span>
               </button>
 
-              {/* 3. 조치완료 */}
+              {/* 3. 조치완료 (모바일 폼 리로드 방지 type="button" + 저장 중 스피너 표시) */}
               <button
-                type="submit"
+                type="button"
+                onClick={onSaveActionResult}
+                disabled={isSaving}
                 className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isSaving ? "opacity-60 cursor-not-allowed" : ""
+                } ${
                   isMeetingAction
                     ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
                     : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
                 }`}
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>{isMeetingAction ? "회의결과 저장 및 종결" : "조치완료"}</span>
+                {isSaving ? (
+                  <span className="inline-block animate-spin mr-0.5">⏳</span>
+                ) : (
+                  <Check className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isSaving
+                    ? "저장 중..."
+                    : isMeetingAction
+                    ? "회의결과 저장 및 종결"
+                    : "조치완료"}
+                </span>
               </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>,
     document.body

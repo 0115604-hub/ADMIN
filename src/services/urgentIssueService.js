@@ -320,7 +320,7 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
   }).replace(/\. /g, "-").replace(/\./g, "");
 
   const existingIdx = current.findIndex(
-    (i) => i.id === id || (i._docId && i._docId === id) || (i.customId && i.customId === id)
+    (i) => String(i.id) === String(id) || (i._docId && String(i._docId) === String(id)) || (i.customId && String(i.customId) === String(id))
   );
 
   const fullItem = {
@@ -863,10 +863,33 @@ export const restoreUrgentIssue = async (id) => {
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리 - 품질경보만 텔레그램 발송)
-export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "", actionImages = []) => {
+export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "", actionImages = [], fallbackIssue = null) => {
   const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === id);
-  if (!target) return current;
+  let target = current.find(
+    (i) => String(i.id) === String(id) || (i._docId && String(i._docId) === String(id)) || (i.customId && String(i.customId) === String(id))
+  );
+
+  if (!target && fallbackIssue) {
+    target = fallbackIssue;
+  }
+
+  if (!target) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      snap.forEach((d) => {
+        if (d.id === id || String(d.data()?.id) === String(id)) {
+          target = sanitizeUrgentIssueItem({ id: d.id, _docId: d.id, ...d.data() });
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore fetch in updateUrgentIssueActionResult fallback:", e);
+    }
+  }
+
+  if (!target) {
+    console.warn("Target issue not found for updateUrgentIssueActionResult:", id);
+    return null;
+  }
 
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
@@ -880,12 +903,13 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
   const trimmed = actionResult ? actionResult.trim() : "";
   const updatedTarget = {
     ...target,
+    id: target.id || id,
     actionResult: trimmed,
-    actionAuthor: actionAuthor || target.actionAuthor || "작업자",
+    actionAuthor: actionAuthor || target.actionAuthor || target.author || "현장담당자",
     actionImages: actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []),
     actionAt: trimmed ? nowStr : "",
     isResolved: Boolean(trimmed),
-    // 🔒 관리자가 이미 삭제/종결한 건은 삭제 상태(isDeleted: true)를 온전히 유지하여 첫화면 재공지 방지
+    status: Boolean(trimmed) ? "RESOLVED" : (target.status || "ACTIVE"),
     isDeleted: target.isDeleted === true ? true : false,
     isManuallyRestored: false
   };

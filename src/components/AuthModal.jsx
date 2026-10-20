@@ -58,7 +58,8 @@ import {
   saveTelegramConfig,
   subscribeTelegramConfig,
   testTelegramConnection,
-  sendDailyClosingBriefingTelegram
+  sendDailyClosingBriefingTelegram,
+  sendQualityActionTelegram
 } from "../services/telegramService";
 import { compressImage } from "../utils/imageCompressor";
 import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
@@ -1335,12 +1336,18 @@ export const AuthModal = () => {
 
   // Action Result handlers
   const handleOpenActionModal = (issue, e) => {
-    if (e) e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
+    const defaultAuthor =
+      issue.actionAuthor ||
+      issue.author ||
+      currentProfile?.name ||
+      "현장담당자";
+
     setActionModalData({
       isOpen: true,
       issue,
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor || currentProfile?.name || "",
+      actionAuthor: defaultAuthor,
       actionImages: issue.actionImages || []
     });
   };
@@ -1356,93 +1363,153 @@ export const AuthModal = () => {
   };
 
   const handleSaveActionResult = async (e) => {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (isSavingIssue) return;
     if (!actionModalData.issue) return;
-    if (!actionModalData.actionAuthor || !actionModalData.actionAuthor.trim()) {
-      alert("조치자(또는 작성자)를 직접 선택해 주세요.");
+
+    const issue = actionModalData.issue;
+    const isMeetingAction = issue.category === "회의일정" || String(issue.category || "").includes("회의");
+    const rawResult = (actionModalData.actionResult || "").trim();
+    const actionImagesList = actionModalData.actionImages || [];
+
+    // 내용 또는 사진 중 최소 1개는 입력되어야 함
+    if (!rawResult && actionImagesList.length === 0) {
+      alert(isMeetingAction ? "회의 결과 내용을 입력해 주세요." : "조치결과 내용 또는 조치 후 사진을 등록해 주세요.");
       return;
     }
-    if (!actionModalData.actionResult.trim()) {
-      alert("조치결과 내용을 입력해 주세요.");
-      return;
-    }
+
+    const actionResultText = rawResult || (actionImagesList.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : "조치 완료");
+    const effectiveAuthor = (actionModalData.actionAuthor && actionModalData.actionAuthor.trim())
+      || (issue.actionAuthor && issue.actionAuthor.trim())
+      || (issue.author && issue.author.trim())
+      || (currentProfile?.name && currentProfile.name.trim())
+      || "현장담당자";
 
     setIsSavingIssue(true);
     try {
-      const issue = actionModalData.issue;
-      const idStr = String(issue.id || "");
+      const idStr = String(issue.id || issue._docId || "");
       const nowStr = new Date().toISOString();
 
       if (idStr.startsWith("ext_q_")) {
-        const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
+        const targetId = issue.rawId || idStr.replace("ext_q_", "");
         const updatedObj = {
           ...rawAlert,
-          id: issue.rawId || idStr.replace("ext_q_", ""),
-          actionResult: actionModalData.actionResult.trim(),
-          actionAuthor: actionModalData.actionAuthor.trim(),
-          actionImages: actionModalData.actionImages || [],
+          ...issue,
+          id: targetId,
+          actionResult: actionResultText,
+          actionAuthor: effectiveAuthor,
+          actionImages: actionImagesList,
           status: "RESOLVED",
+          isResolved: true,
           updatedAt: nowStr
         };
         await saveExtrusionQualityIssue(updatedObj);
-        setExtrusionQualityAlerts((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+        setExtrusionQualityAlerts((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
+        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+          actionAuthor: effectiveAuthor,
+          actionContent: actionResultText,
+          images: actionImagesList
+        }).catch((err) => {
+          console.warn("Telegram action notification error:", err);
+        });
       } else if (idStr.startsWith("hanul_q_")) {
-        const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
+        const targetId = issue.rawId || idStr.replace("hanul_q_", "");
         const updatedObj = {
           ...rawAlert,
-          id: issue.rawId || idStr.replace("hanul_q_", ""),
-          actionResult: actionModalData.actionResult.trim(),
-          actionAuthor: actionModalData.actionAuthor.trim(),
-          actionImages: actionModalData.actionImages || [],
+          ...issue,
+          id: targetId,
+          actionResult: actionResultText,
+          actionAuthor: effectiveAuthor,
+          actionImages: actionImagesList,
           status: "RESOLVED",
+          isResolved: true,
           updatedAt: nowStr
         };
         await saveHanulQualityIssue(updatedObj);
-        setHanulQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+        setHanulQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
+        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+          actionAuthor: effectiveAuthor,
+          actionContent: actionResultText,
+          images: actionImagesList
+        }).catch((err) => {
+          console.warn("Telegram action notification error:", err);
+        });
       } else if (idStr.startsWith("ys_q_")) {
-        const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
+        const targetId = issue.rawId || idStr.replace("ys_q_", "");
         const updatedObj = {
           ...rawAlert,
-          id: issue.rawId || idStr.replace("ys_q_", ""),
-          actionResult: actionModalData.actionResult.trim(),
-          actionAuthor: actionModalData.actionAuthor.trim(),
-          actionImages: actionModalData.actionImages || [],
+          ...issue,
+          id: targetId,
+          actionResult: actionResultText,
+          actionAuthor: effectiveAuthor,
+          actionImages: actionImagesList,
           status: "RESOLVED",
+          isResolved: true,
           updatedAt: nowStr
         };
         await saveYuseongQualityIssue(updatedObj);
-        setYuseongQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+        setYuseongQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
+        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+          actionAuthor: effectiveAuthor,
+          actionContent: actionResultText,
+          images: actionImagesList
+        }).catch((err) => {
+          console.warn("Telegram action notification error:", err);
+        });
       } else if (idStr.startsWith("mach_q_")) {
-        const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || a.id === issue.rawId) || {};
+        const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
+        const targetId = issue.rawId || idStr.replace("mach_q_", "");
         const updatedObj = {
           ...rawAlert,
-          id: issue.rawId || idStr.replace("mach_q_", ""),
-          actionResult: actionModalData.actionResult.trim(),
-          actionAuthor: actionModalData.actionAuthor.trim(),
-          actionImages: actionModalData.actionImages || [],
+          ...issue,
+          id: targetId,
+          actionResult: actionResultText,
+          actionAuthor: effectiveAuthor,
+          actionImages: actionImagesList,
           status: "RESOLVED",
+          isResolved: true,
           updatedAt: nowStr
         };
         await saveMachiningQualityIssue(updatedObj);
-        setMachiningQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
+        setMachiningQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
+        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+          actionAuthor: effectiveAuthor,
+          actionContent: actionResultText,
+          images: actionImagesList
+        }).catch((err) => {
+          console.warn("Telegram action notification error:", err);
+        });
       } else {
         const updated = await updateUrgentIssueActionResult(
           issue.id,
-          actionModalData.actionResult,
-          actionModalData.actionAuthor,
-          actionModalData.actionImages || []
+          actionResultText,
+          effectiveAuthor,
+          actionImagesList,
+          issue
         );
 
-        if (updated) {
-          setUrgentIssues((prev) => prev.map((it) => (it.id === issue.id ? updated : it)));
-          if (selectedListItem && selectedListItem.id === issue.id) setSelectedListItem(updated);
-          if (editingIssue && editingIssue.id === issue.id) setEditingIssue(updated);
+        if (updated && !Array.isArray(updated)) {
+          setUrgentIssues((prev) => prev.map((it) => (
+            String(it.id) === String(issue.id) ||
+            (it._docId && String(it._docId) === String(issue.id)) ||
+            (it.customId && String(it.customId) === String(issue.id))
+              ? updated
+              : it
+          )));
+          if (selectedListItem && (String(selectedListItem.id) === String(issue.id) || selectedListItem._docId === issue.id)) {
+            setSelectedListItem(updated);
+          }
+          if (editingIssue && (String(editingIssue.id) === String(issue.id) || editingIssue._docId === issue.id)) {
+            setEditingIssue(updated);
+          }
         }
       }
 
       handleCloseActionModal();
-      setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
+      setRestoreToast(isMeetingAction ? "✅ 회의 결과가 성공적으로 저장되었습니다." : "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다.");
       setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Save action error:", err);
@@ -1593,12 +1660,11 @@ export const AuthModal = () => {
       alert(isQualityAlert ? "조치결과 내용 또는 첨부파일을 입력해 주세요." : "조치 의견 내용 또는 첨부파일을 입력해 주세요.");
       return;
     }
-    // 🔒 작성자 직접 선택 필수 검증 (선택하지 않은 경우 자동 등록 차단)
-    if (!actionOpinionForm.author || !actionOpinionForm.author.trim()) {
-      alert(isQualityAlert ? "조치자(작성자)를 직접 선택해 주세요." : "의견 작성자를 직접 선택해 주세요.");
-      return;
-    }
-    const authorName = actionOpinionForm.author.trim();
+    const authorName = (actionOpinionForm.author && actionOpinionForm.author.trim())
+      || (editingIssue?.actionAuthor && editingIssue.actionAuthor.trim())
+      || (editingIssue?.author && editingIssue.author.trim())
+      || (currentProfile?.name && currentProfile.name.trim())
+      || "현장담당자";
     const authorObj = allWorkers.find((w) => w.name === authorName);
     const targetDate = actionOpinionForm.actionDate || todayDateStr;
 
@@ -2075,11 +2141,11 @@ export const AuthModal = () => {
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
         <div className="p-3 sm:p-5 sm:px-6">
-          {/* First Page Toast Alert */}
-          {firstPageToast && (
-            <div className="fixed top-4 right-4 z-60 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-bounce border border-slate-700 backdrop-blur-md">
+          {/* Toast Alert (firstPageToast & restoreToast 통합 노출) */}
+          {(restoreToast || firstPageToast) && (
+            <div className="fixed top-4 right-4 z-[90] bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-500/50 backdrop-blur-md">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-xs font-bold">{firstPageToast}</span>
+              <span className="text-xs font-bold">{restoreToast || firstPageToast}</span>
             </div>
           )}
 
@@ -2298,6 +2364,7 @@ export const AuthModal = () => {
             onCancelRestore={handleCancelRestore}
             onOpenDeleteModal={handleOpenDeleteModal}
             onPreviewImage={setPreviewImageModal}
+            isSaving={isSavingIssue}
             actionOpinionForm={actionOpinionForm}
             setActionOpinionForm={setActionOpinionForm}
             onModalAddOpinion={handleModalAddOpinion}
