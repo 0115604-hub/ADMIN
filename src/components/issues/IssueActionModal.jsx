@@ -124,11 +124,11 @@ export const IssueActionModal = ({
                   : isNotice
                   ? "📢 사내공지 상세 및 수정·관리"
                   : isQualityAlert
-                  ? "🚨 부적합경보 상세 및 간편 조치"
-                  : "📌 오픈이슈 상세 및 간편 조치"}
+                  ? "🚨 부적합경보 상세내용 & 조치"
+                  : "📌 오픈이슈 상세내용 & 조치"}
               </h3>
               <p className="text-[11px] text-slate-400 truncate">
-                원클릭 간편 조치 입력 및 원문 내용 수정·재등록
+                조치결과 입력 및 원문 내용 수정·재등록
               </p>
             </div>
           </div>
@@ -357,7 +357,7 @@ export const IssueActionModal = ({
             <div className="flex items-center justify-between border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2">
               <div className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-200 font-black text-xs sm:text-sm">
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">✓</span>
-                <span>{isMeetingAction ? "⚡ 회의결과 및 결정사항 입력" : "⚡ 초간단 조치 결과 입력 (작업자 1줄 등록)"}</span>
+                <span>{isMeetingAction ? "회의결과 및 결정사항 입력" : "조치결과입력"}</span>
               </div>
               <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400 bg-white/80 dark:bg-slate-900/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
                 조치완료 시 첫 화면에서 완료 종결
