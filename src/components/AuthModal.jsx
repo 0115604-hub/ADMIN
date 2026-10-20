@@ -1981,7 +1981,6 @@ export const AuthModal = () => {
             <div
               onClick={() => handleUserClick(ADMIN_USERS[0])}
               className="flex items-center gap-2 sm:gap-3 cursor-pointer group active:scale-98 transition-transform min-w-0"
-              title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
             >
               <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all">
                 <OryukLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
@@ -1993,9 +1992,6 @@ export const AuthModal = () => {
                   </span>
                   <span className="truncate">생산관리 통합시스템</span>
                 </h2>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold hidden sm:block">
-                  실시간 안전·품질 & 공장별 통합 관리
-                </span>
               </div>
             </div>
 
