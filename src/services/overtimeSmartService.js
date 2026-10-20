@@ -1320,14 +1320,8 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                     delete mergedDaily[String(options.clearedDay)];
                   }
                 } else {
-                  // Untargeted companies: preserve cloud daily data, only accept non-empty edits
-                  Object.keys(localDaily).forEach((d) => {
-                    const val = localDaily[d];
-                    if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-                      mergedDaily[d] = val;
-                      mergedDaily[String(d)] = val;
-                    }
-                  });
+                  // 🔒 Untargeted workers: strictly preserve authoritative cloud data!
+                  // Do NOT merge localDaily from untargeted companies to prevent client dirty cache leakage.
                 }
               }
 

@@ -72,7 +72,6 @@ export const runStorageHealthCheck = () => {
       "factory_extrusion_downtime_logs_clean_v1",
       "factory_extrusion_selected_line",
       "factory_extrusion_selected_week",
-      "admin_multi_month_store_v4_firestore",
       "admin_transactions",
       "admin_pnl_transactions_full_v2",
       "operator_upload_history",

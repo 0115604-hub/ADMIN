@@ -16,7 +16,7 @@ async function checkAttendance() {
     console.log(`Total workers in matrix: ${matrix.length}`);
 
     // Check Day 16 (and Day 15) for each company
-    for (const day of [15, 16]) {
+    for (const day of [19, 20]) {
       console.log(`\n--- Day ${day} (2026-10-${day}) Attendance in Matrix ---`);
       for (const comp of COMPANIES) {
         const workers = matrix.filter(w => cleanCompanyName(w.company) === comp);

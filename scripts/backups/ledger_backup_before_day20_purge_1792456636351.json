@@ -1,0 +1,4645 @@
+{
+  "resetAt": "2026-10-19T00:11:20.073Z",
+  "month": 10,
+  "masterWorkers": [
+    {
+      "position": "반장/조장",
+      "company": "오륙",
+      "employmentType": "정규직",
+      "dept": "관리팀",
+      "note": "",
+      "companyNo": 1,
+      "line": "관리부",
+      "name": "이명재",
+      "status": "재직",
+      "no": 1
+    },
+    {
+      "dept": "관리팀",
+      "note": "",
+      "employmentType": "정규직",
+      "companyNo": 2,
+      "company": "오륙",
+      "no": 2,
+      "position": "반장/조장",
+      "line": "관리부",
+      "name": "설유철",
+      "status": "재직"
+    },
+    {
+      "company": "오륙",
+      "line": "관리부",
+      "name": "윤경수",
+      "employmentType": "정규직",
+      "no": 3,
+      "companyNo": 3,
+      "status": "재직",
+      "dept": "관리팀",
+      "note": "",
+      "position": "반장/조장"
+    },
+    {
+      "position": "반장/조장",
+      "company": "오륙",
+      "line": "관리부",
+      "employmentType": "정규직",
+      "name": "이창엽",
+      "companyNo": 4,
+      "dept": "관리팀",
+      "status": "재직",
+      "note": "",
+      "no": 4
+    },
+    {
+      "dept": "관리팀",
+      "company": "오륙",
+      "note": "",
+      "position": "반장/조장",
+      "no": 5,
+      "employmentType": "정규직",
+      "line": "관리부",
+      "companyNo": 5,
+      "name": "전재율",
+      "status": "재직"
+    },
+    {
+      "dept": "관리팀",
+      "company": "오륙",
+      "note": "",
+      "companyNo": 6,
+      "employmentType": "정규직",
+      "position": "사원",
+      "no": 6,
+      "line": "관리부",
+      "name": "양인나",
+      "status": "재직"
+    },
+    {
+      "dept": "관리팀",
+      "note": "",
+      "employmentType": "정규직",
+      "status": "재직",
+      "position": "사원",
+      "companyNo": 7,
+      "company": "오륙",
+      "line": "관리부",
+      "name": "유동길",
+      "no": 7
+    },
+    {
+      "company": "오륙",
+      "line": "관리부",
+      "companyNo": 8,
+      "status": "재직",
+      "employmentType": "정규직",
+      "name": "조인주",
+      "dept": "관리팀",
+      "position": "사원",
+      "no": 8,
+      "note": ""
+    },
+    {
+      "company": "오륙",
+      "dept": "관리팀",
+      "note": "",
+      "line": "관리부",
+      "no": 9,
+      "employmentType": "정규직",
+      "name": "이상기",
+      "status": "재직",
+      "position": "사원",
+      "companyNo": 9
+    },
+    {
+      "line": "JA",
+      "name": "크리스토퍼",
+      "no": 10,
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "company": "오륙",
+      "note": "",
+      "companyNo": 10,
+      "position": "사원"
+    },
+    {
+      "position": "사원",
+      "name": "찬턴",
+      "no": 11,
+      "line": "JA",
+      "companyNo": 11,
+      "company": "오륙",
+      "note": "",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "employmentType": "정규직"
+    },
+    {
+      "note": "",
+      "dept": "가공관리팀",
+      "no": 12,
+      "employmentType": "정규직",
+      "position": "사원",
+      "status": "재직",
+      "company": "오륙",
+      "companyNo": 12,
+      "name": "로빈(야간)",
+      "line": "JA"
+    },
+    {
+      "employmentType": "정규직",
+      "no": 13,
+      "note": "",
+      "dept": "가공관리팀",
+      "name": "채수연",
+      "position": "사원",
+      "status": "재직",
+      "line": "JA",
+      "company": "오륙",
+      "companyNo": 13
+    },
+    {
+      "employmentType": "정규직",
+      "line": "JA",
+      "company": "오륙",
+      "name": "피아",
+      "position": "사원",
+      "companyNo": 14,
+      "status": "재직",
+      "no": 14,
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "company": "오륙",
+      "no": 15,
+      "position": "사원",
+      "note": "",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "name": "데이시",
+      "companyNo": 15,
+      "line": "JA",
+      "status": "재직"
+    },
+    {
+      "employmentType": "정규직",
+      "no": 16,
+      "name": "짱",
+      "status": "재직",
+      "line": "JA",
+      "position": "사원",
+      "companyNo": 16,
+      "note": "",
+      "company": "오륙",
+      "dept": "가공관리팀"
+    },
+    {
+      "no": 17,
+      "note": "",
+      "employmentType": "정규직",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "status": "재직",
+      "name": "김선옥",
+      "companyNo": 17,
+      "line": "JA"
+    },
+    {
+      "company": "오륙",
+      "position": "사원",
+      "line": "HR",
+      "name": "윤희수",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "no": 18,
+      "note": "",
+      "employmentType": "정규직",
+      "companyNo": 18
+    },
+    {
+      "line": "HR",
+      "companyNo": 19,
+      "position": "사원",
+      "name": "데니스",
+      "status": "재직",
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "no": 19,
+      "note": ""
+    },
+    {
+      "company": "오륙",
+      "employmentType": "정규직",
+      "line": "HR",
+      "name": "주재순",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "note": "",
+      "companyNo": 20,
+      "no": 20,
+      "status": "재직"
+    },
+    {
+      "no": 21,
+      "company": "오륙",
+      "employmentType": "정규직",
+      "name": "김수연",
+      "companyNo": 21,
+      "line": "HR",
+      "status": "재직",
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원"
+    },
+    {
+      "name": "이스라엘",
+      "line": "JA.HR",
+      "employmentType": "정규직",
+      "no": 22,
+      "company": "오륙",
+      "position": "사원",
+      "companyNo": 22,
+      "status": "재직",
+      "note": "",
+      "dept": "가공관리팀"
+    },
+    {
+      "name": "버나드",
+      "position": "사원",
+      "line": "NX4a",
+      "no": 23,
+      "company": "오륙",
+      "status": "재직",
+      "note": "",
+      "employmentType": "정규직",
+      "companyNo": 23,
+      "dept": "가공관리팀"
+    },
+    {
+      "no": 24,
+      "employmentType": "정규직",
+      "note": "",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 24,
+      "company": "오륙",
+      "status": "재직",
+      "name": "롤란도",
+      "line": "NX4a"
+    },
+    {
+      "line": "NX4",
+      "name": "돈돈",
+      "status": "재직",
+      "employmentType": "정규직",
+      "position": "사원",
+      "companyNo": 25,
+      "dept": "가공관리팀",
+      "no": 25,
+      "company": "오륙",
+      "note": ""
+    },
+    {
+      "position": "사원",
+      "companyNo": 26,
+      "company": "오륙",
+      "line": "NX4",
+      "name": "알라딘",
+      "dept": "가공관리팀",
+      "note": "",
+      "no": 26,
+      "status": "재직",
+      "employmentType": "정규직"
+    },
+    {
+      "companyNo": 27,
+      "dept": "가공관리팀",
+      "status": "재직",
+      "position": "사원",
+      "note": "",
+      "line": "NX4a",
+      "employmentType": "정규직",
+      "name": "김순미",
+      "no": 27,
+      "company": "오륙"
+    },
+    {
+      "no": 28,
+      "company": "오륙",
+      "name": "양인순",
+      "line": "NX4a",
+      "employmentType": "정규직",
+      "note": "",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "companyNo": 28
+    },
+    {
+      "line": "NX4",
+      "position": "사원",
+      "name": "박순복",
+      "status": "재직",
+      "employmentType": "정규직",
+      "companyNo": 29,
+      "no": 29,
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "line": "NX4",
+      "name": "김상아",
+      "status": "재직",
+      "employmentType": "정규직",
+      "position": "사원",
+      "no": 30,
+      "company": "오륙",
+      "companyNo": 30,
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "status": "재직",
+      "position": "사원",
+      "companyNo": 31,
+      "employmentType": "정규직",
+      "line": "NX4",
+      "company": "오륙",
+      "name": "김윤자",
+      "dept": "가공관리팀",
+      "note": "",
+      "no": 31
+    },
+    {
+      "companyNo": 32,
+      "position": "사원",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "note": "",
+      "line": "NX4.NX4a",
+      "no": 32,
+      "name": "손선희",
+      "company": "오륙"
+    },
+    {
+      "employmentType": "정규직",
+      "line": "NX4.NX4a",
+      "status": "재직",
+      "position": "사원",
+      "name": "이영숙",
+      "dept": "가공관리팀",
+      "note": "",
+      "companyNo": 33,
+      "company": "오륙",
+      "no": 33
+    },
+    {
+      "company": "오륙",
+      "line": "NX4.NX4a",
+      "name": "수베트",
+      "companyNo": 34,
+      "position": "사원",
+      "no": 34,
+      "status": "재직",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "companyNo": 35,
+      "position": "사원",
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "NX4.NX4a",
+      "company": "오륙",
+      "name": "치찬",
+      "no": 35,
+      "employmentType": "정규직",
+      "status": "재직"
+    },
+    {
+      "companyNo": 36,
+      "position": "사원",
+      "line": "NX4.NX4a",
+      "name": "콩지",
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "note": "",
+      "status": "재직",
+      "employmentType": "정규직",
+      "no": 36
+    },
+    {
+      "status": "재직",
+      "no": 37,
+      "name": "케넷",
+      "companyNo": 37,
+      "line": "JA.HR",
+      "note": "",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "position": "사원"
+    },
+    {
+      "companyNo": 38,
+      "employmentType": "정규직",
+      "no": 38,
+      "note": "",
+      "dept": "가공관리팀",
+      "name": "정상근",
+      "status": "재직",
+      "company": "오륙",
+      "line": "Channel",
+      "position": "사원"
+    },
+    {
+      "dept": "가공관리팀",
+      "companyNo": 39,
+      "note": "",
+      "employmentType": "정규직",
+      "no": 39,
+      "company": "오륙",
+      "position": "사원",
+      "line": "Channel",
+      "name": "링링",
+      "status": "재직"
+    },
+    {
+      "companyNo": 40,
+      "position": "사원",
+      "company": "오륙",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "Channel",
+      "no": 40,
+      "status": "재직",
+      "name": "유미"
+    },
+    {
+      "status": "재직",
+      "dept": "압출관리팀",
+      "note": "",
+      "company": "오륙",
+      "line": "압출동",
+      "position": "사원",
+      "name": "공영국",
+      "no": 41,
+      "companyNo": 41,
+      "employmentType": "정규직"
+    },
+    {
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "companyNo": 42,
+      "line": "압출동",
+      "status": "재직",
+      "company": "오륙",
+      "name": "심임대",
+      "no": 42,
+      "position": "사원"
+    },
+    {
+      "company": "오륙",
+      "name": "이상은",
+      "no": 43,
+      "status": "재직",
+      "line": "압출동",
+      "note": "",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "position": "사원",
+      "companyNo": 43
+    },
+    {
+      "company": "오륙",
+      "position": "사원",
+      "name": "닉",
+      "line": "압출동",
+      "employmentType": "정규직",
+      "no": 44,
+      "status": "재직",
+      "note": "",
+      "companyNo": 44,
+      "dept": "압출관리팀"
+    },
+    {
+      "company": "오륙",
+      "employmentType": "정규직",
+      "name": "마이클",
+      "no": 45,
+      "line": "압출동",
+      "note": "",
+      "dept": "압출관리팀",
+      "position": "사원",
+      "status": "재직",
+      "companyNo": 45
+    },
+    {
+      "position": "사원",
+      "company": "오륙",
+      "companyNo": 46,
+      "status": "재직",
+      "line": "압출동",
+      "name": "존카를로",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "no": 46
+    },
+    {
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "position": "사원",
+      "line": "압출동",
+      "status": "재직",
+      "company": "오륙",
+      "name": "지미",
+      "companyNo": 47,
+      "no": 47
+    },
+    {
+      "status": "재직",
+      "note": "",
+      "no": 48,
+      "companyNo": 48,
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "company": "오륙",
+      "name": "만",
+      "line": "압출동",
+      "position": "사원"
+    },
+    {
+      "dept": "압출관리팀",
+      "position": "사원",
+      "note": "",
+      "company": "오륙",
+      "companyNo": 49,
+      "employmentType": "정규직",
+      "status": "재직",
+      "line": "압출동",
+      "name": "샤먼",
+      "no": 49
+    },
+    {
+      "no": 50,
+      "companyNo": 50,
+      "note": "",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "position": "사원",
+      "name": "쿠마루",
+      "company": "오륙",
+      "line": "압출동",
+      "status": "재직"
+    },
+    {
+      "company": "오륙",
+      "companyNo": 51,
+      "position": "사원",
+      "line": "압출동",
+      "name": "이수루",
+      "dept": "압출관리팀",
+      "no": 51,
+      "note": "",
+      "status": "재직",
+      "employmentType": "정규직"
+    },
+    {
+      "note": "",
+      "companyNo": 52,
+      "position": "사원",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "no": 52,
+      "company": "오륙",
+      "status": "재직",
+      "name": "준",
+      "line": "코팅"
+    },
+    {
+      "employmentType": "정규직",
+      "company": "유성",
+      "dept": "압출관리팀",
+      "status": "재직",
+      "note": "",
+      "line": "유성-15",
+      "no": 1,
+      "name": "이성기",
+      "position": "사원",
+      "companyNo": 1
+    },
+    {
+      "companyNo": 2,
+      "status": "재직",
+      "position": "사원",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "line": "유성-15",
+      "name": "조마루",
+      "no": 2,
+      "company": "유성"
+    },
+    {
+      "companyNo": 3,
+      "line": "소재준비",
+      "employmentType": "정규직",
+      "status": "재직",
+      "name": "쏘탈",
+      "position": "사원",
+      "dept": "압출관리팀",
+      "no": 3,
+      "note": "",
+      "company": "유성"
+    },
+    {
+      "note": "",
+      "company": "유성",
+      "companyNo": 4,
+      "dept": "압출관리팀",
+      "no": 4,
+      "position": "사원",
+      "employmentType": "정규직",
+      "name": "론나차이",
+      "line": "DT",
+      "status": "재직"
+    },
+    {
+      "name": "마리오",
+      "line": "DT",
+      "no": 5,
+      "company": "유성",
+      "employmentType": "정규직",
+      "status": "재직",
+      "companyNo": 5,
+      "position": "사원",
+      "note": "",
+      "dept": "압출관리팀"
+    },
+    {
+      "no": 6,
+      "status": "재직",
+      "position": "사원",
+      "note": "",
+      "employmentType": "정규직",
+      "dept": "압출관리팀",
+      "company": "유성",
+      "name": "제날드",
+      "line": "DT",
+      "companyNo": 6
+    },
+    {
+      "company": "유성",
+      "position": "사원",
+      "line": "DT",
+      "name": "팔라",
+      "employmentType": "정규직",
+      "companyNo": 7,
+      "dept": "압출관리팀",
+      "status": "재직",
+      "no": 7,
+      "note": ""
+    },
+    {
+      "line": "DT",
+      "name": "누리",
+      "companyNo": 8,
+      "employmentType": "정규직",
+      "status": "재직",
+      "company": "유성",
+      "dept": "압출관리팀",
+      "position": "사원",
+      "note": "",
+      "no": 8
+    },
+    {
+      "no": 9,
+      "companyNo": 9,
+      "employmentType": "정규직",
+      "company": "유성",
+      "note": "",
+      "position": "사원",
+      "dept": "압출관리팀",
+      "name": "데란스",
+      "status": "재직",
+      "line": "JK1"
+    },
+    {
+      "dept": "압출관리팀",
+      "company": "유성",
+      "note": "",
+      "companyNo": 10,
+      "employmentType": "정규직",
+      "line": "JK1",
+      "no": 10,
+      "name": "포티퐁",
+      "position": "사원",
+      "status": "재직"
+    },
+    {
+      "employmentType": "정규직",
+      "companyNo": 11,
+      "dept": "압출관리팀",
+      "company": "유성",
+      "status": "재직",
+      "note": "",
+      "no": 11,
+      "line": "JK1",
+      "position": "사원",
+      "name": "린"
+    },
+    {
+      "company": "유성",
+      "name": "넷플립",
+      "line": "JK1",
+      "no": 12,
+      "employmentType": "정규직",
+      "position": "사원",
+      "status": "재직",
+      "note": "",
+      "companyNo": 12,
+      "dept": "압출관리팀"
+    },
+    {
+      "no": 13,
+      "note": "",
+      "dept": "압출관리팀",
+      "employmentType": "정규직",
+      "company": "유성",
+      "companyNo": 13,
+      "position": "사원",
+      "name": "제인",
+      "line": "JK1",
+      "status": "재직"
+    },
+    {
+      "no": 14,
+      "note": "",
+      "dept": "압출관리팀",
+      "status": "재직",
+      "companyNo": 14,
+      "position": "사원",
+      "employmentType": "정규직",
+      "name": "그레이스",
+      "line": "JK1",
+      "company": "유성"
+    },
+    {
+      "line": "관리",
+      "status": "재직",
+      "companyNo": 1,
+      "name": "김동훈",
+      "position": "사원",
+      "employmentType": "정규직",
+      "company": "부림텍",
+      "no": 1,
+      "dept": "관리팀",
+      "note": ""
+    },
+    {
+      "position": "반장",
+      "employmentType": "정규직",
+      "company": "부림텍",
+      "dept": "가공관리팀",
+      "note": "",
+      "no": 2,
+      "companyNo": 2,
+      "line": "소재준비",
+      "name": "최현영",
+      "status": "재직"
+    },
+    {
+      "note": "",
+      "companyNo": 3,
+      "dept": "가공관리팀",
+      "status": "재직",
+      "position": "사원",
+      "no": 3,
+      "employmentType": "정규직",
+      "company": "부림텍",
+      "name": "김영희",
+      "line": "HOOD 제단"
+    },
+    {
+      "position": "사원",
+      "dept": "가공관리팀",
+      "note": "",
+      "companyNo": 4,
+      "status": "재직",
+      "no": 4,
+      "line": "HOOD 제단",
+      "company": "부림텍",
+      "employmentType": "정규직",
+      "name": "박은혜"
+    },
+    {
+      "companyNo": 5,
+      "no": 5,
+      "company": "부림텍",
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "name": "조은미",
+      "line": "DS DT 소재준비",
+      "status": "재직",
+      "employmentType": "정규직"
+    },
+    {
+      "line": "HOOD 제단",
+      "position": "사원",
+      "name": "박선영",
+      "companyNo": 6,
+      "status": "재직",
+      "no": 6,
+      "company": "부림텍",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": ""
+    },
+    {
+      "dept": "관리팀",
+      "companyNo": 1,
+      "note": "",
+      "employmentType": "정규직",
+      "status": "재직",
+      "no": 1,
+      "line": "총괄관리",
+      "company": "조영",
+      "name": "김동욱",
+      "position": "차장"
+    },
+    {
+      "companyNo": 2,
+      "note": "",
+      "no": 2,
+      "dept": "관리팀",
+      "employmentType": "정규직",
+      "status": "재직",
+      "company": "조영",
+      "name": "오상민",
+      "line": "관리및 경리",
+      "position": "대리"
+    },
+    {
+      "employmentType": "정규직",
+      "name": "장수미",
+      "line": "관리",
+      "company": "조영",
+      "no": 3,
+      "status": "재직",
+      "position": "반장",
+      "companyNo": 3,
+      "note": "",
+      "dept": "가공관리팀"
+    },
+    {
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "companyNo": 4,
+      "company": "조영",
+      "status": "재직",
+      "note": "",
+      "line": "DT 조인트",
+      "position": "사원",
+      "name": "김은경",
+      "no": 4
+    },
+    {
+      "companyNo": 5,
+      "name": "다렌",
+      "line": "DT 조인트",
+      "no": 5,
+      "company": "조영",
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "status": "재직",
+      "employmentType": "정규직"
+    },
+    {
+      "companyNo": 6,
+      "company": "조영",
+      "no": 6,
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "name": "조엘",
+      "line": "DT 조인트",
+      "employmentType": "정규직",
+      "status": "재직"
+    },
+    {
+      "companyNo": 7,
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "DT 조인트",
+      "no": 7,
+      "position": "사원",
+      "status": "재직",
+      "name": "제롬",
+      "company": "조영",
+      "employmentType": "정규직"
+    },
+    {
+      "dept": "가공관리팀",
+      "note": "",
+      "companyNo": 8,
+      "no": 8,
+      "position": "사원",
+      "company": "조영",
+      "line": "DT 후가공",
+      "name": "곽은진",
+      "employmentType": "정규직",
+      "status": "재직"
+    },
+    {
+      "no": 9,
+      "companyNo": 9,
+      "status": "재직",
+      "name": "김용자",
+      "company": "조영",
+      "line": "DT 후가공",
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "employmentType": "정규직"
+    },
+    {
+      "note": "",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "employmentType": "정규직",
+      "company": "조영",
+      "companyNo": 10,
+      "status": "재직",
+      "no": 10,
+      "name": "수니아",
+      "line": "DT  후가공"
+    },
+    {
+      "line": "DT 후가공",
+      "name": "로나",
+      "status": "재직",
+      "position": "사원",
+      "employmentType": "정규직",
+      "companyNo": 11,
+      "no": 11,
+      "company": "조영",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "position": "사원",
+      "company": "조영",
+      "no": 12,
+      "name": "김다혜",
+      "line": "DT 후가공",
+      "note": "",
+      "companyNo": 12,
+      "status": "재직",
+      "dept": "가공관리팀",
+      "employmentType": "정규직"
+    },
+    {
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "DT 후가공",
+      "position": "사원",
+      "status": "재직",
+      "name": "구다혜",
+      "company": "조영",
+      "companyNo": 13,
+      "no": 13
+    },
+    {
+      "employmentType": "정규직",
+      "company": "조영",
+      "line": "DT 검사",
+      "companyNo": 14,
+      "name": "김창희",
+      "no": 14,
+      "position": "사원",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "name": "오미해",
+      "position": "사원",
+      "line": "DT  검사",
+      "no": 15,
+      "status": "재직",
+      "company": "조영",
+      "employmentType": "정규직",
+      "note": "",
+      "companyNo": 15,
+      "dept": "가공관리팀"
+    },
+    {
+      "dept": "가공관리팀",
+      "note": "",
+      "companyNo": 16,
+      "employmentType": "정규직",
+      "status": "재직",
+      "position": "사원",
+      "no": 16,
+      "company": "조영",
+      "line": "DT 소재준비",
+      "name": "김진경"
+    },
+    {
+      "status": "재직",
+      "companyNo": 17,
+      "position": "사원",
+      "no": 17,
+      "name": "우수진",
+      "company": "조영",
+      "line": "DT 클립",
+      "note": "",
+      "dept": "가공관리팀",
+      "employmentType": "정규직"
+    },
+    {
+      "company": "조영",
+      "name": "콰이",
+      "no": 18,
+      "line": "DT 클립",
+      "note": "",
+      "position": "사원",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "companyNo": 18,
+      "employmentType": "정규직"
+    },
+    {
+      "no": 19,
+      "note": "",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "name": "리차드",
+      "line": "DS조인트",
+      "company": "조영",
+      "position": "사원",
+      "companyNo": 19
+    },
+    {
+      "name": "라밀",
+      "no": 20,
+      "line": "DS조인트",
+      "status": "재직",
+      "companyNo": 20,
+      "employmentType": "정규직",
+      "position": "사원",
+      "company": "조영",
+      "note": "",
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "DS V조인트",
+      "employmentType": "정규직",
+      "name": "조나스",
+      "status": "재직",
+      "position": "사원",
+      "companyNo": 21,
+      "company": "조영",
+      "dept": "가공관리팀",
+      "note": "",
+      "no": 21
+    },
+    {
+      "employmentType": "정규직",
+      "line": "DS후가공",
+      "companyNo": 22,
+      "name": "양은주",
+      "company": "조영",
+      "dept": "가공관리팀",
+      "note": "",
+      "position": "사원",
+      "status": "재직",
+      "no": 22
+    },
+    {
+      "company": "조영",
+      "companyNo": 23,
+      "note": "",
+      "no": 23,
+      "position": "사원",
+      "dept": "가공관리팀",
+      "name": "박정화",
+      "line": "DS후가공",
+      "employmentType": "정규직",
+      "status": "재직"
+    },
+    {
+      "status": "재직",
+      "name": "김계연",
+      "companyNo": 24,
+      "line": "DS후가공",
+      "position": "사원",
+      "no": 24,
+      "employmentType": "정규직",
+      "note": "",
+      "company": "조영",
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "DS후가공",
+      "companyNo": 25,
+      "name": "김금옥",
+      "position": "사원",
+      "employmentType": "정규직",
+      "status": "재직",
+      "no": 25,
+      "company": "조영",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "line": "DS검사",
+      "companyNo": 26,
+      "name": "서윤엽",
+      "position": "사원",
+      "company": "조영",
+      "no": 26,
+      "status": "재직",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "DS소재준비",
+      "status": "재직",
+      "companyNo": 27,
+      "no": 27,
+      "name": "윤의정",
+      "company": "조영",
+      "position": "사원"
+    },
+    {
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "note": "",
+      "line": "NE1A 조인트",
+      "status": "재직",
+      "name": "이은숙",
+      "company": "조영",
+      "no": 28,
+      "companyNo": 28
+    },
+    {
+      "company": "조영",
+      "no": 29,
+      "name": "제이",
+      "employmentType": "정규직",
+      "line": "NE1A조인트",
+      "position": "사원",
+      "note": "",
+      "dept": "가공관리팀",
+      "companyNo": 29,
+      "status": "재직"
+    },
+    {
+      "note": "",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "status": "재직",
+      "no": 30,
+      "position": "사원",
+      "companyNo": 30,
+      "name": "김린",
+      "company": "조영",
+      "line": "NE1A후가공"
+    },
+    {
+      "company": "조영",
+      "companyNo": 31,
+      "line": "NE1A후가공",
+      "name": "미",
+      "employmentType": "정규직",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "no": 31,
+      "note": "",
+      "status": "재직"
+    },
+    {
+      "position": "사원",
+      "company": "조영",
+      "status": "재직",
+      "line": "검사",
+      "name": "김진숙",
+      "dept": "가공관리팀",
+      "companyNo": 32,
+      "note": "",
+      "employmentType": "정규직",
+      "no": 32
+    },
+    {
+      "line": "NE1A소재준비",
+      "name": "래리",
+      "companyNo": 33,
+      "status": "재직",
+      "company": "조영",
+      "no": 33,
+      "dept": "가공관리팀",
+      "position": "사원",
+      "employmentType": "정규직",
+      "note": ""
+    },
+    {
+      "company": "조영",
+      "line": "OV1K TPG  조인트",
+      "name": "웨인",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "companyNo": 34,
+      "note": "",
+      "position": "사원",
+      "no": 34,
+      "employmentType": "정규직"
+    },
+    {
+      "dept": "가공관리팀",
+      "note": "",
+      "line": "OV1K FRUNK 조인트",
+      "no": 35,
+      "company": "조영",
+      "name": "안",
+      "position": "사원",
+      "employmentType": "정규직",
+      "status": "재직",
+      "companyNo": 35
+    },
+    {
+      "company": "조영",
+      "companyNo": 36,
+      "line": "OVK1 검사",
+      "name": "장윤형",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "note": "",
+      "no": 36,
+      "employmentType": "정규직",
+      "status": "재직"
+    },
+    {
+      "dept": "가공관리팀",
+      "note": "",
+      "company": "조영",
+      "employmentType": "정규직",
+      "no": 37,
+      "status": "재직",
+      "line": "OV1K FRUNK 소재준비",
+      "position": "사원",
+      "companyNo": 37,
+      "name": "이말숙"
+    },
+    {
+      "name": "바네사",
+      "company": "조영",
+      "line": "JG 조인트",
+      "no": 38,
+      "companyNo": 38,
+      "position": "사원",
+      "status": "재직",
+      "note": "",
+      "employmentType": "정규직",
+      "dept": "가공관리팀"
+    },
+    {
+      "position": "사원",
+      "company": "조영",
+      "line": "JG 후가공",
+      "status": "재직",
+      "name": "르엉",
+      "dept": "가공관리팀",
+      "companyNo": 39,
+      "no": 39,
+      "note": "",
+      "employmentType": "정규직"
+    },
+    {
+      "line": "JG 검사",
+      "company": "조영",
+      "name": "박미진",
+      "companyNo": 40,
+      "status": "재직",
+      "position": "사원",
+      "no": 40,
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": ""
+    },
+    {
+      "no": 41,
+      "name": "유리",
+      "status": "재직",
+      "line": "고무작업",
+      "note": "",
+      "dept": "가공관리팀",
+      "companyNo": 41,
+      "position": "사원",
+      "company": "조영",
+      "employmentType": "정규직"
+    },
+    {
+      "companyNo": 42,
+      "no": 42,
+      "note": "",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "name": "준",
+      "line": "소재이동관리",
+      "status": "재직",
+      "company": "조영",
+      "position": "사원"
+    },
+    {
+      "dept": "관리팀",
+      "status": "재직",
+      "companyNo": 1,
+      "note": "",
+      "position": "사원",
+      "employmentType": "정규직",
+      "no": 1,
+      "line": "관리부",
+      "name": "황수현",
+      "company": "한울"
+    },
+    {
+      "employmentType": "정규직",
+      "name": "박종미",
+      "no": 2,
+      "line": "관리부",
+      "note": "",
+      "status": "재직",
+      "dept": "관리팀",
+      "company": "한울",
+      "position": "반장/조장",
+      "companyNo": 2
+    },
+    {
+      "line": "9BQC",
+      "name": "마이클",
+      "company": "한울",
+      "status": "재직",
+      "companyNo": 3,
+      "employmentType": "정규직",
+      "no": 3,
+      "position": "사원",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "companyNo": 4,
+      "company": "한울",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "note": "",
+      "line": "9BQC",
+      "no": 4,
+      "name": "마크",
+      "position": "사원",
+      "employmentType": "정규직"
+    },
+    {
+      "company": "한울",
+      "line": "9BQC",
+      "name": "로렉스",
+      "dept": "가공관리팀",
+      "status": "재직",
+      "no": 5,
+      "position": "사원",
+      "note": "",
+      "companyNo": 5,
+      "employmentType": "정규직"
+    },
+    {
+      "companyNo": 6,
+      "note": "",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "no": 6,
+      "employmentType": "정규직",
+      "status": "재직",
+      "company": "한울",
+      "name": "무피드",
+      "line": "9BQC"
+    },
+    {
+      "status": "재직",
+      "companyNo": 7,
+      "line": "9BQC",
+      "name": "마틴",
+      "company": "한울",
+      "no": 7,
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "position": "사원"
+    },
+    {
+      "position": "사원",
+      "companyNo": 8,
+      "line": "9BQC",
+      "name": "박민정",
+      "company": "한울",
+      "dept": "가공관리팀",
+      "note": "",
+      "employmentType": "정규직",
+      "no": 8,
+      "status": "재직"
+    },
+    {
+      "companyNo": 9,
+      "position": "사원",
+      "company": "한울",
+      "line": "9BQC",
+      "name": "지라완",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "no": 9,
+      "note": "",
+      "employmentType": "정규직"
+    },
+    {
+      "dept": "가공관리팀",
+      "companyNo": 10,
+      "position": "사원",
+      "note": "",
+      "company": "한울",
+      "status": "재직",
+      "no": 10,
+      "employmentType": "정규직",
+      "line": "9BQC",
+      "name": "레이놀드"
+    },
+    {
+      "line": "9BQC",
+      "name": "맥리",
+      "companyNo": 11,
+      "company": "한울",
+      "employmentType": "정규직",
+      "no": 11,
+      "position": "사원",
+      "status": "재직",
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "name": "조제인",
+      "no": 12,
+      "line": "9BQC",
+      "position": "사원",
+      "status": "재직",
+      "company": "한울",
+      "note": "",
+      "companyNo": 12,
+      "dept": "가공관리팀",
+      "employmentType": "정규직"
+    },
+    {
+      "status": "재직",
+      "no": 13,
+      "note": "",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "company": "한울",
+      "name": "새드릭",
+      "line": "9BQC",
+      "companyNo": 13
+    },
+    {
+      "status": "재직",
+      "dept": "가공관리팀",
+      "companyNo": 14,
+      "note": "",
+      "company": "한울",
+      "line": "9BQC",
+      "name": "니사낫",
+      "position": "사원",
+      "no": 14,
+      "employmentType": "정규직"
+    },
+    {
+      "status": "재직",
+      "companyNo": 15,
+      "name": "수파따",
+      "line": "9BQC",
+      "position": "사원",
+      "no": 15,
+      "employmentType": "정규직",
+      "company": "한울",
+      "note": "",
+      "dept": "가공관리팀"
+    },
+    {
+      "name": "와히드",
+      "company": "한울",
+      "position": "사원",
+      "companyNo": 16,
+      "no": 16,
+      "line": "9BQC",
+      "employmentType": "정규직",
+      "status": "재직",
+      "note": "",
+      "dept": "가공관리팀"
+    },
+    {
+      "dept": "가공관리팀",
+      "note": "",
+      "status": "재직",
+      "employmentType": "정규직",
+      "line": "9BQC",
+      "name": "찬티마",
+      "companyNo": 17,
+      "no": 17,
+      "company": "한울",
+      "position": "사원"
+    },
+    {
+      "line": "9BQC",
+      "name": "데이브",
+      "companyNo": 18,
+      "employmentType": "정규직",
+      "company": "한울",
+      "status": "재직",
+      "position": "사원",
+      "no": 18,
+      "dept": "가공관리팀",
+      "note": ""
+    },
+    {
+      "line": "9BQC",
+      "name": "위간",
+      "position": "사원",
+      "company": "한울",
+      "no": 19,
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "companyNo": 19,
+      "status": "재직"
+    },
+    {
+      "line": "9BQC",
+      "name": "프랭클린",
+      "position": "사원",
+      "companyNo": 20,
+      "status": "재직",
+      "company": "한울",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "no": 20
+    },
+    {
+      "status": "재직",
+      "line": "9BQC",
+      "name": "에일리",
+      "companyNo": 21,
+      "position": "사원",
+      "employmentType": "정규직",
+      "dept": "가공관리팀",
+      "note": "",
+      "company": "한울",
+      "no": 21
+    },
+    {
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "note": "",
+      "status": "재직",
+      "position": "사원",
+      "company": "한울",
+      "companyNo": 22,
+      "no": 22,
+      "line": "9BQC",
+      "name": "마이카"
+    },
+    {
+      "note": "",
+      "no": 23,
+      "dept": "가공관리팀",
+      "company": "한울",
+      "employmentType": "정규직",
+      "status": "재직",
+      "position": "사원",
+      "companyNo": 23,
+      "name": "알프레도",
+      "line": "LQ2"
+    },
+    {
+      "company": "한울",
+      "companyNo": 24,
+      "no": 24,
+      "name": "아이린",
+      "line": "LQ2",
+      "note": "",
+      "employmentType": "정규직",
+      "status": "재직",
+      "position": "사원",
+      "dept": "가공관리팀"
+    },
+    {
+      "note": "",
+      "position": "사원",
+      "company": "한울",
+      "dept": "가공관리팀",
+      "employmentType": "정규직",
+      "no": 25,
+      "companyNo": 25,
+      "name": "에릭",
+      "line": "LQ2",
+      "status": "재직"
+    },
+    {
+      "name": "언",
+      "company": "한울",
+      "no": 26,
+      "line": "LQ2",
+      "companyNo": 26,
+      "position": "사원",
+      "status": "재직",
+      "note": "",
+      "employmentType": "정규직",
+      "dept": "가공관리팀"
+    },
+    {
+      "position": "사원",
+      "company": "조영",
+      "companyNo": 43,
+      "note": "",
+      "no": 43,
+      "dept": "가공관리팀",
+      "name": "벤",
+      "line": "DS 조인트",
+      "status": "재직",
+      "employmentType": "정규직"
+    }
+  ],
+  "updatedAt": "2026-10-19T22:41:45.355Z",
+  "attendanceMatrix": [
+    {
+      "position": "반장/조장",
+      "name": "이명재",
+      "no": 1,
+      "company": "오륙",
+      "line": "관리부",
+      "daily": {
+        "19": "정시"
+      },
+      "companyNo": 1,
+      "dept": "관리팀"
+    },
+    {
+      "no": 2,
+      "company": "오륙",
+      "daily": {
+        "19": "정시"
+      },
+      "companyNo": 2,
+      "dept": "관리팀",
+      "name": "설유철",
+      "position": "반장/조장",
+      "line": "관리부"
+    },
+    {
+      "dept": "관리팀",
+      "no": 3,
+      "company": "오륙",
+      "daily": {
+        "19": "정시"
+      },
+      "position": "반장/조장",
+      "line": "관리부",
+      "companyNo": 3,
+      "name": "윤경수"
+    },
+    {
+      "no": 4,
+      "daily": {
+        "19": "정시"
+      },
+      "dept": "관리팀",
+      "companyNo": 4,
+      "name": "이창엽",
+      "company": "오륙",
+      "line": "관리부",
+      "position": "반장/조장"
+    },
+    {
+      "dept": "관리팀",
+      "company": "오륙",
+      "position": "반장/조장",
+      "line": "관리부",
+      "companyNo": 5,
+      "daily": {
+        "19": "정시"
+      },
+      "no": 5,
+      "name": "전재율"
+    },
+    {
+      "companyNo": 6,
+      "daily": {
+        "19": "정시"
+      },
+      "name": "양인나",
+      "company": "오륙",
+      "position": "사원",
+      "line": "관리부",
+      "no": 6,
+      "dept": "관리팀"
+    },
+    {
+      "dept": "관리팀",
+      "company": "오륙",
+      "name": "유동길",
+      "position": "사원",
+      "no": 7,
+      "daily": {
+        "19": "정시"
+      },
+      "companyNo": 7,
+      "line": "관리부"
+    },
+    {
+      "name": "조인주",
+      "no": 8,
+      "companyNo": 8,
+      "company": "오륙",
+      "line": "관리부",
+      "daily": {
+        "19": "정시"
+      },
+      "position": "사원",
+      "dept": "관리팀"
+    },
+    {
+      "no": 9,
+      "dept": "관리팀",
+      "companyNo": 9,
+      "name": "이상기",
+      "daily": {
+        "19": "결근"
+      },
+      "line": "관리부",
+      "company": "오륙",
+      "position": "사원"
+    },
+    {
+      "name": "크리스토퍼",
+      "no": 10,
+      "line": "JA",
+      "companyNo": 10,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "position": "사원"
+    },
+    {
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "companyNo": 11,
+      "name": "찬턴",
+      "no": 11,
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "line": "JA"
+    },
+    {
+      "no": 12,
+      "line": "JA",
+      "name": "로빈(야간)",
+      "position": "사원",
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "잔업(+6H)"
+      },
+      "companyNo": 12
+    },
+    {
+      "line": "JA",
+      "no": 13,
+      "name": "채수연",
+      "daily": {
+        "19": "19"
+      },
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "companyNo": 13,
+      "position": "사원"
+    },
+    {
+      "dept": "가공관리팀",
+      "position": "사원",
+      "company": "오륙",
+      "companyNo": 14,
+      "no": 14,
+      "line": "JA",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "name": "피아"
+    },
+    {
+      "company": "오륙",
+      "companyNo": 15,
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      },
+      "name": "데이시",
+      "no": 15,
+      "position": "사원",
+      "line": "JA"
+    },
+    {
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "companyNo": 16,
+      "no": 16,
+      "daily": {
+        "19": "19"
+      },
+      "line": "JA",
+      "position": "사원",
+      "name": "짱"
+    },
+    {
+      "position": "사원",
+      "no": 17,
+      "dept": "가공관리팀",
+      "companyNo": 17,
+      "name": "김선옥",
+      "company": "오륙",
+      "daily": {
+        "19": "19"
+      },
+      "line": "JA"
+    },
+    {
+      "line": "HR",
+      "name": "윤희수",
+      "position": "사원",
+      "no": 18,
+      "company": "오륙",
+      "daily": {
+        "19": "19"
+      },
+      "dept": "가공관리팀",
+      "companyNo": 18
+    },
+    {
+      "name": "데니스",
+      "companyNo": 19,
+      "line": "HR",
+      "daily": {
+        "19": "19"
+      },
+      "no": 19,
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "position": "사원"
+    },
+    {
+      "name": "주재순",
+      "position": "사원",
+      "line": "HR",
+      "daily": {
+        "19": "21"
+      },
+      "companyNo": 20,
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "no": 20
+    },
+    {
+      "dept": "가공관리팀",
+      "no": 21,
+      "position": "사원",
+      "line": "HR",
+      "company": "오륙",
+      "companyNo": 21,
+      "name": "김수연",
+      "daily": {
+        "19": "19"
+      }
+    },
+    {
+      "no": 22,
+      "name": "이스라엘",
+      "line": "JA.HR",
+      "companyNo": 22,
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "position": "사원"
+    },
+    {
+      "name": "버나드",
+      "line": "NX4a",
+      "no": 23,
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "company": "오륙",
+      "companyNo": 23,
+      "dept": "가공관리팀"
+    },
+    {
+      "position": "사원",
+      "name": "롤란도",
+      "line": "NX4a",
+      "company": "오륙",
+      "companyNo": 24,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "dept": "가공관리팀",
+      "no": 24
+    },
+    {
+      "companyNo": 25,
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "no": 25,
+      "line": "NX4",
+      "position": "사원",
+      "daily": {
+        "19": "19"
+      },
+      "name": "돈돈"
+    },
+    {
+      "companyNo": 26,
+      "dept": "가공관리팀",
+      "position": "사원",
+      "name": "알라딘",
+      "no": 26,
+      "company": "오륙",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "line": "NX4"
+    },
+    {
+      "company": "오륙",
+      "companyNo": 27,
+      "position": "사원",
+      "line": "NX4a",
+      "name": "김순미",
+      "no": 27,
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      }
+    },
+    {
+      "name": "양인순",
+      "daily": {
+        "19": "19"
+      },
+      "line": "NX4a",
+      "company": "오륙",
+      "no": 28,
+      "companyNo": 28,
+      "dept": "가공관리팀",
+      "position": "사원"
+    },
+    {
+      "dept": "가공관리팀",
+      "position": "사원",
+      "company": "오륙",
+      "line": "NX4",
+      "companyNo": 29,
+      "daily": {
+        "19": "19"
+      },
+      "name": "박순복",
+      "no": 29
+    },
+    {
+      "position": "사원",
+      "companyNo": 30,
+      "no": 30,
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "daily": {
+        "19": "19"
+      },
+      "line": "NX4",
+      "name": "김상아"
+    },
+    {
+      "line": "NX4",
+      "name": "김윤자",
+      "no": 31,
+      "company": "오륙",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      },
+      "companyNo": 31
+    },
+    {
+      "name": "손선희",
+      "no": 32,
+      "position": "사원",
+      "line": "NX4.NX4a",
+      "daily": {
+        "19": "19"
+      },
+      "companyNo": 32,
+      "company": "오륙",
+      "dept": "가공관리팀"
+    },
+    {
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      },
+      "position": "사원",
+      "companyNo": 33,
+      "name": "이영숙",
+      "company": "오륙",
+      "no": 33,
+      "line": "NX4.NX4a"
+    },
+    {
+      "position": "사원",
+      "no": 34,
+      "company": "오륙",
+      "daily": {
+        "19": "19"
+      },
+      "dept": "가공관리팀",
+      "name": "수베트",
+      "companyNo": 34,
+      "line": "NX4.NX4a"
+    },
+    {
+      "companyNo": 35,
+      "no": 35,
+      "company": "오륙",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      },
+      "line": "NX4.NX4a",
+      "name": "치찬"
+    },
+    {
+      "line": "NX4.NX4a",
+      "position": "사원",
+      "company": "오륙",
+      "name": "콩지",
+      "no": 36,
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "19"
+      },
+      "companyNo": 36
+    },
+    {
+      "name": "케넷",
+      "daily": {
+        "19": "19"
+      },
+      "companyNo": 37,
+      "line": "JA.HR",
+      "position": "사원",
+      "no": 37,
+      "company": "오륙",
+      "dept": "가공관리팀"
+    },
+    {
+      "no": 38,
+      "dept": "가공관리팀",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "Channel",
+      "companyNo": 38,
+      "name": "정상근",
+      "company": "오륙"
+    },
+    {
+      "dept": "가공관리팀",
+      "company": "오륙",
+      "no": 39,
+      "position": "사원",
+      "line": "Channel",
+      "companyNo": 39,
+      "daily": {
+        "19": "19"
+      },
+      "name": "링링"
+    },
+    {
+      "line": "Channel",
+      "daily": {
+        "19": "19"
+      },
+      "name": "유미",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 40,
+      "company": "오륙",
+      "no": 40
+    },
+    {
+      "name": "공영국",
+      "position": "사원",
+      "line": "압출동",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "company": "오륙",
+      "no": 41,
+      "dept": "압출관리팀",
+      "companyNo": 41
+    },
+    {
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "company": "오륙",
+      "name": "심임대",
+      "line": "압출동",
+      "companyNo": 42,
+      "dept": "압출관리팀",
+      "no": 42
+    },
+    {
+      "no": 43,
+      "daily": {
+        "19": "잔업(+3H)"
+      },
+      "dept": "압출관리팀",
+      "name": "이상은",
+      "company": "오륙",
+      "companyNo": 43,
+      "position": "사원",
+      "line": "압출동"
+    },
+    {
+      "position": "사원",
+      "dept": "압출관리팀",
+      "company": "오륙",
+      "companyNo": 44,
+      "name": "닉",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "no": 44,
+      "line": "압출동"
+    },
+    {
+      "position": "사원",
+      "company": "오륙",
+      "no": 45,
+      "dept": "압출관리팀",
+      "line": "압출동",
+      "companyNo": 45,
+      "name": "마이클",
+      "daily": {
+        "19": "잔업(+3H)"
+      }
+    },
+    {
+      "no": 46,
+      "line": "압출동",
+      "company": "오륙",
+      "name": "존카를로",
+      "companyNo": 46,
+      "dept": "압출관리팀",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "position": "사원"
+    },
+    {
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+3H)"
+      },
+      "no": 47,
+      "dept": "압출관리팀",
+      "name": "지미",
+      "line": "압출동",
+      "companyNo": 47,
+      "company": "오륙"
+    },
+    {
+      "name": "만",
+      "companyNo": 48,
+      "line": "압출동",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+5H)"
+      },
+      "no": 48,
+      "company": "오륙",
+      "dept": "압출관리팀"
+    },
+    {
+      "position": "사원",
+      "company": "오륙",
+      "companyNo": 49,
+      "dept": "압출관리팀",
+      "no": 49,
+      "name": "샤먼",
+      "daily": {
+        "19": "잔업(+3H)"
+      },
+      "line": "압출동"
+    },
+    {
+      "company": "오륙",
+      "line": "압출동",
+      "no": 50,
+      "name": "쿠마루",
+      "companyNo": 50,
+      "position": "사원",
+      "dept": "압출관리팀",
+      "daily": {
+        "19": "잔업(+5H)"
+      }
+    },
+    {
+      "line": "압출동",
+      "companyNo": 51,
+      "position": "사원",
+      "name": "이수루",
+      "dept": "압출관리팀",
+      "daily": {
+        "19": "잔업(+3H)"
+      },
+      "company": "오륙",
+      "no": 51
+    },
+    {
+      "dept": "압출관리팀",
+      "companyNo": 52,
+      "company": "오륙",
+      "position": "사원",
+      "no": 52,
+      "line": "코팅",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "name": "준"
+    },
+    {
+      "position": "사원",
+      "company": "유성",
+      "no": 1,
+      "dept": "압출관리팀",
+      "companyNo": 1,
+      "name": "이성기",
+      "daily": {
+        "19": "🟢"
+      },
+      "line": "유성-15"
+    },
+    {
+      "name": "조마루",
+      "position": "사원",
+      "company": "유성",
+      "line": "유성-15",
+      "companyNo": 2,
+      "daily": {
+        "19": "🟢"
+      },
+      "no": 2,
+      "dept": "압출관리팀"
+    },
+    {
+      "no": 3,
+      "dept": "압출관리팀",
+      "name": "쏘탈",
+      "daily": {
+        "19": "🟢"
+      },
+      "company": "유성",
+      "line": "소재준비",
+      "companyNo": 3,
+      "position": "사원"
+    },
+    {
+      "daily": {
+        "19": "결근"
+      },
+      "line": "DT",
+      "companyNo": 4,
+      "company": "유성",
+      "name": "론나차이",
+      "dept": "압출관리팀",
+      "position": "사원",
+      "no": 4
+    },
+    {
+      "daily": {
+        "19": "🟢"
+      },
+      "dept": "압출관리팀",
+      "companyNo": 5,
+      "no": 5,
+      "company": "유성",
+      "name": "마리오",
+      "position": "사원",
+      "line": "DT"
+    },
+    {
+      "line": "DT",
+      "companyNo": 6,
+      "name": "제날드",
+      "dept": "압출관리팀",
+      "company": "유성",
+      "daily": {
+        "19": "🟢"
+      },
+      "no": 6,
+      "position": "사원"
+    },
+    {
+      "companyNo": 7,
+      "name": "팔라",
+      "company": "유성",
+      "line": "DT",
+      "daily": {
+        "19": "🟢"
+      },
+      "position": "사원",
+      "no": 7,
+      "dept": "압출관리팀"
+    },
+    {
+      "name": "누리",
+      "position": "사원",
+      "line": "DT",
+      "daily": {
+        "19": "🟢"
+      },
+      "companyNo": 8,
+      "no": 8,
+      "company": "유성",
+      "dept": "압출관리팀"
+    },
+    {
+      "line": "JK1",
+      "no": 9,
+      "name": "데란스",
+      "company": "유성",
+      "companyNo": 9,
+      "daily": {
+        "19": "🟢"
+      },
+      "dept": "압출관리팀",
+      "position": "사원"
+    },
+    {
+      "companyNo": 10,
+      "daily": {
+        "19": "🟢"
+      },
+      "position": "사원",
+      "dept": "압출관리팀",
+      "company": "유성",
+      "no": 10,
+      "name": "포티퐁",
+      "line": "JK1"
+    },
+    {
+      "company": "유성",
+      "position": "사원",
+      "line": "JK1",
+      "companyNo": 11,
+      "name": "린",
+      "no": 11,
+      "dept": "압출관리팀",
+      "daily": {
+        "19": "🟢"
+      }
+    },
+    {
+      "line": "JK1",
+      "position": "사원",
+      "name": "넷플립",
+      "company": "유성",
+      "dept": "압출관리팀",
+      "daily": {
+        "19": "🟢"
+      },
+      "companyNo": 12,
+      "no": 12
+    },
+    {
+      "companyNo": 13,
+      "daily": {
+        "19": "🟢"
+      },
+      "position": "사원",
+      "no": 13,
+      "dept": "압출관리팀",
+      "name": "제인",
+      "company": "유성",
+      "line": "JK1"
+    },
+    {
+      "position": "사원",
+      "company": "유성",
+      "dept": "압출관리팀",
+      "no": 14,
+      "companyNo": 14,
+      "line": "JK1",
+      "name": "그레이스",
+      "daily": {
+        "19": "🟢"
+      }
+    },
+    {
+      "companyNo": 1,
+      "company": "부림텍",
+      "position": "사원",
+      "dept": "관리팀",
+      "no": 1,
+      "daily": {
+        "20": "정시"
+      },
+      "line": "관리",
+      "name": "김동훈"
+    },
+    {
+      "line": "소재준비",
+      "daily": {
+        "20": "정시"
+      },
+      "name": "최현영",
+      "companyNo": 2,
+      "dept": "가공관리팀",
+      "company": "부림텍",
+      "no": 2,
+      "position": "반장"
+    },
+    {
+      "dept": "가공관리팀",
+      "daily": {
+        "20": "19"
+      },
+      "companyNo": 3,
+      "line": "HOOD 제단",
+      "company": "부림텍",
+      "position": "사원",
+      "no": 3,
+      "name": "김영희"
+    },
+    {
+      "name": "박은혜",
+      "no": 4,
+      "companyNo": 4,
+      "line": "HOOD 제단",
+      "position": "사원",
+      "daily": {
+        "20": "19"
+      },
+      "company": "부림텍",
+      "dept": "가공관리팀"
+    },
+    {
+      "no": 5,
+      "companyNo": 5,
+      "dept": "가공관리팀",
+      "company": "부림텍",
+      "daily": {
+        "20": "정시"
+      },
+      "line": "DS DT 소재준비",
+      "position": "사원",
+      "name": "조은미"
+    },
+    {
+      "daily": {
+        "20": "정시"
+      },
+      "position": "사원",
+      "company": "부림텍",
+      "name": "박선영",
+      "line": "HOOD 제단",
+      "companyNo": 6,
+      "no": 6,
+      "dept": "가공관리팀"
+    },
+    {
+      "company": "조영",
+      "name": "김동욱",
+      "no": 1,
+      "line": "총괄관리",
+      "position": "차장",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "companyNo": 1,
+      "dept": "관리팀"
+    },
+    {
+      "no": 2,
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "dept": "관리팀",
+      "name": "오상민",
+      "company": "조영",
+      "line": "관리및 경리",
+      "position": "대리",
+      "companyNo": 2
+    },
+    {
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "관리",
+      "name": "장수미",
+      "dept": "가공관리팀",
+      "company": "조영",
+      "position": "반장",
+      "companyNo": 3,
+      "no": 3
+    },
+    {
+      "line": "DT 조인트",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "no": 4,
+      "name": "김은경",
+      "position": "사원",
+      "company": "조영",
+      "dept": "가공관리팀",
+      "companyNo": 4
+    },
+    {
+      "no": 5,
+      "line": "DT 조인트",
+      "company": "조영",
+      "companyNo": 5,
+      "name": "다렌",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "잔업(+6H)"
+      },
+      "position": "사원"
+    },
+    {
+      "company": "조영",
+      "name": "조엘",
+      "companyNo": 6,
+      "line": "DT 조인트",
+      "position": "사원",
+      "no": 6,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "dept": "가공관리팀"
+    },
+    {
+      "name": "제롬",
+      "no": 7,
+      "companyNo": 7,
+      "line": "DT 조인트",
+      "daily": {
+        "19": "잔업(+6H)"
+      },
+      "position": "사원",
+      "company": "조영",
+      "dept": "가공관리팀"
+    },
+    {
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 8,
+      "company": "조영",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "no": 8,
+      "line": "DT 후가공",
+      "name": "곽은진"
+    },
+    {
+      "name": "김용자",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "line": "DT 후가공",
+      "position": "사원",
+      "no": 9,
+      "companyNo": 9,
+      "company": "조영",
+      "dept": "가공관리팀"
+    },
+    {
+      "companyNo": 10,
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "DT  후가공",
+      "name": "수니아",
+      "company": "조영",
+      "dept": "가공관리팀",
+      "no": 10
+    },
+    {
+      "companyNo": 11,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "DT 후가공",
+      "position": "사원",
+      "name": "로나",
+      "dept": "가공관리팀",
+      "company": "조영",
+      "no": 11
+    },
+    {
+      "dept": "가공관리팀",
+      "position": "사원",
+      "companyNo": 12,
+      "no": 12,
+      "line": "DT 후가공",
+      "company": "조영",
+      "name": "김다혜",
+      "daily": {
+        "19": "잔업(+4H)"
+      }
+    },
+    {
+      "line": "DT 후가공",
+      "company": "조영",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "name": "구다혜",
+      "dept": "가공관리팀",
+      "no": 13,
+      "position": "사원",
+      "companyNo": 13
+    },
+    {
+      "companyNo": 14,
+      "name": "김창희",
+      "position": "사원",
+      "company": "조영",
+      "line": "DT 검사",
+      "daily": {
+        "19": "정시"
+      },
+      "dept": "가공관리팀",
+      "no": 14
+    },
+    {
+      "line": "DT  검사",
+      "company": "조영",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "companyNo": 15,
+      "position": "사원",
+      "name": "오미해",
+      "no": 15,
+      "dept": "가공관리팀"
+    },
+    {
+      "dept": "가공관리팀",
+      "no": 16,
+      "company": "조영",
+      "name": "김진경",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "DT 소재준비",
+      "position": "사원",
+      "companyNo": 16
+    },
+    {
+      "company": "조영",
+      "no": 17,
+      "dept": "가공관리팀",
+      "name": "우수진",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "DT 클립",
+      "companyNo": 17
+    },
+    {
+      "dept": "가공관리팀",
+      "no": 18,
+      "company": "조영",
+      "name": "콰이",
+      "companyNo": 18,
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "DT 클립"
+    },
+    {
+      "name": "리차드",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "no": 19,
+      "line": "DS조인트",
+      "companyNo": 19,
+      "position": "사원",
+      "company": "조영",
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "DS조인트",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "position": "사원",
+      "name": "라밀",
+      "dept": "가공관리팀",
+      "companyNo": 20,
+      "no": 20,
+      "company": "조영"
+    },
+    {
+      "line": "DS V조인트",
+      "name": "조나스",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "company": "조영",
+      "position": "사원",
+      "no": 21,
+      "companyNo": 21
+    },
+    {
+      "position": "사원",
+      "dept": "가공관리팀",
+      "company": "조영",
+      "name": "양은주",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "line": "DS후가공",
+      "no": 22,
+      "companyNo": 22
+    },
+    {
+      "no": 23,
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "companyNo": 23,
+      "dept": "가공관리팀",
+      "company": "조영",
+      "name": "박정화",
+      "position": "사원",
+      "line": "DS후가공"
+    },
+    {
+      "line": "DS후가공",
+      "company": "조영",
+      "daily": {
+        "19": "정시"
+      },
+      "no": 24,
+      "name": "김계연",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 24
+    },
+    {
+      "no": 25,
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "dept": "가공관리팀",
+      "company": "조영",
+      "name": "김금옥",
+      "position": "사원",
+      "line": "DS후가공",
+      "companyNo": 25
+    },
+    {
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "name": "서윤엽",
+      "company": "조영",
+      "line": "DS검사",
+      "no": 26,
+      "position": "사원",
+      "companyNo": 26,
+      "dept": "가공관리팀"
+    },
+    {
+      "daily": {
+        "19": "정시"
+      },
+      "no": 27,
+      "dept": "가공관리팀",
+      "company": "조영",
+      "position": "사원",
+      "name": "윤의정",
+      "line": "DS소재준비",
+      "companyNo": 27
+    },
+    {
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "line": "NE1A 조인트",
+      "position": "사원",
+      "name": "이은숙",
+      "dept": "가공관리팀",
+      "company": "조영",
+      "no": 28,
+      "companyNo": 28
+    },
+    {
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "companyNo": 29,
+      "company": "조영",
+      "no": 29,
+      "name": "제이",
+      "position": "사원",
+      "line": "NE1A조인트"
+    },
+    {
+      "dept": "가공관리팀",
+      "company": "조영",
+      "companyNo": 30,
+      "no": 30,
+      "line": "NE1A후가공",
+      "position": "사원",
+      "name": "김린",
+      "daily": {
+        "19": "정시"
+      }
+    },
+    {
+      "line": "NE1A후가공",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "no": 31,
+      "name": "미",
+      "company": "조영",
+      "companyNo": 31,
+      "dept": "가공관리팀"
+    },
+    {
+      "subProcesses": [],
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "mainProcess": "검사",
+      "company": "조영",
+      "no": 32,
+      "line": "검사",
+      "tenure": "4년 7개월",
+      "companyNo": 32,
+      "name": "김진숙",
+      "dept": "가공관리팀",
+      "isMultiSkill": false,
+      "empNo": "250033",
+      "position": "사원",
+      "notes": "사상 공정 트러블 조치 능숙 및 지원공정 백업 가능",
+      "joinDate": "2022-03-15",
+      "processYear": "5년차",
+      "skillLevel": 3,
+      "skillGrade": "Lv.3 (능숙/중급)",
+      "personnelCard": {
+        "dept": "가공관리팀",
+        "company": "주)조영",
+        "inspectorCertDate": "2022-03-15",
+        "isMultiSkill": false,
+        "photoUrl": "data:image/jpeg;base64,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",
+        "tenure": "4년 7개월",
+        "mainProcess": "검사",
+        "inspectorGrade": "A등급 (정검사원)",
+        "updatedAt": "2026-10-08T02:49:01.817Z",
+        "position": "사원",
+        "skillLevel": 3,
+        "skillGrade": "Lv.3 (능숙/중급)",
+        "subProcesses": [],
+        "processYear": "5년차",
+        "joinDate": "2022-03-15",
+        "nationalityOther": "",
+        "nationality": "대한민국",
+        "empNo": "250033",
+        "notes": "사상 공정 트러블 조치 능숙 및 지원공정 백업 가능",
+        "name": "김진숙"
+      }
+    },
+    {
+      "dept": "가공관리팀",
+      "position": "사원",
+      "companyNo": 33,
+      "no": 33,
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "line": "NE1A소재준비",
+      "name": "래리",
+      "company": "조영"
+    },
+    {
+      "no": 34,
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "name": "웨인",
+      "companyNo": 34,
+      "line": "OV1K TPG  조인트",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "company": "조영"
+    },
+    {
+      "position": "사원",
+      "companyNo": 35,
+      "company": "조영",
+      "dept": "가공관리팀",
+      "name": "안",
+      "no": 35,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "OV1K FRUNK 조인트"
+    },
+    {
+      "line": "OVK1 검사",
+      "name": "장윤형",
+      "dept": "가공관리팀",
+      "company": "조영",
+      "daily": {
+        "19": "잔업(+2H)"
+      },
+      "position": "사원",
+      "no": 36,
+      "companyNo": 36
+    },
+    {
+      "companyNo": 37,
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "position": "사원",
+      "name": "이말숙",
+      "no": 37,
+      "line": "OV1K FRUNK 소재준비",
+      "company": "조영"
+    },
+    {
+      "name": "바네사",
+      "line": "JG 조인트",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "no": 38,
+      "companyNo": 38,
+      "dept": "가공관리팀",
+      "company": "조영"
+    },
+    {
+      "dept": "가공관리팀",
+      "position": "사원",
+      "companyNo": 39,
+      "name": "르엉",
+      "no": 39,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "company": "조영",
+      "line": "JG 후가공"
+    },
+    {
+      "name": "박미진",
+      "no": 40,
+      "line": "JG 검사",
+      "company": "조영",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "position": "사원",
+      "companyNo": 40,
+      "dept": "가공관리팀"
+    },
+    {
+      "company": "조영",
+      "line": "고무작업",
+      "companyNo": 41,
+      "name": "유리",
+      "dept": "가공관리팀",
+      "no": 41,
+      "position": "사원",
+      "daily": {
+        "19": "정시"
+      }
+    },
+    {
+      "companyNo": 42,
+      "company": "조영",
+      "dept": "가공관리팀",
+      "no": 42,
+      "name": "준",
+      "position": "사원",
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "line": "소재이동관리"
+    },
+    {
+      "company": "한울",
+      "no": 1,
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "dept": "관리팀",
+      "position": "사원",
+      "name": "황수현",
+      "line": "관리부",
+      "companyNo": 1
+    },
+    {
+      "line": "관리부",
+      "no": 2,
+      "name": "박종미",
+      "companyNo": 2,
+      "dept": "관리팀",
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "company": "한울",
+      "position": "반장/조장"
+    },
+    {
+      "line": "9BQC",
+      "name": "마이클",
+      "dept": "가공관리팀",
+      "company": "한울",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "no": 3,
+      "position": "사원",
+      "companyNo": 3
+    },
+    {
+      "name": "마크",
+      "line": "9BQC",
+      "position": "사원",
+      "no": 4,
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "company": "한울",
+      "companyNo": 4,
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "9BQC",
+      "company": "한울",
+      "name": "로렉스",
+      "no": 5,
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "companyNo": 5,
+      "position": "사원"
+    },
+    {
+      "dept": "가공관리팀",
+      "company": "한울",
+      "companyNo": 6,
+      "position": "사원",
+      "no": 6,
+      "line": "9BQC",
+      "name": "무피드",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      }
+    },
+    {
+      "line": "9BQC",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+6H)"
+      },
+      "name": "마틴",
+      "no": 7,
+      "companyNo": 7,
+      "dept": "가공관리팀",
+      "company": "한울",
+      "position": "사원"
+    },
+    {
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      },
+      "name": "박민정",
+      "position": "사원",
+      "line": "9BQC",
+      "no": 8,
+      "companyNo": 8,
+      "dept": "가공관리팀",
+      "company": "한울"
+    },
+    {
+      "name": "지라완",
+      "companyNo": 9,
+      "position": "사원",
+      "company": "한울",
+      "line": "9BQC",
+      "no": 9,
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      },
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "9BQC",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "name": "레이놀드",
+      "companyNo": 10,
+      "company": "한울",
+      "dept": "가공관리팀",
+      "position": "사원",
+      "no": 10
+    },
+    {
+      "no": 11,
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "position": "사원",
+      "dept": "가공관리팀",
+      "name": "맥리",
+      "line": "9BQC",
+      "company": "한울",
+      "companyNo": 11
+    },
+    {
+      "daily": {
+        "19": "🟢",
+        "20": "정시"
+      },
+      "dept": "가공관리팀",
+      "name": "조제인",
+      "company": "한울",
+      "no": 12,
+      "position": "사원",
+      "line": "9BQC",
+      "companyNo": 12
+    },
+    {
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "no": 13,
+      "dept": "가공관리팀",
+      "companyNo": 13,
+      "name": "새드릭",
+      "company": "한울",
+      "position": "사원",
+      "line": "9BQC"
+    },
+    {
+      "position": "사원",
+      "line": "9BQC",
+      "companyNo": 14,
+      "name": "니사낫",
+      "dept": "가공관리팀",
+      "company": "한울",
+      "no": 14,
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      }
+    },
+    {
+      "companyNo": 15,
+      "line": "9BQC",
+      "position": "사원",
+      "company": "한울",
+      "name": "수파따",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      },
+      "no": 15
+    },
+    {
+      "companyNo": 16,
+      "no": 16,
+      "dept": "가공관리팀",
+      "company": "한울",
+      "line": "9BQC",
+      "position": "사원",
+      "name": "와히드",
+      "daily": {
+        "19": "🟢",
+        "20": "19"
+      }
+    },
+    {
+      "name": "찬티마",
+      "company": "한울",
+      "companyNo": 17,
+      "line": "9BQC",
+      "position": "사원",
+      "no": 17,
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      },
+      "dept": "가공관리팀"
+    },
+    {
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+6H)"
+      },
+      "company": "한울",
+      "companyNo": 18,
+      "name": "데이브",
+      "line": "9BQC",
+      "no": 18,
+      "position": "사원",
+      "dept": "가공관리팀"
+    },
+    {
+      "line": "9BQC",
+      "position": "사원",
+      "name": "위간",
+      "dept": "가공관리팀",
+      "company": "한울",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "companyNo": 19,
+      "no": 19
+    },
+    {
+      "line": "9BQC",
+      "company": "한울",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+6H)"
+      },
+      "name": "프랭클린",
+      "no": 20,
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 20
+    },
+    {
+      "position": "사원",
+      "company": "한울",
+      "companyNo": 21,
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "dept": "가공관리팀",
+      "no": 21,
+      "name": "에일리",
+      "line": "9BQC"
+    },
+    {
+      "company": "한울",
+      "position": "사원",
+      "companyNo": 22,
+      "line": "9BQC",
+      "name": "마이카",
+      "dept": "가공관리팀",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      },
+      "no": 22
+    },
+    {
+      "no": 23,
+      "companyNo": 23,
+      "dept": "가공관리팀",
+      "position": "사원",
+      "company": "한울",
+      "line": "LQ2",
+      "name": "알프레도",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+6H)"
+      }
+    },
+    {
+      "no": 24,
+      "dept": "가공관리팀",
+      "companyNo": 24,
+      "name": "아이린",
+      "company": "한울",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+4H)"
+      },
+      "line": "LQ2",
+      "position": "사원"
+    },
+    {
+      "companyNo": 25,
+      "dept": "가공관리팀",
+      "name": "에릭",
+      "position": "사원",
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+6H)"
+      },
+      "company": "한울",
+      "line": "LQ2",
+      "no": 25
+    },
+    {
+      "daily": {
+        "19": "🟢",
+        "20": "잔업(+2H)"
+      },
+      "name": "언",
+      "line": "LQ2",
+      "no": 26,
+      "company": "한울",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "companyNo": 26
+    },
+    {
+      "line": "DS 조인트",
+      "no": 43,
+      "daily": {
+        "19": "잔업(+4H)"
+      },
+      "companyNo": 43,
+      "name": "벤",
+      "position": "사원",
+      "dept": "가공관리팀",
+      "company": "조영"
+    }
+  ],
+  "recentAuditLogs": [
+    {
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "박선영",
+      "timestamp": "2026-10-19T22:41:34.990Z",
+      "after": "정시",
+      "operator": "부림텍",
+      "before": "(미등록)",
+      "day": 20,
+      "reason": "박선영 Day 20 근태 변경: 정시",
+      "company": "부림텍"
+    },
+    {
+      "after": "정시",
+      "day": 20,
+      "reason": "조은미 Day 20 근태 변경: 정시",
+      "operator": "부림텍",
+      "company": "부림텍",
+      "timestamp": "2026-10-19T22:41:33.987Z",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "조은미",
+      "before": "(미등록)"
+    },
+    {
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "박은혜",
+      "timestamp": "2026-10-19T22:41:31.989Z",
+      "company": "부림텍",
+      "after": "19",
+      "reason": "박은혜 Day 20 근태 변경: 19",
+      "operator": "부림텍",
+      "day": 20
+    },
+    {
+      "reason": "김영희 Day 20 근태 변경: 19",
+      "operator": "부림텍",
+      "company": "부림텍",
+      "timestamp": "2026-10-19T22:41:28.836Z",
+      "day": 20,
+      "before": "(미등록)",
+      "after": "19",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "김영희"
+    },
+    {
+      "day": 20,
+      "operator": "부림텍",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "최현영",
+      "timestamp": "2026-10-19T22:41:26.489Z",
+      "company": "부림텍",
+      "before": "(미등록)",
+      "after": "정시",
+      "reason": "최현영 Day 20 근태 변경: 정시"
+    },
+    {
+      "before": "(미등록)",
+      "worker": "김동훈",
+      "source": "CELL_1CLICK_UPDATE",
+      "after": "정시",
+      "day": 20,
+      "timestamp": "2026-10-19T22:41:25.290Z",
+      "reason": "김동훈 Day 20 근태 변경: 정시",
+      "company": "부림텍",
+      "operator": "부림텍"
+    },
+    {
+      "timestamp": "2026-10-19T21:45:25.590Z",
+      "operator": "한울",
+      "reason": "언 Day 20 근태 변경: 잔업(+2H)",
+      "company": "한울",
+      "after": "잔업(+2H)",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "언",
+      "day": 20
+    },
+    {
+      "timestamp": "2026-10-19T21:45:23.334Z",
+      "reason": "에릭 Day 20 근태 변경: 잔업(+6H)",
+      "company": "한울",
+      "after": "잔업(+6H)",
+      "before": "(미등록)",
+      "day": 20,
+      "worker": "에릭",
+      "source": "CELL_1CLICK_UPDATE",
+      "operator": "한울"
+    },
+    {
+      "operator": "한울",
+      "day": 20,
+      "reason": "아이린 Day 20 근태 변경: 잔업(+4H)",
+      "company": "한울",
+      "after": "잔업(+4H)",
+      "worker": "아이린",
+      "source": "CELL_1CLICK_UPDATE",
+      "timestamp": "2026-10-19T21:45:20.336Z",
+      "before": "(미등록)"
+    },
+    {
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "알프레도",
+      "after": "잔업(+6H)",
+      "day": 20,
+      "reason": "알프레도 Day 20 근태 변경: 잔업(+6H)",
+      "operator": "한울",
+      "timestamp": "2026-10-19T21:45:17.076Z",
+      "company": "한울"
+    },
+    {
+      "operator": "한울",
+      "reason": "마이카 Day 20 근태 변경: 잔업(+2H)",
+      "day": 20,
+      "company": "한울",
+      "after": "잔업(+2H)",
+      "timestamp": "2026-10-19T21:45:12.743Z",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "마이카",
+      "before": "(미등록)"
+    },
+    {
+      "before": "잔업(+2H)",
+      "worker": "에일리",
+      "source": "CELL_1CLICK_UPDATE",
+      "after": "잔업(+4H)",
+      "company": "한울",
+      "day": 20,
+      "reason": "에일리 Day 20 근태 변경: 잔업(+4H)",
+      "operator": "한울",
+      "timestamp": "2026-10-19T21:45:10.103Z"
+    },
+    {
+      "before": "(미등록)",
+      "worker": "에일리",
+      "source": "CELL_1CLICK_UPDATE",
+      "operator": "한울",
+      "timestamp": "2026-10-19T21:45:06.388Z",
+      "day": 20,
+      "after": "잔업(+2H)",
+      "reason": "에일리 Day 20 근태 변경: 잔업(+2H)",
+      "company": "한울"
+    },
+    {
+      "operator": "한울",
+      "before": "19",
+      "worker": "프랭클린",
+      "source": "CELL_1CLICK_UPDATE",
+      "day": 20,
+      "after": "잔업(+6H)",
+      "timestamp": "2026-10-19T21:45:03.550Z",
+      "reason": "프랭클린 Day 20 근태 변경: 잔업(+6H)",
+      "company": "한울"
+    },
+    {
+      "reason": "프랭클린 Day 20 근태 변경: 19",
+      "day": 20,
+      "company": "한울",
+      "timestamp": "2026-10-19T21:45:00.221Z",
+      "before": "(미등록)",
+      "after": "19",
+      "operator": "한울",
+      "worker": "프랭클린",
+      "source": "CELL_1CLICK_UPDATE"
+    },
+    {
+      "before": "(미등록)",
+      "operator": "한울",
+      "worker": "위간",
+      "source": "CELL_1CLICK_UPDATE",
+      "day": 20,
+      "after": "잔업(+4H)",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:59.084Z",
+      "reason": "위간 Day 20 근태 변경: 잔업(+4H)"
+    },
+    {
+      "before": "19",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "데이브",
+      "timestamp": "2026-10-19T21:44:55.303Z",
+      "after": "잔업(+6H)",
+      "day": 20,
+      "company": "한울",
+      "reason": "데이브 Day 20 근태 변경: 잔업(+6H)",
+      "operator": "한울"
+    },
+    {
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "데이브",
+      "before": "(미등록)",
+      "after": "19",
+      "timestamp": "2026-10-19T21:44:51.706Z",
+      "reason": "데이브 Day 20 근태 변경: 19",
+      "day": 20,
+      "operator": "한울",
+      "company": "한울"
+    },
+    {
+      "reason": "찬티마 Day 20 근태 변경: 잔업(+2H)",
+      "company": "한울",
+      "operator": "한울",
+      "after": "잔업(+2H)",
+      "before": "21",
+      "day": 20,
+      "worker": "찬티마",
+      "source": "CELL_1CLICK_UPDATE",
+      "timestamp": "2026-10-19T21:44:49.305Z"
+    },
+    {
+      "day": 20,
+      "reason": "찬티마 Day 20 근태 변경: 21",
+      "operator": "한울",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:46.347Z",
+      "after": "21",
+      "before": "19",
+      "worker": "찬티마",
+      "source": "CELL_1CLICK_UPDATE"
+    },
+    {
+      "operator": "한울",
+      "company": "한울",
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T21:44:44.323Z",
+      "day": 20,
+      "worker": "찬티마",
+      "source": "CELL_1CLICK_UPDATE",
+      "reason": "찬티마 Day 20 근태 변경: 19",
+      "after": "19"
+    },
+    {
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "수파따",
+      "day": 20,
+      "after": "19",
+      "reason": "수파따 Day 20 근태 변경: 19",
+      "operator": "한울",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:41.173Z"
+    },
+    {
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "와히드",
+      "operator": "한울",
+      "after": "19",
+      "reason": "와히드 Day 20 근태 변경: 19",
+      "timestamp": "2026-10-19T21:44:40.130Z",
+      "company": "한울",
+      "day": 20
+    },
+    {
+      "reason": "니사낫 Day 20 근태 변경: 19",
+      "day": 20,
+      "company": "한울",
+      "after": "19",
+      "operator": "한울",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "니사낫",
+      "timestamp": "2026-10-19T21:44:39.351Z"
+    },
+    {
+      "reason": "새드릭 Day 20 근태 변경: 19",
+      "day": 20,
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:37.037Z",
+      "operator": "한울",
+      "after": "19",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "새드릭"
+    },
+    {
+      "reason": "조제인 Day 20 근태 변경: 정시",
+      "after": "정시",
+      "operator": "한울",
+      "timestamp": "2026-10-19T21:44:34.211Z",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "조제인",
+      "company": "한울",
+      "day": 20
+    },
+    {
+      "reason": "맥리 Day 20 근태 변경: 잔업(+4H)",
+      "timestamp": "2026-10-19T21:44:26.279Z",
+      "company": "한울",
+      "after": "잔업(+4H)",
+      "day": 20,
+      "before": "(미등록)",
+      "worker": "맥리",
+      "source": "CELL_1CLICK_UPDATE",
+      "operator": "한울"
+    },
+    {
+      "reason": "레이놀드 Day 20 근태 변경: 잔업(+4H)",
+      "operator": "한울",
+      "after": "잔업(+4H)",
+      "day": 20,
+      "before": "(미등록)",
+      "company": "한울",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "레이놀드",
+      "timestamp": "2026-10-19T21:44:20.687Z"
+    },
+    {
+      "after": "잔업(+2H)",
+      "day": 20,
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "지라완",
+      "before": "(미등록)",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:16.749Z",
+      "reason": "지라완 Day 20 근태 변경: 잔업(+2H)",
+      "operator": "한울"
+    },
+    {
+      "reason": "박민정 Day 20 근태 변경: 잔업(+2H)",
+      "operator": "한울",
+      "company": "한울",
+      "after": "잔업(+2H)",
+      "timestamp": "2026-10-19T21:44:13.998Z",
+      "worker": "박민정",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "(미등록)",
+      "day": 20
+    },
+    {
+      "before": "19",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "마틴",
+      "operator": "한울",
+      "timestamp": "2026-10-19T21:44:10.362Z",
+      "company": "한울",
+      "after": "잔업(+6H)",
+      "day": 20,
+      "reason": "마틴 Day 20 근태 변경: 잔업(+6H)"
+    },
+    {
+      "reason": "마틴 Day 20 근태 변경: 19",
+      "company": "한울",
+      "after": "19",
+      "operator": "한울",
+      "before": "(미등록)",
+      "worker": "마틴",
+      "source": "CELL_1CLICK_UPDATE",
+      "timestamp": "2026-10-19T21:44:05.892Z",
+      "day": 20
+    },
+    {
+      "day": 20,
+      "worker": "무피드",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "19",
+      "after": "잔업(+2H)",
+      "operator": "한울",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:44:04.195Z",
+      "reason": "무피드 Day 20 근태 변경: 잔업(+2H)"
+    },
+    {
+      "timestamp": "2026-10-19T21:43:57.469Z",
+      "operator": "한울",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "무피드",
+      "day": 20,
+      "before": "(미등록)",
+      "after": "19",
+      "company": "한울",
+      "reason": "무피드 Day 20 근태 변경: 19"
+    },
+    {
+      "reason": "로렉스 Day 20 근태 변경: 19",
+      "timestamp": "2026-10-19T21:43:53.353Z",
+      "after": "19",
+      "operator": "한울",
+      "before": "(미등록)",
+      "company": "한울",
+      "worker": "로렉스",
+      "source": "CELL_1CLICK_UPDATE",
+      "day": 20
+    },
+    {
+      "after": "19",
+      "day": 20,
+      "reason": "마크 Day 20 근태 변경: 19",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:43:49.040Z",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "마크",
+      "before": "(미등록)",
+      "operator": "한울"
+    },
+    {
+      "company": "한울",
+      "reason": "마이클 Day 20 근태 변경: 잔업(+4H)",
+      "operator": "한울",
+      "before": "19",
+      "day": 20,
+      "timestamp": "2026-10-19T21:43:45.472Z",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "마이클",
+      "after": "잔업(+4H)"
+    },
+    {
+      "day": 20,
+      "after": "19",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "마이클",
+      "before": "(미등록)",
+      "company": "한울",
+      "timestamp": "2026-10-19T21:43:41.942Z",
+      "operator": "한울",
+      "reason": "마이클 Day 20 근태 변경: 19"
+    },
+    {
+      "reason": "박종미 Day 20 근태 변경: 19",
+      "operator": "한울",
+      "company": "한울",
+      "after": "19",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "박종미",
+      "day": 20,
+      "timestamp": "2026-10-19T21:43:31.689Z"
+    },
+    {
+      "reason": "황수현 Day 20 근태 변경: 19",
+      "company": "한울",
+      "operator": "한울",
+      "after": "19",
+      "timestamp": "2026-10-19T21:43:21.427Z",
+      "before": "(미등록)",
+      "day": 20,
+      "worker": "황수현",
+      "source": "CELL_1CLICK_UPDATE"
+    },
+    {
+      "timestamp": "2026-10-19T06:30:05.977Z",
+      "company": "오륙",
+      "reason": "이명재 Day 16 근태 변경: (미등록)",
+      "after": "(미등록)",
+      "worker": "이명재",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "특근",
+      "operator": "조인주",
+      "day": 16
+    },
+    {
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "설유철",
+      "before": "정시",
+      "after": "(미등록)",
+      "company": "오륙",
+      "timestamp": "2026-10-19T06:30:05.977Z",
+      "operator": "조인주",
+      "reason": "이명재 Day 16 근태 변경: (미등록)",
+      "day": 16
+    },
+    {
+      "reason": "설유철 Day 16 근태 변경: 정시",
+      "after": "정시",
+      "operator": "조인주",
+      "before": "(미등록)",
+      "day": 16,
+      "worker": "설유철",
+      "source": "CELL_1CLICK_UPDATE",
+      "company": "오륙",
+      "timestamp": "2026-10-19T06:30:03.515Z"
+    },
+    {
+      "after": "특근",
+      "reason": "이명재 Day 16 근태 변경: 특근",
+      "day": 16,
+      "timestamp": "2026-10-19T06:29:52.406Z",
+      "operator": "조인주",
+      "worker": "이명재",
+      "source": "CELL_1CLICK_UPDATE",
+      "company": "오륙",
+      "before": "(미등록)"
+    },
+    {
+      "operator": "TEST",
+      "before": "연차",
+      "company": "유성",
+      "worker": "론나차이",
+      "source": "CELL_1CLICK_UPDATE",
+      "timestamp": "2026-10-19T05:10:03.097Z",
+      "day": 19,
+      "reason": "론나차이 Day 19 근태 변경: 결근",
+      "after": "결근"
+    },
+    {
+      "worker": "론나차이",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "🟢",
+      "after": "연차",
+      "timestamp": "2026-10-19T05:10:01.109Z",
+      "company": "유성",
+      "operator": "TEST",
+      "reason": "론나차이 Day 19 근태 변경: 연차",
+      "day": 19
+    },
+    {
+      "after": "🟢",
+      "day": 19,
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "company": "유성",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "operator": "TEST",
+      "worker": "이성기",
+      "source": "BULK_SET_ALL_REGULAR",
+      "before": "(미등록)"
+    },
+    {
+      "after": "🟢",
+      "worker": "조마루",
+      "source": "BULK_SET_ALL_REGULAR",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "day": 19,
+      "before": "(미등록)",
+      "operator": "TEST",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "company": "유성"
+    },
+    {
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "쏘탈",
+      "before": "(미등록)",
+      "after": "🟢",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "company": "유성",
+      "operator": "TEST",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "day": 19
+    },
+    {
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "day": 19,
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "after": "🟢",
+      "company": "유성",
+      "operator": "TEST",
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "론나차이",
+      "before": "(미등록)"
+    },
+    {
+      "company": "유성",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "operator": "TEST",
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "마리오",
+      "day": 19,
+      "after": "🟢"
+    },
+    {
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "day": 19,
+      "before": "(미등록)",
+      "worker": "제날드",
+      "source": "BULK_SET_ALL_REGULAR",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "after": "🟢",
+      "operator": "TEST",
+      "company": "유성"
+    },
+    {
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "company": "유성",
+      "before": "(미등록)",
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "팔라",
+      "operator": "TEST",
+      "day": 19,
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "after": "🟢"
+    },
+    {
+      "operator": "TEST",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "company": "유성",
+      "after": "🟢",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "day": 19,
+      "worker": "누리",
+      "source": "BULK_SET_ALL_REGULAR",
+      "before": "(미등록)"
+    },
+    {
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "day": 19,
+      "operator": "TEST",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "after": "🟢",
+      "company": "유성",
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "데란스",
+      "before": "(미등록)"
+    },
+    {
+      "worker": "포티퐁",
+      "source": "BULK_SET_ALL_REGULAR",
+      "before": "(미등록)",
+      "after": "🟢",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "operator": "TEST",
+      "company": "유성",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "day": 19
+    },
+    {
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "company": "유성",
+      "worker": "린",
+      "source": "BULK_SET_ALL_REGULAR",
+      "day": 19,
+      "before": "(미등록)",
+      "after": "🟢",
+      "operator": "TEST",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)"
+    },
+    {
+      "operator": "TEST",
+      "source": "BULK_SET_ALL_REGULAR",
+      "worker": "넷플립",
+      "before": "(미등록)",
+      "after": "🟢",
+      "company": "유성",
+      "day": 19,
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)"
+    },
+    {
+      "after": "🟢",
+      "day": 19,
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "company": "유성",
+      "operator": "TEST",
+      "worker": "제인",
+      "source": "BULK_SET_ALL_REGULAR",
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T05:09:53.290Z"
+    },
+    {
+      "operator": "TEST",
+      "timestamp": "2026-10-19T05:09:53.290Z",
+      "company": "유성",
+      "after": "🟢",
+      "reason": "10월 19일 전체 인원 정시 채우기 (14명)",
+      "worker": "그레이스",
+      "source": "BULK_SET_ALL_REGULAR",
+      "before": "(미등록)",
+      "day": 19
+    },
+    {
+      "day": 19,
+      "operator": "TEST",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "company": "한울",
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "worker": "황수현",
+      "before": "(미등록)",
+      "after": "🟢",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)"
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "operator": "TEST",
+      "after": "🟢",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "박종미",
+      "day": 19,
+      "before": "(미등록)"
+    },
+    {
+      "before": "(미등록)",
+      "worker": "마이클",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "after": "🟢",
+      "operator": "TEST",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "day": 19,
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "company": "한울"
+    },
+    {
+      "worker": "마크",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "before": "(미등록)",
+      "after": "🟢",
+      "operator": "TEST",
+      "company": "한울",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.950Z"
+    },
+    {
+      "day": 19,
+      "before": "(미등록)",
+      "worker": "로렉스",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "operator": "TEST",
+      "after": "🟢"
+    },
+    {
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "무피드",
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "after": "🟢",
+      "before": "(미등록)",
+      "company": "한울",
+      "operator": "TEST",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)"
+    },
+    {
+      "company": "한울",
+      "timestamp": "2026-10-19T05:07:18.950Z",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "operator": "TEST",
+      "day": 19,
+      "before": "(미등록)",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "마틴",
+      "after": "🟢"
+    },
+    {
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "박민정",
+      "after": "🟢",
+      "before": "(미등록)",
+      "operator": "TEST",
+      "company": "한울",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.950Z"
+    },
+    {
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "after": "🟢",
+      "day": 19,
+      "before": "(미등록)",
+      "operator": "TEST",
+      "worker": "지라완",
+      "source": "POPUP_SET_ALL_REGULAR"
+    },
+    {
+      "company": "한울",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "day": 19,
+      "before": "(미등록)",
+      "after": "🟢",
+      "operator": "TEST",
+      "worker": "레이놀드",
+      "source": "POPUP_SET_ALL_REGULAR"
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "after": "🟢",
+      "before": "(미등록)",
+      "day": 19,
+      "worker": "맥리",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "operator": "TEST"
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "worker": "조제인",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "before": "(미등록)",
+      "after": "🟢",
+      "day": 19,
+      "company": "한울",
+      "operator": "TEST",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)"
+    },
+    {
+      "before": "(미등록)",
+      "operator": "TEST",
+      "worker": "새드릭",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "company": "한울",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "day": 19,
+      "after": "🟢"
+    },
+    {
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "day": 19,
+      "after": "🟢",
+      "operator": "TEST",
+      "before": "(미등록)",
+      "company": "한울",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "니사낫",
+      "timestamp": "2026-10-19T05:07:18.951Z"
+    },
+    {
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "day": 19,
+      "company": "한울",
+      "operator": "TEST",
+      "after": "🟢",
+      "before": "(미등록)",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "수파따",
+      "timestamp": "2026-10-19T05:07:18.951Z"
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "worker": "와히드",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "after": "🟢",
+      "before": "(미등록)",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "operator": "TEST",
+      "company": "한울"
+    },
+    {
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "찬티마",
+      "day": 19,
+      "after": "🟢",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "operator": "TEST",
+      "company": "한울"
+    },
+    {
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "after": "🟢",
+      "day": 19,
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "데이브",
+      "company": "한울",
+      "operator": "TEST"
+    },
+    {
+      "worker": "위간",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "after": "🟢",
+      "before": "(미등록)",
+      "company": "한울",
+      "operator": "TEST",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z"
+    },
+    {
+      "operator": "TEST",
+      "before": "(미등록)",
+      "worker": "프랭클린",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "day": 19,
+      "company": "한울",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "after": "🟢"
+    },
+    {
+      "company": "한울",
+      "operator": "TEST",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "before": "(미등록)",
+      "day": 19,
+      "worker": "에일리",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "after": "🟢"
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "operator": "TEST",
+      "company": "한울",
+      "before": "(미등록)",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "마이카",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "day": 19,
+      "after": "🟢"
+    },
+    {
+      "before": "(미등록)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "worker": "알프레도",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "day": 19,
+      "after": "🟢",
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "operator": "TEST"
+    },
+    {
+      "operator": "TEST",
+      "before": "(미등록)",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "아이린",
+      "after": "🟢",
+      "company": "한울",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z"
+    },
+    {
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "company": "한울",
+      "after": "🟢",
+      "before": "(미등록)",
+      "worker": "에릭",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "operator": "TEST",
+      "day": 19
+    },
+    {
+      "timestamp": "2026-10-19T05:07:18.951Z",
+      "after": "🟢",
+      "day": 19,
+      "reason": "[한울] Day 19 전체 인원 정시 채우기 (26명)",
+      "company": "한울",
+      "source": "POPUP_SET_ALL_REGULAR",
+      "worker": "언",
+      "before": "(미등록)",
+      "operator": "TEST"
+    },
+    {
+      "before": "(미등록)",
+      "worker": "벤",
+      "source": "CELL_1CLICK_UPDATE",
+      "company": "조영",
+      "operator": "오상민",
+      "day": 19,
+      "reason": "벤 Day 19 근태 변경: 잔업(+4H)",
+      "timestamp": "2026-10-19T01:38:46.705Z",
+      "after": "잔업(+4H)"
+    },
+    {
+      "day": 19,
+      "operator": "오상민",
+      "reason": "준 Day 19 근태 변경: 잔업(+4H)",
+      "after": "잔업(+4H)",
+      "company": "조영",
+      "timestamp": "2026-10-19T01:38:41.996Z",
+      "worker": "준",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "(미등록)"
+    },
+    {
+      "after": "정시",
+      "day": 19,
+      "reason": "유리 Day 19 근태 변경: 정시",
+      "timestamp": "2026-10-19T01:38:37.013Z",
+      "operator": "오상민",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "유리",
+      "before": "(미등록)",
+      "company": "조영"
+    },
+    {
+      "after": "잔업(+4H)",
+      "company": "조영",
+      "reason": "박미진 Day 19 근태 변경: 잔업(+4H)",
+      "timestamp": "2026-10-19T01:38:28.444Z",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "박미진",
+      "before": "(미등록)",
+      "operator": "오상민",
+      "day": 19
+    },
+    {
+      "reason": "르엉 Day 19 근태 변경: 잔업(+4H)",
+      "company": "조영",
+      "day": 19,
+      "operator": "오상민",
+      "after": "잔업(+4H)",
+      "timestamp": "2026-10-19T01:38:25.869Z",
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "르엉"
+    },
+    {
+      "company": "조영",
+      "operator": "오상민",
+      "timestamp": "2026-10-19T01:38:23.112Z",
+      "reason": "바네사 Day 19 근태 변경: 잔업(+4H)",
+      "after": "잔업(+4H)",
+      "worker": "바네사",
+      "source": "CELL_1CLICK_UPDATE",
+      "day": 19,
+      "before": "잔업(+41H)"
+    },
+    {
+      "after": "잔업(+41H)",
+      "reason": "바네사 Day 19 근태 변경: 잔업(+41H)",
+      "company": "조영",
+      "day": 19,
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "바네사",
+      "operator": "오상민",
+      "timestamp": "2026-10-19T01:38:18.356Z",
+      "before": "(미등록)"
+    },
+    {
+      "company": "조영",
+      "timestamp": "2026-10-19T01:38:15.443Z",
+      "day": 19,
+      "reason": "이말숙 Day 19 근태 변경: 잔업(+4H)",
+      "after": "잔업(+4H)",
+      "operator": "오상민",
+      "worker": "이말숙",
+      "source": "CELL_1CLICK_UPDATE",
+      "before": "잔업(+2H)"
+    },
+    {
+      "before": "(미등록)",
+      "worker": "이말숙",
+      "source": "CELL_1CLICK_UPDATE",
+      "after": "잔업(+2H)",
+      "day": 19,
+      "reason": "이말숙 Day 19 근태 변경: 잔업(+2H)",
+      "operator": "오상민",
+      "company": "조영",
+      "timestamp": "2026-10-19T01:38:11.611Z"
+    },
+    {
+      "company": "조영",
+      "reason": "장윤형 Day 19 근태 변경: 잔업(+2H)",
+      "timestamp": "2026-10-19T01:38:08.891Z",
+      "day": 19,
+      "before": "(미등록)",
+      "operator": "오상민",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "장윤형",
+      "after": "잔업(+2H)"
+    },
+    {
+      "operator": "오상민",
+      "company": "조영",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "안",
+      "before": "(미등록)",
+      "day": 19,
+      "after": "잔업(+4H)",
+      "reason": "안 Day 19 근태 변경: 잔업(+4H)",
+      "timestamp": "2026-10-19T01:38:05.949Z"
+    },
+    {
+      "before": "(미등록)",
+      "operator": "오상민",
+      "worker": "웨인",
+      "source": "CELL_1CLICK_UPDATE",
+      "after": "잔업(+2H)",
+      "company": "조영",
+      "timestamp": "2026-10-19T01:38:01.781Z",
+      "day": 19,
+      "reason": "웨인 Day 19 근태 변경: 잔업(+2H)"
+    },
+    {
+      "before": "(미등록)",
+      "source": "CELL_1CLICK_UPDATE",
+      "worker": "래리",
+      "day": 19,
+      "operator": "오상민",
+      "after": "잔업(+2H)",
+      "reason": "래리 Day 19 근태 변경: 잔업(+2H)",
+      "timestamp": "2026-10-19T01:37:58.879Z",
+      "company": "조영"
+    },
+    {
+      "company": "조영",
+      "operator": "오상민",
+      "reason": "김진숙 Day 19 근태 변경: 잔업(+2H)",
+      "timestamp": "2026-10-19T01:37:54.030Z",
+      "day": 19,
+      "before": "(미등록)",
+      "worker": "김진숙",
+      "source": "CELL_1CLICK_UPDATE",
+      "after": "잔업(+2H)"
+    }
+  ],
+  "year": 2026,
+  "companyApprovalStatus": {
+    "한울_19": {
+      "status": "APPROVED",
+      "submittedAt": "오후 02:16",
+      "submittedBy": "TEST",
+      "approvedBy": "TEST",
+      "company": "한울",
+      "otHours": 0,
+      "approvedAt": "오후 02:17",
+      "updatedAt": "2026-10-19T05:17:11.055Z",
+      "day": 19,
+      "attendedCount": 26,
+      "totalHours": 208
+    },
+    "부림텍_19": {
+      "otHours": 0,
+      "company": "부림텍",
+      "day": 19,
+      "approvedBy": "TEST",
+      "attendedCount": 0,
+      "totalHours": 0,
+      "approvedAt": "오후 02:17",
+      "submittedBy": "TEST",
+      "submittedAt": "오후 02:16",
+      "status": "APPROVED",
+      "updatedAt": "2026-10-19T05:17:21.558Z"
+    },
+    "유성_19": {
+      "status": "APPROVED",
+      "updatedAt": "2026-10-19T05:10:24.890Z",
+      "day": 19,
+      "approvedAt": "오후 02:10",
+      "attendedCount": 13,
+      "totalHours": 104,
+      "company": "유성",
+      "otHours": 0,
+      "submittedAt": "오후 02:10",
+      "approvedBy": "TEST",
+      "submittedBy": "TEST"
+    },
+    "부림텍_20": {
+      "updatedAt": "2026-10-19T22:41:45.306Z",
+      "status": "SUBMITTED",
+      "attendedCount": 6,
+      "company": "부림텍",
+      "otHours": 4,
+      "day": 20,
+      "submittedAt": "오전 07:41",
+      "submittedBy": "부림텍",
+      "totalHours": 52
+    },
+    "한울_20": {
+      "totalHours": 290,
+      "status": "SUBMITTED",
+      "day": 20,
+      "submittedAt": "오전 06:45",
+      "attendedCount": 26,
+      "otHours": 82,
+      "company": "한울",
+      "updatedAt": "2026-10-19T21:45:31.794Z",
+      "submittedBy": "한울"
+    },
+    "조영_19": {
+      "status": "APPROVED",
+      "updatedAt": "2026-10-19T05:10:51.517Z",
+      "approvedBy": "TEST",
+      "submittedBy": "오상민",
+      "attendedCount": 43,
+      "day": 19,
+      "approvedAt": "오후 02:10",
+      "company": "조영",
+      "otHours": 126,
+      "totalHours": 470,
+      "submittedAt": "오전 10:38"
+    },
+    "오륙_19": {
+      "status": "APPROVED",
+      "otHours": 131,
+      "unlockedAt": "오후 02:09",
+      "attendedCount": 51,
+      "totalHours": 539,
+      "submittedBy": "TEST",
+      "approvedBy": "TEST",
+      "unlockedBy": "TEST",
+      "day": 19,
+      "company": "오륙",
+      "approvedAt": "오후 02:16",
+      "updatedAt": "2026-10-19T05:16:10.626Z",
+      "submittedAt": "오후 02:11"
+    }
+  }
+}

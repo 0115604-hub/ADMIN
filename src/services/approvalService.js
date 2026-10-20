@@ -15,7 +15,7 @@ import {
   sendApprovalRejectTelegram
 } from "./telegramService";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
-import { cleanCompanyName } from "./overtimeSmartService";
+import { cleanCompanyName, getLocalSmartOvertimeData } from "./overtimeSmartService";
 import { isWeekendByDate } from "./overtimeService";
 
 const COLLECTION_NAME = "approval_documents";
@@ -1302,11 +1302,9 @@ export const syncPlantOvertimeToApprovalBox = async ({
     let allMatrix = Array.isArray(matrix) ? matrix : null;
     if (allMatrix === null && typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("oryuk_smart_overtime_data_store_v10_company_separated");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          allMatrix = parsed.attendanceMatrix || [];
-        }
+        const ym = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+        const smartData = getLocalSmartOvertimeData(ym);
+        allMatrix = smartData?.attendanceMatrix || [];
       } catch (e) {}
     }
     if (!allMatrix) allMatrix = [];

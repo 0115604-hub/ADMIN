@@ -567,10 +567,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const approvalInfo = smartOvertimeData?.companyApprovalStatus?.[approvalKey] || {};
       const approvalStatus = approvalInfo.status || "DRAFT";
 
-      const isApproved = approvalStatus === "APPROVED";
-      const isSubmitted = approvalStatus === "SUBMITTED";
-      const isWritten = (compWorkers.length > 0 && enteredCount >= compWorkers.length) || isApproved || isSubmitted;
-      const isPartiallyWritten = enteredCount > 0 && enteredCount < compWorkers.length;
+      const hasAnyAttendance = enteredCount > 0;
+      const isApproved = hasAnyAttendance && approvalStatus === "APPROVED";
+      const isSubmitted = hasAnyAttendance && approvalStatus === "SUBMITTED";
+      const isFullyEntered = compWorkers.length > 0 && enteredCount >= compWorkers.length;
+      const isWritten = hasAnyAttendance && (isFullyEntered || isApproved || isSubmitted);
+      const isPartiallyWritten = hasAnyAttendance && !isWritten;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
