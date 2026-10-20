@@ -9,6 +9,7 @@ import {
   ExtrusionDowntimeSection,
   DailyWorkLogTableSection
 } from "../sections";
+import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
 import { isPanelVisible, PANEL_KEYS } from "../../../config/dashboardPanelConfig";
 
 export const InternalManagerDashboardView = ({
@@ -254,7 +255,7 @@ export const InternalManagerDashboardView = ({
         />
       )}
 
-      {/* 3. 금형별 일일품질 요약 */}
+      {/* 3. 금형별 일일품질 요약 (중요ITEM 품질현황) */}
       {isPanelVisible(PANEL_KEYS.QUALITY_SUMMARY, currentProfile) && (
         <QualityStatusSection
           selectedMonth={selectedMonth}
@@ -262,6 +263,24 @@ export const InternalManagerDashboardView = ({
           liveQualityCurrentMonthly={liveQualityCurrentMonthly}
           liveQualityPrevMonthly={liveQualityPrevMonthly}
           handleOpenQualityPopup={handleOpenQualityPopup}
+        />
+      )}
+
+      {/* 🛡️ 4M 변동점 및 이상통합 관제 패널 (중요ITEM 품질현황 바로 아래 배치) */}
+      {isPanelVisible(PANEL_KEYS.ABNORMALITY_4M, currentProfile) && (
+        <UnifiedAbnormalityControlPanel
+          workLogs={workLogs}
+          currentProfile={currentProfile}
+          onOpenWorkLogDetail={handleOpenLogDetail}
+          onOpenExtrusionReport={() => {
+            try {
+              localStorage.setItem("factory_extrusion_active_subtab", "production");
+            } catch (e) {}
+            if (onNavigateTab) onNavigateTab("extrusion_downtime");
+          }}
+          onOpenIssueModal={() => {
+            if (onNavigateTab) onNavigateTab("quality_control");
+          }}
         />
       )}
 

@@ -40,16 +40,17 @@ export const DEFAULT_INTERNAL_MANAGER_PANELS = [
 
 // 관리자(ID 또는 이름)별 맞춤 패널 커스텀 설정표
 export const MANAGER_PANEL_CONFIG = {
-  // ⭐ [이창엽 책임 - 품질관리] 커스텀 레이아웃
-  // 요청사항: 
+  // ⭐ [이창엽 책임 - 품질관리] 맞춤 대시보드 레이아웃
   // 1. 중대재해 한줄짜리 패널 삭제
   // 2. 근태현황 및 관리 패널 삭제
   // 3. 압출동 주간 비가동내역 패널 삭제
+  // 4. 중요ITEM 품질현황 바로 아래에 4M 변동점 패널(UnifiedAbnormalityControlPanel) 배치하여 총괄 관리
   "sam_cy": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
     PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
   ],
   "이창엽": [
@@ -57,12 +58,13 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
     PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
   ],
 
   // 🛡️ [한림공장 TEST 관리자]
+  // 요청사항: 변동점 패널 삭제 (이창엽 책임에게 이관)
   "hal_test": [
-    PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
@@ -72,7 +74,6 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.WORK_LOGS
   ],
   "TEST": [
-    PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
@@ -83,6 +84,9 @@ export const MANAGER_PANEL_CONFIG = {
   ]
 };
 
+// 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
+export const PANEL_CONFIG_VERSION = "20261020_v2";
+
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회
  */
@@ -91,7 +95,29 @@ export const getPanelsForUser = (profile) => {
   const id = profile.id;
   const name = profile.name;
 
-  // 1. LocalStorage 개별 커스텀 캐시가 있는 경우 우선 적용
+  // 캐시 버전 검증: 구버전 캐시 무효화 및 신규 레이아웃 강제 동기화
+  try {
+    const cachedVer = localStorage.getItem("dashboard_panels_version");
+    if (cachedVer !== PANEL_CONFIG_VERSION) {
+      localStorage.setItem("dashboard_panels_version", PANEL_CONFIG_VERSION);
+      if (id) localStorage.removeItem(`dashboard_panels_${id}`);
+      if (name) localStorage.removeItem(`dashboard_panels_${name}`);
+      localStorage.removeItem("dashboard_panels_hal_test");
+      localStorage.removeItem("dashboard_panels_TEST");
+      localStorage.removeItem("dashboard_panels_sam_cy");
+      localStorage.removeItem("dashboard_panels_이창엽");
+    }
+  } catch (e) {}
+
+  // 1. 관리자(ID 또는 이름)별 맞춤 패널 커스텀 설정표 우선 매핑
+  if (id && MANAGER_PANEL_CONFIG[id]) {
+    return MANAGER_PANEL_CONFIG[id];
+  }
+  if (name && MANAGER_PANEL_CONFIG[name]) {
+    return MANAGER_PANEL_CONFIG[name];
+  }
+
+  // 2. LocalStorage 개별 커스텀 캐시가 있는 경우 적용
   try {
     const customKey = `dashboard_panels_${id || name}`;
     const stored = localStorage.getItem(customKey);
@@ -100,14 +126,6 @@ export const getPanelsForUser = (profile) => {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {}
-
-  // 2. 중앙 레지스트리 설정 매핑
-  if (id && MANAGER_PANEL_CONFIG[id]) {
-    return MANAGER_PANEL_CONFIG[id];
-  }
-  if (name && MANAGER_PANEL_CONFIG[name]) {
-    return MANAGER_PANEL_CONFIG[name];
-  }
 
   // 3. 기본 사내 관리자 레이아웃
   return DEFAULT_INTERNAL_MANAGER_PANELS;

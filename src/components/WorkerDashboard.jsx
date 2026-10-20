@@ -5,7 +5,6 @@ import { DigitalInspectionModal } from "./sq/DigitalInspectionModal";
 
 import { SevereDisasterBar } from "./SevereDisasterBar";
 import FieldWorkerDashboardView from "./dashboard/FieldWorkerDashboardView";
-import { isPanelVisible, PANEL_KEYS } from "../config/dashboardPanelConfig";
 import { useAuth, PLANTS, ADMIN_USERS, isManagerOrAdminUser } from "../context/AuthContext";
 import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -52,7 +51,6 @@ import {
   subscribeYuseongQualityIssues,
   getLocalYuseongQualityIssues
 } from "../services/yuseongQualityIssueService";
-import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 import { DashboardModalsContainer } from "./dashboard/DashboardModalsContainer";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../services/personnelCardService";
 import {
@@ -394,7 +392,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     "가공"
   );
 
-  const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [isHanulQualityIssueModalOpen, setIsHanulQualityIssueModalOpen] = useState(false);
@@ -1305,24 +1302,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         />
       ) : (
         <>
-          {/* 🛡️ [4M 변동점 관제 패널] - TEST 관리자 또는 패널 설정에 abnormality_4m가 등록된 관리자 */}
-          {(isTestUser || isPanelVisible(PANEL_KEYS.ABNORMALITY_4M, currentProfile)) && (
-            <UnifiedAbnormalityControlPanel
-              workLogs={workLogs}
-              currentProfile={currentProfile}
-              onOpenWorkLogDetail={(log) => setSelectedLogDetail(log)}
-              onOpenExtrusionReport={() => {
-                try {
-                  localStorage.setItem("factory_extrusion_active_subtab", "production");
-                } catch (e) {}
-                if (onNavigateTab) onNavigateTab("extrusion_downtime");
-              }}
-              onOpenIssueModal={() => {
-                if (onNavigateTab) onNavigateTab("quality_control");
-              }}
-            />
-          )}
-
           {/* 👔 [역할별 격리된 관리자 대시보드 뷰 분기] */}
           {isHanulManager ? (
             /* 1. 한울 외주가공 관리자 뷰 (외주 정산, 품질 경보, 9BQC/LQ2a 일보, 한울 근태) */

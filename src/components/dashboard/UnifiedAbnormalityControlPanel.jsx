@@ -172,7 +172,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
   // Action form state inside Detail Modal
   const [actionInputText, setActionInputText] = useState("");
-  const [actionAuthorInput, setActionAuthorInput] = useState(currentProfile?.name || "TEST 선임");
+  const [actionAuthorInput, setActionAuthorInput] = useState(currentProfile?.name || "관리자");
   const [actionPhotos, setActionPhotos] = useState([]);
   const [isSavingAction, setIsSavingAction] = useState(false);
   const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
@@ -1274,7 +1274,7 @@ export const UnifiedAbnormalityControlPanel = ({
   const handleOpenDetailModal = (item) => {
     setSelectedItemForDetail(item);
     setActionInputText(item.actionResult || "");
-    setActionAuthorInput(currentProfile?.name || "TEST 선임");
+    setActionAuthorInput(currentProfile?.name || "관리자");
     setActionPhotos([]);
   };
 
@@ -1294,7 +1294,7 @@ export const UnifiedAbnormalityControlPanel = ({
       const updatedList = await updateFourMClassification(
         item,
         newFourM,
-        currentProfile?.name || "TEST 선임"
+        currentProfile?.name || "관리자"
       );
 
       if (updatedList) {
@@ -1358,15 +1358,16 @@ export const UnifiedAbnormalityControlPanel = ({
         const rawIssue = selectedItemForDetail.raw;
         if (rawIssue && rawIssue.id) {
           const idStr = String(selectedItemForDetail.id);
+          const effectiveAuthor = actionAuthorInput || currentProfile?.name || "관리자";
           if (idStr.startsWith("urg_")) {
             await updateUrgentIssueActionResult(
               rawIssue.id,
               actionInputText.trim(),
-              actionAuthorInput || "TEST 선임",
+              effectiveAuthor,
               newActionImages
             );
             await addIssueReply(rawIssue.id, {
-              author: actionAuthorInput || "TEST 선임",
+              author: effectiveAuthor,
               content: `[4M 조치등록] ${actionInputText.trim()}`,
               files: newActionImages,
               actionDate: nowStr
@@ -1374,7 +1375,7 @@ export const UnifiedAbnormalityControlPanel = ({
             await syncQualityAlertToFourMLedger({
               ...rawIssue,
               actionResult: actionInputText.trim(),
-              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionAuthor: effectiveAuthor,
               actionImages: newActionImages,
               status: "RESOLVED",
               isResolved: true
@@ -1383,7 +1384,7 @@ export const UnifiedAbnormalityControlPanel = ({
             await saveExtrusionQualityIssue({
               ...rawIssue,
               actionResult: actionInputText.trim(),
-              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionAuthor: effectiveAuthor,
               actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
               status: "RESOLVED"
             });
@@ -1391,7 +1392,7 @@ export const UnifiedAbnormalityControlPanel = ({
             await saveHanulQualityIssue({
               ...rawIssue,
               actionResult: actionInputText.trim(),
-              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionAuthor: effectiveAuthor,
               actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
               status: "RESOLVED"
             });
@@ -1399,7 +1400,7 @@ export const UnifiedAbnormalityControlPanel = ({
             await saveYuseongQualityIssue({
               ...rawIssue,
               actionResult: actionInputText.trim(),
-              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionAuthor: effectiveAuthor,
               actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
               status: "RESOLVED"
             });
@@ -1407,7 +1408,7 @@ export const UnifiedAbnormalityControlPanel = ({
             await saveMachiningQualityIssue({
               ...rawIssue,
               actionResult: actionInputText.trim(),
-              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionAuthor: effectiveAuthor,
               actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
               status: "RESOLVED"
             });
@@ -1418,7 +1419,7 @@ export const UnifiedAbnormalityControlPanel = ({
       setSelectedItemForDetail((prev) => ({
         ...prev,
         actionResult: actionInputText.trim(),
-        actionAuthor: actionAuthorInput || "TEST 선임",
+        actionAuthor: actionAuthorInput || currentProfile?.name || "관리자",
         actionAt: nowStr,
         actionImages: [...(prev.actionImages || []), ...newActionImages],
         isResolved: true
@@ -1453,7 +1454,7 @@ export const UnifiedAbnormalityControlPanel = ({
         alert(`[${item.title}]\n\n변동점 관리대장에서 정상적으로 등록 해제되었습니다.`);
       }
     } else {
-      const newItem = await registerToFourMLedger(item, currentProfile?.name || "TEST 선임");
+      const newItem = await registerToFourMLedger(item, currentProfile?.name || "관리자");
       if (newItem) {
         setFourMLedgerRecords((prev) => [
           newItem,
@@ -1511,7 +1512,7 @@ export const UnifiedAbnormalityControlPanel = ({
                   <span>📋 4M 변동점 관리대장 (설비수리·비가동·불량·부적합경보)</span>
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500 text-white shadow-xs border border-indigo-400/40">
-                  한림공장 TEST 관제
+                  {currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "4M 변동점 관제"}
                 </span>
               </div>
               <p className="text-[11px] text-indigo-200/90 font-medium">
