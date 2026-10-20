@@ -154,19 +154,37 @@ export const WorkReportTemplateManagerView = () => {
     }
   };
 
-  // Save Template from Editor
+  // Save Template from Editor (수정등록)
   const handleSaveEditor = async (tplData) => {
     try {
       await saveWorkReportTemplate(tplData);
       setIsEditorOpen(false);
       setEditingTemplate(null);
-      showToast("✅ 레고 블록 일보 양식이 저장되었습니다!");
+      setTemplates(getLocalWorkReportTemplates());
+      showToast(`✅ [${tplData.carModel || tplData.title || "양식"}] 템플릿이 성공적으로 수정 등록되었습니다!`);
     } catch (e) {
-      alert("저장 실패: " + e.message);
+      alert("수정등록 실패: " + e.message);
     }
   };
 
   // ⚡ 템플릿 적용 (일보 작성 모드로 전환 및 데이터 전달)
+  const handleApplyEditor = async (tplData) => {
+    try {
+      await saveWorkReportTemplate(tplData);
+      setIsEditorOpen(false);
+      setEditingTemplate(null);
+      setLegoInitialData({
+        ...tplData,
+        appliedAt: Date.now(),
+        fromCatalog: true
+      });
+      setManagerViewMode("LEGO_BUILDER");
+      showToast(`⚡ [${tplData.carModel || tplData.title || "양식"}] 템플릿이 성공적으로 적용되었습니다! 즉시 작성이 가능합니다.`);
+    } catch (e) {
+      alert("템플릿 적용 실패: " + e.message);
+    }
+  };
+
   const handleApplyTemplateToBuilder = (tpl) => {
     setLegoInitialData({
       ...tpl,
@@ -442,16 +460,16 @@ export const WorkReportTemplateManagerView = () => {
                   </div>
                 </div>
 
-                {/* Card Action Buttons (⚡ 템플릿 적용 프로세스 & 세부 도구) */}
+                {/* Card Action Buttons: 전체보기 뱃지 (탭 시 템플릿 열람/수정 및 수정등록/적용 지원) */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                   <button
                     type="button"
-                    onClick={() => handleApplyTemplateToBuilder(tpl)}
-                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition active:scale-98 cursor-pointer"
-                    title="이 템플릿의 규격과 레고 블록 구성을 작업일보에 즉시 적용하여 작성 시작"
+                    onClick={() => handleEdit(tpl)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition active:scale-98 cursor-pointer"
+                    title="양식 템플릿 전체를 확인하고 수정 및 일보에 적용합니다."
                   >
-                    <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                    <span>⚡ 이 양식으로 일보 작성 (템플릿 적용)</span>
+                    <Eye className="w-4 h-4 text-indigo-200" />
+                    <span>전체보기</span>
                   </button>
 
                   <div className="grid grid-cols-4 gap-1.5">
@@ -499,7 +517,7 @@ export const WorkReportTemplateManagerView = () => {
       )}
 
       {/* ======================================================== */}
-      {/* Modal: Lego Block Template Editor */}
+      {/* Modal: Lego Block Template Editor (전체보기 / 수정등록 / 템플릿적용) */}
       {/* ======================================================== */}
       {isEditorOpen && editingTemplate && (
         <LegoTemplateEditorModal
@@ -509,6 +527,7 @@ export const WorkReportTemplateManagerView = () => {
             setEditingTemplate(null);
           }}
           onSave={handleSaveEditor}
+          onApply={handleApplyEditor}
         />
       )}
 
@@ -890,7 +909,7 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
 // ============================================================================
 // Lego Template Editor Modal (Lego Blocks + Real-time live A4 Sheet)
 // ============================================================================
-const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
+const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
   const [formData, setFormData] = useState(template);
   const isMaterialPrep = formData.categoryId === "MATERIAL_PREP" || formData.divisionType === "SECTION_ABC";
 
@@ -978,7 +997,7 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
             </span>
             <div>
               <h3 className="font-black text-base sm:text-lg">
-                레고 블록 작업일보 템플릿 커스텀
+                작업일보 템플릿 전체보기 및 양식 편집
               </h3>
               <p className="text-xs text-indigo-200">
                 {formData.categoryName} • {formData.carModel} • {formData.partName}
@@ -989,10 +1008,10 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => onSave(formData)}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
             >
               <Save className="w-4 h-4" />
-              <span>템플릿 저장</span>
+              <span>수정등록</span>
             </button>
             <button
               onClick={onClose}
@@ -1356,6 +1375,41 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave }) => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Modal Footer: [닫기] / [수정등록] / [템플릿 적용] */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/95 flex items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer"
+          >
+            닫기
+          </button>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 1. 수정등록 뱃지 */}
+            <button
+              type="button"
+              onClick={() => onSave(formData)}
+              className="px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-md shadow-indigo-500/25 transition active:scale-95 cursor-pointer whitespace-nowrap"
+              title="수정한 템플릿 내용을 양식보관함에 저장 및 갱신합니다."
+            >
+              <Save className="w-4 h-4" />
+              <span>수정등록</span>
+            </button>
+
+            {/* 2. 템플릿 적용 뱃지 */}
+            <button
+              type="button"
+              onClick={() => onApply && onApply(formData)}
+              className="px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-md shadow-emerald-500/25 transition active:scale-95 cursor-pointer whitespace-nowrap"
+              title="이 양식을 작업일보 작성기에 즉시 적용하여 일보 작성을 시작합니다."
+            >
+              <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+              <span>템플릿 적용</span>
+            </button>
           </div>
         </div>
       </div>
