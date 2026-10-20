@@ -2200,16 +2200,24 @@ export const WorkerPinModal = ({
                   )}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 3: 관리자 -> 일정 + 변동점 + 근태정보 순으로 표시 */}
+                  {/* CASE 3: 관리자 -> 일정 + 변동점 + 근태정보 순으로 표시 (공간 없이 붙여서 표시) */}
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {isAdminUser && (
-                    <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 사내 공통일정 / 관리자 일정 (새 메시지 등록 시 점멸 효과) */}
-                      <div className={`p-3.5 rounded-3xl transition-all duration-300 space-y-2.5 ${
+                    <div
+                      className={`rounded-3xl border-2 shadow-sm overflow-hidden flex flex-col divide-y-2 divide-indigo-200/90 dark:divide-indigo-800/80 bg-white dark:bg-slate-900 transition-all duration-300 ${
                         hasAnyNewScheduleMessage
-                          ? "bg-gradient-to-br from-indigo-50/95 via-purple-50/90 to-indigo-50/95 dark:from-indigo-950/85 dark:via-purple-950/70 dark:to-indigo-950/85 border-2 border-indigo-400 dark:border-indigo-500 ring-4 ring-indigo-400/40 shadow-xl shadow-indigo-500/25 animate-pulse"
-                          : "bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm"
-                      }`}>
+                          ? "border-indigo-400 dark:border-indigo-500 ring-4 ring-indigo-400/30 shadow-indigo-500/20"
+                          : "border-indigo-300/90 dark:border-indigo-800/80"
+                      }`}
+                    >
+                      {/* 1. 사내 공통일정 / 관리자 일정 (새 메시지 등록 시 점멸 효과) */}
+                      <div
+                        className={`p-3.5 sm:p-4 space-y-2.5 transition-all duration-300 ${
+                          hasAnyNewScheduleMessage
+                            ? "bg-gradient-to-br from-indigo-50/95 via-purple-50/90 to-indigo-50/95 dark:from-indigo-950/85 dark:via-purple-950/70 dark:to-indigo-950/85 animate-pulse"
+                            : "bg-slate-50/90 dark:bg-slate-800/60"
+                        }`}
+                      >
                         <div className="flex items-center justify-between gap-1.5 flex-wrap">
                           <div className="flex items-center gap-2">
                             <div className={`p-1.5 rounded-xl text-white shadow-xs shrink-0 ${
@@ -2257,7 +2265,7 @@ export const WorkerPinModal = ({
                         </div>
 
                         {uncompletedCommonSchedules.length > 0 ? (
-                          <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
+                          <div className="space-y-1.5 max-h-36 sm:max-h-40 overflow-y-auto pr-0.5 custom-scrollbar">
                             {uncompletedCommonSchedules.map((schedule) => {
                               const sDate = schedule.startDate || schedule.date;
                               const eDate = schedule.endDate || sDate;
@@ -2309,8 +2317,8 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 4M 변동점 발생공지 (최근 2건 및 4M 현황) */}
-                      <div className="p-3.5 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2">
+                      {/* 2. 4M 변동점 발생공지 (최근 2건 및 4M 현황 - 공간 없이 붙여서 표시) */}
+                      <div className="p-3.5 sm:p-4 bg-indigo-50/60 dark:bg-indigo-950/30 space-y-2 flex-1 flex flex-col">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
@@ -2346,7 +2354,7 @@ export const WorkerPinModal = ({
                         </div>
 
                         {recent4MRecords.length > 0 ? (
-                          <div className="space-y-1.5 max-h-56 sm:max-h-64 overflow-y-auto pr-0.5 custom-scrollbar">
+                          <div className="space-y-1.5 max-h-60 sm:max-h-72 overflow-y-auto pr-0.5 custom-scrollbar flex-1">
                             {recent4MRecords.map((item) => {
                               const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.sourceType === "QUALITY_ALERT";
                               return (
