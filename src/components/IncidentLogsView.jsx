@@ -18,7 +18,12 @@ import {
   Layers,
   Building2,
   Clock,
-  UserCheck
+  UserCheck,
+  ShieldAlert,
+  ShieldCheck,
+  XCircle,
+  AlertTriangle,
+  Cpu
 } from "lucide-react";
 import {
   getLocalIncidentLogs,
@@ -36,7 +41,7 @@ import { useAuth } from "../context/AuthContext";
 export const IncidentLogsView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [logs, setLogs] = useState(() => getLocalIncidentLogs());
-  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL, ACTIVE, RESOLVED
+  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL, LOGIC_FIX, RESOLVED, ACTIVE
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,15 +64,17 @@ export const IncidentLogsView = () => {
   // Summary Metrics
   const metrics = useMemo(() => {
     const total = logs.length;
+    const logicFixCount = logs.filter((l) => l.isLogicFix).length;
     const active = logs.filter((l) => l.status === "RECEIVED" || l.status === "IN_PROGRESS").length;
     const resolved = logs.filter((l) => l.status === "RESOLVED" || l.status === "VERIFIED").length;
     const resolveRate = total > 0 ? Math.round((resolved / total) * 100) : 100;
-    return { total, active, resolved, resolveRate };
+    return { total, logicFixCount, active, resolved, resolveRate };
   }, [logs]);
 
   // Filtered List
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
+      if (statusFilter === "LOGIC_FIX" && !l.isLogicFix) return false;
       if (statusFilter === "ACTIVE" && !(l.status === "RECEIVED" || l.status === "IN_PROGRESS")) return false;
       if (statusFilter === "RESOLVED" && !(l.status === "RESOLVED" || l.status === "VERIFIED")) return false;
 
@@ -78,9 +85,20 @@ export const IncidentLogsView = () => {
         const titleMatch = (l.title || "").toLowerCase().includes(q);
         const orderMatch = (l.orderContent || l.symptoms || "").toLowerCase().includes(q);
         const actionMatch = (l.actionResult || l.resolution || "").toLowerCase().includes(q);
+        const logicBeforeMatch = (l.logicBefore || "").toLowerCase().includes(q);
+        const logicAfterMatch = (l.logicAfter || "").toLowerCase().includes(q);
         const plantMatch = (l.plant || "").toLowerCase().includes(q);
         const reporterMatch = (l.reporter || "").toLowerCase().includes(q);
-        if (!titleMatch && !orderMatch && !actionMatch && !plantMatch && !reporterMatch) return false;
+        if (
+          !titleMatch &&
+          !orderMatch &&
+          !actionMatch &&
+          !logicBeforeMatch &&
+          !logicAfterMatch &&
+          !plantMatch &&
+          !reporterMatch
+        )
+          return false;
       }
       return true;
     }).sort((a, b) => {
@@ -96,11 +114,15 @@ export const IncidentLogsView = () => {
     workDate: new Date().toISOString().slice(0, 10),
     category: "화면/패널개편",
     severity: "P1",
+    isLogicFix: false,
     plant: "본사 • 전사",
     reporter: currentProfile?.name || "대표이사",
     title: "",
     orderContent: "",
     actionResult: "",
+    logicBefore: "",
+    logicAfter: "",
+    prevention: "",
     status: "RESOLVED",
     resolver: "시스템 관리자",
     notes: ""
@@ -112,11 +134,15 @@ export const IncidentLogsView = () => {
       workDate: new Date().toISOString().slice(0, 10),
       category: "화면/패널개편",
       severity: "P1",
+      isLogicFix: false,
       plant: "본사 • 전사",
       reporter: currentProfile?.name || "대표이사",
       title: "",
       orderContent: "",
       actionResult: "",
+      logicBefore: "",
+      logicAfter: "",
+      prevention: "",
       status: "RESOLVED",
       resolver: "시스템 관리자",
       notes: ""
@@ -130,11 +156,15 @@ export const IncidentLogsView = () => {
       workDate: item.workDate || new Date().toISOString().slice(0, 10),
       category: item.category || "화면/패널개편",
       severity: item.severity || "P1",
+      isLogicFix: Boolean(item.isLogicFix),
       plant: item.plant || "본사 • 전사",
       reporter: item.reporter || "대표이사",
       title: item.title || "",
       orderContent: item.orderContent || item.symptoms || "",
       actionResult: item.actionResult || item.resolution || "",
+      logicBefore: item.logicBefore || "",
+      logicAfter: item.logicAfter || "",
+      prevention: item.prevention || "",
       status: item.status || "RESOLVED",
       resolver: item.resolver || "시스템 관리자",
       notes: item.notes || ""
@@ -164,9 +194,9 @@ export const IncidentLogsView = () => {
   };
 
   const handleResetDefaults = async () => {
-    if (!window.confirm("지금까지의 최신 15건 누적 오더 및 조치 결과 기본 내역으로 동기화하시겠습니까?")) return;
+    if (!window.confirm("지금까지의 최신 16건 누적 오더 및 조치 결과(로직 수정 상세 비교 포함)로 동기화하시겠습니까?")) return;
     await resetToDefaultIncidentLogs();
-    triggerToast("🔄 최신 15건 누적 내역으로 갱신 완료되었습니다.");
+    triggerToast("🔄 최신 누적 내역으로 갱신 완료되었습니다.");
   };
 
   const handleQuickStatusChange = async (item, newStatus) => {
@@ -200,12 +230,13 @@ export const IncidentLogsView = () => {
               <h1 className="text-xl sm:text-2xl font-black tracking-tight">
                 일일 오더 및 조치 결과 관리대장
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                일자별 누적 관리
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/20 text-rose-300 border border-rose-400/30 flex items-center gap-1">
+                <Cpu className="w-3 h-3 text-rose-400" />
+                <span>로직 수정 전·후 정밀 기록</span>
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 mt-2 font-medium">
-              매일 현장에서 내려진 지시 오더 내용과 시스템 반영 및 개선 조치 결과를 간결하고 명확하게 정리하여 누적 관리합니다.
+              매일 지시된 오더와 개선 조치 내역을 누적 관리하며, <strong>로직을 수정한 오류 수정건</strong>은 [기존 문제 로직 ➔ 수정 변경 로직 ➔ 재발 방지 검증]을 확실하게 명시하여 재발을 원천 차단합니다.
             </p>
           </div>
 
@@ -213,7 +244,7 @@ export const IncidentLogsView = () => {
             <button
               onClick={handleResetDefaults}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-md border border-slate-700 transition cursor-pointer"
-              title="최신 15건 누적 내역으로 새로고침"
+              title="최신 16건 누적 내역으로 새로고침"
             >
               <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
               <span>최신 내역 동기화</span>
@@ -238,16 +269,19 @@ export const IncidentLogsView = () => {
         {/* Real-time KPI Metric Counters */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-700/60">
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-            <span className="text-[11px] font-bold text-slate-400 block">전체 누적 오더</span>
+            <span className="text-[11px] font-bold text-slate-400 block">전체 누적 항목</span>
             <div className="text-lg sm:text-2xl font-black text-white mt-0.5">{metrics.total}건</div>
+          </div>
+          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+            <span className="text-[11px] font-bold text-rose-300 flex items-center gap-1">
+              <Cpu className="w-3 h-3 text-rose-400" />
+              <span>🔧 핵심 로직 수정</span>
+            </span>
+            <div className="text-lg sm:text-2xl font-black text-rose-400 mt-0.5">{metrics.logicFixCount}건</div>
           </div>
           <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
             <span className="text-[11px] font-bold text-emerald-300">🟢 조치 완료</span>
             <div className="text-lg sm:text-2xl font-black text-emerald-400 mt-0.5">{metrics.resolved}건</div>
-          </div>
-          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-            <span className="text-[11px] font-bold text-rose-300">🚨 대기 / 조치중</span>
-            <div className="text-lg sm:text-2xl font-black text-rose-400 mt-0.5">{metrics.active}건</div>
           </div>
           <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col justify-between">
             <span className="text-[11px] font-bold text-indigo-300">조치 완료율</span>
@@ -266,6 +300,7 @@ export const IncidentLogsView = () => {
           <div className="flex flex-wrap items-center gap-1.5">
             {[
               { id: "ALL", label: "전체보기" },
+              { id: "LOGIC_FIX", label: "🔧 핵심 로직 수정만", count: metrics.logicFixCount, isRed: true },
               { id: "RESOLVED", label: "🟢 조치완료", count: metrics.resolved },
               { id: "ACTIVE", label: "🚨 대기/진행중", count: metrics.active }
             ].map((btn) => (
@@ -274,15 +309,25 @@ export const IncidentLogsView = () => {
                 onClick={() => setStatusFilter(btn.id)}
                 className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
                   statusFilter === btn.id
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                    ? btn.isRed
+                      ? "bg-rose-600 text-white shadow-md shadow-rose-500/30 ring-2 ring-rose-400/50"
+                      : "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                    : btn.isRed
+                    ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50"
                     : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                 }`}
               >
                 <span>{btn.label}</span>
                 {typeof btn.count === "number" && btn.count > 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    statusFilter === btn.id ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                  }`}>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      statusFilter === btn.id
+                        ? "bg-white/20 text-white"
+                        : btn.isRed
+                        ? "bg-rose-200 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
                     {btn.count}
                   </span>
                 )}
@@ -297,7 +342,7 @@ export const IncidentLogsView = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="오더 제목, 요청 내용, 조치 결과 검색..."
+              placeholder="제목, 요청 내용, 조치 결과, 수정 로직 검색..."
               className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
             />
           </div>
@@ -332,8 +377,8 @@ export const IncidentLogsView = () => {
         {filteredLogs.length === 0 ? (
           <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-slate-400">
             <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-emerald-500/60" />
-            <p className="font-bold text-sm">해당 조건에 해당하는 오더 내역이 없습니다.</p>
-            <p className="text-xs text-slate-400 mt-1">우측 상단의 [+ 새 오더 등록] 버튼을 눌러 기록해주세요.</p>
+            <p className="font-bold text-sm">해당 조건에 해당하는 항목이 없습니다.</p>
+            <p className="text-xs text-slate-400 mt-1">상단의 필터를 변경하거나 우측 상단의 [+ 새 오더 등록] 버튼을 눌러주세요.</p>
           </div>
         ) : (
           filteredLogs.map((item) => {
@@ -343,7 +388,11 @@ export const IncidentLogsView = () => {
             return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                className={`bg-white dark:bg-slate-900 rounded-2xl border transition-all overflow-hidden ${
+                  item.isLogicFix
+                    ? "border-rose-300 dark:border-rose-900/60 shadow-xs hover:shadow-md ring-1 ring-rose-400/20"
+                    : "border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md"
+                }`}
               >
                 {/* Header Summary Row */}
                 <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80">
@@ -366,6 +415,14 @@ export const IncidentLogsView = () => {
                           {item.category}
                         </span>
 
+                        {/* 🔧 핵심 로직 수정 배지 */}
+                        {item.isLogicFix && (
+                          <span className="px-2.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-black text-xs border border-rose-300 dark:border-rose-800 flex items-center gap-1 shrink-0 shadow-xs animate-pulse">
+                            <Cpu className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                            <span>🔧 핵심 로직 수정</span>
+                          </span>
+                        )}
+
                         {/* Plant & Reporter */}
                         <span className="text-slate-400 font-medium text-xs flex items-center gap-1">
                           <span>•</span>
@@ -375,8 +432,8 @@ export const IncidentLogsView = () => {
                       </div>
 
                       {/* Title */}
-                      <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight pt-0.5">
-                        {item.title}
+                      <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight pt-0.5 flex items-center gap-2">
+                        <span>{item.title}</span>
                       </h3>
                     </div>
 
@@ -447,6 +504,58 @@ export const IncidentLogsView = () => {
                       </p>
                     </div>
                   </div>
+
+                  {/* 🔧 로직 수정 오류건인 경우: 전·후 비교 분석 전용 강조 박스 (확실하게 표현) */}
+                  {item.isLogicFix && (item.logicBefore || item.logicAfter) && (
+                    <div className="mt-3.5 p-4 rounded-2xl bg-gradient-to-r from-rose-50/60 via-amber-50/40 to-emerald-50/60 dark:from-rose-950/30 dark:via-amber-950/20 dark:to-emerald-950/30 border-2 border-rose-300/80 dark:border-rose-900/60 space-y-3">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-rose-200 dark:border-rose-900/50">
+                        <span className="font-black text-rose-950 dark:text-rose-200 text-xs sm:text-sm flex items-center gap-1.5">
+                          <Cpu className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                          <span>🔍 핵심 로직 수정 전·후 비교 분석 (재발 원천 차단 내역)</span>
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
+                          로직 개선 완료
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        {/* ⚠️ 기존 문제 로직 */}
+                        <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900/60 shadow-xs">
+                          <span className="font-black text-rose-800 dark:text-rose-400 block mb-1.5 flex items-center gap-1.5">
+                            <XCircle className="w-4 h-4 text-rose-600" />
+                            <span>[⚠️ 기존 문제 로직 (결함 원인)]</span>
+                          </span>
+                          <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                            {item.logicBefore || "기존 로직 상세가 기록되지 않았습니다."}
+                          </p>
+                        </div>
+
+                        {/* 🛡️ 수정 변경 로직 */}
+                        <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-900/60 shadow-xs">
+                          <span className="font-black text-emerald-800 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            <span>[🛡️ 수정 변경 로직 (원천 차단)]</span>
+                          </span>
+                          <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                            {item.logicAfter || "수정 로직 상세가 기록되지 않았습니다."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 재발 방지 검증 */}
+                      {item.prevention && (
+                        <div className="p-2.5 rounded-xl bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/80 dark:border-emerald-900/50 flex items-center gap-2 text-xs">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-black text-emerald-900 dark:text-emerald-300 shrink-0">
+                            재발 방지 검증 결과:
+                          </span>
+                          <span className="text-slate-800 dark:text-slate-200 font-medium">
+                            {item.prevention}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Expanded Details (Notes, Timestamps) */}
@@ -537,6 +646,24 @@ export const IncidentLogsView = () => {
                 </div>
               </div>
 
+              {/* 로직 수정 여부 체크박스 */}
+              <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isLogicFix}
+                    onChange={(e) => setFormData({ ...formData, isLogicFix: e.target.checked })}
+                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
+                  />
+                  <span className="font-black text-rose-900 dark:text-rose-200 text-xs sm:text-sm">
+                    🔧 핵심 로직 수정 (시스템 계산/판정/방어 로직을 수정한 오류 수정 건)
+                  </span>
+                </label>
+                <span className="text-[11px] text-rose-600 font-bold">
+                  {formData.isLogicFix ? "전·후 로직 작성 활성화" : "일반 화면 변경"}
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">발생 사업장/공장</label>
@@ -568,7 +695,7 @@ export const IncidentLogsView = () => {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="예: TEST 뱃지 레고블록 작업일보 빌더 1줄 바 개편 및 시인성 개선"
+                  placeholder="예: 부적합경보 및 4M 변동점 발생일자 임의수정 원천 차단 및 등록일시 고정 로직 적용"
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
                 />
               </div>
@@ -580,7 +707,7 @@ export const IncidentLogsView = () => {
                   <span>[📋 요청 오더 내용] (지시하거나 요청받은 핵심 사항)</span>
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   required
                   value={formData.orderContent}
                   onChange={(e) => setFormData({ ...formData, orderContent: e.target.value })}
@@ -596,7 +723,7 @@ export const IncidentLogsView = () => {
                   <span>[✅ 조치 및 반영 결과] (실제 시스템 수정 및 개선 결과)</span>
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   required
                   value={formData.actionResult}
                   onChange={(e) => setFormData({ ...formData, actionResult: e.target.value })}
@@ -604,6 +731,54 @@ export const IncidentLogsView = () => {
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900/50 font-medium text-xs sm:text-sm"
                 />
               </div>
+
+              {/* 로직 수정 체크 시 나타나는 전·후 로직 입력 영역 */}
+              {formData.isLogicFix && (
+                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-900/60 space-y-3">
+                  <span className="font-black text-amber-950 dark:text-amber-200 text-xs sm:text-sm block">
+                    🔍 로직 수정 전·후 상세 비교 (오류 원인과 차단 로직)
+                  </span>
+
+                  <div>
+                    <label className="block text-rose-800 dark:text-rose-400 font-bold mb-1">
+                      [⚠️ 기존 문제 로직] (무엇이 왜 오작동했는지 명확하게 기술)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.logicBefore}
+                      onChange={(e) => setFormData({ ...formData, logicBefore: e.target.value })}
+                      placeholder="예: 수정 폼에서 발생일자 필드가 활성화되어 저장 시 당일 날짜로 덮어쓰기되던 로직 결함"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-900/60 font-medium text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-emerald-800 dark:text-emerald-400 font-bold mb-1">
+                      [🛡️ 수정 변경 로직] (어떤 방어/차단 로직을 적용했는지 명확하게 기술)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.logicAfter}
+                      onChange={(e) => setFormData({ ...formData, logicAfter: e.target.value })}
+                      placeholder="예: 1) 발생일자 입력창 완전 잠금(Disabled), 2) 저장 시 전달된 날짜를 무시하고 최초 발생일 강제 불변 보존, 3) 등록일시 분리 표출"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-900/60 font-medium text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                      [재발 방지 검증 결과]
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.prevention}
+                      onChange={(e) => setFormData({ ...formData, prevention: e.target.value })}
+                      placeholder="예: 발생일자 변조 불가능 및 등록일시 영구 불변 보존 확인"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium text-xs"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
