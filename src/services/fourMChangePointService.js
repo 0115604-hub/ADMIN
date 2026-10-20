@@ -512,42 +512,6 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
   const rawId = String(record.raw?.id || record.id || "").trim();
   const ledgerId = originalId.startsWith("ledger_") ? originalId : `ledger_${originalId || Date.now()}`;
 
-  // Sanitize record to avoid undefined keys or complex non-serializable objects (such as circular refs in raw)
-  const ledgerItem = {
-    id: ledgerId,
-    originalId: originalId,
-    rawId: rawId,
-    fourM: record.fourM || "Machine",
-    origin: record.origin || "변동점",
-    sourceType: record.sourceType || "",
-    badgeColor: record.badgeColor || "",
-    plant: record.plant || "삼랑진공장",
-    line: record.line || "",
-    writer: record.writer || "",
-    title: record.title || "",
-    date: record.date || nowStr.slice(0, 10),
-    time: record.time || "",
-    content: record.content || "",
-    actionResult: record.actionResult || "",
-    actionAuthor: record.actionAuthor || "",
-    actionAt: record.actionAt || "",
-    images: Array.isArray(record.images) ? record.images : [],
-    actionImages: Array.isArray(record.actionImages) ? record.actionImages : [],
-    replies: Array.isArray(record.replies) ? record.replies : [],
-    isResolved: Boolean(record.isResolved),
-    severity: record.severity || "NORMAL",
-    downtimeMinutes: Number(record.downtimeMinutes) || 0,
-    scrapKg: Number(record.scrapKg) || 0,
-    registeredAt: nowStr,
-    registeredBy: registeredBy || "관리자",
-    isOfficialLedger: true
-  };
-
-  // Strip any undefined keys
-  Object.keys(ledgerItem).forEach((k) => {
-    if (ledgerItem[k] === undefined) delete ledgerItem[k];
-  });
-
   const current = getLocalFourMChangePoints();
   const existingIdx = current.findIndex(
     (it) =>
@@ -556,6 +520,44 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
       (rawId && (it.rawId === rawId || it.originalId === rawId)) ||
       it.id === originalId
   );
+  const existing = existingIdx >= 0 ? current[existingIdx] : null;
+
+  // Sanitize record to avoid undefined keys or complex non-serializable objects (such as circular refs in raw)
+  const ledgerItem = {
+    id: ledgerId,
+    originalId: originalId,
+    rawId: rawId,
+    fourM: record.fourM || existing?.fourM || "Machine",
+    origin: record.origin || existing?.origin || "변동점",
+    sourceType: record.sourceType || existing?.sourceType || "",
+    badgeColor: record.badgeColor || existing?.badgeColor || "",
+    plant: record.plant || existing?.plant || "삼랑진공장",
+    line: record.line || existing?.line || "",
+    writer: record.writer || existing?.writer || "",
+    title: record.title || existing?.title || "",
+    date: record.date || existing?.date || nowStr.slice(0, 10),
+    time: record.time || existing?.time || "",
+    content: record.content !== undefined ? record.content : (existing?.content || ""),
+    actionResult: record.actionResult || existing?.actionResult || "",
+    actionAuthor: record.actionAuthor || existing?.actionAuthor || "",
+    actionAt: record.actionAt || existing?.actionAt || "",
+    images: Array.isArray(record.images) ? record.images : (existing?.images || []),
+    actionImages: Array.isArray(record.actionImages) ? record.actionImages : (existing?.actionImages || []),
+    replies: Array.isArray(record.replies) ? record.replies : (existing?.replies || []),
+    isResolved: Boolean(record.isResolved !== undefined ? record.isResolved : existing?.isResolved),
+    severity: record.severity || existing?.severity || "NORMAL",
+    downtimeMinutes: Number(record.downtimeMinutes !== undefined ? record.downtimeMinutes : existing?.downtimeMinutes) || 0,
+    scrapKg: Number(record.scrapKg !== undefined ? record.scrapKg : existing?.scrapKg) || 0,
+    registeredAt: existing?.registeredAt || nowStr,
+    registeredBy: registeredBy || existing?.registeredBy || "관리자",
+    isOfficialLedger: true
+  };
+
+  // Strip any undefined keys
+  Object.keys(ledgerItem).forEach((k) => {
+    if (ledgerItem[k] === undefined) delete ledgerItem[k];
+  });
+
   let updated;
   if (existingIdx >= 0) {
     updated = [...current];
@@ -760,8 +762,8 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
     line: alertItem.line || alertItem.lineName || alertItem.project || (fourM === "Machine" ? "압출설비라인" : "가공/품질라인"),
     writer: alertItem.author ? `${alertItem.author} ${alertItem.authorTitle || ""}`.trim() : "품질관리자",
     title: title,
-    date: alertItem.date || alertItem.targetDate || alertItem.startDate || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
-    time: alertItem.time || "",
+    date: alertItem.date || alertItem.targetDate || alertItem.startDate || existingInLedger?.date || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
+    time: alertItem.time || existingInLedger?.time || "",
     content: alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "",
     actionResult: alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || (isResolved ? "조치 및 선별 완료" : ""),
     actionAuthor: alertItem.actionAuthor || alertItem.author || (isResolved ? "관리자" : ""),

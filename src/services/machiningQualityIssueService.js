@@ -112,6 +112,7 @@ export const subscribeMachiningQualityIssues = (onUpdate) => {
 export const saveMachiningQualityIssue = async (issueData) => {
   const current = getLocalMachiningQualityIssues();
   const id = issueData.id || `mach_qual_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const existing = current.find((i) => i.id === id);
   const nowKst = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -124,6 +125,18 @@ export const saveMachiningQualityIssue = async (issueData) => {
   const todayStr = getKSTDateString();
   const causeImgs = Array.isArray(issueData.causeImages) ? issueData.causeImages : [];
   const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
+
+  // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
+  const finalDate =
+    issueData.date ||
+    issueData.expireDate ||
+    existing?.date ||
+    (existing?.createdAt ? existing.createdAt.slice(0, 10) : todayStr);
+
+  const finalCreatedAt =
+    existing?.createdAt ||
+    issueData.createdAt ||
+    nowKst;
 
   const fullItem = {
     ...issueData,
@@ -141,8 +154,8 @@ export const saveMachiningQualityIssue = async (issueData) => {
     author: issueData.author || "가공동",
     authorTitle: issueData.authorTitle || "사원",
     status: issueData.status || "ACTIVE",
-    date: issueData.date || todayStr,
-    createdAt: issueData.createdAt || nowKst,
+    date: finalDate,
+    createdAt: finalCreatedAt,
     updatedAt: nowKst
   };
 

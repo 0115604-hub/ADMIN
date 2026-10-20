@@ -310,18 +310,34 @@ export const IssueLedgerModal = ({
                     }`}
                     title="클릭 시 전체 내용 수정 화면으로 이동"
                   >
-                    {/* 1. 맨 왼쪽: 카테고리 뱃지 */}
-                    <span className={`px-2 py-0.5 rounded text-[10.5px] font-black text-white shrink-0 shadow-2xs ${
-                      isItQualityAlert
-                        ? "bg-rose-600"
-                        : isItMeeting
-                        ? "bg-purple-600"
-                        : isItNotice
-                        ? "bg-emerald-600"
-                        : "bg-gradient-to-r from-blue-600 to-indigo-600"
-                    }`}>
-                      {isItQualityAlert ? "🚨 부적합경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
-                    </span>
+                    {/* 1. 맨 왼쪽: 카테고리 뱃지 & 등록일자 */}
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded text-[10.5px] font-black text-white shrink-0 shadow-2xs ${
+                        isItQualityAlert
+                          ? "bg-rose-600"
+                          : isItMeeting
+                          ? "bg-purple-600"
+                          : isItNotice
+                          ? "bg-emerald-600"
+                          : "bg-gradient-to-r from-blue-600 to-indigo-600"
+                      }`}>
+                        {isItQualityAlert ? "🚨 부적합경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                      </span>
+
+                      {/* 📅 등록일자 (발생일) 표시 */}
+                      <span className="px-1.5 py-0.5 rounded text-[10px] sm:text-[10.5px] font-mono font-bold bg-white/90 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0 inline-flex items-center gap-1 shadow-2xs" title="등록일자">
+                        <Calendar className="w-3 h-3 text-rose-500 shrink-0" />
+                        <span>
+                          {isItQualityAlert
+                            ? `등록일: ${it.date || it.startDate || (it.createdAt ? it.createdAt.slice(0, 10) : it.expireDate || "-")}`
+                            : isItMeeting
+                            ? `회의: ${it.startDate || it.date || it.expireDate || "-"}`
+                            : isItNotice
+                            ? `등록: ${it.date || it.startDate || (it.createdAt ? it.createdAt.slice(0, 10) : "-")}`
+                            : `일정: ${it.startDate || it.date || (it.createdAt ? it.createdAt.slice(0, 10) : "-")}`}
+                        </span>
+                      </span>
+                    </div>
                     {!isItQualityAlert && !isItMeeting && !isItNotice && (
                       (Array.isArray(it.replies) && it.replies.length > 0) ||
                       (typeof it.actionResult === "string" && it.actionResult.trim().length > 0) ||

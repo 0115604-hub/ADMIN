@@ -994,13 +994,16 @@ export const AuthModal = () => {
   const handleOpenEditIssue = (issue, e, fromList = false, isDetail = false) => {
     if (e) e.stopPropagation();
     const cat = issue.category === "사내공지" ? "공지사항" : (issue.category || "품질경보");
+    const issueDate = issue.date || issue.startDate || (issue.createdAt ? issue.createdAt.slice(0, 10) : "") || issue.expireDate || todayDateStr;
     const issueData = {
       category: issue.category || "품질경보",
       plant: issue.plant || "삼랑진공장",
       author: issue.author || "",
       authorTitle: issue.authorTitle || "",
-      startDate: issue.startDate || issue.expireDate || todayDateStr,
-      expireDate: issue.expireDate || issue.targetDate || todayDateStr,
+      date: issueDate,
+      startDate: issue.startDate || issueDate,
+      expireDate: issue.expireDate || issue.targetDate || issueDate,
+      createdAt: issue.createdAt,
       meetingTime: issue.meetingTime || "14:00",
       meetingLocation: issue.meetingLocation || "",
       meetingAgenda: issue.meetingAgenda || issue.content || "",
@@ -1049,12 +1052,20 @@ export const AuthModal = () => {
     setIsSavingIssue(true);
     try {
       const idStr = String(editingIssue?.id || "");
+      const explicitDate =
+        newIssueForm.date ||
+        newIssueForm.expireDate ||
+        editingIssue?.date ||
+        editingIssue?.raw?.date ||
+        (editingIssue?.createdAt ? editingIssue.createdAt.slice(0, 10) : todayDateStr);
+
       if (idStr.startsWith("ext_q_")) {
         const targetId = editingIssue.rawId || idStr.replace("ext_q_", "");
         const upObj = {
           ...(editingIssue.raw || {}),
           ...newIssueForm,
           id: targetId,
+          date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveExtrusionQualityIssue(upObj);
@@ -1065,6 +1076,7 @@ export const AuthModal = () => {
           ...(editingIssue.raw || {}),
           ...newIssueForm,
           id: targetId,
+          date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveHanulQualityIssue(upObj);
@@ -1075,6 +1087,7 @@ export const AuthModal = () => {
           ...(editingIssue.raw || {}),
           ...newIssueForm,
           id: targetId,
+          date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveYuseongQualityIssue(upObj);
@@ -1085,6 +1098,7 @@ export const AuthModal = () => {
           ...(editingIssue.raw || {}),
           ...newIssueForm,
           id: targetId,
+          date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveMachiningQualityIssue(upObj);

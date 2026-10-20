@@ -1717,7 +1717,7 @@ export const UnifiedAbnormalityControlPanel = ({
                   <th className="py-2.5 px-2 text-center w-8">NO</th>
                   <th className="py-2.5 px-2 text-center w-36">4M 분류 (수정)</th>
                   <th className="py-2.5 px-2 text-center w-20">출처</th>
-                  <th className="py-2.5 px-2 text-center w-22">일시</th>
+                  <th className="py-2.5 px-2 text-center w-24">등록일자 (발생)</th>
                   <th className="py-2.5 px-2 text-center w-14">공장</th>
                   <th className="py-2.5 px-3 min-w-[300px] w-full">변동점내용</th>
                   <th className="py-2.5 px-2 text-center w-14">사진</th>
@@ -1800,9 +1800,12 @@ export const UnifiedAbnormalityControlPanel = ({
                           </span>
                         </td>
 
-                        {/* 3. 일시 */}
-                        <td className="py-2.5 px-2 text-center font-mono text-slate-600 dark:text-slate-400 text-[10.5px] whitespace-nowrap">
-                          <div>{item.date}</div>
+                        {/* 3. 등록일자 (발생일시) */}
+                        <td className="py-2.5 px-2 text-center font-mono text-slate-700 dark:text-slate-300 font-bold text-[10.5px] whitespace-nowrap">
+                          <div className="inline-flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span>{item.date}</span>
+                          </div>
                           {item.time ? <div className="text-[9.5px] text-slate-400 font-normal">{item.time}</div> : null}
                         </td>
 
@@ -2011,8 +2014,11 @@ export const UnifiedAbnormalityControlPanel = ({
               {/* Meta Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px]">
                 <div>
-                  <span className="text-slate-400 block">발생일시</span>
-                  <span className="font-black text-slate-900 dark:text-white">{selectedItemForDetail.date} {selectedItemForDetail.time || ""}</span>
+                  <span className="text-slate-400 block">등록일시 (발생일)</span>
+                  <span className="font-black text-slate-900 dark:text-white flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-rose-500" />
+                    <span>{selectedItemForDetail.date} {selectedItemForDetail.time || ""}</span>
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">공장 / 라인</span>

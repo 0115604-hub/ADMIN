@@ -112,6 +112,8 @@ export const subscribeHanulQualityIssues = (onUpdate) => {
 export const saveHanulQualityIssue = async (issueData) => {
   const current = getLocalHanulQualityIssues();
   const id = issueData.id || `hanul_qual_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const existing = current.find((i) => i.id === id);
+
   const nowKst = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -126,22 +128,34 @@ export const saveHanulQualityIssue = async (issueData) => {
   const causeImgs = Array.isArray(issueData.causeImages) ? issueData.causeImages : [];
   const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
 
+  // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
+  const finalDate =
+    issueData.date ||
+    issueData.expireDate ||
+    existing?.date ||
+    (existing?.createdAt ? existing.createdAt.slice(0, 10) : todayStr);
+
+  const finalCreatedAt =
+    existing?.createdAt ||
+    issueData.createdAt ||
+    nowKst;
+
   const fullItem = {
     ...issueData,
     id,
-    line: issueData.line || "9BQC (G/RUN)",
-    defectType: issueData.defectType || "외관 스크래치 / 찍힘",
-    severity: issueData.severity || "CRITICAL",
-    title: issueData.title || "",
-    content: issueData.content || "",
-    actionResult: issueData.actionResult || "",
+    line: issueData.line || existing?.line || "9BQC (G/RUN)",
+    defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
+    severity: issueData.severity || existing?.severity || "CRITICAL",
+    title: issueData.title || existing?.title || "",
+    content: issueData.content !== undefined ? issueData.content : (existing?.content || ""),
+    actionResult: issueData.actionResult || existing?.actionResult || "",
     causeImages: causeImgs,
     actionImages: actionImgs,
-    author: issueData.author || "한울",
-    authorTitle: issueData.authorTitle || "사원",
-    status: issueData.status || "ACTIVE", // ACTIVE | RESOLVED
-    date: issueData.date || todayStr,
-    createdAt: issueData.createdAt || nowKst,
+    author: issueData.author || existing?.author || "한울",
+    authorTitle: issueData.authorTitle || existing?.authorTitle || "사원",
+    status: issueData.status || existing?.status || "ACTIVE", // ACTIVE | RESOLVED
+    date: finalDate,
+    createdAt: finalCreatedAt,
     updatedAt: nowKst
   };
 

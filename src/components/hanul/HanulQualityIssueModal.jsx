@@ -14,6 +14,7 @@ import {
   Flame,
   User,
   Layers,
+  Calendar,
   Check
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -92,8 +93,11 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ALL", "ACTIVE", "RESOLVED"
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Form State: 발생원인 사진(causeImages)과 조치결과 사진(actionImages) 분리
+  // Form State: 발생원인 사진(causeImages)과 조치결과 사진(actionImages) 분리 및 등록일자(date) 명시
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
+    date: todayStr,
+    createdAt: undefined,
     line: "9BQC (G/RUN)",
     defectType: "외관 스크래치 / 찍힘",
     title: "",
@@ -225,6 +229,8 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
       // Reset form
       setForm({
+        date: todayStr,
+        createdAt: undefined,
         line: "9BQC (G/RUN)",
         defectType: "외관 스크래치 / 찍힘",
         title: "",
@@ -260,7 +266,11 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
       : [];
     const actionImgs = Array.isArray(issue.actionImages) ? [...issue.actionImages] : [];
 
+    const issueDate = issue.date || (issue.createdAt ? issue.createdAt.slice(0, 10) : todayStr);
+
     setForm({
+      date: issueDate,
+      createdAt: issue.createdAt,
       line: issue.line || "9BQC (G/RUN)",
       defectType: issue.defectType || "외관 스크래치 / 찍힘",
       title: issue.title || "",
@@ -452,6 +462,8 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   onClick={() => {
                     setEditingIssueId(null);
                     setForm({
+                      date: todayStr,
+                      createdAt: undefined,
                       line: "9BQC (G/RUN)",
                       defectType: "외관 스크래치 / 찍힘",
                       title: "",
@@ -469,8 +481,24 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              {/* Row 1: 공정/라인 & 불량 유형 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 1: 발생일자(등록일) & 대상 공정 & 불량 유형 (3열 그리드) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 발생일자 (등록일) */}
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-rose-600" />
+                    <span>발생일자 (등록일)</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.date || todayStr}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20"
+                  />
+                </div>
+
                 {/* 대상 공정 */}
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -842,8 +870,11 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                           </td>
 
                           {/* 등록일자 */}
-                          <td className="py-2 px-2.5 text-center font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                            {issue.date || issue.createdAt?.slice(0, 10)}
+                          <td className="py-2 px-2.5 text-center font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                              <Calendar className="w-3 h-3 text-rose-500" />
+                              <span>{issue.date || issue.createdAt?.slice(0, 10)}</span>
+                            </span>
                           </td>
 
                           {/* 라인/공정 */}
@@ -987,6 +1018,10 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 <span className="font-bold text-xs text-rose-600">
                   {detailModalIssue.defectType}
                 </span>
+                <span className="font-mono text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 flex items-center gap-1 shadow-2xs">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>등록일: {detailModalIssue.date || detailModalIssue.createdAt?.slice(0, 10)}</span>
+                </span>
               </div>
               <button
                 type="button"
@@ -1082,8 +1117,9 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
             </div>
 
             <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">
-              <span className="text-slate-400 font-mono text-[11px]">
-                등록자: {detailModalIssue.author} {detailModalIssue.authorTitle || ""} ({detailModalIssue.date})
+              <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px] font-medium flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-rose-500" />
+                <span>등록일시: <strong>{detailModalIssue.date || detailModalIssue.createdAt?.slice(0, 10)}</strong> {detailModalIssue.time || ""} (작성: {detailModalIssue.author} {detailModalIssue.authorTitle || ""})</span>
               </span>
 
               <div className="flex items-center gap-1.5">

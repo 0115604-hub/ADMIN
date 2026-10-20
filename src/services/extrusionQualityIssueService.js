@@ -116,7 +116,10 @@ export const subscribeExtrusionQualityIssues = (onUpdate) => {
 
 // Save (Create or Update) Extrusion Quality Issue
 export const saveExtrusionQualityIssue = async (issueData) => {
+  const current = getLocalExtrusionQualityIssues();
   const id = issueData.id || `ext_qual_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const existing = current.find((it) => it.id === id);
+
   const now = new Date();
   const nowStr = now.toLocaleString("ko-KR", {
     year: "numeric",
@@ -134,28 +137,39 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     : [];
   const actionImages = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
 
+  // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
+  const finalDate =
+    issueData.date ||
+    issueData.expireDate ||
+    existing?.date ||
+    (existing?.createdAt ? existing.createdAt.slice(0, 10) : now.toISOString().slice(0, 10));
+
+  const finalCreatedAt =
+    existing?.createdAt ||
+    issueData.createdAt ||
+    nowStr;
+
   const fullItem = {
     ...issueData,
     id,
-    date: issueData.date || now.toISOString().slice(0, 10),
-    time: issueData.time || now.toTimeString().slice(0, 5),
-    line: issueData.line || "PCM 1호기",
-    title: issueData.title || "압출 품질 관리 이슈",
-    defectType: issueData.defectType || "외관 스크래치 / 찍힘",
-    status: issueData.status || "ACTIVE",
-    content: issueData.content || "",
-    actionResult: issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || "",
+    date: finalDate,
+    time: issueData.time || existing?.time || now.toTimeString().slice(0, 5),
+    line: issueData.line || existing?.line || "PCM 1호기",
+    title: issueData.title || existing?.title || "압출 품질 관리 이슈",
+    defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
+    status: issueData.status || existing?.status || "ACTIVE",
+    content: issueData.content !== undefined ? issueData.content : (existing?.content || ""),
+    actionResult: issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || existing?.actionResult || "",
     causeImages,
     actionImages,
     images: [...causeImages, ...actionImages],
-    author: issueData.author || "설유철",
-    authorTitle: issueData.authorTitle || "책임",
-    createdAt: issueData.createdAt || nowStr,
+    author: issueData.author || existing?.author || "설유철",
+    authorTitle: issueData.authorTitle || existing?.authorTitle || "책임",
+    createdAt: finalCreatedAt,
     updatedAt: nowStr,
-    acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : []
+    acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : (existing?.acknowledgedBy || [])
   };
 
-  const current = getLocalExtrusionQualityIssues();
   const existingIdx = current.findIndex((it) => it.id === id);
   let updated;
   if (existingIdx >= 0) {

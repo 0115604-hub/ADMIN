@@ -1816,8 +1816,11 @@ export const IssueEditModal = ({
                       <input
                         type="date"
                         required
-                        value={newIssueForm.expireDate || todayDateStr}
-                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        value={newIssueForm.date || newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewIssueForm({ ...newIssueForm, expireDate: val, date: val, startDate: val });
+                        }}
                         className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
                       />
                     </div>

@@ -109,22 +109,35 @@ export const subscribeYuseongQualityIssues = (onUpdate) => {
 
 // Save or Update Quality Issue
 export const saveYuseongQualityIssue = async (issueData) => {
-  const isNew = !issueData.id;
+  const localList = getLocalYuseongQualityIssues();
   const id = issueData.id || `yuseong_qi_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const existing = localList.find((it) => it.id === id);
   const now = new Date().toISOString();
+
+  // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
+  const finalDate =
+    issueData.date ||
+    issueData.expireDate ||
+    existing?.date ||
+    (existing?.createdAt ? existing.createdAt.slice(0, 10) : now.slice(0, 10));
+
+  const finalCreatedAt =
+    existing?.createdAt ||
+    issueData.createdAt ||
+    now;
 
   const record = {
     ...issueData,
     id,
+    date: finalDate,
     company: "유성",
     updatedAt: now,
-    createdAt: issueData.createdAt || now,
-    status: issueData.status || "ACTIVE", // ACTIVE (진행중) | RESOLVED (조치완료)
-    acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : []
+    createdAt: finalCreatedAt,
+    status: issueData.status || existing?.status || "ACTIVE", // ACTIVE (진행중) | RESOLVED (조치완료)
+    acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : (existing?.acknowledgedBy || [])
   };
 
   // 1. Save to Local Storage immediately
-  const localList = getLocalYuseongQualityIssues();
   const existingIdx = localList.findIndex((it) => it.id === id);
   if (existingIdx >= 0) {
     localList[existingIdx] = record;
