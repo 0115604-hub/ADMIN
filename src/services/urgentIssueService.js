@@ -108,11 +108,33 @@ export const isMeetingExpired = (item, graceHours = 0) => {
  */
 export const isIssueClosed = (item, todayDateStr = "") => {
   if (!item || typeof item !== "object") return false;
-  if (item.isDeleted === true || item.isDeleted === "true" || item.deleted === true || item.status === "DELETED") return true;
+  if (
+    item.isDeleted === true ||
+    item.isDeleted === "true" ||
+    item.deleted === true ||
+    item.status === "DELETED" ||
+    item.isClosedByAdmin === true ||
+    item.raw?.isClosedByAdmin === true
+  ) {
+    return true;
+  }
+
+  const cat = String(item.category || "").trim();
+  const isQualityAlert =
+    cat === "품질경보" ||
+    cat === "부적합경보" ||
+    cat === "quality_alert" ||
+    cat.includes("품질경보") ||
+    cat.includes("부적합경보");
+
+  // 🌟 부적합경보는 조치결과가 입력되더라도 권태형/이명재/김동욱이 첫화면에서 [이 항목 삭제]를 처리할 때까지 첫화면 활성 상태 유지
+  if (isQualityAlert) {
+    return false;
+  }
+
   if (item.isResolved === true || item.status === "RESOLVED" || item.status === "CLOSED" || item.status === "DONE") return true;
   if (typeof item.actionResult === "string" && item.actionResult.trim().length > 0) return true;
 
-  const cat = String(item.category || "").trim();
   // 1. 회의일정: 회의 시작 시간 경과 시 종료
   if (cat === "회의일정" || cat.includes("회의") || cat === "meeting") {
     if (isMeetingExpired(item, 0)) return true;

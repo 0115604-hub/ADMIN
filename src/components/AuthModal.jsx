@@ -573,7 +573,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isDeleted: false,
+        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        deletedBy: alert.deletedBy || "",
+        isDeleted: Boolean(alert.isClosedByAdmin),
         isFirstScreenOrigin: true,
         origin: "EXTRUSION_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -612,7 +614,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isDeleted: false,
+        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        deletedBy: alert.deletedBy || "",
+        isDeleted: Boolean(alert.isClosedByAdmin),
         isFirstScreenOrigin: true,
         origin: "HANUL_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -651,7 +655,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isDeleted: false,
+        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        deletedBy: alert.deletedBy || "",
+        isDeleted: Boolean(alert.isClosedByAdmin),
         isFirstScreenOrigin: true,
         origin: "YUSEONG_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -690,7 +696,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isDeleted: false,
+        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        deletedBy: alert.deletedBy || "",
+        isDeleted: Boolean(alert.isClosedByAdmin),
         isFirstScreenOrigin: true,
         origin: "MACHINING_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -734,19 +742,26 @@ export const AuthModal = () => {
     return sortIssuesByLatest(list);
   }, [externalQualityAlerts, urgentIssues]);
 
-  // Active issues calculation (첫 화면 표시용 활성 이슈 - 전 공정 미결 부적합경보 + 활성 회의/공지/오픈이슈)
+  // Active issues calculation (첫 화면 표시용 활성 이슈 - 전 공정 부적합경보(관리자 삭제 전까지 노출) + 활성 회의/공지/오픈이슈)
   const activeIssues = useMemo(() => {
     const list = [];
     const seenKeys = new Set();
 
-    // 1. 5개 공정 통합 부적합경보 중 활성(미결) 건
+    // 1. 5개 공정 통합 부적합경보
+    // 🌟 핵심 규칙: 부적합경보는 조치결과(actionResult / isResolved)가 입력되더라도,
+    // 권태형(대표이사), 이명재(이사), 김동욱(책임)이 첫 화면에서 [이 항목 삭제]를 처리할 때까지 계속 노출됨!
     (allQualityAlerts || []).forEach((alert) => {
       if (!alert) return;
-      if (alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
-      
-      // 조치 완료된 부적합경보는 첫 화면 활성 목록에 절대 재공지되지 않음
-      const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
-      if (isResolved) return;
+      if (
+        alert.isDeleted === true ||
+        alert.isDeleted === "true" ||
+        alert.deleted === true ||
+        alert.status === "DELETED" ||
+        alert.isClosedByAdmin === true ||
+        alert.raw?.isClosedByAdmin === true
+      ) {
+        return;
+      }
 
       const key = `${(alert.title || "").trim().toLowerCase()}_${alert.startDate || alert.date || ""}`;
       seenKeys.add(key);
@@ -1172,9 +1187,60 @@ export const AuthModal = () => {
   };
 
   // Restore & Cancel Restore
-  const handleRestoreIssue = async (id, e) => {
+  const handleRestoreIssue = async (idOrItem, e) => {
     if (e) e.stopPropagation();
+    const id = typeof idOrItem === "object" && idOrItem !== null ? idOrItem.id : idOrItem;
+    const idStr = String(id || "");
     try {
+      if (idStr.startsWith("ext_q_")) {
+        const targetId = idStr.replace("ext_q_", "");
+        const rawAlert = extrusionQualityAlerts.find((a) => String(a.id) === String(targetId));
+        if (rawAlert) {
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          await saveExtrusionQualityIssue(updatedObj);
+          setExtrusionQualityAlerts((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
+          setTimeout(() => setRestoreToast(""), 3500);
+        }
+        return;
+      }
+      if (idStr.startsWith("hanul_q_")) {
+        const targetId = idStr.replace("hanul_q_", "");
+        const rawAlert = hanulQualityIssues.find((a) => String(a.id) === String(targetId));
+        if (rawAlert) {
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          await saveHanulQualityIssue(updatedObj);
+          setHanulQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
+          setTimeout(() => setRestoreToast(""), 3500);
+        }
+        return;
+      }
+      if (idStr.startsWith("ys_q_")) {
+        const targetId = idStr.replace("ys_q_", "");
+        const rawAlert = yuseongQualityIssues.find((a) => String(a.id) === String(targetId));
+        if (rawAlert) {
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          await saveYuseongQualityIssue(updatedObj);
+          setYuseongQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
+          setTimeout(() => setRestoreToast(""), 3500);
+        }
+        return;
+      }
+      if (idStr.startsWith("mach_q_")) {
+        const targetId = idStr.replace("mach_q_", "");
+        const rawAlert = machiningQualityIssues.find((a) => String(a.id) === String(targetId));
+        if (rawAlert) {
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          await saveMachiningQualityIssue(updatedObj);
+          setMachiningQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
+          setTimeout(() => setRestoreToast(""), 3500);
+        }
+        return;
+      }
+
       const updated = await restoreUrgentIssue(id);
       if (updated && updated.id) {
         setUrgentIssues((prev) => {
@@ -1230,7 +1296,7 @@ export const AuthModal = () => {
     if (e) e.stopPropagation();
     setIsIssueModalOpen(false);
     setEditingIssue(null);
-    const isHard = Boolean(forceHardDelete || issue?.isDeleted);
+    const isHard = Boolean(forceHardDelete || issue?.isDeleted || issue?.isClosedByAdmin);
     setDeleteModalData({
       isOpen: true,
       issue,
@@ -1261,23 +1327,28 @@ export const AuthModal = () => {
       if (!isAdminAuthorized) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "종결삭제관리 내 영구삭제는 최고관리자(Admin) 전용 기능입니다. 관리자 확인 PIN을 다시 확인해 주세요."
+          errorMsg: "관리대장 영구삭제는 최고관리자(권태형 대표이사, PIN 0090) 전용 기능입니다."
         }));
         return;
       }
     } else {
-      const isAuthorized = inputPin.length >= 1 || Boolean(currentProfile);
-      if (!isAuthorized) {
+      // 🌟 첫 화면 [이 항목 삭제] 권한: 권태형(Admin, 0090), 이명재(11), 김동욱(11) 전용
+      const isAuthorizedProfile =
+        currentProfile?.role === "ADMIN" ||
+        ["권태형", "이명재", "김동욱"].includes(currentProfile?.name);
+      const isAuthorizedPin = inputPin === "0090" || inputPin === "11";
+
+      if (!isAuthorizedProfile && !inputPin) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "확인 PIN 번호를 입력해 주세요."
+          errorMsg: "관리자 확인 PIN 번호(권태형 대표이사 / 이명재 이사 / 김동욱 책임)를 입력해 주세요."
         }));
         return;
       }
-      if (inputPin !== "11" && inputPin !== "0090" && !currentProfile) {
+      if (!isAuthorizedProfile && !isAuthorizedPin) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "PIN 번호가 일치하지 않습니다. 관리자 PIN을 다시 확인해 주세요."
+          errorMsg: "PIN 번호가 일치하지 않습니다. 삭제 권한은 권태형 대표이사, 이명재 이사, 김동욱 책임에게만 있습니다."
         }));
         return;
       }
@@ -1287,36 +1358,76 @@ export const AuthModal = () => {
 
     try {
       const idStr = String(issue.id || "");
+      const deleter =
+        (currentProfile && ["권태형", "이명재", "김동욱"].includes(currentProfile.name))
+          ? currentProfile.name
+          : inputPin === "0090" || currentProfile?.role === "ADMIN"
+          ? "권태형"
+          : issue.plant === "한림공장"
+          ? "김동욱"
+          : "이명재";
+
       if (idStr.startsWith("ext_q_")) {
         const targetId = issue.rawId || idStr.replace("ext_q_", "");
-        await deleteExtrusionQualityIssue(targetId);
-        setExtrusionQualityAlerts((prev) => prev.filter((a) => a.id !== targetId));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+        if (isHardDelete) {
+          await deleteExtrusionQualityIssue(targetId);
+          setExtrusionQualityAlerts((prev) => prev.filter((a) => String(a.id) !== String(targetId)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 영구 삭제되었습니다.`);
+        } else {
+          const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => String(a.id) === String(targetId)) || {};
+          const updatedObj = { ...rawAlert, id: targetId, isClosedByAdmin: true, deletedBy: deleter, updatedAt: new Date().toISOString() };
+          await saveExtrusionQualityIssue(updatedObj);
+          setExtrusionQualityAlerts((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫 화면에서 내려가 관리목록에 보존되었습니다.`);
+        }
       } else if (idStr.startsWith("hanul_q_")) {
         const targetId = issue.rawId || idStr.replace("hanul_q_", "");
-        await deleteHanulQualityIssue(targetId);
-        setHanulQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+        if (isHardDelete) {
+          await deleteHanulQualityIssue(targetId);
+          setHanulQualityIssues((prev) => prev.filter((a) => String(a.id) !== String(targetId)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 영구 삭제되었습니다.`);
+        } else {
+          const rawAlert = issue.raw || hanulQualityIssues.find((a) => String(a.id) === String(targetId)) || {};
+          const updatedObj = { ...rawAlert, id: targetId, isClosedByAdmin: true, deletedBy: deleter, updatedAt: new Date().toISOString() };
+          await saveHanulQualityIssue(updatedObj);
+          setHanulQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫 화면에서 내려가 관리목록에 보존되었습니다.`);
+        }
       } else if (idStr.startsWith("ys_q_")) {
         const targetId = issue.rawId || idStr.replace("ys_q_", "");
-        await deleteYuseongQualityIssue(targetId);
-        setYuseongQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+        if (isHardDelete) {
+          await deleteYuseongQualityIssue(targetId);
+          setYuseongQualityIssues((prev) => prev.filter((a) => String(a.id) !== String(targetId)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 영구 삭제되었습니다.`);
+        } else {
+          const rawAlert = issue.raw || yuseongQualityIssues.find((a) => String(a.id) === String(targetId)) || {};
+          const updatedObj = { ...rawAlert, id: targetId, isClosedByAdmin: true, deletedBy: deleter, updatedAt: new Date().toISOString() };
+          await saveYuseongQualityIssue(updatedObj);
+          setYuseongQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫 화면에서 내려가 관리목록에 보존되었습니다.`);
+        }
       } else if (idStr.startsWith("mach_q_")) {
         const targetId = issue.rawId || idStr.replace("mach_q_", "");
-        await deleteMachiningQualityIssue(targetId);
-        setMachiningQualityIssues((prev) => prev.filter((a) => a.id !== targetId));
-        setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 삭제되었습니다.`);
+        if (isHardDelete) {
+          await deleteMachiningQualityIssue(targetId);
+          setMachiningQualityIssues((prev) => prev.filter((a) => String(a.id) !== String(targetId)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 영구 삭제되었습니다.`);
+        } else {
+          const rawAlert = issue.raw || machiningQualityIssues.find((a) => String(a.id) === String(targetId)) || {};
+          const updatedObj = { ...rawAlert, id: targetId, isClosedByAdmin: true, deletedBy: deleter, updatedAt: new Date().toISOString() };
+          await saveMachiningQualityIssue(updatedObj);
+          setMachiningQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫 화면에서 내려가 관리목록에 보존되었습니다.`);
+        }
       } else {
         if (isHardDelete) {
           await hardDeleteUrgentIssue(issue.id);
           setUrgentIssues((prev) => prev.filter((i) => i.id !== issue.id));
           setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 데이터베이스에서 영구 삭제되었습니다.`);
         } else {
-          const deleter = currentProfile?.name || (inputPin === "0090" ? "Admin" : issue.plant === "한림공장" ? "김동욱" : "이명재");
           await deleteUrgentIssue(issue.id, deleter);
           setUrgentIssues((prev) => prev.map((i) => (i.id === issue.id ? { ...i, isDeleted: true, deletedBy: deleter } : i)));
-          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫화면에서 내려가 [종결삭제관리]로 이동 보존되었습니다.`);
+          setRestoreToast(`🗑️ [${issue.title || issue.content}] 항목이 첫 화면에서 내려가 관리목록에 보존되었습니다.`);
         }
       }
       setTimeout(() => setRestoreToast(""), 3500);

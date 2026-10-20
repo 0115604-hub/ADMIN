@@ -246,10 +246,10 @@ export const RealtimeIssueBoard = ({
                 key={item.id}
                 onClick={() => onSelectCardCategory(item)}
                 className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-700 active:scale-[0.99] group ${
-                  item.isResolved
-                    ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
-                    : isQualityAlert
+                  isQualityAlert
                     ? "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
+                    : item.isResolved
+                    ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                     : isMeeting
                     ? "bg-purple-50/50 dark:bg-purple-950/25 border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-400/20"
                     : isNotice
@@ -262,9 +262,17 @@ export const RealtimeIssueBoard = ({
                 <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                     {isQualityAlert ? (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                        🚨 부적합경보
-                      </span>
+                      <>
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
+                          🚨 부적합경보
+                        </span>
+                        {hasAction && (
+                          <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>조치결과 등록됨</span>
+                          </span>
+                        )}
+                      </>
                     ) : isMeeting ? (
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
                         📅 회의일정
