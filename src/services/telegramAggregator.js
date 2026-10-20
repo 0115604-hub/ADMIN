@@ -354,7 +354,7 @@ export const buildDailyMorningBriefingText = async (targetDateStr = null, custom
 
   const onLeaveUsers = new Set(prevDayLeaves.map((l) => normWorkerName(l.userName)).filter(Boolean));
   const samTargetWorkers = ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"];
-  const halTargetWorkers = ["오상민", "정현규"];
+  const halTargetWorkers = ["오상민"];
 
   const isWorkerRegistered = (tName) => {
     const t = normWorkerName(tName);

@@ -23,7 +23,8 @@ export const PANEL_KEYS = {
   QUALITY_SUMMARY: "quality_summary",
   EXTRUSION_DOWNTIME: "extrusion_downtime",
   WORK_LOGS: "work_logs",
-  ABNORMALITY_4M: "abnormality_4m"
+  ABNORMALITY_4M: "abnormality_4m",
+  WORK_REPORT_TEMPLATES: "work_report_templates"
 };
 
 // 기본 사내 일반 관리자 패널 목록 (전체 기본 풀 세트)
@@ -62,30 +63,24 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.WORK_LOGS
   ],
 
-  // 🛡️ [한림공장 TEST 관리자]
-  // 요청사항: 변동점 패널 삭제 (이창엽 책임에게 이관)
+  // 🛡️ [한림공장 TEST 관리자] 맞춤 대시보드 레이아웃
+  // 요청사항: 
+  // 1. 1, 2, 3, 5 패널 삭제 (매입매출, 근태현황, 중요ITEM품질, 일일업무일지)
+  // 2. ADMIN에서 관리하던 일보양식관리를 옮겨서 TEST가 전담 관리
   "hal_test": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.WORK_LOGS
+    PANEL_KEYS.WORK_REPORT_TEMPLATES
   ],
   "TEST": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.WORK_LOGS
+    PANEL_KEYS.WORK_REPORT_TEMPLATES
   ]
 };
 
 // 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
-export const PANEL_CONFIG_VERSION = "20261020_v2";
+export const PANEL_CONFIG_VERSION = "20261020_v3";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

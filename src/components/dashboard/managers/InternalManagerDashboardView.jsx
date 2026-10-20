@@ -12,6 +12,12 @@ import {
 import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
 import { isPanelVisible, PANEL_KEYS } from "../../../config/dashboardPanelConfig";
 
+const WorkReportTemplateManagerView = React.lazy(() =>
+  import("../../WorkReportTemplateManagerView").then((m) => ({
+    default: m.WorkReportTemplateManagerView || m.default
+  }))
+);
+
 export const InternalManagerDashboardView = ({
   // Extrusion Operator Banner Props
   currentProfile,
@@ -319,6 +325,19 @@ export const InternalManagerDashboardView = ({
           totalLogPages={totalLogPages}
           handleOpenWorkLogModal={handleOpenWorkLogModal}
         />
+      )}
+
+      {/* 📑 일보 양식 관리 패널 (TEST 관리자 맞춤 전담 이관) */}
+      {isPanelVisible(PANEL_KEYS.WORK_REPORT_TEMPLATES, currentProfile) && (
+        <React.Suspense
+          fallback={
+            <div className="p-8 text-center text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+              일보 양식 관리 시스템을 불러오는 중입니다...
+            </div>
+          }
+        >
+          <WorkReportTemplateManagerView />
+        </React.Suspense>
       )}
     </>
   );
