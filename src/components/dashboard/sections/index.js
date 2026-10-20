@@ -9,3 +9,4 @@ export { DailyWorkLogTableSection } from "./DailyWorkLogTableSection";
 export { AdminAccessAndIncidentSection } from "./AdminAccessAndIncidentSection";
 export { YuseongCustomSection } from "./YuseongCustomSection";
 export { BurimtechCustomSection } from "./BurimtechCustomSection";
+export { LegoWorkReportBuilderBar } from "./LegoWorkReportBuilderBar";
