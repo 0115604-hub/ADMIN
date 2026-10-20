@@ -54,8 +54,8 @@ export function initVersionWatcher(onUpdateAvailable) {
   };
   document.addEventListener("visibilitychange", handleVisibility);
 
-  // Check periodically every 5 minutes
-  const interval = setInterval(() => checkAppVersion(onUpdateAvailable), 5 * 60 * 1000);
+  // Check periodically every 30 seconds
+  const interval = setInterval(() => checkAppVersion(onUpdateAvailable), 30 * 1000);
 
   return () => {
     document.removeEventListener("visibilitychange", handleVisibility);
@@ -64,13 +64,14 @@ export function initVersionWatcher(onUpdateAvailable) {
 }
 
 export function forceHardReload() {
+  const targetUrl = window.location.pathname + "?_v=" + Date.now();
   if ("caches" in window) {
     caches.keys().then((keys) => {
       Promise.all(keys.map((k) => caches.delete(k))).finally(() => {
-        window.location.reload(true);
+        window.location.replace(targetUrl);
       });
     });
   } else {
-    window.location.reload(true);
+    window.location.replace(targetUrl);
   }
 }

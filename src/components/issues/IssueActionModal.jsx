@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   CheckCircle2,
@@ -64,24 +64,70 @@ export const IssueActionModal = ({
     ? issue.causeImages
     : [];
 
+  const lastSubmitTimeRef = useRef(0);
+
+  const getEffectiveSubmissionData = () => {
+    return {
+      title: isEditMode && editTitle.trim() ? editTitle.trim() : (issue.title || issue.content || ""),
+      content: isEditMode ? editContent.trim() : (issue.content || ""),
+      expireDate: editExpireDate || issue.expireDate || "",
+      meetingTime: editMeetingTime || issue.meetingTime || "14:00",
+      meetingLocation: editMeetingLocation || issue.meetingLocation || "",
+      actionResult: (actionModalData.actionResult || "").trim(),
+      actionAuthor: (actionModalData.actionAuthor || "").trim() || issue.actionAuthor || issue.author || "현장담당자",
+      actionImages: actionModalData.actionImages || []
+    };
+  };
+
+  const safeSubmit = (fn, e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSaving) return;
+    const now = Date.now();
+    if (now - lastSubmitTimeRef.current < 600) return;
+    lastSubmitTimeRef.current = now;
+    if (document.activeElement && typeof document.activeElement.blur === "function") {
+      document.activeElement.blur();
+    }
+    fn(e);
+  };
+
   const handleEditSubmit = (e) => {
-    if (e) e.preventDefault();
-    if (!isEditMode) {
+    // 조치결과가 입력되어 있거나, 이미 수정모드인 경우 즉시 통합 저장 등록
+    const hasActionResult = Boolean(
+      (actionModalData.actionResult || "").trim() ||
+      (actionModalData.actionImages && actionModalData.actionImages.length > 0)
+    );
+    
+    if (!isEditMode && !hasActionResult) {
       setIsEditMode(true);
       return;
     }
-    if (!editTitle.trim()) {
+
+    const subData = getEffectiveSubmissionData();
+    if (isEditMode && !subData.title) {
       alert("제목을 입력해 주세요.");
       return;
     }
-    if (onSaveIssueEdit) {
-      onSaveIssueEdit({
-        title: editTitle.trim(),
-        content: editContent.trim(),
-        expireDate: editExpireDate,
-        meetingTime: editMeetingTime,
-        meetingLocation: editMeetingLocation
-      });
+
+    if (onSaveActionResult) {
+      onSaveActionResult(subData, e);
+    } else if (onSaveIssueEdit) {
+      onSaveIssueEdit(subData);
+    }
+  };
+
+  const handleActionCompleteSubmit = (e) => {
+    const subData = getEffectiveSubmissionData();
+    const hasActionResult = Boolean(
+      subData.actionResult ||
+      (subData.actionImages && subData.actionImages.length > 0)
+    );
+    if (!hasActionResult) {
+      alert(isMeetingAction ? "회의 결과 내용을 입력해 주세요." : "조치결과 내용 또는 조치 후 사진을 등록해 주세요.");
+      return;
+    }
+    if (onSaveActionResult) {
+      onSaveActionResult(subData, e);
     }
   };
 
@@ -552,7 +598,7 @@ export const IssueActionModal = ({
               <span>📁 지난 이력 전체대장</span>
             </button>
 
-            {/* Right: [닫기] -> [수정등록] -> [조치완료] (정확한 뱃지 배치) */}
+            {/* Right: [닫기] -> [수정등록] -> [조치완료] (정확한 뱃지 배치 및 모바일 터치 최적화) */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               {/* 1. 닫기 */}
               <button
@@ -563,26 +609,31 @@ export const IssueActionModal = ({
                 닫기
               </button>
 
-              {/* 2. 수정등록 (닫기와 조치완료 사이에 위치!) */}
+              {/* 2. 수정등록 (닫기와 조치완료 사이에 위치 • 원문 수정 및 조치결과 동시 등록) */}
               <button
                 type="button"
-                onClick={handleEditSubmit}
+                disabled={isSaving}
+                onTouchEnd={(e) => safeSubmit(handleEditSubmit, e)}
+                onClick={(e) => safeSubmit(handleEditSubmit, e)}
                 className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
+                  isSaving ? "opacity-60 cursor-not-allowed" : ""
+                } ${
                   isEditMode
                     ? "bg-amber-500 hover:bg-amber-600 text-slate-950 ring-2 ring-amber-400 font-black animate-pulse"
                     : "bg-amber-500 hover:bg-amber-600 text-slate-950 font-black"
                 }`}
-                title={isEditMode ? "수정한 내용을 저장하여 첫 화면에 재등록" : "원문 제목/내용 수정 모드 켜기"}
+                title="원문 수정 및 조치결과 저장 재등록"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>{isEditMode ? "수정내용 재등록" : "수정등록"}</span>
               </button>
 
-              {/* 3. 조치완료 (모바일 폼 리로드 방지 type="button" + 저장 중 스피너 표시) */}
+              {/* 3. 조치완료 (모바일 터치 즉각 반응 + 저장 중 스피너 표시) */}
               <button
                 type="button"
-                onClick={onSaveActionResult}
                 disabled={isSaving}
+                onTouchEnd={(e) => safeSubmit(handleActionCompleteSubmit, e)}
+                onClick={(e) => safeSubmit(handleActionCompleteSubmit, e)}
                 className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
                   isSaving ? "opacity-60 cursor-not-allowed" : ""
                 } ${

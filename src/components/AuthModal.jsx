@@ -1362,24 +1362,34 @@ export const AuthModal = () => {
     });
   };
 
-  const handleSaveActionResult = async (e) => {
+  const handleSaveActionResult = async (extraData = null, e = null) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (extraData && extraData.preventDefault) {
+      e = extraData;
+      extraData = null;
+    }
     if (isSavingIssue) return;
     if (!actionModalData.issue) return;
 
     const issue = actionModalData.issue;
     const isMeetingAction = issue.category === "회의일정" || String(issue.category || "").includes("회의");
-    const rawResult = (actionModalData.actionResult || "").trim();
-    const actionImagesList = actionModalData.actionImages || [];
+    const rawResult = (extraData?.actionResult !== undefined ? extraData.actionResult : (actionModalData.actionResult || "")).trim();
+    const actionImagesList = extraData?.actionImages || actionModalData.actionImages || [];
 
-    // 내용 또는 사진 중 최소 1개는 입력되어야 함
-    if (!rawResult && actionImagesList.length === 0) {
+    // 원문 수정 필드 (수정등록 버튼에서 전달된 경우)
+    const editedTitle = (extraData?.title || "").trim();
+    const editedContent = (extraData?.content || "").trim();
+
+    // 내용 또는 사진, 또는 원문 수정 제목/내용 중 최소 1개는 있어야 저장 가능
+    if (!rawResult && actionImagesList.length === 0 && !editedTitle && !editedContent) {
       alert(isMeetingAction ? "회의 결과 내용을 입력해 주세요." : "조치결과 내용 또는 조치 후 사진을 등록해 주세요.");
       return;
     }
 
-    const actionResultText = rawResult || (actionImagesList.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : "조치 완료");
-    const effectiveAuthor = (actionModalData.actionAuthor && actionModalData.actionAuthor.trim())
+    const hasAction = Boolean(rawResult || actionImagesList.length > 0);
+    const actionResultText = rawResult || (actionImagesList.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : "");
+    const effectiveAuthor = (extraData?.actionAuthor && extraData.actionAuthor.trim())
+      || (actionModalData.actionAuthor && actionModalData.actionAuthor.trim())
       || (issue.actionAuthor && issue.actionAuthor.trim())
       || (issue.author && issue.author.trim())
       || (currentProfile?.name && currentProfile.name.trim())
@@ -1389,6 +1399,8 @@ export const AuthModal = () => {
     try {
       const idStr = String(issue.id || issue._docId || "");
       const nowStr = new Date().toISOString();
+      const finalTitle = editedTitle || issue.title || issue.content || "";
+      const finalContent = editedContent !== "" ? editedContent : (issue.content || "");
 
       if (idStr.startsWith("ext_q_")) {
         const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
@@ -1397,22 +1409,30 @@ export const AuthModal = () => {
           ...rawAlert,
           ...issue,
           id: targetId,
-          actionResult: actionResultText,
-          actionAuthor: effectiveAuthor,
-          actionImages: actionImagesList,
-          status: "RESOLVED",
-          isResolved: true,
+          title: finalTitle,
+          content: finalContent,
+          defectType: finalTitle,
+          details: finalContent,
+          ...(hasAction ? {
+            actionResult: actionResultText,
+            actionAuthor: effectiveAuthor,
+            actionImages: actionImagesList,
+            status: "RESOLVED",
+            isResolved: true
+          } : {}),
           updatedAt: nowStr
         };
         await saveExtrusionQualityIssue(updatedObj);
         setExtrusionQualityAlerts((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
-        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
-          actionAuthor: effectiveAuthor,
-          actionContent: actionResultText,
-          images: actionImagesList
-        }).catch((err) => {
-          console.warn("Telegram action notification error:", err);
-        });
+        if (hasAction) {
+          sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+            actionAuthor: effectiveAuthor,
+            actionContent: actionResultText,
+            images: actionImagesList
+          }).catch((err) => {
+            console.warn("Telegram action notification error:", err);
+          });
+        }
       } else if (idStr.startsWith("hanul_q_")) {
         const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
         const targetId = issue.rawId || idStr.replace("hanul_q_", "");
@@ -1420,22 +1440,29 @@ export const AuthModal = () => {
           ...rawAlert,
           ...issue,
           id: targetId,
-          actionResult: actionResultText,
-          actionAuthor: effectiveAuthor,
-          actionImages: actionImagesList,
-          status: "RESOLVED",
-          isResolved: true,
+          title: finalTitle,
+          content: finalContent,
+          defectType: finalTitle,
+          ...(hasAction ? {
+            actionResult: actionResultText,
+            actionAuthor: effectiveAuthor,
+            actionImages: actionImagesList,
+            status: "RESOLVED",
+            isResolved: true
+          } : {}),
           updatedAt: nowStr
         };
         await saveHanulQualityIssue(updatedObj);
         setHanulQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
-        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
-          actionAuthor: effectiveAuthor,
-          actionContent: actionResultText,
-          images: actionImagesList
-        }).catch((err) => {
-          console.warn("Telegram action notification error:", err);
-        });
+        if (hasAction) {
+          sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+            actionAuthor: effectiveAuthor,
+            actionContent: actionResultText,
+            images: actionImagesList
+          }).catch((err) => {
+            console.warn("Telegram action notification error:", err);
+          });
+        }
       } else if (idStr.startsWith("ys_q_")) {
         const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
         const targetId = issue.rawId || idStr.replace("ys_q_", "");
@@ -1443,22 +1470,29 @@ export const AuthModal = () => {
           ...rawAlert,
           ...issue,
           id: targetId,
-          actionResult: actionResultText,
-          actionAuthor: effectiveAuthor,
-          actionImages: actionImagesList,
-          status: "RESOLVED",
-          isResolved: true,
+          title: finalTitle,
+          content: finalContent,
+          description: finalContent,
+          ...(hasAction ? {
+            actionResult: actionResultText,
+            actionAuthor: effectiveAuthor,
+            actionImages: actionImagesList,
+            status: "RESOLVED",
+            isResolved: true
+          } : {}),
           updatedAt: nowStr
         };
         await saveYuseongQualityIssue(updatedObj);
         setYuseongQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
-        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
-          actionAuthor: effectiveAuthor,
-          actionContent: actionResultText,
-          images: actionImagesList
-        }).catch((err) => {
-          console.warn("Telegram action notification error:", err);
-        });
+        if (hasAction) {
+          sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+            actionAuthor: effectiveAuthor,
+            actionContent: actionResultText,
+            images: actionImagesList
+          }).catch((err) => {
+            console.warn("Telegram action notification error:", err);
+          });
+        }
       } else if (idStr.startsWith("mach_q_")) {
         const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || String(a.id) === String(issue.rawId)) || {};
         const targetId = issue.rawId || idStr.replace("mach_q_", "");
@@ -1466,39 +1500,72 @@ export const AuthModal = () => {
           ...rawAlert,
           ...issue,
           id: targetId,
-          actionResult: actionResultText,
-          actionAuthor: effectiveAuthor,
-          actionImages: actionImagesList,
-          status: "RESOLVED",
-          isResolved: true,
+          title: finalTitle,
+          content: finalContent,
+          defectType: finalTitle,
+          ...(hasAction ? {
+            actionResult: actionResultText,
+            actionAuthor: effectiveAuthor,
+            actionImages: actionImagesList,
+            status: "RESOLVED",
+            isResolved: true
+          } : {}),
           updatedAt: nowStr
         };
         await saveMachiningQualityIssue(updatedObj);
         setMachiningQualityIssues((prev) => prev.map((a) => String(a.id) === String(targetId) ? updatedObj : a));
-        sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
-          actionAuthor: effectiveAuthor,
-          actionContent: actionResultText,
-          images: actionImagesList
-        }).catch((err) => {
-          console.warn("Telegram action notification error:", err);
-        });
+        if (hasAction) {
+          sendQualityActionTelegram({ ...issue, category: "부적합경보" }, {
+            actionAuthor: effectiveAuthor,
+            actionContent: actionResultText,
+            images: actionImagesList
+          }).catch((err) => {
+            console.warn("Telegram action notification error:", err);
+          });
+        }
       } else {
-        const updated = await updateUrgentIssueActionResult(
-          issue.id,
-          actionResultText,
-          effectiveAuthor,
-          actionImagesList,
-          issue
-        );
+        const targetBase = {
+          ...issue,
+          title: finalTitle,
+          content: finalContent,
+          expireDate: extraData?.expireDate || issue.expireDate,
+          meetingTime: extraData?.meetingTime || issue.meetingTime,
+          meetingLocation: extraData?.meetingLocation || issue.meetingLocation
+        };
+
+        let updated;
+        if (hasAction) {
+          updated = await updateUrgentIssueActionResult(
+            issue.id,
+            actionResultText,
+            effectiveAuthor,
+            actionImagesList,
+            targetBase
+          );
+        } else {
+          updated = await saveUrgentIssue({
+            ...targetBase,
+            updatedAt: nowStr
+          }, { isNew: false, skipTelegram: true });
+        }
 
         if (updated && !Array.isArray(updated)) {
-          setUrgentIssues((prev) => prev.map((it) => (
-            String(it.id) === String(issue.id) ||
-            (it._docId && String(it._docId) === String(issue.id)) ||
-            (it.customId && String(it.customId) === String(issue.id))
-              ? updated
-              : it
-          )));
+          setUrgentIssues((prev) => {
+            const hasMatch = prev.some((it) => (
+              String(it.id) === String(issue.id) ||
+              (it._docId && String(it._docId) === String(issue.id)) ||
+              (it.customId && String(it.customId) === String(issue.id))
+            ));
+            return hasMatch
+              ? prev.map((it) => (
+                  String(it.id) === String(issue.id) ||
+                  (it._docId && String(it._docId) === String(issue.id)) ||
+                  (it.customId && String(it.customId) === String(issue.id))
+                    ? updated
+                    : it
+                ))
+              : [updated, ...prev];
+          });
           if (selectedListItem && (String(selectedListItem.id) === String(issue.id) || selectedListItem._docId === issue.id)) {
             setSelectedListItem(updated);
           }
@@ -1509,11 +1576,14 @@ export const AuthModal = () => {
       }
 
       handleCloseActionModal();
-      setRestoreToast(isMeetingAction ? "✅ 회의 결과가 성공적으로 저장되었습니다." : "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다.");
+      const toastMsg = hasAction
+        ? (isMeetingAction ? "✅ 회의 결과가 성공적으로 저장되었습니다." : "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다.")
+        : `✅ [${finalTitle}] 항목이 성공적으로 수정·재등록되었습니다.`;
+      setRestoreToast(toastMsg);
       setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Save action error:", err);
-      alert("결과 저장 중 오류가 발생했습니다: " + err.message);
+      alert("저장 처리 중 오류가 발생했습니다: " + err.message);
     } finally {
       setIsSavingIssue(false);
     }
@@ -1521,94 +1591,8 @@ export const AuthModal = () => {
 
   // 🌟 [제1안] 원문 내용 수정 및 재등록 처리
   const handleSaveIssueEdit = async (editedData) => {
-    if (!actionModalData.issue) return;
-    if (!editedData.title || !editedData.title.trim()) {
-      alert("제목을 입력해 주세요.");
-      return;
-    }
-    setIsSavingIssue(true);
-    try {
-      const issue = actionModalData.issue;
-      const idStr = String(issue.id || "");
-      const nowStr = new Date().toISOString();
-
-      if (idStr.startsWith("ext_q_")) {
-        const rawAlert = issue.raw || extrusionQualityAlerts.find((a) => `ext_q_${a.id}` === idStr || a.id === issue.rawId) || {};
-        const updatedObj = {
-          ...rawAlert,
-          id: issue.rawId || idStr.replace("ext_q_", ""),
-          title: editedData.title.trim(),
-          content: (editedData.content || "").trim(),
-          defectType: editedData.title.trim(),
-          details: (editedData.content || "").trim(),
-          updatedAt: nowStr
-        };
-        await saveExtrusionQualityIssue(updatedObj);
-        setExtrusionQualityAlerts((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
-      } else if (idStr.startsWith("hanul_q_")) {
-        const rawAlert = issue.raw || hanulQualityIssues.find((a) => `hanul_q_${a.id}` === idStr || a.id === issue.rawId) || {};
-        const updatedObj = {
-          ...rawAlert,
-          id: issue.rawId || idStr.replace("hanul_q_", ""),
-          title: editedData.title.trim(),
-          content: (editedData.content || "").trim(),
-          defectType: editedData.title.trim(),
-          updatedAt: nowStr
-        };
-        await saveHanulQualityIssue(updatedObj);
-        setHanulQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
-      } else if (idStr.startsWith("ys_q_")) {
-        const rawAlert = issue.raw || yuseongQualityIssues.find((a) => `ys_q_${a.id}` === idStr || a.id === issue.rawId) || {};
-        const updatedObj = {
-          ...rawAlert,
-          id: issue.rawId || idStr.replace("ys_q_", ""),
-          title: editedData.title.trim(),
-          content: (editedData.content || "").trim(),
-          description: (editedData.content || "").trim(),
-          updatedAt: nowStr
-        };
-        await saveYuseongQualityIssue(updatedObj);
-        setYuseongQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
-      } else if (idStr.startsWith("mach_q_")) {
-        const rawAlert = issue.raw || machiningQualityIssues.find((a) => `mach_q_${a.id}` === idStr || a.id === issue.rawId) || {};
-        const updatedObj = {
-          ...rawAlert,
-          id: issue.rawId || idStr.replace("mach_q_", ""),
-          title: editedData.title.trim(),
-          content: (editedData.content || "").trim(),
-          defectType: editedData.title.trim(),
-          updatedAt: nowStr
-        };
-        await saveMachiningQualityIssue(updatedObj);
-        setMachiningQualityIssues((prev) => prev.map((a) => a.id === updatedObj.id ? updatedObj : a));
-      } else {
-        const updatedTarget = {
-          ...issue,
-          title: editedData.title.trim(),
-          content: (editedData.content || "").trim(),
-          expireDate: editedData.expireDate || issue.expireDate,
-          meetingTime: editedData.meetingTime || issue.meetingTime,
-          meetingLocation: editedData.meetingLocation || issue.meetingLocation,
-          updatedAt: nowStr
-        };
-        const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });
-        if (saved) {
-          setUrgentIssues((prev) => prev.map((it) => (it.id === issue.id ? saved : it)));
-          if (selectedListItem && selectedListItem.id === issue.id) setSelectedListItem(saved);
-        }
-      }
-
-      handleCloseActionModal();
-      setRestoreToast(`✅ [${editedData.title.trim()}] 항목이 성공적으로 수정·재등록되었습니다.`);
-      setTimeout(() => setRestoreToast(""), 3500);
-    } catch (err) {
-      console.error("Save issue edit error:", err);
-      alert("항목 수정 중 오류가 발생했습니다: " + err.message);
-    } finally {
-      setIsSavingIssue(false);
-    }
+    return handleSaveActionResult(editedData);
   };
-
   // Ledger Action Menu Handlers
   const handleExecuteMeetingResult = (item, e) => {
     if (e) {
@@ -2438,6 +2422,7 @@ export const AuthModal = () => {
             onActionImageFiles={handleActionImageFiles}
             onRemoveActionImage={handleRemoveActionImage}
             onPreviewImage={setPreviewImageModal}
+            isSaving={isSavingIssue}
           />
         </Suspense>
       )}
