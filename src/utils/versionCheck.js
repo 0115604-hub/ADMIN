@@ -54,8 +54,8 @@ export function initVersionWatcher(onUpdateAvailable) {
   };
   document.addEventListener("visibilitychange", handleVisibility);
 
-  // Check periodically every 30 seconds
-  const interval = setInterval(() => checkAppVersion(onUpdateAvailable), 30 * 1000);
+  // Check periodically every 60 seconds
+  const interval = setInterval(() => checkAppVersion(onUpdateAvailable), 60 * 1000);
 
   return () => {
     document.removeEventListener("visibilitychange", handleVisibility);

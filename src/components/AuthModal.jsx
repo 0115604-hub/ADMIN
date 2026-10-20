@@ -134,9 +134,6 @@ export const AuthModal = () => {
   useEffect(() => {
     const unsub = initVersionWatcher(() => {
       setUpdateAvailable(true);
-      setTimeout(() => {
-        forceHardReload();
-      }, 2500);
     });
     return () => unsub();
   }, []);
@@ -1965,7 +1962,7 @@ export const AuthModal = () => {
 
     try {
       const compressedImages = await Promise.all(
-        filesToProcess.map((f) => compressImage(f, 1200, 1200, 0.8))
+        filesToProcess.map((f) => compressImage(f, 800, 800, 0.65))
       );
       const valid = compressedImages.filter(Boolean);
       setActionModalData((prev) => ({
@@ -1988,7 +1985,7 @@ export const AuthModal = () => {
 
     try {
       const compressedImages = await Promise.all(
-        filesToProcess.map((f) => compressImage(f, 1200, 1200, 0.8))
+        filesToProcess.map((f) => compressImage(f, 800, 800, 0.65))
       );
       const valid = compressedImages.filter(Boolean);
       setNewIssueForm((prev) => ({
