@@ -337,7 +337,170 @@ export const DEFAULT_WORK_REPORT_TEMPLATES = [
       hasTroubleAction: true
     },
     updatedAt: "2026-10-16T15:30:00.000Z"
+  },
+  // 7. [레고 블록 공식 탑재] JA G/RUN 표준 정밀가공 작업일보 (정치절단 & 단컷팅)
+  {
+    id: "tpl_lego_ja_precision",
+    categoryId: "MATERIAL_PREP",
+    categoryName: "소재준비일보",
+    title: "JA G/RUN 표준 정밀가공 작업일보",
+    subTitle: "▣ 공정명 : 정치절단 / 단컷팅",
+    formNo: "705-02(REV.4)",
+    companyName: "(주)오륙",
+    carModel: "JA",
+    partName: "G/RUN (FRT & RR)",
+    processName: "정치절단 / 단컷팅",
+    subProcess: "정치절단",
+    divisionType: "SECTION_ABC",
+    isLegoModular: true,
+    isDatabaseBacked: true,
+    source: "LEGO_MODULAR_BUILDER",
+    blocks: {
+      timeAndQty: true,
+      specAndLot: true,
+      machineCondition: false,
+      defectMatrix: true,
+      maintenance: true
+    },
+    specs: [
+      { id: "c1", section: "A", name: "A단면", spec: "881 ± 3mm", frtSpec: "881 ± 3mm", lotStart: "261020-A01", lotHalf: "261020-A01", lotFinish: "261020-A01" },
+      { id: "c2", section: "B", name: "B단면", spec: "608 ± 5mm", frtSpec: "608 ± 5mm", lotStart: "261020-B02", lotHalf: "261020-B02", lotFinish: "261020-B02" },
+      { id: "c3", section: "C", name: "C단면", spec: "582 ± 5mm", frtSpec: "582 ± 5mm", lotStart: "261020-C03", lotHalf: "261020-C03", lotFinish: "261020-C03" }
+    ],
+    defectCategories: [
+      {
+        name: "불량소재 구분 (8대 불량)",
+        items: ["외면 흠", "오 염", "코팅 불량", "단면 불량", "단컷팅 불량", "원단 들뜸"]
+      }
+    ],
+    maintenanceConfig: {
+      hasBladeChange: true,
+      hasTroubleAction: true,
+      bladeWarningLimit: 50000
+    },
+    updatedAt: new Date().toISOString()
+  },
+
+  // 8. [레고 블록 공식 탑재] JA G/RUN 코너 조인트 사출 성형 작업 일보
+  {
+    id: "tpl_lego_joint_injection",
+    categoryId: "JOINT",
+    categoryName: "조인트일보",
+    title: "조인트 사출 성형 작업 일보",
+    subTitle: "▣ 공정명 : G/RUN 코너 조인트 사출 성형",
+    formNo: "703-01(REV.2)",
+    companyName: "(주)오륙",
+    carModel: "JA",
+    partName: "G/RUN (FRT / RR)",
+    processName: "조인트 사출",
+    subProcess: "사출성형",
+    divisionType: "LH_RH",
+    isLegoModular: true,
+    isDatabaseBacked: true,
+    source: "LEGO_MODULAR_BUILDER",
+    blocks: {
+      timeAndQty: false,
+      specAndLot: false,
+      machineCondition: true,
+      defectMatrix: true,
+      maintenance: true
+    },
+    specs: [
+      { id: "sp_j1", section: "FRT 코너", name: "FRT 코너 조인트", spec: "밀착성 양호", frtSpec: "밀착성 양호" },
+      { id: "sp_j2", section: "RR 코너", name: "RR 코너 조인트", spec: "밀착성 양호", frtSpec: "밀착성 양호" }
+    ],
+    defectCategories: [
+      {
+        name: "조인트 사출 공정불량",
+        items: ["떨어짐", "양부족", "밀 림", "단 차", "기 포", "씹 힘", "삽입 불량", "수 축"]
+      }
+    ],
+    maintenanceConfig: {
+      hasBladeChange: false,
+      hasTroubleAction: true
+    },
+    updatedAt: new Date().toISOString()
+  },
+
+  // 9. [레고 블록 공식 탑재] JA 완제품 직각검사 일보
+  {
+    id: "tpl_lego_right_angle_insp",
+    categoryId: "INSPECTION",
+    categoryName: "검사일보",
+    title: "완제품 직각검사 일보",
+    subTitle: "▣ 공정명 : 완제품 직각검사 및 최종 외관 전수검사",
+    formNo: "706-01(REV.3)",
+    companyName: "(주)오륙",
+    carModel: "JA",
+    partName: "G/RUN (FRT & RR)",
+    processName: "직각검사",
+    subProcess: "최종검사",
+    divisionType: "4_COLUMNS",
+    isLegoModular: true,
+    isDatabaseBacked: true,
+    source: "LEGO_MODULAR_BUILDER",
+    blocks: {
+      timeAndQty: false,
+      specAndLot: false,
+      machineCondition: false,
+      defectMatrix: true,
+      maintenance: true
+    },
+    specs: [
+      { id: "sp_ra1", section: "LH 직각도", name: "LH 직각 형합성", spec: "90° ± 0.5°", frtSpec: "90° ± 0.5°" },
+      { id: "sp_ra2", section: "RH 직각도", name: "RH 직각 형합성", spec: "90° ± 0.5°", frtSpec: "90° ± 0.5°" }
+    ],
+    defectCategories: [
+      {
+        name: "FRT 직각검사 불량 항목 (사진 17 일치)",
+        items: ["립컷팅 누락", "패드 누락", "외면 오염", "미사상", "과사상", "조인트 씹힘", "조인트 기포"]
+      }
+    ],
+    maintenanceConfig: {
+      hasBladeChange: false,
+      hasTroubleAction: true
+    },
+    updatedAt: new Date().toISOString()
+  },
+
+  // 10. [레고 블록 공식 탑재] JA 도면 중요 치수 및 부자재(패드 5T) 검사 일보
+  {
+    id: "tpl_lego_drawing_spec",
+    categoryId: "INSPECTION",
+    categoryName: "검사일보",
+    title: "도면 중요 치수 및 부자재(패드 5T) 검사 일보",
+    subTitle: "▣ 공정명 : 도면 치수 검사 및 부자재 부착 검사 (LH / RH)",
+    formNo: "706-02(REV.2)",
+    companyName: "(주)오륙",
+    carModel: "JA",
+    partName: "G/RUN (RR LH)",
+    processName: "치수 및 패드 검사",
+    subProcess: "치수검사",
+    divisionType: "SECTION_ABC",
+    isLegoModular: true,
+    isDatabaseBacked: true,
+    source: "LEGO_MODULAR_BUILDER",
+    blocks: {
+      timeAndQty: false,
+      specAndLot: true,
+      machineCondition: false,
+      defectMatrix: false,
+      maintenance: true
+    },
+    specs: [
+      { id: "sp_ds1", section: "A치수", name: "RR LH A 치수", spec: "482 ± 3mm", frtSpec: "482 ± 3mm" },
+      { id: "sp_ds2", section: "B치수", name: "RR LH B 치수", spec: "658 ± 5mm", frtSpec: "658 ± 5mm" },
+      { id: "sp_ds3", section: "D치수", name: "RR LH D 치수", spec: "418 ± 4mm", frtSpec: "418 ± 4mm" },
+      { id: "sp_ds4", section: "패드 5T", name: "패드 5T 부착 규격", spec: "5T*5W*60L", frtSpec: "5T*5W*60L" }
+    ],
+    defectCategories: [],
+    maintenanceConfig: {
+      hasBladeChange: false,
+      hasTroubleAction: true
+    },
+    updatedAt: new Date().toISOString()
   }
+
 ];
 
 // 로컬 스토리지 데이터 가져오기

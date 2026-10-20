@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
+  Database,
+  Zap,
   Layers,
   Plus,
   Printer,
@@ -162,6 +164,17 @@ export const WorkReportTemplateManagerView = () => {
     } catch (e) {
       alert("저장 실패: " + e.message);
     }
+  };
+
+  // ⚡ 템플릿 적용 (일보 작성 모드로 전환 및 데이터 전달)
+  const handleApplyTemplateToBuilder = (tpl) => {
+    setLegoInitialData({
+      ...tpl,
+      appliedAt: Date.now(),
+      fromCatalog: true
+    });
+    setManagerViewMode("LEGO_BUILDER");
+    showToast(`⚡ [${tpl.title || tpl.carModel}] 템플릿이 성공적으로 적용되었습니다! 즉시 작성이 가능합니다.`);
   };
 
   // Open Template in Lego Block Builder for modular editing
@@ -345,6 +358,17 @@ export const WorkReportTemplateManagerView = () => {
                         <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                           {tpl.partName}
                         </h3>
+                        {/* 🌟 데이터베이스 뱃지 */}
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 flex items-center gap-1 shadow-2xs">
+                          <Database className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                          <span>DB 공식등록</span>
+                        </span>
+                        {tpl.isLegoModular && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-400/40 flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                            <span>레고 블록</span>
+                          </span>
+                        )}
                       </div>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold mt-0.5">
                         {tpl.title} • {tpl.processName}
@@ -405,51 +429,55 @@ export const WorkReportTemplateManagerView = () => {
                   </div>
                 </div>
 
-                {/* Card Action Buttons */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                {/* Card Action Buttons (⚡ 템플릿 적용 프로세스 & 세부 도구) */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                   <button
-                    onClick={() => handleOpenInLegoBuilder(tpl)}
-                    className="p-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/60 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer col-span-2 sm:col-span-1 shadow-2xs border border-cyan-200 dark:border-cyan-800"
-                    title="레고 블록 양식 조합기에서 블록 선택 & 앱내 편집"
+                    type="button"
+                    onClick={() => handleApplyTemplateToBuilder(tpl)}
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition active:scale-98 cursor-pointer"
+                    title="이 템플릿의 규격과 레고 블록 구성을 작업일보에 즉시 적용하여 작성 시작"
                   >
-                    <Sliders className="w-3.5 h-3.5 text-cyan-600" />
-                    <span>블록편집</span>
+                    <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                    <span>⚡ 이 양식으로 일보 작성 (템플릿 적용)</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      setPreviewTemplate(tpl);
-                      setIsPreviewOpen(true);
-                    }}
-                    className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                    title="A4 실물 양식 보기 / 인쇄"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-indigo-500" />
-                    <span className="hidden sm:inline">A4양식</span>
-                  </button>
-                  <button
-                    onClick={() => handleEdit(tpl)}
-                    className="p-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                    title="레고 블록 및 규격 수정"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">수정</span>
-                  </button>
-                  <button
-                    onClick={() => handleClone(tpl)}
-                    className="p-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                    title="새 차종으로 1초 복제"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">복제</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(tpl)}
-                    className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">삭제</span>
-                  </button>
+
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <button
+                      onClick={() => handleOpenInLegoBuilder(tpl)}
+                      className="p-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/60 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      title="레고 블록 양식 조합기에서 블록 선택 & 앱내 편집"
+                    >
+                      <Sliders className="w-3.5 h-3.5 text-cyan-600" />
+                      <span className="hidden sm:inline">블록수정</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPreviewTemplate(tpl);
+                        setIsPreviewOpen(true);
+                      }}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      title="A4 실물 양식 보기 / 인쇄"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className="hidden sm:inline">A4양식</span>
+                    </button>
+                    <button
+                      onClick={() => handleClone(tpl)}
+                      className="p-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      title="새 차종으로 1초 복제"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">복제</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(tpl)}
+                      className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">삭제</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

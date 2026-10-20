@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
+  Database,
+  Zap,
   Layers,
   Plus,
   Trash2,
@@ -501,6 +503,7 @@ export const LegoWorkReportBuilder = ({
   const [showPhotoRefModal, setShowPhotoRefModal] = useState(false);
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState("ALL");
   const [toastMsg, setToastMsg] = useState("");
+  const [appliedTemplateBanner, setAppliedTemplateBanner] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 🎯 Block Selection & In-App Inspector State
@@ -554,7 +557,8 @@ export const LegoWorkReportBuilder = ({
           return clone;
         });
       }
-      showToast(`🧩 [${initialTemplateData.title || initialTemplateData.carModel}] 양식을 레고 빌더에 성공적으로 불러왔습니다.`);
+      setAppliedTemplateBanner(initialTemplateData);
+      showToast(`⚡ [${initialTemplateData.title || initialTemplateData.carModel}] 템플릿이 작업일보에 적용되었습니다!`);
     }
   }, [initialTemplateData]);
 
@@ -1020,6 +1024,47 @@ export const LegoWorkReportBuilder = ({
 
       // 2. Persist to official Machining Work Report Service
       await saveMachiningWorkReport(reportPayload);
+
+      // 🌟 일보양식관리에도 DB 공식등록 뱃지를 가진 템플릿으로 자동 동기화 등록
+      try {
+        await saveWorkReportTemplate({
+          id: `tpl_lego_${currentReport.carModel || "JA"}_${Date.now()}`,
+          categoryId: "MATERIAL_PREP",
+          categoryName: "소재준비일보",
+          title: currentReport.title || `${currentReport.carModel || "신규"} 레고블록 작업일보`,
+          subTitle: currentReport.subTitle || "▣ 공정명 : 정치절단 / 단컷팅",
+          carModel: currentReport.carModel || "JA",
+          partName: currentReport.partName || "G/RUN",
+          processName: currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단",
+          formNo: currentReport.formNo || "705-02(REV.4)",
+          companyName: currentReport.companyName || "(주)오륙",
+          isLegoModular: true,
+          isDatabaseBacked: true,
+          legoConfig: currentReport,
+          blocks: {
+            timeAndQty: Boolean(currentReport.activeBlocks?.workTimeOutput),
+            specAndLot: Boolean(currentReport.activeBlocks?.specsCutting || currentReport.activeBlocks?.drawingSpecCheck),
+            machineCondition: Boolean(currentReport.activeBlocks?.injectionTemp || currentReport.activeBlocks?.injectionCondition),
+            defectMatrix: Boolean(currentReport.activeBlocks?.defectMaterialMatrix || currentReport.activeBlocks?.jointDefectMatrix || currentReport.activeBlocks?.rightAngleMatrix),
+            maintenance: Boolean(currentReport.activeBlocks?.remarks)
+          },
+          specs: (currentReport.specsCutting || []).map((s) => ({
+            id: s.id,
+            section: s.section,
+            name: s.section,
+            frtSpec: s.spec1,
+            rrSpec: s.spec1,
+            spec: s.spec1,
+            lotStart: s.lotStart,
+            lotHalf: s.lotHalf,
+            lotFinish: s.lotFinish,
+            lotNo: s.lotNo
+          })),
+          updatedAt: now
+        });
+      } catch (syncErr) {
+        console.warn("Template catalog auto-sync non-critical error:", syncErr);
+      }
 
       // 3. Dispatch system events for realtime sync across all dashboards
       window.dispatchEvent(new CustomEvent("machining-work-report-saved", { detail: reportPayload }));
