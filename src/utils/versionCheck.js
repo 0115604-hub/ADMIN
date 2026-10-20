@@ -63,15 +63,21 @@ export function initVersionWatcher(onUpdateAvailable) {
   };
 }
 
-export function forceHardReload() {
+export async function forceHardReload() {
   const targetUrl = window.location.pathname + "?_v=" + Date.now();
-  if ("caches" in window) {
-    caches.keys().then((keys) => {
-      Promise.all(keys.map((k) => caches.delete(k))).finally(() => {
-        window.location.replace(targetUrl);
-      });
-    });
-  } else {
-    window.location.replace(targetUrl);
-  }
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+    }
+  } catch (e) {}
+
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) {}
+
+  window.location.replace(targetUrl);
 }

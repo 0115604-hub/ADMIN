@@ -2100,11 +2100,12 @@ export const AuthModal = () => {
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
       {/* ⚡ Real-time Version & Cache Sync Banner */}
       {updateAvailable && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40 animate-bounce">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[999] w-max max-w-[94vw] px-3.5 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-bold border border-blue-300/60 animate-bounce whitespace-nowrap">
           <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
           <button
+            type="button"
             onClick={() => forceHardReload()}
-            className="px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 sm:px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs shrink-0"
           >
             지금 즉시 적용
           </button>
@@ -2131,26 +2132,43 @@ export const AuthModal = () => {
           )}
 
           {/* Header Brand with Logo on Left and [압출동] / [가공동] Badges on Right */}
-          <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800/80">
-            {/* Left: Brand Logo & Title */}
-            <div
-              onClick={() => handleUserClick(ADMIN_USERS[0])}
-              className="flex items-center gap-2 sm:gap-3 cursor-pointer group active:scale-98 transition-transform min-w-0"
-            >
-              <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all">
-                <OryukLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            {/* Left: Brand Logo & Title + Mobile/PC Latest Version Sync Badge */}
+            <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+              <div
+                onClick={() => handleUserClick(ADMIN_USERS[0])}
+                className="flex items-center gap-2 sm:gap-3 cursor-pointer group active:scale-98 transition-transform min-w-0"
+              >
+                <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all">
+                  <OryukLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5 truncate">
+                    <span className="text-blue-600 dark:text-blue-400 font-black">
+                      (주)오륙
+                    </span>
+                    <span className="truncate">생산관리 통합시스템</span>
+                  </h2>
+                </div>
               </div>
-              <div className="min-w-0 text-left">
-                <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5 truncate">
-                  <span className="text-blue-600 dark:text-blue-400 font-black">
-                    (주)오륙
-                  </span>
-                  <span className="truncate">생산관리 통합시스템</span>
-                </h2>
-              </div>
+
+              {/* ⚡ 상시 노출 최신버전적용 뱃지 (모바일 우측 상단 / PC 타이틀 옆) */}
+              <button
+                type="button"
+                onClick={() => forceHardReload()}
+                className={`px-2.5 py-1 rounded-full font-extrabold text-[11px] sm:text-xs shadow-sm transition-all flex items-center gap-1 active:scale-95 cursor-pointer shrink-0 border ${
+                  updateAvailable
+                    ? "bg-gradient-to-r from-rose-500 to-amber-500 text-white border-amber-300 animate-pulse ring-2 ring-amber-400/50"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border-emerald-400/50 ring-1 ring-emerald-400/30"
+                }`}
+                title="터치 시 브라우저 캐시를 즉시 비우고 최신 버전을 강제 적용합니다."
+              >
+                <Zap className="w-3 h-3 text-amber-200 fill-amber-200 shrink-0" />
+                <span>{updateAvailable ? "신규버전 즉시적용" : "최신버전적용"}</span>
+              </button>
             </div>
 
-            {/* Right: Badges: [압출동] & [가공동] & [한울] & [부림텍] */}
+            {/* Right: Badges: [압출동] & [가공동] & [한울] & [부림텍] & [유성] */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
               <button
                 type="button"
