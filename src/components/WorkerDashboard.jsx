@@ -5,6 +5,7 @@ import { DigitalInspectionModal } from "./sq/DigitalInspectionModal";
 
 import { SevereDisasterBar } from "./SevereDisasterBar";
 import FieldWorkerDashboardView from "./dashboard/FieldWorkerDashboardView";
+import { isPanelVisible, PANEL_KEYS } from "../config/dashboardPanelConfig";
 import { useAuth, PLANTS, ADMIN_USERS, isManagerOrAdminUser } from "../context/AuthContext";
 import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -1304,8 +1305,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         />
       ) : (
         <>
-          {/* 🛡️ [한림공장 TEST 전용] 관제 패널 */}
-          {isTestUser && (
+          {/* 🛡️ [4M 변동점 관제 패널] - TEST 관리자 또는 패널 설정에 abnormality_4m가 등록된 관리자 */}
+          {(isTestUser || isPanelVisible(PANEL_KEYS.ABNORMALITY_4M, currentProfile)) && (
             <UnifiedAbnormalityControlPanel
               workLogs={workLogs}
               currentProfile={currentProfile}

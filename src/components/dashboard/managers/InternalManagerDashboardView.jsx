@@ -9,6 +9,7 @@ import {
   ExtrusionDowntimeSection,
   DailyWorkLogTableSection
 } from "../sections";
+import { isPanelVisible, PANEL_KEYS } from "../../../config/dashboardPanelConfig";
 
 export const InternalManagerDashboardView = ({
   // Extrusion Operator Banner Props
@@ -156,104 +157,116 @@ export const InternalManagerDashboardView = ({
       )}
 
       {/* 📌 사내 공통일정 */}
-      <CommonScheduleBar
-        isAdmin={isAdmin}
-        hasNewScheduleMessage={hasNewScheduleMessage}
-        allActiveCommonSchedules={allActiveCommonSchedules}
-        setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
-        todayDateStr={todayDateStr}
-        isGeneralManager={isGeneralManager}
-        handleDeleteCommonSchedule={handleDeleteCommonSchedule}
-        setCommonScheduleModalOpen={setCommonScheduleModalOpen}
-      />
+      {isPanelVisible(PANEL_KEYS.COMMON_SCHEDULE, currentProfile) && (
+        <CommonScheduleBar
+          isAdmin={isAdmin}
+          hasNewScheduleMessage={hasNewScheduleMessage}
+          allActiveCommonSchedules={allActiveCommonSchedules}
+          setSelectedCommonScheduleForComments={setSelectedCommonScheduleForComments}
+          todayDateStr={todayDateStr}
+          isGeneralManager={isGeneralManager}
+          handleDeleteCommonSchedule={handleDeleteCommonSchedule}
+          setCommonScheduleModalOpen={setCommonScheduleModalOpen}
+        />
+      )}
 
       {/* 🌟 관리자 일정/연차 및 캘린더 센터 */}
-      <WorkerScheduleCalendarSection
-        workerPlant={workerPlant}
-        workerFullName={workerFullName}
-        onNavigateTab={onNavigateTab}
-        pendingCount={pendingCount}
-        holdCount={holdCount}
-        officialTitle={officialTitle}
-        isAdmin={isAdmin}
-        isManagerRole={isManagerRole}
-        scheduleLeaveType={scheduleLeaveType}
-        setScheduleLeaveType={setScheduleLeaveType}
-        scheduleSelectedDate={scheduleSelectedDate}
-        setScheduleSelectedDate={setScheduleSelectedDate}
-        scheduleReasonInput={scheduleReasonInput}
-        setScheduleReasonInput={setScheduleReasonInput}
-        handleRegisterSchedule={handleRegisterSchedule}
-        scheduleSaving={scheduleSaving}
-        scheduleCameraInputRef={scheduleCameraInputRef}
-        scheduleFileInputRef={scheduleFileInputRef}
-        handleScheduleFiles={handleScheduleFiles}
-        scheduleAttachedFiles={scheduleAttachedFiles}
-        isProcessingScheduleFiles={isProcessingScheduleFiles}
-        handleRemoveScheduleFile={handleRemoveScheduleFile}
-        setPreviewImageModal={setPreviewImageModal}
-        shareDropdownRef={shareDropdownRef}
-        isShareDropdownOpen={isShareDropdownOpen}
-        setIsShareDropdownOpen={setIsShareDropdownOpen}
-        sharedWorkers={sharedWorkers}
-        setSharedWorkers={setSharedWorkers}
-        toggleSharedWorker={toggleSharedWorker}
-        togglePlantSharedWorkers={togglePlantSharedWorkers}
-        currentProfile={currentProfile}
-        ADMIN_USERS={ADMIN_USERS}
-        PLANTS={PLANTS}
-        myActiveLeaves={myActiveLeaves}
-        todayDateStr={todayDateStr}
-        formatKSTDate={formatKSTDate}
-        setScheduleDetailModal={setScheduleDetailModal}
-        handleRequestDismissOrDelete={handleRequestDismissOrDelete}
-        showMiniCalendar={showMiniCalendar}
-        setShowMiniCalendar={setShowMiniCalendar}
-        scheduleWeekAnchor={scheduleWeekAnchor}
-        handlePrevWeek={handlePrevWeek}
-        handleResetToToday={handleResetToToday}
-        handleNextWeek={handleNextWeek}
-        myWeeklyCalendarDays={myWeeklyCalendarDays}
-      />
+      {isPanelVisible(PANEL_KEYS.CALENDAR_SCHEDULE, currentProfile) && (
+        <WorkerScheduleCalendarSection
+          workerPlant={workerPlant}
+          workerFullName={workerFullName}
+          onNavigateTab={onNavigateTab}
+          pendingCount={pendingCount}
+          holdCount={holdCount}
+          officialTitle={officialTitle}
+          isAdmin={isAdmin}
+          isManagerRole={isManagerRole}
+          scheduleLeaveType={scheduleLeaveType}
+          setScheduleLeaveType={setScheduleLeaveType}
+          scheduleSelectedDate={scheduleSelectedDate}
+          setScheduleSelectedDate={setScheduleSelectedDate}
+          scheduleReasonInput={scheduleReasonInput}
+          setScheduleReasonInput={setScheduleReasonInput}
+          handleRegisterSchedule={handleRegisterSchedule}
+          scheduleSaving={scheduleSaving}
+          scheduleCameraInputRef={scheduleCameraInputRef}
+          scheduleFileInputRef={scheduleFileInputRef}
+          handleScheduleFiles={handleScheduleFiles}
+          scheduleAttachedFiles={scheduleAttachedFiles}
+          isProcessingScheduleFiles={isProcessingScheduleFiles}
+          handleRemoveScheduleFile={handleRemoveScheduleFile}
+          setPreviewImageModal={setPreviewImageModal}
+          shareDropdownRef={shareDropdownRef}
+          isShareDropdownOpen={isShareDropdownOpen}
+          setIsShareDropdownOpen={setIsShareDropdownOpen}
+          sharedWorkers={sharedWorkers}
+          setSharedWorkers={setSharedWorkers}
+          toggleSharedWorker={toggleSharedWorker}
+          togglePlantSharedWorkers={togglePlantSharedWorkers}
+          currentProfile={currentProfile}
+          ADMIN_USERS={ADMIN_USERS}
+          PLANTS={PLANTS}
+          myActiveLeaves={myActiveLeaves}
+          todayDateStr={todayDateStr}
+          formatKSTDate={formatKSTDate}
+          setScheduleDetailModal={setScheduleDetailModal}
+          handleRequestDismissOrDelete={handleRequestDismissOrDelete}
+          showMiniCalendar={showMiniCalendar}
+          setShowMiniCalendar={setShowMiniCalendar}
+          scheduleWeekAnchor={scheduleWeekAnchor}
+          handlePrevWeek={handlePrevWeek}
+          handleResetToToday={handleResetToToday}
+          handleNextWeek={handleNextWeek}
+          myWeeklyCalendarDays={myWeeklyCalendarDays}
+        />
+      )}
 
-      {/* 🚨 중대재해 안전판 */}
-      {SevereDisasterBar && <SevereDisasterBar />}
+      {/* 🚨 중대재해 안전판 (이창엽 책임 대시보드에서는 비노출/삭제) */}
+      {isPanelVisible(PANEL_KEYS.SEVERE_DISASTER, currentProfile) && SevereDisasterBar && (
+        <SevereDisasterBar />
+      )}
 
       {/* 1. 매입매출현황 요약 */}
-      <SalesPurchaseSummarySection
-        monthTitle={monthTitle}
-        currentMonthData={currentMonthData}
-        todayFormattedLabel={todayFormattedLabel}
-        onNavigateTab={onNavigateTab}
-        formatAmount={formatAmount}
-        totalSales={totalSales}
-        totalPurchases={totalPurchases}
-        purchaseRatio={purchaseRatio}
-      />
+      {isPanelVisible(PANEL_KEYS.SALES_PURCHASE, currentProfile) && (
+        <SalesPurchaseSummarySection
+          monthTitle={monthTitle}
+          currentMonthData={currentMonthData}
+          todayFormattedLabel={todayFormattedLabel}
+          onNavigateTab={onNavigateTab}
+          formatAmount={formatAmount}
+          totalSales={totalSales}
+          totalPurchases={totalPurchases}
+          purchaseRatio={purchaseRatio}
+        />
+      )}
 
-      {/* 2. 근태현황 및 관리 (공장별/전사 맞춤 결재 카드) */}
-      <AttendanceSummarySection
-        todayFormattedLabel={todayFormattedLabel}
-        unwrittenCompanies={filteredUnwrittenCompanies}
-        onNavigateTab={onNavigateTab}
-        companyOverviewStats={filteredCompanyOverviewStats}
-        pendingApprovalCards={filteredPendingApprovalCards}
-        pushModalHistory={pushModalHistory}
-        setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
-        formatKoreanWorkDate={formatKoreanWorkDate}
-      />
+      {/* 2. 근태현황 및 관리 (이창엽 책임 대시보드에서는 비노출/삭제) */}
+      {isPanelVisible(PANEL_KEYS.ATTENDANCE, currentProfile) && (
+        <AttendanceSummarySection
+          todayFormattedLabel={todayFormattedLabel}
+          unwrittenCompanies={filteredUnwrittenCompanies}
+          onNavigateTab={onNavigateTab}
+          companyOverviewStats={filteredCompanyOverviewStats}
+          pendingApprovalCards={filteredPendingApprovalCards}
+          pushModalHistory={pushModalHistory}
+          setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
+          formatKoreanWorkDate={formatKoreanWorkDate}
+        />
+      )}
 
       {/* 3. 금형별 일일품질 요약 */}
-      <QualityStatusSection
-        selectedMonth={selectedMonth}
-        onNavigateTab={onNavigateTab}
-        liveQualityCurrentMonthly={liveQualityCurrentMonthly}
-        liveQualityPrevMonthly={liveQualityPrevMonthly}
-        handleOpenQualityPopup={handleOpenQualityPopup}
-      />
+      {isPanelVisible(PANEL_KEYS.QUALITY_SUMMARY, currentProfile) && (
+        <QualityStatusSection
+          selectedMonth={selectedMonth}
+          onNavigateTab={onNavigateTab}
+          liveQualityCurrentMonthly={liveQualityCurrentMonthly}
+          liveQualityPrevMonthly={liveQualityPrevMonthly}
+          handleOpenQualityPopup={handleOpenQualityPopup}
+        />
+      )}
 
-      {/* 4. 압출동 주간 비가동내역 요약 (설유철, 이명재, 전재율 등) */}
-      {(isExtrusionWorker || isMyeongjae || isJaeyul || isAdmin || !isHallim) && (
+      {/* 4. 압출동 주간 비가동내역 요약 (이창엽 책임 대시보드에서는 비노출/삭제) */}
+      {isPanelVisible(PANEL_KEYS.EXTRUSION_DOWNTIME, currentProfile) && (isExtrusionWorker || isMyeongjae || isJaeyul || isAdmin || !isHallim) && (
         <ExtrusionDowntimeSection
           onNavigateTab={onNavigateTab}
           extrusionSummaryList={extrusionSummaryList}
@@ -261,31 +274,33 @@ export const InternalManagerDashboardView = ({
       )}
 
       {/* 5. 일일업무일지 현황 (이명재, 김동욱 결재 배너 연동) */}
-      <DailyWorkLogTableSection
-        isMyeongjae={isMyeongjae}
-        isDongwook={isDongwook}
-        isAdmin={isAdmin}
-        pendingSamrangjinCount={pendingSamrangjinCount}
-        pendingHallimCount={pendingHallimCount}
-        setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
-        filterPlant={filterPlant}
-        setFilterPlant={setFilterPlant}
-        workLogs={workLogs}
-        pushModalHistory={pushModalHistory}
-        paginatedLogs={paginatedLogs}
-        handleOpenLogDetail={handleOpenLogDetail}
-        canApproveLog={canApproveLog}
-        isWorkLogApproved={isWorkLogApproved}
-        handleOpenEditModal={handleOpenEditModal}
-        handleDeleteLog={handleDeleteLog}
-        currentProfile={currentProfile}
-        filteredLogs={filteredLogs}
-        currentLogPage={currentLogPage}
-        setCurrentLogPage={setCurrentLogPage}
-        LOGS_PER_PAGE={LOGS_PER_PAGE}
-        totalLogPages={totalLogPages}
-        handleOpenWorkLogModal={handleOpenWorkLogModal}
-      />
+      {isPanelVisible(PANEL_KEYS.WORK_LOGS, currentProfile) && (
+        <DailyWorkLogTableSection
+          isMyeongjae={isMyeongjae}
+          isDongwook={isDongwook}
+          isAdmin={isAdmin}
+          pendingSamrangjinCount={pendingSamrangjinCount}
+          pendingHallimCount={pendingHallimCount}
+          setIsWorkLogsSummaryModalOpen={setIsWorkLogsSummaryModalOpen}
+          filterPlant={filterPlant}
+          setFilterPlant={setFilterPlant}
+          workLogs={workLogs}
+          pushModalHistory={pushModalHistory}
+          paginatedLogs={paginatedLogs}
+          handleOpenLogDetail={handleOpenLogDetail}
+          canApproveLog={canApproveLog}
+          isWorkLogApproved={isWorkLogApproved}
+          handleOpenEditModal={handleOpenEditModal}
+          handleDeleteLog={handleDeleteLog}
+          currentProfile={currentProfile}
+          filteredLogs={filteredLogs}
+          currentLogPage={currentLogPage}
+          setCurrentLogPage={setCurrentLogPage}
+          LOGS_PER_PAGE={LOGS_PER_PAGE}
+          totalLogPages={totalLogPages}
+          handleOpenWorkLogModal={handleOpenWorkLogModal}
+        />
+      )}
     </>
   );
 };
