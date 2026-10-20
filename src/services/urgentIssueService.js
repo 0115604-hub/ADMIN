@@ -106,6 +106,35 @@ export const isMeetingExpired = (item, graceHours = 0) => {
  * @param {string} todayDateStr - YYYY-MM-DD
  * @returns {boolean}
  */
+export const isLegacyDismissedQualityAlert = (item) => {
+  if (!item || typeof item !== "object") return false;
+  if (item.isManuallyRestored === true || item.raw?.isManuallyRestored === true) return false;
+  if (item.isClosedByAdmin === false || item.raw?.isClosedByAdmin === false) return false;
+
+  const cat = String(item.category || "").trim();
+  const isQualityAlert =
+    cat === "품질경보" ||
+    cat === "부적합경보" ||
+    cat === "quality_alert" ||
+    cat.includes("품질경보") ||
+    cat.includes("부적합경보");
+  if (!isQualityAlert) return false;
+
+  // 2026-10-21 08:43 KST (timestamp 1792539800000) 이후 신규 등록 건은 정상 활성 노출
+  const idStr = String(item.id || item.rawId || item._docId || "");
+  const tsMatch = idStr.match(/(\d{13})/);
+  if (tsMatch && Number(tsMatch[1]) > 1792539800000) return false;
+
+  const createdStr = String(item.createdAt || item.raw?.createdAt || "");
+  if (createdStr >= "2026-10-20T23:43" || createdStr >= "2026-10-21 08:43" || createdStr >= "2026-10-21T08:43") {
+    return false;
+  }
+
+  // 기존 등록 건 중 NE1a 건만 첫 화면 유지, 나머지 부적합경보는 이미 권한자가 첫화면 삭제 처리 완료
+  const combined = `${item.title || ""} ${item.content || ""} ${item.line || ""} ${item.project || ""} ${item.defectType || ""} ${item.raw?.title || ""} ${item.raw?.defectType || ""} ${item.raw?.content || ""} ${item.raw?.project || ""}`.toLowerCase();
+  return !combined.includes("ne1a");
+};
+
 export const isIssueClosed = (item, todayDateStr = "") => {
   if (!item || typeof item !== "object") return false;
   if (
@@ -114,7 +143,8 @@ export const isIssueClosed = (item, todayDateStr = "") => {
     item.deleted === true ||
     item.status === "DELETED" ||
     item.isClosedByAdmin === true ||
-    item.raw?.isClosedByAdmin === true
+    item.raw?.isClosedByAdmin === true ||
+    isLegacyDismissedQualityAlert(item)
   ) {
     return true;
   }

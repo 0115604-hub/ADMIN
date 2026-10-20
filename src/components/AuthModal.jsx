@@ -750,16 +750,10 @@ export const AuthModal = () => {
     // 1. 5개 공정 통합 부적합경보
     // 🌟 핵심 규칙: 부적합경보는 조치결과(actionResult / isResolved)가 입력되더라도,
     // 권태형(대표이사), 이명재(이사), 김동욱(책임)이 첫 화면에서 [이 항목 삭제]를 처리할 때까지 계속 노출됨!
+    // (기존 부적합경보 중 NE1a 외의 항목들은 이미 권한자가 첫화면 삭제 처리 완료)
     (allQualityAlerts || []).forEach((alert) => {
       if (!alert) return;
-      if (
-        alert.isDeleted === true ||
-        alert.isDeleted === "true" ||
-        alert.deleted === true ||
-        alert.status === "DELETED" ||
-        alert.isClosedByAdmin === true ||
-        alert.raw?.isClosedByAdmin === true
-      ) {
+      if (isIssueClosed(alert, todayDateStr)) {
         return;
       }
 
@@ -1196,7 +1190,7 @@ export const AuthModal = () => {
         const targetId = idStr.replace("ext_q_", "");
         const rawAlert = extrusionQualityAlerts.find((a) => String(a.id) === String(targetId));
         if (rawAlert) {
-          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isManuallyRestored: true, isDeleted: false, deletedBy: "" };
           await saveExtrusionQualityIssue(updatedObj);
           setExtrusionQualityAlerts((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
           setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
@@ -1208,7 +1202,7 @@ export const AuthModal = () => {
         const targetId = idStr.replace("hanul_q_", "");
         const rawAlert = hanulQualityIssues.find((a) => String(a.id) === String(targetId));
         if (rawAlert) {
-          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isManuallyRestored: true, isDeleted: false, deletedBy: "" };
           await saveHanulQualityIssue(updatedObj);
           setHanulQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
           setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
@@ -1220,7 +1214,7 @@ export const AuthModal = () => {
         const targetId = idStr.replace("ys_q_", "");
         const rawAlert = yuseongQualityIssues.find((a) => String(a.id) === String(targetId));
         if (rawAlert) {
-          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isManuallyRestored: true, isDeleted: false, deletedBy: "" };
           await saveYuseongQualityIssue(updatedObj);
           setYuseongQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
           setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
@@ -1232,7 +1226,7 @@ export const AuthModal = () => {
         const targetId = idStr.replace("mach_q_", "");
         const rawAlert = machiningQualityIssues.find((a) => String(a.id) === String(targetId));
         if (rawAlert) {
-          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isDeleted: false, deletedBy: "" };
+          const updatedObj = { ...rawAlert, isClosedByAdmin: false, isManuallyRestored: true, isDeleted: false, deletedBy: "" };
           await saveMachiningQualityIssue(updatedObj);
           setMachiningQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
           setRestoreToast(`✅ [${rawAlert.title || rawAlert.defectType || "부적합경보"}] 항목이 첫 화면에 재등록되었습니다.`);
