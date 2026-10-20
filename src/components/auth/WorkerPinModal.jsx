@@ -79,6 +79,9 @@ import {
   isWorkerManagerRole
 } from "../../services/personnelCardService";
 import {
+  getCore4MId,
+  getNormalizedTitleKey,
+  mergeUnified4MRecords,
   subscribeFourMChangePoints,
   getLocalFourMChangePoints,
   determineFourMCategory
@@ -896,12 +899,12 @@ export const WorkerPinModal = ({
       }
     });
 
-    // 1-6. 공식 4M 관리대장(four_m_change_points) 등록 건 직접 수합
-    (fourMLedgerRecords || []).forEach((rec) => {
-      if (!rec) return;
+    // 1-6. [Canonical 4M Pipeline] 공식 4M 변동점 관리대장 등록 건 직접 수합 및 완전 단일화
+    const rawLedgerItems = (fourMLedgerRecords || []).filter((rec) => {
+      if (!rec) return false;
       const cat = String(rec.category || rec.sourceCategory || rec.raw?.category || "").trim();
       const origin = String(rec.origin || "").trim();
-      if (
+      return !(
         cat === "오픈이슈" ||
         cat === "open_issue" ||
         cat.includes("오픈이슈") ||
@@ -910,56 +913,60 @@ export const WorkerPinModal = ({
         cat.includes("회의") ||
         cat === "공지사항" ||
         cat === "사내공지"
-      ) {
-        return;
-      }
-
+      );
+    }).map((rec) => {
       const recId = String(rec.id || "");
       const origId = String(rec.originalId || "");
       const rawId = String(rec.rawId || "");
+      const lineStr = String(rec.line || "").trim();
+      const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE");
+      return {
+        id: recId.startsWith("ledger_") ? recId : `ledger_${recId}`,
+        originalId: origId || recId,
+        rawId: rawId,
+        fourM: rec.fourM || determineFourMCategory(rec),
+        origin: rec.origin || "변동점대장",
+        plant: rec.plant || "삼랑진공장",
+        line: rec.line || (isExt ? "압출라인" : "가공/품질"),
+        title: rec.title || "(변동점)",
+        content: rec.content || "",
+        actionResult: rec.actionResult || "",
+        date: rec.date || todayKst,
+        isResolved: Boolean(rec.isResolved),
+        isExtrusion: isExt,
+        isOfficialLedger: true
+      };
+    });
 
-      const existingIdx = unified.findIndex((u) => {
-        const uId = String(u.id || "");
-        const uOrig = String(u.originalId || "");
-        const uRaw = String(u.raw?.id || "");
-        return (
-          uId === recId ||
-          uId === origId ||
-          uId === `urg_${origId}` ||
-          uId === `urg_${recId}` ||
-          (origId && (uOrig === origId || uId === origId || uRaw === origId)) ||
-          (rawId && (uRaw === rawId || uId === rawId || uOrig === rawId)) ||
-          (origId && uId.includes(origId))
-        );
-      });
+    // 🔒 Canonical Single Source of Truth Pipeline
+    const canonicalMap = new Map();
+    const titleIndexMap = new Map();
 
-      if (existingIdx >= 0) {
-        if (rec.fourM && ["Machine", "Man", "Material", "Method"].includes(rec.fourM)) {
-          unified[existingIdx] = {
-            ...unified[existingIdx],
-            fourM: rec.fourM
-          };
-        }
+    [...unified, ...rawLedgerItems].forEach((item) => {
+      if (!item) return;
+      const coreId = getCore4MId(item);
+      const titleKey = getNormalizedTitleKey(item);
+
+      let matchedKey = null;
+      if (coreId && coreId.length >= 8 && canonicalMap.has(`core_${coreId}`)) {
+        matchedKey = `core_${coreId}`;
+      } else if (titleKey && titleIndexMap.has(titleKey)) {
+        matchedKey = titleIndexMap.get(titleKey);
+      }
+
+      if (matchedKey && canonicalMap.has(matchedKey)) {
+        const existing = canonicalMap.get(matchedKey);
+        canonicalMap.set(matchedKey, mergeUnified4MRecords(existing, item));
       } else {
-        const lineStr = String(rec.line || "").trim();
-        const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE");
-        unified.push({
-          id: recId.startsWith("ledger_") ? recId : `ledger_${recId}`,
-          fourM: rec.fourM || determineFourMCategory(rec),
-          origin: rec.origin || "변동점대장",
-          plant: rec.plant || "삼랑진공장",
-          line: rec.line || (isExt ? "압출라인" : "가공/품질"),
-          title: rec.title || "(변동점)",
-          content: rec.content || "",
-          actionResult: rec.actionResult || "",
-          date: rec.date || todayKst,
-          isResolved: Boolean(rec.isResolved),
-          isExtrusion: isExt
-        });
+        const primaryKey = (coreId && coreId.length >= 8) ? `core_${coreId}` : `item_${item.id || Math.random()}`;
+        canonicalMap.set(primaryKey, item);
+        if (titleKey) {
+          titleIndexMap.set(titleKey, primaryKey);
+        }
       }
     });
 
-    return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    return Array.from(canonicalMap.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [
     urgentIssues,
     localUrgentIssues,
