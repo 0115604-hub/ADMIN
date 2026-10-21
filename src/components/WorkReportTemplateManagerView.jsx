@@ -30,6 +30,7 @@ import {
   subscribeWorkReportTemplates,
   saveWorkReportTemplate,
   deleteWorkReportTemplate,
+  deleteAllWorkReportTemplates,
   cloneWorkReportTemplate
 } from "../services/workReportTemplateService";
 import LegoWorkReportBuilder from "./lego/LegoWorkReportBuilder.jsx";
@@ -48,7 +49,7 @@ export const WorkReportTemplateManagerView = () => {
 
   useEffect(() => {
     const unsub = subscribeWorkReportTemplates((list) => {
-      if (Array.isArray(list) && list.length > 0) {
+      if (Array.isArray(list)) {
         setTemplates(list);
       }
     });
@@ -148,9 +149,22 @@ export const WorkReportTemplateManagerView = () => {
     if (!confirm(`정말 [${tpl.title} - ${tpl.carModel}] 양식을 삭제하시겠습니까?`)) return;
     try {
       await deleteWorkReportTemplate(tpl.id);
+      setTemplates((prev) => prev.filter((t) => t.id !== tpl.id));
       showToast("🗑️ 양식이 삭제되었습니다.");
     } catch (e) {
       alert("삭제 실패: " + e.message);
+    }
+  };
+
+  // Delete All Templates
+  const handleDeleteAll = async () => {
+    if (!confirm("정말 5대 공정 양식 보관함에 있는 모든 양식을 일괄 삭제하시겠습니까?")) return;
+    try {
+      await deleteAllWorkReportTemplates();
+      setTemplates([]);
+      showToast("🗑️ 보관함의 모든 양식이 일괄 삭제되었습니다.");
+    } catch (e) {
+      alert("일괄 삭제 실패: " + e.message);
     }
   };
 
@@ -279,13 +293,25 @@ export const WorkReportTemplateManagerView = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleAddNew}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ 새 작업일보 양식 만들기</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {templates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAll}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>전체 양식 일괄 삭제</span>
+                </button>
+              )}
+              <button
+                onClick={handleAddNew}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ 새 작업일보 양식 만들기</span>
+              </button>
+            </div>
           </div>
 
       {/* ======================================================== */}
