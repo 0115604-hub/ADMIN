@@ -154,6 +154,9 @@ export const LegoBlockCollectionModal = ({
 
   // Analyzed draft state
   const [draftBlock, setDraftBlock] = useState(null);
+  // Column drag-and-drop reordering state
+  const [draggedColIdx, setDraggedColIdx] = useState(null);
+  const [dragOverColIdx, setDragOverColIdx] = useState(null);
 
   if (!isOpen) return null;
 
@@ -237,6 +240,43 @@ export const LegoBlockCollectionModal = ({
       columns: draftBlock.columns.filter((_, i) => i !== colIdx),
       rows: draftBlock.rows.map((r) => r.filter((_, i) => i !== colIdx))
     });
+  };
+
+  const handleMoveColumn = (fromIdx, toIdx) => {
+    if (!draftBlock || fromIdx === null || toIdx === null || fromIdx === toIdx) return;
+    if (toIdx < 0 || toIdx >= draftBlock.columns.length) return;
+
+    const nextCols = [...draftBlock.columns];
+    const [movedCol] = nextCols.splice(fromIdx, 1);
+    nextCols.splice(toIdx, 0, movedCol);
+
+    const nextRows = draftBlock.rows.map((row) => {
+      const nextRow = [...row];
+      const [movedCell] = nextRow.splice(fromIdx, 1);
+      nextRow.splice(toIdx, 0, movedCell);
+      return nextRow;
+    });
+
+    setDraftBlock({
+      ...draftBlock,
+      columns: nextCols,
+      rows: nextRows
+    });
+
+    if (onShowToast) {
+      onShowToast(`↔️ [${movedCol}] 열이 ${toIdx + 1}번째 위치로 이동되었습니다.`);
+    }
+  };
+
+  const handleColumnDrop = (dropIdx) => {
+    if (draggedColIdx === null || draggedColIdx === dropIdx) {
+      setDraggedColIdx(null);
+      setDragOverColIdx(null);
+      return;
+    }
+    handleMoveColumn(draggedColIdx, dropIdx);
+    setDraggedColIdx(null);
+    setDragOverColIdx(null);
   };
 
   const handleAddRow = () => {
@@ -566,9 +606,12 @@ export const LegoBlockCollectionModal = ({
                     <div className="lg:col-span-7 space-y-3 flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between flex-wrap gap-2">
-                          <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
+                          <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5 flex-wrap">
                             <Table className="w-4 h-4" />
                             <span>📊 사진에서 추출된 디지털 블록 표 (열/행/내용 직접 수정 가능)</span>
+                            <span className="text-[10.5px] font-black text-amber-300 bg-amber-500/15 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                              ⠿ 열 헤더를 드래그하여 좌우 순서 변경 가능
+                            </span>
                           </span>
                           <div className="flex items-center gap-1.5">
                             <button
@@ -592,35 +635,95 @@ export const LegoBlockCollectionModal = ({
                           <table className="w-full border-collapse text-xs text-center">
                             <thead>
                               <tr className="bg-indigo-950/90 border-b border-slate-700">
-                                {draftBlock.columns.map((col, colIdx) => (
-                                  <th
-                                    key={colIdx}
-                                    className="border-r border-slate-700 p-1.5 min-w-[95px]"
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      <input
-                                        type="text"
-                                        value={col}
-                                        onChange={(e) => {
-                                          const nextCols = [...draftBlock.columns];
-                                          nextCols[colIdx] = e.target.value;
-                                          setDraftBlock({ ...draftBlock, columns: nextCols });
-                                        }}
-                                        className="w-full bg-slate-900/90 text-amber-300 font-black text-center px-1.5 py-1 rounded border border-slate-700 focus:border-amber-400 outline-none"
-                                      />
-                                      {draftBlock.columns.length > 1 && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveColumn(colIdx)}
-                                          className="text-slate-400 hover:text-rose-400 px-1 font-black"
-                                          title="이 열 삭제"
-                                        >
-                                          ×
-                                        </button>
-                                      )}
-                                    </div>
-                                  </th>
-                                ))}
+                                {draftBlock.columns.map((col, colIdx) => {
+                                  const isDragged = draggedColIdx === colIdx;
+                                  const isDragOver = dragOverColIdx === colIdx && draggedColIdx !== colIdx;
+                                  return (
+                                    <th
+                                      key={colIdx}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        setDraggedColIdx(colIdx);
+                                        e.dataTransfer.effectAllowed = "move";
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = "move";
+                                        if (dragOverColIdx !== colIdx) {
+                                          setDragOverColIdx(colIdx);
+                                        }
+                                      }}
+                                      onDragLeave={() => {
+                                        if (dragOverColIdx === colIdx) {
+                                          setDragOverColIdx(null);
+                                        }
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        handleColumnDrop(colIdx);
+                                      }}
+                                      onDragEnd={() => {
+                                        setDraggedColIdx(null);
+                                        setDragOverColIdx(null);
+                                      }}
+                                      className={`border-r border-slate-700 p-1.5 min-w-[115px] transition-all cursor-grab active:cursor-grabbing ${
+                                        isDragged ? "opacity-40 scale-95 bg-indigo-900/50 " : ""
+                                      }${
+                                        isDragOver ? "border-l-4 border-l-amber-400 bg-amber-500/20 " : ""
+                                      }`}
+                                      title="마우스로 잡고 좌우로 드래그하여 열 순서를 변경하세요"
+                                    >
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center justify-between px-1 text-[10px] text-slate-400">
+                                          <span className="cursor-grab text-amber-300 font-black select-none flex items-center gap-0.5">
+                                            <span>⠿</span>
+                                            <span>{colIdx + 1}열</span>
+                                          </span>
+                                          <div className="flex items-center gap-0.5">
+                                            <button
+                                              type="button"
+                                              disabled={colIdx === 0}
+                                              onClick={() => handleMoveColumn(colIdx, colIdx - 1)}
+                                              className="px-1 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-25 cursor-pointer"
+                                              title="왼쪽으로 열 이동"
+                                            >
+                                              ◀
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={colIdx === draftBlock.columns.length - 1}
+                                              onClick={() => handleMoveColumn(colIdx, colIdx + 1)}
+                                              className="px-1 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-25 cursor-pointer"
+                                              title="오른쪽으로 열 이동"
+                                            >
+                                              ▶
+                                            </button>
+                                            {draftBlock.columns.length > 1 && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveColumn(colIdx)}
+                                                className="text-slate-400 hover:text-rose-400 px-1 font-black cursor-pointer"
+                                                title="이 열 삭제"
+                                              >
+                                                ×
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <input
+                                          type="text"
+                                          value={col}
+                                          onChange={(e) => {
+                                            const nextCols = [...draftBlock.columns];
+                                            nextCols[colIdx] = e.target.value;
+                                            setDraftBlock({ ...draftBlock, columns: nextCols });
+                                          }}
+                                          className="w-full bg-slate-900/90 text-amber-300 font-black text-center px-1.5 py-1 rounded border border-slate-700 focus:border-amber-400 outline-none"
+                                        />
+                                      </div>
+                                    </th>
+                                  );
+                                })}
                                 <th className="p-1.5 w-10 text-slate-400">삭제</th>
                               </tr>
                             </thead>

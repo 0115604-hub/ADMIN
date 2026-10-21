@@ -541,6 +541,9 @@ export const LegoWorkReportBuilder = ({
   const [editingBlockKey, setEditingBlockKey] = useState("specsCutting");
   const [draggedBlockIdx, setDraggedBlockIdx] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
+  // Custom block table column drag-and-drop state
+  const [draggedCustomCol, setDraggedCustomCol] = useState(null); // { bKey, colIdx }
+  const [dragOverCustomCol, setDragOverCustomCol] = useState(null); // { bKey, colIdx }
 
   // Subscribe to custom uploaded/analyzed Lego blocks
   useEffect(() => {
@@ -2864,12 +2867,44 @@ export const LegoWorkReportBuilder = ({
             {/* ================================================================= */}
             {customBlocks.map((cb, cbIdx) => {
               const bKey = cb.key || cb.id;
-              const cols = Array.isArray(cb.columns) && cb.columns.length > 0 ? cb.columns : ["항목 1", "항목 2", "항목 3"];
+              const cols = Array.isArray(currentReport.customBlockTables?.[bKey]?.columns) &&
+                currentReport.customBlockTables[bKey].columns.length > 0
+                ? currentReport.customBlockTables[bKey].columns
+                : Array.isArray(cb.columns) && cb.columns.length > 0
+                ? cb.columns
+                : ["항목 1", "항목 2", "항목 3"];
               const rowsData = Array.isArray(currentReport.customBlockTables?.[bKey]?.rows)
                 ? currentReport.customBlockTables[bKey].rows
                 : Array.isArray(cb.rows)
                 ? cb.rows
                 : [["", "", ""]];
+
+              const handleMoveCustomColumn = (fromIdx, toIdx) => {
+                if (fromIdx === null || toIdx === null || fromIdx === toIdx) return;
+                if (toIdx < 0 || toIdx >= cols.length) return;
+                const nextCols = [...cols];
+                const [movedCol] = nextCols.splice(fromIdx, 1);
+                nextCols.splice(toIdx, 0, movedCol);
+
+                const nextRows = rowsData.map((r) => {
+                  const nextRow = [...r];
+                  const [movedCell] = nextRow.splice(fromIdx, 1);
+                  nextRow.splice(toIdx, 0, movedCell);
+                  return nextRow;
+                });
+
+                setCurrentReport((prev) => ({
+                  ...prev,
+                  customBlockTables: {
+                    ...(prev.customBlockTables || {}),
+                    [bKey]: {
+                      columns: nextCols,
+                      rows: nextRows
+                    }
+                  }
+                }));
+                showToast(`↔️ [${movedCol}] 열이 ${toIdx + 1}번째 순서로 변경되었습니다.`);
+              };
 
               const handleUpdateCustomCell = (rIdx, cIdx, val) => {
                 const nextRows = rowsData.map((r, rI) =>
@@ -2947,14 +2982,70 @@ export const LegoWorkReportBuilder = ({
                         <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                           <thead>
                             <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                              {cols.map((colName, cIdx) => (
-                                <th
-                                  key={cIdx}
-                                  className="border-r border-black dark:border-slate-600 p-1.5"
-                                >
-                                  {colName}
-                                </th>
-                              ))}
+                              {cols.map((colName, cIdx) => {
+                                const isColDragged =
+                                  draggedCustomCol?.bKey === bKey && draggedCustomCol?.colIdx === cIdx;
+                                const isColDragOver =
+                                  dragOverCustomCol?.bKey === bKey &&
+                                  dragOverCustomCol?.colIdx === cIdx &&
+                                  draggedCustomCol?.colIdx !== cIdx;
+                                return (
+                                  <th
+                                    key={cIdx}
+                                    draggable
+                                    onDragStart={(e) => {
+                                      e.stopPropagation();
+                                      setDraggedCustomCol({ bKey, colIdx: cIdx });
+                                      e.dataTransfer.effectAllowed = "move";
+                                    }}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      e.dataTransfer.dropEffect = "move";
+                                      if (
+                                        dragOverCustomCol?.bKey !== bKey ||
+                                        dragOverCustomCol?.colIdx !== cIdx
+                                      ) {
+                                        setDragOverCustomCol({ bKey, colIdx: cIdx });
+                                      }
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.stopPropagation();
+                                      if (
+                                        dragOverCustomCol?.bKey === bKey &&
+                                        dragOverCustomCol?.colIdx === cIdx
+                                      ) {
+                                        setDragOverCustomCol(null);
+                                      }
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (draggedCustomCol?.bKey === bKey) {
+                                        handleMoveCustomColumn(draggedCustomCol.colIdx, cIdx);
+                                      }
+                                      setDraggedCustomCol(null);
+                                      setDragOverCustomCol(null);
+                                    }}
+                                    onDragEnd={(e) => {
+                                      e.stopPropagation();
+                                      setDraggedCustomCol(null);
+                                      setDragOverCustomCol(null);
+                                    }}
+                                    className={`border-r border-black dark:border-slate-600 p-1.5 cursor-grab active:cursor-grabbing select-none transition-all ${
+                                      isColDragged ? "opacity-40 scale-95 " : ""
+                                    }${
+                                      isColDragOver ? "border-l-4 border-l-indigo-500 bg-indigo-500/20 " : ""
+                                    }`}
+                                    title="마우스로 잡고 좌우로 드래그하여 열 순서를 변경할 수 있습니다"
+                                  >
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="text-[10px] text-amber-700 dark:text-amber-300 print:hidden">⠿</span>
+                                      <span>{colName}</span>
+                                    </span>
+                                  </th>
+                                );
+                              })}
                               <th className="p-1 w-10 print:hidden">삭제</th>
                             </tr>
                           </thead>
