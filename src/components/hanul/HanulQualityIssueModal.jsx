@@ -504,9 +504,6 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   {headerBadgeLabel}
                 </span>
               </div>
-              <p className="text-[11px] text-purple-200/90 font-medium truncate mt-0.5 hidden sm:block">
-                등록 시 현장 작업자 접속 팝업에 즉시 노출되며, 기본값으로는 첫화면 부적합품 경보에 노출되지 않습니다.
-              </p>
             </div>
           </div>
 
@@ -565,9 +562,6 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                     {editingIssueId ? `${companyLabel} 부적합경보 수정` : `${companyLabel} 부적합경보 등록 및 현장전파`}
                   </h3>
-                  <p className="text-[11px] text-slate-400">
-                    하단 [전사부적합등록] 클릭 시 첫화면 게시 및 작업자전파가 동시에 수행되며, [현장내전파등록] 클릭 시 작업자전파만 수행되고 아래 목록표에 기록됩니다.
-                  </p>
                 </div>
               </div>
 
@@ -844,34 +838,26 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 </span>
 
                 <div className="flex items-center gap-2.5 flex-wrap justify-end">
-                  {/* 1. 전사부적합등록 뱃지 (첫화면게시 및 작업자전파) */}
+                  {/* 1. 전사부적합등록 뱃지 */}
                   <button
                     type="button"
                     disabled={isProcessing}
                     onClick={() => handleRegisterWithMode("GLOBAL")}
                     className="px-4 sm:px-5 py-2.5 rounded-xl font-black text-white text-xs sm:text-sm shadow-lg flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 hover:from-rose-500 hover:to-amber-500 border border-amber-300/60 shadow-rose-600/25 disabled:opacity-50"
-                    title="첫화면 부적합품 경보에 게시하고 동시에 현장 작업자 접속 팝업에도 전파합니다."
                   >
                     <ShieldAlert className="w-4 h-4 text-amber-200" />
-                    <span>{editingIssueId ? "🌐 전사부적합 수정등록" : "🌐 전사부적합등록"}</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-amber-100 hidden md:inline">
-                      첫화면게시+작업자전파
-                    </span>
+                    <span>{editingIssueId ? "전사부적합 수정등록" : "전사부적합등록"}</span>
                   </button>
 
-                  {/* 2. 현장내전파등록 뱃지 (작업자전파만 + 아래 목록표 기록) */}
+                  {/* 2. 현장내전파등록 뱃지 */}
                   <button
                     type="button"
                     disabled={isProcessing}
                     onClick={() => handleRegisterWithMode("SITE_ONLY")}
                     className="px-4 sm:px-5 py-2.5 rounded-xl font-black text-white text-xs sm:text-sm shadow-lg flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 border border-indigo-400/50 shadow-indigo-600/25 disabled:opacity-50"
-                    title="첫화면에는 게시하지 않고 현장 작업자 접속 팝업에만 전파하며 아래 목록표에 기록합니다."
                   >
                     <Send className="w-4 h-4 text-cyan-200" />
-                    <span>{editingIssueId ? "📢 현장내전파 수정등록" : "📢 현장내전파등록"}</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-cyan-100 hidden md:inline">
-                      작업자전파 전용
-                    </span>
+                    <span>{editingIssueId ? "현장내전파 수정등록" : "현장내전파등록"}</span>
                   </button>
                 </div>
               </div>
@@ -888,17 +874,9 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                      {companyLabel} 현장내전파 부적합경보 목록
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
-                      📢 현장내전파등록 전용 목록
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    현장내전파등록 총 {siteOnlyIssues.length}건 등록됨 (현재 조건: {filteredIssues.length}건 · 전사부적합등록은 첫화면에서 관리)
-                  </p>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    {companyLabel} 현장내전파 목록 ({filteredIssues.length}건)
+                  </h3>
                 </div>
               </div>
 
