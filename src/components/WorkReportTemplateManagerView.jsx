@@ -228,7 +228,7 @@ export const WorkReportTemplateManagerView = () => {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>🧩 레고 블록 조합기 (16대 블록)</span>
+          <span>🧩 레고 블록 조합기 (17대 블록)</span>
         </button>
         <button
           type="button"

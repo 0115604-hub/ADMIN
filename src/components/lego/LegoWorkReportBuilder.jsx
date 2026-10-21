@@ -472,6 +472,28 @@ export const PRESET_REPORTS = [
   }
 ];
 
+export const LEGO_BLOCK_SWITCH_CATALOG = [
+  { key: "basicInfo", label: "작업 기본정보 (차종/품명/작업자)", badge: "사진 8" },
+  { key: "workTimeOutput", label: "작업시간 및 생산실적 (FRT/RR)", badge: "사진 9" },
+  { key: "specsCutting", label: "정치 절단 길이 & LOT (881/608/582)", badge: "사진 15" },
+  { key: "stepCuttingFrt", label: "단컷팅 치수 FRT (49mm, 45mm)", badge: "사진 2" },
+  { key: "stepCuttingRr", label: "단컷팅 치수 RR (40mm, 39mm)", badge: "사진 3" },
+  { key: "subMaterialLot", label: "부자재 LOT NO. (패드 5T)", badge: "사진 11" },
+  { key: "defectMaterialMatrix", label: "불량소재구분 8열 (압출/공정간)", badge: "사진 10" },
+  { key: "defectSectionAbc", label: "불량소재 Section A/B/C 3단면", badge: "사진 16" },
+  { key: "timeAndOutput", label: "조인트 작업자 / 시간 / 생산수량", badge: "사진 1" },
+  { key: "jointMaterial", label: "조인트 재료 (재료명/LOT)", badge: "사진 4" },
+  { key: "injectionTemp", label: "사출온도 (Sett'g / Actual)", badge: "사진 5" },
+  { key: "injectionCondition", label: "사출조건 (거리/속도/압력/시간)", badge: "사진 6" },
+  { key: "jointDefectMatrix", label: "조인트 10대 공정불량 매트릭스", badge: "사진 7" },
+  { key: "drawingSpecCheck", label: "도면 치수 & 패드 검사 (A/B/D)", badge: "사진 12" },
+  { key: "rightAngleMatrix", label: "완제품 직각검사 종합 매트릭스", badge: "사진 13, 14" },
+  { key: "frtRightAngleDefects", label: "FRT 직각검사 불량 집계표 (립컷팅)", badge: "사진 17" },
+  { key: "remarks", label: "특기 사항 및 조치사항", badge: "공통" }
+];
+
+export const DEFAULT_BLOCK_ORDER = LEGO_BLOCK_SWITCH_CATALOG.map((b) => b.key);
+
 export const LegoWorkReportBuilder = ({
   initialPresetId = "REPORT_CUTTING",
   initialWorkerName = "",
@@ -511,6 +533,70 @@ export const LegoWorkReportBuilder = ({
   const [selectedBlockKey, setSelectedBlockKey] = useState("specsCutting");
   const [isBlockEditorOpen, setIsBlockEditorOpen] = useState(false);
   const [editingBlockKey, setEditingBlockKey] = useState("specsCutting");
+  const [draggedBlockIdx, setDraggedBlockIdx] = useState(null);
+  const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
+
+  // Ordered block switches (persisted in currentReport.blockOrder)
+  const orderedBlockItems = useMemo(() => {
+    const savedOrder = Array.isArray(currentReport.blockOrder) ? currentReport.blockOrder : [];
+    const seen = new Set();
+    const list = [];
+    savedOrder.forEach((key) => {
+      const found = LEGO_BLOCK_SWITCH_CATALOG.find((b) => b.key === key);
+      if (found && !seen.has(key)) {
+        seen.add(key);
+        list.push(found);
+      }
+    });
+    LEGO_BLOCK_SWITCH_CATALOG.forEach((b) => {
+      if (!seen.has(b.key)) {
+        seen.add(b.key);
+        list.push(b);
+      }
+    });
+    return list;
+  }, [currentReport.blockOrder]);
+
+  const handleMoveBlockOrder = (fromIdx, direction) => {
+    const toIdx = fromIdx + direction;
+    if (toIdx < 0 || toIdx >= orderedBlockItems.length) return;
+    const nextKeys = orderedBlockItems.map((b) => b.key);
+    const [moved] = nextKeys.splice(fromIdx, 1);
+    nextKeys.splice(toIdx, 0, moved);
+    const movedLabel = orderedBlockItems[fromIdx]?.label || moved;
+    setCurrentReport((prev) => ({
+      ...prev,
+      blockOrder: nextKeys
+    }));
+    showToast(`↕️ [${movedLabel}] 블록 순서가 ${toIdx + 1}번째로 변경되었습니다.`);
+  };
+
+  const handleBlockDrop = (dropIdx) => {
+    if (draggedBlockIdx === null || draggedBlockIdx === dropIdx) {
+      setDraggedBlockIdx(null);
+      setDragOverBlockIdx(null);
+      return;
+    }
+    const nextKeys = orderedBlockItems.map((b) => b.key);
+    const movedLabel = orderedBlockItems[draggedBlockIdx]?.label || "";
+    const [moved] = nextKeys.splice(draggedBlockIdx, 1);
+    nextKeys.splice(dropIdx, 0, moved);
+    setDraggedBlockIdx(null);
+    setDragOverBlockIdx(null);
+    setCurrentReport((prev) => ({
+      ...prev,
+      blockOrder: nextKeys
+    }));
+    showToast(`✨ 드래그 앤 드롭 완료! [${movedLabel}] → ${dropIdx + 1}번째 순서로 배치되었습니다.`);
+  };
+
+  const handleResetBlockOrder = () => {
+    setCurrentReport((prev) => ({
+      ...prev,
+      blockOrder: [...DEFAULT_BLOCK_ORDER]
+    }));
+    showToast("🔄 17대 레고 블록 순서가 기본 순서로 초기화되었습니다.");
+  };
 
   // 💾 Save to Catalog Modal State
   const [isSaveCatalogModalOpen, setIsSaveCatalogModalOpen] = useState(false);
@@ -683,15 +769,17 @@ export const LegoWorkReportBuilder = ({
     }
   };
 
-  // Reusable Interactive Block Wrapper with Selection and Action Toolbar
+  // Reusable Interactive Block Wrapper with Selection, Ordering, and Action Toolbar
   const renderBlockWrapper = (blockKey, blockTitle, children, options = {}) => {
     if (!currentReport.activeBlocks?.[blockKey]) return null;
     const isSelected = selectedBlockKey === blockKey;
     const { canAddRow = false, onAddRow = null, customBadge = null } = options;
+    const orderIdx = orderedBlockItems.findIndex((b) => b.key === blockKey);
 
     return (
       <div
         id={`block_container_${blockKey}`}
+        style={{ order: orderIdx >= 0 ? orderIdx : 99 }}
         onClick={() => setSelectedBlockKey(blockKey)}
         className={`rounded-3xl transition-all relative group cursor-pointer ${
           isSelected
@@ -699,7 +787,7 @@ export const LegoWorkReportBuilder = ({
             : "hover:ring-2 hover:ring-indigo-300 dark:hover:ring-indigo-700/60 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800/80 hover:border-indigo-300"
         }`}
       >
-        {/* Interactive Block Top Bar (항상 직관적으로 노출되는 In-App 블록 편집 버튼) */}
+        {/* Interactive Block Top Bar (항상 직관적으로 노출되는 In-App 블록 편집 & 🗑️ 블록제거 버튼) */}
         <div className={`flex items-center justify-between p-2 sm:p-2.5 mb-3 rounded-2xl transition-all flex-wrap gap-2 ${
           isSelected
             ? "bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white shadow-lg"
@@ -707,7 +795,7 @@ export const LegoWorkReportBuilder = ({
         }`}>
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? "bg-cyan-300 animate-pulse" : "bg-indigo-500"}`}></span>
-            <span className="text-xs sm:text-sm font-black tracking-tight flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm font-black tracking-tight flex items-center gap-1.5 flex-wrap">
               <span>{isSelected ? "📍 " : "🧱 "}{blockTitle}</span>
               {customBadge && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
@@ -719,7 +807,44 @@ export const LegoWorkReportBuilder = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap print:hidden">
+            {orderIdx >= 0 && (
+              <div className="flex items-center gap-0.5 mr-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveBlockOrder(orderIdx, -1);
+                  }}
+                  disabled={orderIdx === 0}
+                  className={`px-1.5 py-1 rounded-lg text-[10px] font-black transition cursor-pointer disabled:opacity-30 ${
+                    isSelected
+                      ? "bg-white/15 hover:bg-white/25 text-white"
+                      : "bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                  }`}
+                  title="이 블록을 위로 이동"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveBlockOrder(orderIdx, 1);
+                  }}
+                  disabled={orderIdx === orderedBlockItems.length - 1}
+                  className={`px-1.5 py-1 rounded-lg text-[10px] font-black transition cursor-pointer disabled:opacity-30 ${
+                    isSelected
+                      ? "bg-white/15 hover:bg-white/25 text-white"
+                      : "bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                  }`}
+                  title="이 블록을 아래로 이동"
+                >
+                  ▼
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={(e) => {
@@ -756,20 +881,18 @@ export const LegoWorkReportBuilder = ({
               </button>
             )}
 
+            {/* 🌟 우측 블록 내 블록제거 이모티콘 버튼 */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleToggleBlock(blockKey);
+                showToast(`🗑️ [${blockTitle}] 블록이 양식에서 제거되었습니다. (좌측 스위치에서 다시 켤 수 있습니다)`);
               }}
-              className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
-                isSelected
-                  ? "hover:bg-indigo-800 text-indigo-200 hover:text-white"
-                  : "hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600"
-              }`}
-              title="이 블록 끄기"
+              className="px-2.5 py-1.5 rounded-xl font-black text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-sm flex items-center gap-1 transition active:scale-95 cursor-pointer"
+              title="이 블록을 양식에서 즉시 제거"
             >
-              <EyeOff className="w-3.5 h-3.5" />
+              <span>🗑️ 블록제거</span>
             </button>
           </div>
         </div>
@@ -1235,40 +1358,66 @@ export const LegoWorkReportBuilder = ({
         {/* ===================================================================== */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 gap-2 flex-wrap">
               <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-indigo-500" />
                 <span>17대 레고 블록 조립 스위치</span>
               </h3>
-              <span className="text-[11px] font-bold text-slate-400">클릭하여 선택/편집</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10.5px] font-black text-indigo-600 dark:text-cyan-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
+                  ⠿ 드래그 순서변경
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetBlockOrder}
+                  className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-bold text-slate-500 dark:text-slate-300 cursor-pointer"
+                  title="블록 순서를 기본값으로 초기화"
+                >
+                  🔄 순서초기화
+                </button>
+              </div>
             </div>
 
-            {/* Block Switches with Selection & In-App Edit */}
+            {/* Block Switches with Drag & Drop Ordering, Selection & In-App Edit */}
             <div className="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
-              {[
-                { key: "basicInfo", label: "1. 작업 기본정보 (차종/품명/작업자)", badge: "사진 8" },
-                { key: "workTimeOutput", label: "2. 작업시간 및 생산실적 (FRT/RR)", badge: "사진 9" },
-                { key: "specsCutting", label: "3. 정치 절단 길이 & LOT (881/608/582)", badge: "사진 15" },
-                { key: "stepCuttingFrt", label: "4. 단컷팅 치수 FRT (49mm, 45mm)", badge: "사진 2" },
-                { key: "stepCuttingRr", label: "5. 단컷팅 치수 RR (40mm, 39mm)", badge: "사진 3" },
-                { key: "subMaterialLot", label: "6. 부자재 LOT NO. (패드 5T)", badge: "사진 11" },
-                { key: "defectMaterialMatrix", label: "7. 불량소재구분 8열 (압출/공정간)", badge: "사진 10" },
-                { key: "defectSectionAbc", label: "8. 불량소재 Section A/B/C 3단면", badge: "사진 16" },
-                { key: "jointMaterial", label: "9. 조인트 재료 (재료명/LOT)", badge: "사진 4" },
-                { key: "injectionTemp", label: "10. 사출온도 (Sett'g / Actual)", badge: "사진 5" },
-                { key: "injectionCondition", label: "11. 사출조건 (거리/속도/압력/시간)", badge: "사진 6" },
-                { key: "jointDefectMatrix", label: "12. 조인트 10대 공정불량 매트릭스", badge: "사진 7" },
-                { key: "drawingSpecCheck", label: "13. 도면 치수 & 패드 검사 (A/B/D)", badge: "사진 12" },
-                { key: "rightAngleMatrix", label: "14. 완제품 직각검사 종합 매트릭스", badge: "사진 13, 14" },
-                { key: "frtRightAngleDefects", label: "15. FRT 직각검사 불량 집계표 (립컷팅)", badge: "사진 17" },
-                { key: "remarks", label: "16. 특기 사항 및 조치사항", badge: "공통" }
-              ].map((item) => {
+              {orderedBlockItems.map((item, idx) => {
                 const isActive = Boolean(currentReport.activeBlocks?.[item.key]);
                 const isSelected = selectedBlockKey === item.key;
+                const isDragged = draggedBlockIdx === idx;
+                const isDragOver = dragOverBlockIdx === idx && draggedBlockIdx !== idx;
                 return (
                   <div
                     key={item.key}
-                    className={`w-full p-2 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedBlockIdx(idx);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverBlockIdx !== idx) {
+                        setDragOverBlockIdx(idx);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverBlockIdx === idx) {
+                        setDragOverBlockIdx(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleBlockDrop(idx);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedBlockIdx(null);
+                      setDragOverBlockIdx(null);
+                    }}
+                    className={`w-full p-2 rounded-2xl border text-left flex items-center justify-between transition-all cursor-grab active:cursor-grabbing ${
+                      isDragged ? "opacity-40 scale-95 border-dashed " : ""
+                    }${
+                      isDragOver ? "border-t-4 border-t-cyan-400 bg-indigo-500/15 " : ""
+                    }${
                       isSelected
                         ? "bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-400 scale-[1.01]"
                         : isActive
@@ -1280,8 +1429,16 @@ export const LegoWorkReportBuilder = ({
                     <button
                       type="button"
                       onClick={() => handleSelectBlock(item.key)}
-                      className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
+                      className="flex items-center gap-1.5 flex-1 min-w-0 text-left cursor-pointer"
                     >
+                      <span
+                        className={`text-xs px-1 rounded select-none cursor-grab shrink-0 ${
+                          isSelected ? "text-indigo-200 hover:text-white" : "text-slate-400 hover:text-indigo-500"
+                        }`}
+                        title="마우스로 잡고 위아래로 드래그하여 순서를 변경하세요"
+                      >
+                        ⠿
+                      </span>
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1299,11 +1456,45 @@ export const LegoWorkReportBuilder = ({
                         {isActive ? "✓" : ""}
                       </span>
                       <span className={`text-[11.5px] truncate ${isSelected ? "font-black text-white" : "font-bold"}`}>
-                        {item.label}
+                        {idx + 1}. {item.label}
                       </span>
                     </button>
 
-                    <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    <div className="flex items-center gap-1 shrink-0 ml-1">
+                      {/* Up / Down Order Buttons */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveBlockOrder(idx, -1);
+                        }}
+                        disabled={idx === 0}
+                        className={`px-1 py-0.5 rounded text-[9.5px] font-black transition cursor-pointer disabled:opacity-30 ${
+                          isSelected
+                            ? "hover:bg-indigo-700 text-indigo-100"
+                            : "hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+                        }`}
+                        title="위로 이동"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveBlockOrder(idx, 1);
+                        }}
+                        disabled={idx === orderedBlockItems.length - 1}
+                        className={`px-1 py-0.5 rounded text-[9.5px] font-black transition cursor-pointer disabled:opacity-30 ${
+                          isSelected
+                            ? "hover:bg-indigo-700 text-indigo-100"
+                            : "hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+                        }`}
+                        title="아래로 이동"
+                      >
+                        ▼
+                      </button>
+
                       {/* In-App Block Editor Button */}
                       <button
                         type="button"
@@ -1459,6 +1650,9 @@ export const LegoWorkReportBuilder = ({
                 </div>
               </div>
             </div>
+
+            {/* 🌟 Ordered Blocks Container (좌측 드래그 앤 드롭 순서 100% 실시간 동기화) */}
+            <div className="flex flex-col gap-5">
 
             {/* ================================================================= */}
             {/* 🧱 BLOCK 8: 작업 기본 정보 (사진 8) */}
@@ -1757,177 +1951,171 @@ export const LegoWorkReportBuilder = ({
             {/* ================================================================= */}
             {/* 🧱 BLOCK 2 & 3: 단컷팅 치수 (FRT / RR) (사진 2, 3) */}
             {/* ================================================================= */}
-            {(currentReport.activeBlocks?.stepCuttingFrt || currentReport.activeBlocks?.stepCuttingRr) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* FRT 단컷팅 구간 치수 (사진 2) */}
-                {renderBlockWrapper("stepCuttingFrt", "[블록 2] 단컷팅 FRT 구간 치수 (49/45mm)", (
-                  <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
-                    <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
-                      <span className="font-black text-xs text-slate-900 dark:text-white">
-                        🧱 [블록 2] 2. 단컷팅 - FRT 구간 치수 (사진 2)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleAddStepCuttingRow("FRT")}
-                        className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                      >
-                        + 행 추가
-                      </button>
-                    </div>
-                    <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
-                      <thead>
-                        <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                          <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
-                          {(currentReport.stepCuttingFrt || []).map((c) => (
-                            <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              {c.section}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
-                          {(currentReport.stepCuttingFrt || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
-                              <input
-                                type="text"
-                                value={c.spec}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "spec", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-black"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
-                          {(currentReport.stepCuttingFrt || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.startVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "startVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
-                          {(currentReport.stepCuttingFrt || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.halfVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "halfVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
-                          {(currentReport.stepCuttingFrt || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.finishVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "finishVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                ), { canAddRow: true, onAddRow: () => handleAddStepCuttingRow("FRT"), customBadge: "사진 2" })}
-
-                {/* RR 단컷팅 구간 치수 (사진 3) */}
-                {renderBlockWrapper("stepCuttingRr", "[블록 3] 단컷팅 RR 구간 치수 (40/39mm)", (
-                  <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
-                    <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
-                      <span className="font-black text-xs text-slate-900 dark:text-white">
-                        🧱 [블록 3] 2. 단컷팅 - RR 구간 치수 (사진 3)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleAddStepCuttingRow("RR")}
-                        className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                      >
-                        + 행 추가
-                      </button>
-                    </div>
-                    <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
-                      <thead>
-                        <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                          <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
-                          {(currentReport.stepCuttingRr || []).map((c) => (
-                            <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              {c.section}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
-                          {(currentReport.stepCuttingRr || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
-                              <input
-                                type="text"
-                                value={c.spec}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "spec", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-black"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
-                          {(currentReport.stepCuttingRr || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.startVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "startVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr className="border-b border-black dark:border-slate-600">
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
-                          {(currentReport.stepCuttingRr || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.halfVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "halfVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
-                          {(currentReport.stepCuttingRr || []).map((c) => (
-                            <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                              <input
-                                type="text"
-                                value={c.finishVal || ""}
-                                onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "finishVal", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-mono"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                ), { canAddRow: true, onAddRow: () => handleAddStepCuttingRow("RR"), customBadge: "사진 3" })}
+            {renderBlockWrapper("stepCuttingFrt", "[블록 2] 단컷팅 FRT 구간 치수 (49/45mm)", (
+              <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
+                  <span className="font-black text-xs text-slate-900 dark:text-white">
+                    🧱 [블록 2] 2. 단컷팅 - FRT 구간 치수 (사진 2)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleAddStepCuttingRow("FRT")}
+                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                  >
+                    + 행 추가
+                  </button>
+                </div>
+                <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
+                  <thead>
+                    <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
+                      {(currentReport.stepCuttingFrt || []).map((c) => (
+                        <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          {c.section}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
+                      {(currentReport.stepCuttingFrt || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
+                          <input
+                            type="text"
+                            value={c.spec}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "spec", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-black"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
+                      {(currentReport.stepCuttingFrt || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.startVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "startVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
+                      {(currentReport.stepCuttingFrt || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.halfVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "halfVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
+                      {(currentReport.stepCuttingFrt || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.finishVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "finishVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            )}
+            ), { canAddRow: true, onAddRow: () => handleAddStepCuttingRow("FRT"), customBadge: "사진 2" })}
+
+            {renderBlockWrapper("stepCuttingRr", "[블록 3] 단컷팅 RR 구간 치수 (40/39mm)", (
+              <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
+                  <span className="font-black text-xs text-slate-900 dark:text-white">
+                    🧱 [블록 3] 2. 단컷팅 - RR 구간 치수 (사진 3)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleAddStepCuttingRow("RR")}
+                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                  >
+                    + 행 추가
+                  </button>
+                </div>
+                <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
+                  <thead>
+                    <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
+                      {(currentReport.stepCuttingRr || []).map((c) => (
+                        <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          {c.section}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
+                      {(currentReport.stepCuttingRr || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
+                          <input
+                            type="text"
+                            value={c.spec}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "spec", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-black"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
+                      {(currentReport.stepCuttingRr || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.startVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "startVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-black dark:border-slate-600">
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
+                      {(currentReport.stepCuttingRr || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.halfVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "halfVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
+                      {(currentReport.stepCuttingRr || []).map((c) => (
+                        <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
+                          <input
+                            type="text"
+                            value={c.finishVal || ""}
+                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "finishVal", e.target.value)}
+                            className="w-full text-center bg-transparent outline-none font-mono"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ), { canAddRow: true, onAddRow: () => handleAddStepCuttingRow("RR"), customBadge: "사진 3" })}
 
             {/* ================================================================= */}
             {/* 🧱 BLOCK 10: 불량소재구분 8열 매트릭스 (사진 10) */}
@@ -2112,113 +2300,145 @@ export const LegoWorkReportBuilder = ({
             ), { canAddRow: true, onAddRow: handleAddDefectSectionAbcRow, customBadge: "사진 16" })}
 
             {/* ================================================================= */}
-            {/* 🧱 BLOCK 4, 5, 6: 조인트 사출온도 & 사출조건 (사진 4, 5, 6) */}
+            {/* 🧱 BLOCK 1: 조인트 작업자 / 시간 / 생산수량 (사진 1) */}
             {/* ================================================================= */}
-            {renderBlockWrapper("jointMaterial", "[블록 4, 5, 6] 사출 온도 및 성형 조건", (
-              <div className="space-y-3 p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center justify-between pb-1 border-b border-purple-200 dark:border-purple-800">
-                  <span className="text-xs font-black text-purple-900 dark:text-purple-300">
-                    사출 온도 및 성형 조건 (사진 4, 5, 6 대조)
-                  </span>
+            {renderBlockWrapper("timeAndOutput", "[블록 1] 조인트 작업자 / 시간 / 생산수량", (
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                  🧱 [블록 1] 조인트 작업자 / 시간 / 생산수량 (사진 1 실물 대조)
+                </span>
+                <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
+                  <table className="w-full border-collapse text-xs text-center font-bold">
+                    <thead>
+                      <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">구 분</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">작업자</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">작업시간</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">정품수량</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">불량수량</th>
+                        <th className="p-1.5">재조인트</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {["FRT LH", "FRT RH", "RR LH", "RR RH"].map((div) => (
+                        <tr key={div} className="border-b border-black dark:border-slate-600">
+                          <td className="border-r border-black dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 font-black">{div}</td>
+                          <td className="border-r border-black dark:border-slate-600 p-1">{currentReport.workerName || "작업자"}</td>
+                          <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{currentReport.startTime} ~ {currentReport.finishTime}</td>
+                          <td className="border-r border-black dark:border-slate-600 p-1 font-mono text-emerald-600 font-black">350</td>
+                          <td className="border-r border-black dark:border-slate-600 p-1 font-mono text-rose-600">1</td>
+                          <td className="p-1 font-mono text-amber-600">1</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                {/* 조인트 재료 (사진 4) */}
-                {currentReport.activeBlocks?.jointMaterial && (
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
-                      <span className="text-[10px] text-slate-400 block font-bold">조인트 재료명 (Joint grade name) - 사진 4</span>
-                      <input
-                        type="text"
-                        value={currentReport.jointMaterial?.gradeName || ""}
-                        onChange={(e) => setCurrentReport((prev) => ({
-                          ...prev,
-                          jointMaterial: { ...prev.jointMaterial, gradeName: e.target.value }
-                        }))}
-                        className="font-black text-xs sm:text-sm w-full bg-transparent outline-none text-purple-700 dark:text-purple-300"
-                      />
-                    </div>
-                    <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
-                      <span className="text-[10px] text-slate-400 block font-bold">조인트 재료일자 (Joint material lot no)</span>
-                      <input
-                        type="text"
-                        value={currentReport.jointMaterial?.lotNo || ""}
-                        onChange={(e) => setCurrentReport((prev) => ({
-                          ...prev,
-                          jointMaterial: { ...prev.jointMaterial, lotNo: e.target.value }
-                        }))}
-                        className="font-black text-xs sm:text-sm w-full bg-transparent outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* 사출 온도 테이블 (사진 5) */}
-                {currentReport.activeBlocks?.injectionTemp && (
-                  <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
-                    <table className="w-full border-collapse text-xs text-center font-bold">
-                      <thead>
-                        <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                          <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1">노즐(Nozzle)</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1">실린더 1(N2)</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1">실린더 2(H3)</th>
-                          <th className="p-1">실린더 3(H4)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(currentReport.injectionTemps || []).map((t, idx) => (
-                          <tr key={t.id || idx} className="border-b border-black dark:border-slate-600">
-                            {idx === 0 && (
-                              <td rowSpan={3} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-14">
-                                Sett'g
-                              </td>
-                            )}
-                            {idx === 3 && (
-                              <td rowSpan={3} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-14">
-                                Actual
-                              </td>
-                            )}
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t.machine}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.nozzle}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl1}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl2}</td>
-                            <td className="p-1 font-mono">{t.cyl3}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* 사출 조건 테이블 (사진 6) */}
-                {currentReport.activeBlocks?.injectionCondition && (
-                  <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
-                    <table className="w-full border-collapse text-xs text-center font-bold">
-                      <thead>
-                        <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                          <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분 (항목)</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">SPEC</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1">초물 (Start)</th>
-                          <th className="border-r border-black dark:border-slate-600 p-1">중물 (Half)</th>
-                          <th className="p-1">종물 (Finish)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(currentReport.injectionConditions || []).map((c) => (
-                          <tr key={c.id} className="border-b border-black dark:border-slate-600">
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">{c.name}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 text-purple-700 dark:text-purple-300 font-black">{c.spec}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.startVal}</td>
-                            <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.halfVal}</td>
-                            <td className="p-1 font-mono">{c.finishVal}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
-            ), { customBadge: "사진 4, 5, 6" })}
+            ), { customBadge: "사진 1" })}
+
+            {/* ================================================================= */}
+            {/* 🧱 BLOCK 4: 조인트 재료 (사진 4) */}
+            {/* ================================================================= */}
+            {renderBlockWrapper("jointMaterial", "[블록 4] 3. 조인트 재료 (Joint Material)", (
+              <div className="space-y-2 p-3 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
+                    <span className="text-[10px] text-slate-400 block font-bold">조인트 재료명 (Joint grade name) - 사진 4</span>
+                    <input
+                      type="text"
+                      value={currentReport.jointMaterial?.gradeName || ""}
+                      onChange={(e) => setCurrentReport((prev) => ({
+                        ...prev,
+                        jointMaterial: { ...prev.jointMaterial, gradeName: e.target.value }
+                      }))}
+                      className="font-black text-xs sm:text-sm w-full bg-transparent outline-none text-purple-700 dark:text-purple-300"
+                    />
+                  </div>
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
+                    <span className="text-[10px] text-slate-400 block font-bold">조인트 재료일자 (Joint material lot no)</span>
+                    <input
+                      type="text"
+                      value={currentReport.jointMaterial?.lotNo || ""}
+                      onChange={(e) => setCurrentReport((prev) => ({
+                        ...prev,
+                        jointMaterial: { ...prev.jointMaterial, lotNo: e.target.value }
+                      }))}
+                      className="font-black text-xs sm:text-sm w-full bg-transparent outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            ), { customBadge: "사진 4" })}
+
+            {/* ================================================================= */}
+            {/* 🧱 BLOCK 5: 사출 온도 테이블 (사진 5) */}
+            {/* ================================================================= */}
+            {renderBlockWrapper("injectionTemp", "[블록 5] 4. 사출온도 (Temperature)", (
+              <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
+                <table className="w-full border-collapse text-xs text-center font-bold">
+                  <thead>
+                    <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                      <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">노즐(Nozzle)</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">실린더 1(N2)</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">실린더 2(H3)</th>
+                      <th className="p-1">실린더 3(H4)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(currentReport.injectionTemps || []).map((t, idx) => (
+                      <tr key={t.id || idx} className="border-b border-black dark:border-slate-600">
+                        {idx === 0 && (
+                          <td rowSpan={3} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-14">
+                            Sett'g
+                          </td>
+                        )}
+                        {idx === 3 && (
+                          <td rowSpan={3} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-14">
+                            Actual
+                          </td>
+                        )}
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t.machine}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.nozzle}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl1}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl2}</td>
+                        <td className="p-1 font-mono">{t.cyl3}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ), { customBadge: "사진 5" })}
+
+            {/* ================================================================= */}
+            {/* 🧱 BLOCK 6: 사출 조건 테이블 (사진 6) */}
+            {/* ================================================================= */}
+            {renderBlockWrapper("injectionCondition", "[블록 6] 5. 사출조건 (Injection Condition)", (
+              <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
+                <table className="w-full border-collapse text-xs text-center font-bold">
+                  <thead>
+                    <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분 (항목)</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">SPEC</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">초물 (Start)</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">중물 (Half)</th>
+                      <th className="p-1">종물 (Finish)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(currentReport.injectionConditions || []).map((c) => (
+                      <tr key={c.id} className="border-b border-black dark:border-slate-600">
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">{c.name}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 text-purple-700 dark:text-purple-300 font-black">{c.spec}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.startVal}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.halfVal}</td>
+                        <td className="p-1 font-mono">{c.finishVal}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ), { customBadge: "사진 6" })}
 
             {/* ================================================================= */}
             {/* 🧱 BLOCK 7: 공정불량 종합 매트릭스 (사진 7) */}
@@ -2561,34 +2781,34 @@ export const LegoWorkReportBuilder = ({
             {/* ================================================================= */}
             {/* 🧱 BLOCK 11 & 16: 부자재 LOT 및 특기사항 */}
             {/* ================================================================= */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {renderBlockWrapper("subMaterialLot", "[블록 11] 부자재 LOT NO. (패드 5T)", (
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 block">
-                    🧱 [블록 11] 부자재 LOT NO. (패드 5T) (사진 11)
-                  </span>
-                  <input
-                    type="text"
-                    value={currentReport.subMaterialLot || ""}
-                    onChange={(e) => handleUpdateField("subMaterialLot", e.target.value)}
-                    className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
-                    placeholder="패드 5T 입고일자 및 LOT 번호 입력"
-                  />
-                </div>
-              ), { customBadge: "사진 11" })}
+            {renderBlockWrapper("subMaterialLot", "[블록 11] 부자재 LOT NO. (패드 5T)", (
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 block">
+                  🧱 [블록 11] 부자재 LOT NO. (패드 5T) (사진 11)
+                </span>
+                <input
+                  type="text"
+                  value={currentReport.subMaterialLot || ""}
+                  onChange={(e) => handleUpdateField("subMaterialLot", e.target.value)}
+                  className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
+                  placeholder="패드 5T 입고일자 및 LOT 번호 입력"
+                />
+              </div>
+            ), { customBadge: "사진 11" })}
 
-              {renderBlockWrapper("remarks", "특기 사항 및 조치사항", (
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-[11px] font-black text-slate-400 block">■ 특기 사항 (조치사항)</span>
-                  <input
-                    type="text"
-                    value={currentReport.remarks || ""}
-                    onChange={(e) => handleUpdateField("remarks", e.target.value)}
-                    className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
-                    placeholder="설비 이상, 원부자재 교체, 조치사항 등 입력"
-                  />
-                </div>
-              ))}
+            {renderBlockWrapper("remarks", "특기 사항 및 조치사항", (
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] font-black text-slate-400 block">■ 특기 사항 (조치사항)</span>
+                <input
+                  type="text"
+                  value={currentReport.remarks || ""}
+                  onChange={(e) => handleUpdateField("remarks", e.target.value)}
+                  className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
+                  placeholder="설비 이상, 원부자재 교체, 조치사항 등 입력"
+                />
+              </div>
+            ), { customBadge: "공통" })}
+
             </div>
 
             {/* Bottom Register Action Bar */}
