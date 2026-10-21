@@ -67,50 +67,22 @@ export const LegoWorkReportBuilderBar = ({ onNavigateTab, currentProfile }) => {
               <span>🧩 레고블록 작업일보 빌더</span>
             </span>
 
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 whitespace-nowrap shadow-2xs">
-              17대 표준블록
-            </span>
-
-            {/* 🌟 신규: 블록모음 (사진분석 추가) 클릭형 뱃지 */}
             <button
               type="button"
               onClick={() => {
                 setCollectionInitTab("ALL");
                 setIsBlockCollectionOpen(true);
               }}
-              className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 border border-amber-300 flex items-center gap-1 whitespace-nowrap shadow-sm cursor-pointer transition active:scale-95"
-              title="17대 표준 블록모음 열람 및 블록사진(그림파일) 업로드 AI 분석·저장"
+              className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center gap-1 whitespace-nowrap shadow-xs cursor-pointer transition active:scale-95"
+              title="블록모음 열람 및 블록사진 분석·저장"
             >
-              <span>🧱 블록모음 ({totalBlocksCount}종 · 사진분석 저장)</span>
+              <span>🧱 블록모음</span>
             </button>
-
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1 whitespace-nowrap shadow-2xs">
-              <Database className="w-2.5 h-2.5 text-emerald-300" />
-              <span>DB 양식 {templateCount}종</span>
-            </span>
-
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 hidden md:inline-flex whitespace-nowrap">
-              '레고 양식.xlsx' 엔진 탑재
-            </span>
           </div>
         </div>
 
         {/* 우측: 직관적 액션 버튼 그룹 (한줄 내 배치) */}
         <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-          {/* 0. 블록사진 즉시 업로드 & 블록모음 */}
-          <button
-            type="button"
-            onClick={() => {
-              setCollectionInitTab("UPLOAD");
-              setIsBlockCollectionOpen(true);
-            }}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-            title="그림파일로 블록사진을 올려 자동 분석 후 블록모음에 저장합니다"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>📷 블록사진 분석·저장</span>
-          </button>
-
           {/* 1. 전체화면 팝업 열기 */}
           <button
             type="button"

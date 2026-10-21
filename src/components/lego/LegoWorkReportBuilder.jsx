@@ -1281,9 +1281,6 @@ export const LegoWorkReportBuilder = ({
               <h1 className="text-xs sm:text-sm font-black tracking-tight text-white whitespace-nowrap">
                 🧩 레고 블록 작업일보 빌더
               </h1>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold whitespace-nowrap">
-                {combinedSwitchCatalog.length}대 실물 블록
-              </span>
               {/* 🌟 블록모음 뱃지 (클릭 시 블록모음 & 사진분석 모달 오픈) */}
               <button
                 type="button"
@@ -1291,42 +1288,16 @@ export const LegoWorkReportBuilder = ({
                   setPhotoModalTab("ALL");
                   setShowPhotoRefModal(true);
                 }}
-                className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black whitespace-nowrap shadow-xs cursor-pointer flex items-center gap-1 transition active:scale-95"
-                title="레고 블록모음 보관함 열기 및 그림파일 블록사진 업로드 분석·저장"
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black whitespace-nowrap shadow-xs cursor-pointer flex items-center gap-1 transition active:scale-95"
+                title="블록모음 보관함 열기 및 그림파일 블록사진 업로드 분석·저장"
               >
-                <span>🧱 블록모음 ({combinedSwitchCatalog.length}종)</span>
+                <span>🧱 블록모음</span>
               </button>
             </div>
           </div>
 
           {/* 우측: 핵심 액션 버튼 (컴팩트 & 직관적 정렬) */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setPhotoModalTab("UPLOAD");
-                setShowPhotoRefModal(true);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/50 text-[11px] font-black transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
-              title="그림파일로 블록사진을 올리면 자동 분석하여 블록모음에 영구 저장합니다"
-            >
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>📷 블록사진 분석·저장</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPhotoModalTab("ALL");
-                setShowPhotoRefModal(true);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/40 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
-              title="전체 블록모음 및 원본 사진 대조 갤러리 열람"
-            >
-              <ImageIcon className="w-3 h-3" />
-              <span>🧱 블록모음·사진대조</span>
-            </button>
-
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "DIGITAL" ? "PRINT_A4" : "DIGITAL")}
