@@ -31,9 +31,13 @@ import {
 } from "lucide-react";
 import { saveMachiningWorkReport } from "../../services/machiningWorkReportService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
+import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
 import {
   saveWorkReportTemplate,
-  REPORT_MAJOR_CATEGORIES
+  REPORT_MAJOR_CATEGORIES,
+  getLocalCustomLegoBlocks,
+  subscribeCustomLegoBlocks,
+  saveCustomLegoBlock
 } from "../../services/workReportTemplateService";
 
 // =============================================================================
@@ -524,6 +528,8 @@ export const LegoWorkReportBuilder = ({
 
   const [viewMode, setViewMode] = useState("DIGITAL"); // 'DIGITAL' | 'PRINT_A4'
   const [showPhotoRefModal, setShowPhotoRefModal] = useState(false);
+  const [photoModalTab, setPhotoModalTab] = useState("ALL"); // 'ALL' | 'UPLOAD'
+  const [customBlocks, setCustomBlocks] = useState(() => getLocalCustomLegoBlocks());
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState("ALL");
   const [toastMsg, setToastMsg] = useState("");
   const [appliedTemplateBanner, setAppliedTemplateBanner] = useState(null);
@@ -536,26 +542,59 @@ export const LegoWorkReportBuilder = ({
   const [draggedBlockIdx, setDraggedBlockIdx] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
 
+  // Subscribe to custom uploaded/analyzed Lego blocks
+  useEffect(() => {
+    const unsub = subscribeCustomLegoBlocks((list) => {
+      if (Array.isArray(list)) {
+        setCustomBlocks(list);
+      }
+    });
+    const handleCustomEvent = (e) => {
+      if (Array.isArray(e.detail)) {
+        setCustomBlocks(e.detail);
+      } else {
+        setCustomBlocks(getLocalCustomLegoBlocks());
+      }
+    };
+    window.addEventListener("custom-lego-blocks-updated", handleCustomEvent);
+    return () => {
+      unsub();
+      window.removeEventListener("custom-lego-blocks-updated", handleCustomEvent);
+    };
+  }, []);
+
+  // Combined catalog: 17 standard blocks + saved custom photo-analyzed blocks
+  const combinedSwitchCatalog = useMemo(() => {
+    const customSwitchItems = customBlocks.map((cb, idx) => ({
+      key: cb.key || cb.id,
+      label: cb.label || cb.title || `사진분석 블록 ${idx + 1}`,
+      badge: cb.badge || `사진 ${18 + idx}`,
+      isCustom: true,
+      customData: cb
+    }));
+    return [...LEGO_BLOCK_SWITCH_CATALOG, ...customSwitchItems];
+  }, [customBlocks]);
+
   // Ordered block switches (persisted in currentReport.blockOrder)
   const orderedBlockItems = useMemo(() => {
     const savedOrder = Array.isArray(currentReport.blockOrder) ? currentReport.blockOrder : [];
     const seen = new Set();
     const list = [];
     savedOrder.forEach((key) => {
-      const found = LEGO_BLOCK_SWITCH_CATALOG.find((b) => b.key === key);
+      const found = combinedSwitchCatalog.find((b) => b.key === key);
       if (found && !seen.has(key)) {
         seen.add(key);
         list.push(found);
       }
     });
-    LEGO_BLOCK_SWITCH_CATALOG.forEach((b) => {
+    combinedSwitchCatalog.forEach((b) => {
       if (!seen.has(b.key)) {
         seen.add(b.key);
         list.push(b);
       }
     });
     return list;
-  }, [currentReport.blockOrder]);
+  }, [currentReport.blockOrder, combinedSwitchCatalog]);
 
   const handleMoveBlockOrder = (fromIdx, direction) => {
     const toIdx = fromIdx + direction;
@@ -1138,6 +1177,7 @@ export const LegoWorkReportBuilder = ({
         jointDefectsList: currentReport.jointDefectsList || [],
         postDefectsList: currentReport.postDefectsList || [],
         frtRightAngleDefects: currentReport.frtRightAngleDefects || [],
+        customBlockTables: currentReport.customBlockTables || {},
         remarks: currentReport.remarks || "",
         activeBlocks: currentReport.activeBlocks,
         createdAt: now,
@@ -1242,8 +1282,20 @@ export const LegoWorkReportBuilder = ({
                 🧩 레고 블록 작업일보 빌더
               </h1>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold whitespace-nowrap">
-                17대 실물 블록
+                {combinedSwitchCatalog.length}대 실물 블록
               </span>
+              {/* 🌟 블록모음 뱃지 (클릭 시 블록모음 & 사진분석 모달 오픈) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPhotoModalTab("ALL");
+                  setShowPhotoRefModal(true);
+                }}
+                className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black whitespace-nowrap shadow-xs cursor-pointer flex items-center gap-1 transition active:scale-95"
+                title="레고 블록모음 보관함 열기 및 그림파일 블록사진 업로드 분석·저장"
+              >
+                <span>🧱 블록모음 ({combinedSwitchCatalog.length}종)</span>
+              </button>
             </div>
           </div>
 
@@ -1251,12 +1303,28 @@ export const LegoWorkReportBuilder = ({
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
             <button
               type="button"
-              onClick={() => setShowPhotoRefModal(true)}
+              onClick={() => {
+                setPhotoModalTab("UPLOAD");
+                setShowPhotoRefModal(true);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/50 text-[11px] font-black transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
+              title="그림파일로 블록사진을 올리면 자동 분석하여 블록모음에 영구 저장합니다"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>📷 블록사진 분석·저장</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPhotoModalTab("ALL");
+                setShowPhotoRefModal(true);
+              }}
               className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/40 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap"
-              title="17장 원본 사진 레고 블록 열람"
+              title="전체 블록모음 및 원본 사진 대조 갤러리 열람"
             >
               <ImageIcon className="w-3 h-3" />
-              <span>사진 대조</span>
+              <span>🧱 블록모음·사진대조</span>
             </button>
 
             <button
@@ -1361,9 +1429,20 @@ export const LegoWorkReportBuilder = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 gap-2 flex-wrap">
               <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-indigo-500" />
-                <span>17대 레고 블록 조립 스위치</span>
+                <span>{combinedSwitchCatalog.length}대 레고 블록 조립 스위치</span>
               </h3>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoModalTab("UPLOAD");
+                    setShowPhotoRefModal(true);
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black cursor-pointer shadow-2xs"
+                  title="그림파일로 블록사진 업로드 및 자동 분석 저장"
+                >
+                  📷 +사진블록 추가
+                </button>
                 <span className="text-[10.5px] font-black text-indigo-600 dark:text-cyan-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
                   ⠿ 드래그 순서변경
                 </span>
@@ -2809,6 +2888,149 @@ export const LegoWorkReportBuilder = ({
               </div>
             ), { customBadge: "공통" })}
 
+            {/* ================================================================= */}
+            {/* 🧱 CUSTOM PHOTO-ANALYZED LEGO BLOCKS (그림파일 분석·저장 블록들) */}
+            {/* ================================================================= */}
+            {customBlocks.map((cb, cbIdx) => {
+              const bKey = cb.key || cb.id;
+              const cols = Array.isArray(cb.columns) && cb.columns.length > 0 ? cb.columns : ["항목 1", "항목 2", "항목 3"];
+              const rowsData = Array.isArray(currentReport.customBlockTables?.[bKey]?.rows)
+                ? currentReport.customBlockTables[bKey].rows
+                : Array.isArray(cb.rows)
+                ? cb.rows
+                : [["", "", ""]];
+
+              const handleUpdateCustomCell = (rIdx, cIdx, val) => {
+                const nextRows = rowsData.map((r, rI) =>
+                  rI === rIdx ? r.map((c, cI) => (cI === cIdx ? val : c)) : [...r]
+                );
+                setCurrentReport((prev) => ({
+                  ...prev,
+                  customBlockTables: {
+                    ...(prev.customBlockTables || {}),
+                    [bKey]: {
+                      columns: cols,
+                      rows: nextRows
+                    }
+                  }
+                }));
+              };
+
+              const handleAddCustomRow = () => {
+                const emptyRow = cols.map((_, idx) => (idx === 0 ? `구간 ${rowsData.length + 1}` : ""));
+                const nextRows = [...rowsData, emptyRow];
+                setCurrentReport((prev) => ({
+                  ...prev,
+                  customBlockTables: {
+                    ...(prev.customBlockTables || {}),
+                    [bKey]: {
+                      columns: cols,
+                      rows: nextRows
+                    }
+                  }
+                }));
+                showToast(`➕ [${cb.title || cb.label}] 블록에 새 행이 추가되었습니다.`);
+              };
+
+              const handleDeleteCustomRow = (rIdx) => {
+                if (rowsData.length <= 1) return;
+                const nextRows = rowsData.filter((_, i) => i !== rIdx);
+                setCurrentReport((prev) => ({
+                  ...prev,
+                  customBlockTables: {
+                    ...(prev.customBlockTables || {}),
+                    [bKey]: {
+                      columns: cols,
+                      rows: nextRows
+                    }
+                  }
+                }));
+              };
+
+              return (
+                <React.Fragment key={bKey}>
+                  {renderBlockWrapper(
+                    bKey,
+                    cb.title || `[블록 ${18 + cbIdx}] ${cb.label}`,
+                    <div className="space-y-3 border border-black dark:border-slate-600 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-1.5 border-b border-slate-300 dark:border-slate-700">
+                        <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>📷 {cb.title || cb.label}</span>
+                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            ({cb.desc || "사진 자동분석 블록"})
+                          </span>
+                        </span>
+                      </div>
+
+                      {cb.imgFile && cb.showOriginalImageInReport !== false && (
+                        <div className="p-2 rounded-xl bg-white border border-slate-200 flex items-center justify-center max-h-48 overflow-hidden">
+                          <img
+                            src={cb.imgFile}
+                            alt={cb.title}
+                            className="max-h-44 max-w-full object-contain"
+                          />
+                        </div>
+                      )}
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
+                          <thead>
+                            <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
+                              {cols.map((colName, cIdx) => (
+                                <th
+                                  key={cIdx}
+                                  className="border-r border-black dark:border-slate-600 p-1.5"
+                                >
+                                  {colName}
+                                </th>
+                              ))}
+                              <th className="p-1 w-10 print:hidden">삭제</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rowsData.map((rowArr, rIdx) => (
+                              <tr key={rIdx} className="border-b border-black dark:border-slate-600">
+                                {cols.map((_, cIdx) => (
+                                  <td
+                                    key={cIdx}
+                                    className={`border-r border-black dark:border-slate-600 p-1 ${
+                                      cIdx === 0 ? "bg-slate-50 dark:bg-slate-800 font-black" : ""
+                                    }`}
+                                  >
+                                    <input
+                                      type="text"
+                                      value={rowArr?.[cIdx] ?? ""}
+                                      onChange={(e) => handleUpdateCustomCell(rIdx, cIdx, e.target.value)}
+                                      className="w-full text-center bg-transparent outline-none font-bold"
+                                    />
+                                  </td>
+                                ))}
+                                <td className="p-1 print:hidden">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCustomRow(rIdx)}
+                                    className="text-rose-500 hover:text-rose-700 text-xs font-black px-1 cursor-pointer"
+                                    title="행 삭제"
+                                  >
+                                    ✕
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>,
+                    {
+                      canAddRow: true,
+                      onAddRow: handleAddCustomRow,
+                      customBadge: cb.badge || `사진 ${18 + cbIdx} (AI분석)`
+                    }
+                  )}
+                </React.Fragment>
+              );
+            })}
+
             </div>
 
             {/* Bottom Register Action Bar */}
@@ -2832,49 +3054,40 @@ export const LegoWorkReportBuilder = ({
       </div>
 
       {/* ======================================================================= */}
-      {/* 🖼️ MODAL: 17대 원본 사진 레고 블록 갤러리 */}
+      {/* 🧱 MODAL: 레고 블록모음 & 블록사진 AI 분석·저장 센터 */}
       {/* ======================================================================= */}
-      {showPhotoRefModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-white">
-            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-base sm:text-lg font-black flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-amber-400" />
-                  <span>'레고 양식.xlsx' 원본 사진 17종 1:1 대조 갤러리</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Excel 파일에서 추출한 17개의 실물 레고 블록 사진입니다. (인식오류 전면 검증 완료)
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPhotoRefModal(false)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {LEGO_IMAGE_REFERENCES.map((item, idx) => (
-                <div key={item.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-800 mb-2">
-                      <span className="text-xs font-black text-amber-300">사진 {idx + 1}</span>
-                      <span className="text-[10px] text-slate-300 font-bold truncate">{item.title}</span>
-                    </div>
-                    <div className="bg-white p-1 rounded-xl flex items-center justify-center min-h-[140px]">
-                      <img src={item.imgFile} alt={item.title} className="max-h-40 max-w-full object-contain" />
-                    </div>
-                  </div>
-                  <p className="text-[10.5px] text-slate-400 mt-1 leading-snug">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <LegoBlockCollectionModal
+        isOpen={showPhotoRefModal}
+        onClose={() => setShowPhotoRefModal(false)}
+        standardBlocks={LEGO_IMAGE_REFERENCES}
+        customBlocks={customBlocks}
+        activeBlocks={currentReport.activeBlocks}
+        onToggleBlock={handleToggleBlock}
+        initialTab={photoModalTab}
+        onShowToast={showToast}
+        onCustomBlockSaved={(saved) => {
+          const bKey = saved.key || saved.id;
+          setCustomBlocks((prev) => [
+            saved,
+            ...prev.filter((b) => (b.id || b.key) !== bKey)
+          ]);
+          setCurrentReport((prev) => ({
+            ...prev,
+            activeBlocks: {
+              ...(prev.activeBlocks || {}),
+              [bKey]: true
+            },
+            customBlockTables: {
+              ...(prev.customBlockTables || {}),
+              [bKey]: {
+                columns: saved.columns || [],
+                rows: saved.rows || []
+              }
+            }
+          }));
+          setSelectedBlockKey(bKey);
+        }}
+      />
 
       {/* ======================================================================= */}
       {/* ✏️ MODAL: 레고 블록 속성 편집기 (In-App Inspector Modal) */}

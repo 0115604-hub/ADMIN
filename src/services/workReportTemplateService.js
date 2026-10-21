@@ -682,3 +682,109 @@ export const cloneWorkReportTemplate = async (sourceTemplateId, newCarModel = ""
 
   return await saveWorkReportTemplate(clonedPayload);
 };
+
+// ===========================================================================
+// 🧱 [커스텀 레고 블록 저장소 (사진 분석 블록 영구 보관 & 실시간 동기화)]
+// ===========================================================================
+export const CUSTOM_LEGO_BLOCKS_STORAGE_KEY = "oruk_custom_lego_blocks_v1";
+const CUSTOM_BLOCKS_COLLECTION = "lego_custom_blocks";
+
+export const getLocalCustomLegoBlocks = () => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("Failed to load local custom lego blocks:", e);
+    return [];
+  }
+};
+
+export const saveLocalCustomLegoBlocks = (list) => {
+  try {
+    localStorage.setItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("Failed to save local custom lego blocks:", e);
+  }
+};
+
+export const subscribeCustomLegoBlocks = (callback) => {
+  try {
+    const q = query(collection(db, CUSTOM_BLOCKS_COLLECTION));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const snapshotList = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data()
+        }));
+        const localList = getLocalCustomLegoBlocks();
+        const blockMap = new Map();
+        localList.forEach((b) => blockMap.set(b.id || b.key, b));
+        snapshotList.forEach((b) => blockMap.set(b.id || b.key, b));
+        const merged = Array.from(blockMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+        saveLocalCustomLegoBlocks(merged);
+        callback(merged);
+      },
+      (err) => {
+        console.warn("subscribeCustomLegoBlocks offline fallback:", err);
+        callback(getLocalCustomLegoBlocks());
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.warn("subscribeCustomLegoBlocks error:", e);
+    callback(getLocalCustomLegoBlocks());
+    return () => {};
+  }
+};
+
+export const saveCustomLegoBlock = async (blockData) => {
+  const now = new Date().toISOString();
+  const blockId = blockData.id || blockData.key || `custom_block_${Date.now()}`;
+  const payload = {
+    ...blockData,
+    id: blockId,
+    key: blockData.key || blockId,
+    isCustomBlock: true,
+    createdAt: blockData.createdAt || now,
+    updatedAt: now
+  };
+
+  const currentList = getLocalCustomLegoBlocks();
+  const existingIdx = currentList.findIndex((b) => (b.id || b.key) === blockId);
+  let updatedList;
+  if (existingIdx >= 0) {
+    updatedList = currentList.map((b) => ((b.id || b.key) === blockId ? payload : b));
+  } else {
+    updatedList = [payload, ...currentList];
+  }
+  saveLocalCustomLegoBlocks(updatedList);
+
+  try {
+    await setDoc(doc(db, CUSTOM_BLOCKS_COLLECTION, blockId), sanitizeForFirestore(payload));
+  } catch (e) {
+    console.warn("Firestore save custom lego block offline:", e);
+  }
+
+  window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
+  return payload;
+};
+
+export const deleteCustomLegoBlock = async (blockId) => {
+  const currentList = getLocalCustomLegoBlocks();
+  const updatedList = currentList.filter((b) => (b.id || b.key) !== blockId);
+  saveLocalCustomLegoBlocks(updatedList);
+
+  try {
+    await deleteDoc(doc(db, CUSTOM_BLOCKS_COLLECTION, blockId));
+  } catch (e) {
+    console.warn("Firestore delete custom lego block offline:", e);
+  }
+
+  window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
+};
+
