@@ -2988,26 +2988,7 @@ export const LegoWorkReportBuilder = ({
                   {renderBlockWrapper(
                     bKey,
                     cb.title || `[블록 ${18 + cbIdx}] ${cb.label}`,
-                    <div className="space-y-3 border border-black dark:border-slate-600 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
-                      <div className="flex items-center justify-between flex-wrap gap-2 pb-1.5 border-b border-slate-300 dark:border-slate-700">
-                        <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>📷 {cb.title || cb.label}</span>
-                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                            ({cb.desc || "사진 자동분석 블록"})
-                          </span>
-                        </span>
-                      </div>
-
-                      {cb.imgFile && cb.showOriginalImageInReport !== false && (
-                        <div className="p-2 rounded-xl bg-white border border-slate-200 flex items-center justify-center max-h-48 overflow-hidden">
-                          <img
-                            src={cb.imgFile}
-                            alt={cb.title}
-                            className="max-h-44 max-w-full object-contain"
-                          />
-                        </div>
-                      )}
-
+                    <div className="space-y-2 border border-black dark:border-slate-600 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
                       <div className="overflow-x-auto">
                         <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                           <thead>

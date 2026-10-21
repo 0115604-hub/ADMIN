@@ -197,7 +197,7 @@ export const LegoBlockCollectionModal = ({
         },
         columns: [...preset.columns],
         rows: preset.rows.map((r) => [...r]),
-        showOriginalImageInReport: true
+        showOriginalImageInReport: false
       });
 
       if (onShowToast) {
@@ -523,20 +523,6 @@ export const LegoBlockCollectionModal = ({
                             className="max-h-[240px] max-w-full object-contain"
                           />
                         </div>
-                        <label className="flex items-center gap-2 pt-1 text-xs font-bold text-cyan-300 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(draftBlock.showOriginalImageInReport)}
-                            onChange={(e) =>
-                              setDraftBlock({
-                                ...draftBlock,
-                                showOriginalImageInReport: e.target.checked
-                              })
-                            }
-                            className="rounded border-slate-600"
-                          />
-                          <span>작업일보 블록 상단에 원본 도면/사진 함께 표시하기</span>
-                        </label>
                       </div>
 
                       <div className="space-y-2.5 text-xs">
