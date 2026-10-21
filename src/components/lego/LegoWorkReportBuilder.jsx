@@ -34,6 +34,10 @@ import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
 import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
 import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel.jsx";
 import {
+  BladeReplacementCycleBlock,
+  MoldShotCountManageBlock
+} from "../common/BladeAndMoldLifecycleBlocks.jsx";
+import {
   saveWorkReportTemplate,
   REPORT_MAJOR_CATEGORIES,
   getLocalCustomLegoBlocks,
@@ -170,6 +174,20 @@ export const LEGO_IMAGE_REFERENCES = [
     title: "[블록 18] 비가동 및 부적합품 발생내역 (조치전·후 사진)",
     desc: "압출동·가공동·한울·부림텍·유성 공통 비가동 및 부적합품 등록 + 조치전/조치후 사진 첨부",
     blockKey: "downtimeDefectPanel"
+  },
+  {
+    id: "img_19",
+    imgFile: "/lego_images/lego_block_9.png",
+    title: "[블록 19] 칼날교체주기 관리 블록 (생산량 연동)",
+    desc: "작업일보 생산량 기준 자동 합산 • 교체주기 횟수설정 • 처리결과(교체) 등록 및 0 리셋",
+    blockKey: "bladeReplacementBlock"
+  },
+  {
+    id: "img_20",
+    imgFile: "/lego_images/lego_block_1.png",
+    title: "[블록 20] 금형숏트수관리 블록 (생산량 연동)",
+    desc: "작업일보 생산량 기준 숏트수 합산 • 숏트수설정 • 처리결과(습합, 검증완료) 등록 및 0 리셋",
+    blockKey: "moldShotCountBlock"
   }
 ];
 
@@ -212,6 +230,8 @@ export const PRESET_REPORTS = [
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
       remarks: true,
+      bladeReplacementBlock: true,
+      moldShotCountBlock: true,
       downtimeDefectPanel: true
     },
     // 블록 15: 정치 절단 길이 (Spec cutting) - 실제 사진 15 실물 데이터 (초물/중물/종물 3회 측정 및 LOT NO. 3개)
@@ -323,6 +343,8 @@ export const PRESET_REPORTS = [
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
       remarks: true,
+      bladeReplacementBlock: true,
+      moldShotCountBlock: true,
       downtimeDefectPanel: true
     },
     jointMaterial: {
@@ -391,6 +413,8 @@ export const PRESET_REPORTS = [
       rightAngleMatrix: true,
       frtRightAngleDefects: true,
       remarks: true,
+      bladeReplacementBlock: true,
+      moldShotCountBlock: true,
       downtimeDefectPanel: true
     },
     machines: [
@@ -477,6 +501,8 @@ export const PRESET_REPORTS = [
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
       remarks: true,
+      bladeReplacementBlock: true,
+      moldShotCountBlock: true,
       downtimeDefectPanel: true
     },
     drawingSpecs: [
@@ -507,6 +533,8 @@ export const LEGO_BLOCK_SWITCH_CATALOG = [
   { key: "rightAngleMatrix", label: "완제품 직각검사 종합 매트릭스", badge: "사진 13, 14" },
   { key: "frtRightAngleDefects", label: "FRT 직각검사 불량 집계표 (립컷팅)", badge: "사진 17" },
   { key: "remarks", label: "특기 사항 및 조치사항", badge: "공통" },
+  { key: "bladeReplacementBlock", label: "칼날교체주기 관리 블록 (횟수설정/교체리셋)", badge: "공통" },
+  { key: "moldShotCountBlock", label: "금형숏트수관리 블록 (습합·검증완료/리셋)", badge: "공통" },
   { key: "downtimeDefectPanel", label: "비가동 및 부적합품 발생내역 (조치전·후 사진)", badge: "공통" }
 ];
 
@@ -541,6 +569,8 @@ export const LegoWorkReportBuilder = ({
           parsed.processName = "소재준비";
         }
         parsed.activeBlocks = {
+          bladeReplacementBlock: true,
+          moldShotCountBlock: true,
           downtimeDefectPanel: true,
           ...(parsed.activeBlocks || {})
         };
@@ -3082,6 +3112,52 @@ export const LegoWorkReportBuilder = ({
                   placeholder="설비 이상, 원부자재 교체, 조치사항 등 입력"
                 />
               </div>
+            ), { customBadge: "공통" })}
+
+            {renderBlockWrapper("bladeReplacementBlock", "칼날교체주기 관리 블록 (횟수설정 / 교체 리셋)", (
+              <BladeReplacementCycleBlock
+                todayProductionQty={
+                  (currentReport.workTimeOutput || []).reduce(
+                    (sum, r) => sum + (Number(r.qtyA) || 0) + (Number(r.qtyB) || 0),
+                    0
+                  ) +
+                  (currentReport.timeAndOutput || []).reduce(
+                    (sum, r) => sum + (Number(r.goodQty) || 0) + (Number(r.defectQty) || 0),
+                    0
+                  )
+                }
+                config={currentReport.bladeReplacementConfig || {}}
+                workerName={currentReport.workerName || "작업자"}
+                onChangeConfig={(nextCfg) =>
+                  setCurrentReport((prev) => ({
+                    ...prev,
+                    bladeReplacementConfig: nextCfg
+                  }))
+                }
+              />
+            ), { customBadge: "공통" })}
+
+            {renderBlockWrapper("moldShotCountBlock", "금형숏트수관리 블록 (습합·검증완료 / 리셋)", (
+              <MoldShotCountManageBlock
+                todayProductionQty={
+                  (currentReport.workTimeOutput || []).reduce(
+                    (sum, r) => sum + (Number(r.qtyA) || 0) + (Number(r.qtyB) || 0),
+                    0
+                  ) +
+                  (currentReport.timeAndOutput || []).reduce(
+                    (sum, r) => sum + (Number(r.goodQty) || 0) + (Number(r.defectQty) || 0),
+                    0
+                  )
+                }
+                config={currentReport.moldShotCountConfig || {}}
+                workerName={currentReport.workerName || "작업자"}
+                onChangeConfig={(nextCfg) =>
+                  setCurrentReport((prev) => ({
+                    ...prev,
+                    moldShotCountConfig: nextCfg
+                  }))
+                }
+              />
             ), { customBadge: "공통" })}
 
             {renderBlockWrapper("downtimeDefectPanel", "비가동 및 부적합품 발생내역 (조치전·후 사진)", (
