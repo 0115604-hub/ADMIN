@@ -61,20 +61,80 @@ export const TEMPLATE_RESET_VERSION_KEY = "oruk_work_report_templates_reset_v3";
 // 초기 표준 템플릿 마스터 데이터 (사용자 요청으로 기존 기본 양식 전면 삭제하여 빈 배열로 초기화)
 export const DEFAULT_WORK_REPORT_TEMPLATES = [];
 
-// 로컬 스토리지 데이터 가져오기 (삭제 시 부활하지 않도록 순수 저장된 템플릿만 반환)
+// 로컬 스토리지 데이터 가져오기 (삭제 시 부활하지 않도록 순수 저장된 템플릿만 반환 + 방금 등록된 레고 작업일보 초안 자동 복원)
 export const getLocalWorkReportTemplates = () => {
   try {
     // 최초 1회 기존 로컬 캐시 양식 일괄 초기화 보장
     if (localStorage.getItem(TEMPLATE_RESET_VERSION_KEY) !== "true") {
       localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify([]));
       localStorage.setItem(TEMPLATE_RESET_VERSION_KEY, "true");
-      return [];
     }
 
     const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+    let parsed = [];
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) parsed = p;
+    }
+
+    // 만약 양식보관함이 비어 있는데 사용자가 방금 등록한 레고 작업일보('oruk_custom_lego_report_v2')가 있고 아직 복원된 적이 없다면 자동 복구
+    if (
+      parsed.length === 0 &&
+      localStorage.getItem("oruk_lego_draft_auto_restored_v1") !== "true"
+    ) {
+      const draftRaw = localStorage.getItem("oruk_custom_lego_report_v2");
+      if (draftRaw) {
+        try {
+          const draft = JSON.parse(draftRaw);
+          if (draft && draft.title) {
+            localStorage.setItem("oruk_lego_draft_auto_restored_v1", "true");
+            const procText = `${draft.processName || ""} ${draft.title || ""} ${draft.subTitle || ""}`;
+            let matchedCatId = draft.category || "MATERIAL_PREP";
+            if (procText.includes("압출")) matchedCatId = "EXTRUSION";
+            else if (procText.includes("조인트") || procText.includes("사출")) matchedCatId = "JOINT";
+            else if (procText.includes("후가공") || procText.includes("본드")) matchedCatId = "POST_PROCESSING";
+            else if (procText.includes("검사") || procText.includes("직각")) matchedCatId = "INSPECTION";
+            const catObj =
+              REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
+
+            const restoredTpl = {
+              id: `tpl_lego_${draft.carModel || "JA"}_${Date.now()}`,
+              categoryId: catObj.id,
+              categoryName: catObj.name,
+              title: draft.title || `${draft.carModel || "신규"} 레고블록 작업일보`,
+              subTitle: draft.subTitle || `▣ 공정명 : ${draft.processName || "정치절단 / 단컷팅"}`,
+              carModel: draft.carModel || "JA",
+              partName: draft.partName || "G/RUN",
+              processName: draft.processName || "단컷팅 / 조인트",
+              formNo: draft.formNo || "705-02(REV.4)",
+              companyName: draft.companyName || "(주)오륙",
+              isLegoModular: true,
+              isDatabaseBacked: true,
+              legoConfig: draft,
+              blocks: {
+                timeAndQty: Boolean(draft.activeBlocks?.workTimeOutput),
+                specAndLot: Boolean(draft.activeBlocks?.specsCutting || draft.activeBlocks?.drawingSpecCheck),
+                machineCondition: Boolean(draft.activeBlocks?.injectionTemp || draft.activeBlocks?.injectionCondition),
+                defectMatrix: Boolean(draft.activeBlocks?.defectMaterialMatrix || draft.activeBlocks?.jointDefectMatrix || draft.activeBlocks?.rightAngleMatrix),
+                maintenance: Boolean(draft.activeBlocks?.remarks)
+              },
+              specs: (draft.specsCutting || []).map((s) => ({
+                id: s.id,
+                section: s.section,
+                name: s.section,
+                frtSpec: s.spec1,
+                rrSpec: s.spec1,
+                spec: s.spec1
+              })),
+              updatedAt: new Date().toISOString()
+            };
+            parsed = [restoredTpl];
+            localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(parsed));
+          }
+        } catch {}
+      }
+    }
+
     return parsed.map((tpl) => ({
       ...tpl,
       isDatabaseBacked: true
@@ -90,43 +150,39 @@ export const saveLocalWorkReportTemplates = (templates) => {
   try {
     localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
     localStorage.setItem(TEMPLATE_RESET_VERSION_KEY, "true");
+    window.dispatchEvent(new CustomEvent("work-report-templates-updated", { detail: templates }));
   } catch (e) {
     console.error("saveLocalWorkReportTemplates error:", e);
   }
 };
 
-// Firestore 실시간 구독 (기존 잔여 템플릿 1회 일괄 삭제 및 실시간 삭제 즉시 반영)
+// Firestore 실시간 구독 (로컬 저장본과 클라우드 문서 병합 유지)
 export const subscribeWorkReportTemplates = (callback) => {
   try {
     const q = query(collection(db, COLLECTION_NAME));
     const unsubscribe = onSnapshot(
       q,
-      async (snapshot) => {
-        // 🌟 최초 리셋 미완료 시 Firestore에 남아있는 기존 양식들도 모두 영구 삭제
-        if (localStorage.getItem("oruk_work_report_templates_firestore_purged_v3") !== "true") {
-          localStorage.setItem("oruk_work_report_templates_firestore_purged_v3", "true");
-          saveLocalWorkReportTemplates([]);
-          callback([]);
-          if (!snapshot.empty) {
-            try {
-              await Promise.all(
-                snapshot.docs.map((docSnap) => deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)))
-              );
-            } catch (purgeErr) {
-              console.warn("Firestore initial purge warning:", purgeErr);
-            }
-          }
-          return;
-        }
-
+      (snapshot) => {
         const snapshotList = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           ...docSnap.data(),
           isDatabaseBacked: true
         }));
 
-        saveLocalWorkReportTemplates(snapshotList);
-        callback(snapshotList);
+        const localList = getLocalWorkReportTemplates();
+        const tplMap = new Map();
+        localList.forEach((tpl) => {
+          if (tpl && tpl.id) tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+        });
+        snapshotList.forEach((tpl) => {
+          if (tpl && tpl.id) tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+        });
+
+        const merged = Array.from(tplMap.values()).sort(
+          (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+        );
+        saveLocalWorkReportTemplates(merged);
+        callback(merged);
       },
       (error) => {
         console.warn("subscribeWorkReportTemplates offline fallback:", error);

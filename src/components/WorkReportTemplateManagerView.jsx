@@ -53,7 +53,18 @@ export const WorkReportTemplateManagerView = () => {
         setTemplates(list);
       }
     });
-    return () => unsub();
+    const handleCustomTemplatesUpdate = (e) => {
+      if (Array.isArray(e.detail)) {
+        setTemplates(e.detail);
+      } else {
+        setTemplates(getLocalWorkReportTemplates());
+      }
+    };
+    window.addEventListener("work-report-templates-updated", handleCustomTemplatesUpdate);
+    return () => {
+      unsub();
+      window.removeEventListener("work-report-templates-updated", handleCustomTemplatesUpdate);
+    };
   }, []);
 
   const showToast = (msg) => {
@@ -61,7 +72,15 @@ export const WorkReportTemplateManagerView = () => {
     setTimeout(() => setToastMsg(""), 2500);
   };
 
-  // Filter templates by category and search
+  // Auto-switch to a non-empty category if current selectedCategory has 0 templates while others have templates
+  useEffect(() => {
+    if (templates.length > 0 && !templates.some((t) => t.categoryId === selectedCategory)) {
+      const firstAvailable = templates[0]?.categoryId;
+      if (firstAvailable) {
+        setSelectedCategory(firstAvailable);
+      }
+    }
+  }, [templates, selectedCategory]);
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {
       const matchCat = t.categoryId === selectedCategory;
@@ -218,7 +237,11 @@ export const WorkReportTemplateManagerView = () => {
 
   // Callback when saved from Lego Builder
   const handleSaveFromLegoBuilder = (savedTpl) => {
-    showToast(`✅ [${savedTpl.title || "양식"}] 템플릿 보관함 동기화 완료`);
+    setTemplates(getLocalWorkReportTemplates());
+    if (savedTpl && savedTpl.categoryId) {
+      setSelectedCategory(savedTpl.categoryId);
+    }
+    showToast(`✅ [${savedTpl?.title || "양식"}] 5대 공정 양식 보관함에 등록되었습니다!`);
   };
 
   return (

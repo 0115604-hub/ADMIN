@@ -1194,17 +1194,34 @@ export const LegoWorkReportBuilder = ({
       // 2. Persist to official Machining Work Report Service
       await saveMachiningWorkReport(reportPayload);
 
-      // 🌟 일보양식관리에도 DB 공식등록 뱃지를 가진 템플릿으로 자동 동기화 등록
+      // 🌟 일보양식관리에도 DB 공식등록 뱃지를 가진 템플릿으로 자동 동기화 등록 (공정명 기반 5대 대분류 자동 매칭)
+      let savedTplPayload = null;
       try {
-        await saveWorkReportTemplate({
+        const procText = `${currentReport.processName || ""} ${currentReport.title || ""} ${currentReport.subTitle || ""}`;
+        let matchedCatId = currentReport.category || "MATERIAL_PREP";
+        if (procText.includes("압출")) {
+          matchedCatId = "EXTRUSION";
+        } else if (procText.includes("조인트") || procText.includes("사출")) {
+          matchedCatId = "JOINT";
+        } else if (procText.includes("후가공") || procText.includes("본드") || procText.includes("조립")) {
+          matchedCatId = "POST_PROCESSING";
+        } else if (procText.includes("검사") || procText.includes("직각") || procText.includes("치수")) {
+          matchedCatId = "INSPECTION";
+        } else if (procText.includes("절단") || procText.includes("컷팅") || procText.includes("소재")) {
+          matchedCatId = "MATERIAL_PREP";
+        }
+        const matchedCatObj =
+          REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
+
+        savedTplPayload = await saveWorkReportTemplate({
           id: `tpl_lego_${currentReport.carModel || "JA"}_${Date.now()}`,
-          categoryId: "MATERIAL_PREP",
-          categoryName: "소재준비일보",
+          categoryId: matchedCatObj.id,
+          categoryName: matchedCatObj.name,
           title: currentReport.title || `${currentReport.carModel || "신규"} 레고블록 작업일보`,
-          subTitle: currentReport.subTitle || "▣ 공정명 : 정치절단 / 단컷팅",
+          subTitle: currentReport.subTitle || `▣ 공정명 : ${currentReport.processName || "정치절단 / 단컷팅"}`,
           carModel: currentReport.carModel || "JA",
           partName: currentReport.partName || "G/RUN",
-          processName: currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단",
+          processName: currentReport.processName || (currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단"),
           formNo: currentReport.formNo || "705-02(REV.4)",
           companyName: currentReport.companyName || "(주)오륙",
           isLegoModular: true,
@@ -1244,7 +1261,7 @@ export const LegoWorkReportBuilder = ({
         onSaveWorkReport(reportPayload);
       }
       if (onSaveToTemplateManager) {
-        onSaveToTemplateManager(reportPayload);
+        onSaveToTemplateManager(savedTplPayload || reportPayload);
       }
 
       showToast("🎉 [작업일보 등록 완료] 레고블럭 작업일보가 데이터베이스에 공식 저장되었습니다!");
