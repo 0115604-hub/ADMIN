@@ -44,7 +44,11 @@ import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueServi
 import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { MachiningWorkerDashboardView } from "./machining/MachiningWorkerDashboardView";
-import { isMachiningWorkerProfile } from "../services/machiningQualityIssueService";
+import {
+  isMachiningWorkerProfile,
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues
+} from "../services/machiningQualityIssueService";
 import { YuseongWorkerDashboardView } from "./yuseong/YuseongWorkerDashboardView";
 import {
   isYuseongWorkerProfile,
@@ -396,6 +400,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [isHanulQualityIssueModalOpen, setIsHanulQualityIssueModalOpen] = useState(false);
   const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
+  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
   const [hanulReportProject, setHanulReportProject] = useState("9BQC");
   const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
   const [hanulReportEditData, setHanulReportEditData] = useState(null);
@@ -413,9 +418,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeMachiningQualityIssues((list) => {
+      setMachiningQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
   const activeHanulQualityCount = useMemo(() => {
     return (hanulQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
   }, [hanulQualityIssues]);
+
+  const activeMachiningQualityCount = useMemo(() => {
+    return (machiningQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
+  }, [machiningQualityIssues]);
 
   const handleOpenHanulReport = (proj = "9BQC", proc = "소재준비", editData = null) => {
     setHanulReportProject(proj);
@@ -1394,6 +1410,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               LOGS_PER_PAGE={LOGS_PER_PAGE}
               totalLogPages={totalLogPages}
               handleOpenWorkLogModal={handleOpenWorkLogModal}
+              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+              activeHanulQualityCount={activeHanulQualityCount}
+              activeMachiningQualityCount={activeMachiningQualityCount}
             />
           ) : isPartnerProfile ? (
             /* 2. 외주 협력사 관리자 뷰 (유성, 부림텍 등 - 소속 근태 및 공통 일정) */
@@ -1483,6 +1502,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               LOGS_PER_PAGE={LOGS_PER_PAGE}
               totalLogPages={totalLogPages}
               handleOpenWorkLogModal={handleOpenWorkLogModal}
+              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+              activeHanulQualityCount={activeHanulQualityCount}
+              activeMachiningQualityCount={activeMachiningQualityCount}
             />
           ) : isAdmin ? (
             /* 3. 본사 총괄 관리자 뷰 (권태형, 최미영 등 - 전사 7개 섹션 풀 관제) */
@@ -1682,6 +1704,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               LOGS_PER_PAGE={LOGS_PER_PAGE}
               totalLogPages={totalLogPages}
               handleOpenWorkLogModal={handleOpenWorkLogModal}
+              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+              activeHanulQualityCount={activeHanulQualityCount}
+              activeMachiningQualityCount={activeMachiningQualityCount}
             />
           )}
         </>

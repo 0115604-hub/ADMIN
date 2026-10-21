@@ -1125,6 +1125,33 @@ export const WorkerPinModal = ({
       managerName = "부림텍 관리자";
       subText = "부림텍 관리자 공지 • 부림텍 외주가공 품질이슈 및 공지";
 
+      // 조영(김동욱) 및 한림공장 공통 부적합경보도 부림텍 작업자 접속 시 노출
+      (hanulQualityIssues || []).forEach((hq) => {
+        if (!hq || hq.status === "RESOLVED") return;
+        const isJoyoungOrHallim =
+          hq.company === "조영" ||
+          hq.author === "김동욱" ||
+          String(hq.line || "").includes("부림") ||
+          String(hq.line || "").includes("한림공장");
+        if (!isJoyoungOrHallim) return;
+
+        const causeImgs = Array.isArray(hq.causeImages) ? hq.causeImages : [];
+        const actionImgs = Array.isArray(hq.actionImages) ? hq.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+        issues.push({
+          id: `hq_br_${hq.id}`,
+          title: hq.title,
+          content: hq.defectDescription || hq.content,
+          line: hq.line || "한림공장",
+          defectType: hq.defectType,
+          actionResult: hq.actionPlan || hq.actionResult,
+          images: allImgs,
+          date: hq.date || todayKst,
+          author: hq.author || "조영 관리자"
+        });
+      });
+
       (sourceIssues || []).forEach((u) => {
         if (!u || u.isDeleted || u.deleted) return;
         const comp = String(u.company || "");
@@ -1170,7 +1197,7 @@ export const WorkerPinModal = ({
 
       (sourceIssues || []).forEach((u) => {
         if (!u || u.isDeleted || u.deleted) return;
-        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수");
+        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수") || u.author === "이창엽" || String(u.author).includes("이창엽");
         const isMach = (String(u.line || u.plant || u.target || "").includes("가공") || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(u.line)) && !String(u.line || "").includes("외주");
         if (isYoon || isMach) {
           issues.push({
@@ -1230,14 +1257,33 @@ export const WorkerPinModal = ({
         }
       });
     } else {
-      // 일반 기타 현장 (윤경수 책임)
+      // 일반 기타 현장 (오륙 / 가공동 등)
       sectorName = "가공동";
       managerName = "윤경수 책임";
       subText = "윤경수 책임 공지 • 가공 라인별 품질이슈 및 긴급공지";
 
+      (machiningQualityIssues || []).forEach((mq) => {
+        if (!mq || mq.status === "RESOLVED") return;
+        const causeImgs = Array.isArray(mq.causeImages) ? mq.causeImages : [];
+        const actionImgs = Array.isArray(mq.actionImages) ? mq.actionImages : [];
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+        issues.push({
+          id: `mq_${mq.id}`,
+          title: mq.title,
+          content: mq.defectDescription || mq.content,
+          line: mq.line || "가공",
+          defectType: mq.defectType,
+          actionResult: mq.actionPlan || mq.actionResult,
+          images: allImgs,
+          date: mq.date || todayKst,
+          author: mq.author || "오륙 관리자"
+        });
+      });
+
       (sourceIssues || []).forEach((u) => {
         if (!u || u.isDeleted || u.deleted) return;
-        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수");
+        const isYoon = u.author === "윤경수" || String(u.author).includes("윤경수") || u.author === "이창엽" || String(u.author).includes("이창엽");
         const isMach = (String(u.line || u.plant || u.target || "").includes("가공") || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(u.line)) && !String(u.line || "").includes("외주");
         if (isYoon || isMach) {
           issues.push({
@@ -1333,8 +1379,37 @@ export const WorkerPinModal = ({
       });
     });
 
+    // 🌟 한울 / 이창엽 / 윤경수가 [첫화면 전사등록] 뱃지를 선택하여 올린 부적합경보도 첫화면 품질경보 패널에 연동
+    [...(hanulQualityIssues || []), ...(machiningQualityIssues || [])].forEach((ext) => {
+      if (!ext || ext.isDeleted || ext.deleted || ext.status === "DELETED") return;
+      if (ext.isFirstScreenBroadcast !== true) return;
+      if (ext.isClosedByAdmin && !ext.isManuallyRestored) return;
+
+      const uniqueKey = `broadcast_${ext.id}`;
+      if (seenIds.has(uniqueKey)) return;
+      seenIds.add(uniqueKey);
+
+      const causeImgs = Array.isArray(ext.causeImages) ? ext.causeImages : [];
+      const actionImgs = Array.isArray(ext.actionImages) ? ext.actionImages : [];
+      const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+
+      list.push({
+        id: uniqueKey,
+        category: "부적합경보",
+        isQualityAlert: true,
+        isNotice: false,
+        plant: ext.plant || "전사",
+        title: ext.title || "(부적합경보)",
+        content: ext.content || "",
+        actionResult: ext.actionResult || "",
+        author: ext.author || "",
+        date: ext.date || (ext.createdAt ? String(ext.createdAt).slice(0, 10) : todayKst),
+        images: allImgs
+      });
+    });
+
     return list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, todayKst]);
+  }, [urgentIssues, localUrgentIssues, hanulQualityIssues, machiningQualityIssues, todayKst]);
 
   // =========================================================================
   // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)
@@ -1713,59 +1788,6 @@ export const WorkerPinModal = ({
                         : "반장"
                       : "사원")}
                 </h3>
-                <span
-                  className={`text-[11px] font-black px-2.5 py-0.5 rounded-full ${
-                    isHeadquarterAdmin
-                      ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                      : isCompanyRepresentative
-                      ? "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
-                      : isExtrusionWorker
-                      ? "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700 shadow-2xs font-black"
-                      : isHanul
-                      ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 shadow-2xs font-black"
-                      : isBurimtech
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs font-black"
-                      : isMachiningWorker
-                      ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs font-black"
-                      : isYuseongWorker
-                      ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 shadow-2xs font-black"
-                      : isFieldWorker
-                      ? isWorkerManager
-                        ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 shadow-2xs font-black"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-bold"
-                      : isSamrangjinManager
-                      ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                      : isHallimManager
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300"
-                  }`}
-                >
-                  {isHeadquarterAdmin
-                    ? "경영총괄/대표이사"
-                    : isCompanyRepresentative
-                    ? `협력업체 (${selectedUser.name} 대표이사)`
-                    : isExtrusionWorker
-                    ? `삼랑진공장 압출동 (${selectedUser.title || (selectedUser.name === "공영국" ? "대리" : isWorkerManager ? "반장" : "사원")})`
-                    : isHanul
-                    ? `한림공장 한울 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
-                    : isBurimtech
-                    ? `한림공장 부림텍 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
-                    : isMachiningWorker
-                    ? `삼랑진공장 가공동 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
-                    : isYuseongWorker
-                    ? `(주)유성 외주가공 (${selectedUser.title || (isWorkerManager ? "반장" : "사원")})`
-                    : isFieldWorker
-                    ? isWorkerManager
-                      ? `[현장관리자] ${
-                          selectedUser.title || (selectedUser.name === "공영국" ? "대리" : "반장")
-                        }`
-                      : "사원"
-                    : isSamrangjinManager
-                    ? "삼랑진공장 관리자"
-                    : isHallimManager
-                    ? "한림공장 관리자"
-                    : "사원"}
-                </span>
 
                 {/* PIN Input Badge */}
                 <form onSubmit={handlePinSubmit} className="flex items-center gap-1.5 shrink-0">
@@ -2002,10 +2024,7 @@ export const WorkerPinModal = ({
                               </div>
                               <div>
                                 <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  🚨 [{managerQualitySection.sectorName}] {managerQualitySection.managerName} 품질이슈 및 긴급공지
-                                </span>
-                                <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
-                                  {managerQualitySection.subText}
+                                  🚨 현장내 품질이슈 및 긴급공지
                                 </span>
                               </div>
                             </div>

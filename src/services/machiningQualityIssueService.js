@@ -138,22 +138,31 @@ export const saveMachiningQualityIssue = async (issueData) => {
     issueData.createdAt ||
     nowKst;
 
+  const isBroadcast =
+    issueData.isFirstScreenBroadcast !== undefined
+      ? Boolean(issueData.isFirstScreenBroadcast)
+      : Boolean(existing?.isFirstScreenBroadcast);
+
   const fullItem = {
     ...issueData,
     id,
+    company: issueData.company || existing?.company || "오륙",
     plant: "삼랑진공장",
     building: "가공동",
-    line: issueData.line || "JA G/RUN",
-    defectType: issueData.defectType || "외관 스크래치 / 찍힘",
-    severity: issueData.severity || "CRITICAL",
-    title: issueData.title || "",
-    content: issueData.content || "",
-    actionResult: issueData.actionResult || "",
+    line: issueData.line || existing?.line || "JA G/RUN",
+    defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
+    severity: issueData.severity || existing?.severity || "CRITICAL",
+    title: issueData.title || existing?.title || "",
+    content: issueData.content || existing?.content || "",
+    actionResult: issueData.actionResult || existing?.actionResult || "",
     causeImages: causeImgs,
     actionImages: actionImgs,
-    author: issueData.author || "가공동",
-    authorTitle: issueData.authorTitle || "사원",
-    status: issueData.status || "ACTIVE",
+    author: issueData.author || existing?.author || "가공동",
+    authorTitle: issueData.authorTitle || existing?.authorTitle || "사원",
+    status: issueData.status || existing?.status || "ACTIVE",
+    isFirstScreenBroadcast: isBroadcast,
+    isFirstScreenOrigin: isBroadcast,
+    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
     date: finalDate,
     createdAt: finalCreatedAt,
     updatedAt: nowKst

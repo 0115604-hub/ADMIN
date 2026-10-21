@@ -155,9 +155,16 @@ export const saveHanulQualityIssue = async (issueData) => {
     issueData.createdAt ||
     nowKst;
 
+  const isBroadcast =
+    issueData.isFirstScreenBroadcast !== undefined
+      ? Boolean(issueData.isFirstScreenBroadcast)
+      : Boolean(existing?.isFirstScreenBroadcast);
+
   const fullItem = {
     ...issueData,
     id,
+    company: issueData.company || existing?.company || "한울",
+    plant: issueData.plant || existing?.plant || "한림공장",
     line: issueData.line || existing?.line || "9BQC (G/RUN)",
     defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
     severity: issueData.severity || existing?.severity || "CRITICAL",
@@ -169,6 +176,9 @@ export const saveHanulQualityIssue = async (issueData) => {
     author: issueData.author || existing?.author || "한울",
     authorTitle: issueData.authorTitle || existing?.authorTitle || "사원",
     status: issueData.status || existing?.status || "ACTIVE", // ACTIVE | RESOLVED
+    isFirstScreenBroadcast: isBroadcast,
+    isFirstScreenOrigin: isBroadcast,
+    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
     date: finalDate,
     createdAt: finalCreatedAt,
     updatedAt: nowKst

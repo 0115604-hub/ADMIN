@@ -585,13 +585,14 @@ export const AuthModal = () => {
       });
     });
 
-    // 2. 한울 외주가공 부적합경보
+    // 2. 한울 / 조영 부적합경보 (첫화면 전사등록 뱃지 선택 건에 한하여 첫화면 노출)
     (hanulQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
+      if (alert.isFirstScreenBroadcast !== true) return;
 
       const dateStr = normalizeDateStr(alert.targetDate || alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
-      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) && !alert.isManuallyRestored;
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -621,6 +622,7 @@ export const AuthModal = () => {
         deletedBy: alert.deletedBy || "",
         isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
+        isFirstScreenBroadcast: true,
         origin: "HANUL_QUALITY",
         createdAt: alert.createdAt || dateStr,
         raw: alert
@@ -669,13 +671,14 @@ export const AuthModal = () => {
       });
     });
 
-    // 4. 가공동 부적합경보
+    // 4. 오륙 / 가공동 부적합경보 (첫화면 전사등록 뱃지 선택 건에 한하여 첫화면 노출)
     (machiningQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
+      if (alert.isFirstScreenBroadcast !== true) return;
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
-      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) && !alert.isManuallyRestored;
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -687,12 +690,12 @@ export const AuthModal = () => {
         plant: alert.plant || "삼랑진공장",
         line: alert.line || "가공라인",
         author: alert.author || "가공 관리자",
-        authorTitle: alert.authorTitle || "선임",
+        authorTitle: alert.authorTitle || "책임",
         startDate: dateStr,
         expireDate: dateStr,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
-        title: alert.title || alert.defectType || "가공 부적합경보",
+        title: alert.title || alert.defectType || "오륙 부적합경보",
         content: alert.content || alert.defectType || "",
         actionResult: alert.actionResult || "",
         actionAuthor: alert.actionAuthor || alert.author || "",
@@ -705,6 +708,7 @@ export const AuthModal = () => {
         deletedBy: alert.deletedBy || "",
         isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
+        isFirstScreenBroadcast: true,
         origin: "MACHINING_QUALITY",
         createdAt: alert.createdAt || dateStr,
         raw: alert
@@ -732,10 +736,11 @@ export const AuthModal = () => {
       list.push(item);
     });
 
-    // 2. Urgent issues 부적합경보 (종결/삭제 건도 대장 조회를 위해 수합)
+    // 2. Urgent issues 부적합경보 (첫화면 공식 등록 건 및 전사등록 허용 건만 수합)
     (urgentIssues || []).forEach((item) => {
       if (!item) return;
       if (!isCatQualityAlert(item.category)) return;
+      if (!isFirstScreenIssue(item) && item.isFirstScreenBroadcast !== true) return;
 
       const key = `${(item.title || "").trim().toLowerCase()}_${(item.startDate || item.expireDate || item.date || "").slice(0, 10)}`;
       const cleanId = String(item.id || item._docId || "");

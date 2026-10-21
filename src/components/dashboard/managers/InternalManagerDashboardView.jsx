@@ -1,5 +1,5 @@
 import React from "react";
-import { Cpu } from "lucide-react";
+import { Cpu, ShieldAlert } from "lucide-react";
 import {
   CommonScheduleBar,
   WorkerScheduleCalendarSection,
@@ -123,8 +123,24 @@ export const InternalManagerDashboardView = ({
   setCurrentLogPage,
   LOGS_PER_PAGE,
   totalLogPages,
-  handleOpenWorkLogModal
+  handleOpenWorkLogModal,
+  setIsHanulQualityIssueModalOpen,
+  activeHanulQualityCount = 0,
+  activeMachiningQualityCount = 0
 }) => {
+  // 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) 판별
+  const isOryukQualityManager = Boolean(
+    currentProfile?.name === "이창엽" ||
+    currentProfile?.id === "sam_cy" ||
+    currentProfile?.name === "윤경수" ||
+    currentProfile?.id === "sam_ks"
+  );
+  const isJoyoungQualityManager = Boolean(
+    isDongwook ||
+    currentProfile?.name === "김동욱" ||
+    currentProfile?.id === "hal_dw"
+  );
+
   return (
     <>
       {/* 🌟 압출동 작업자 전용 상단 배너 */}
@@ -221,6 +237,50 @@ export const InternalManagerDashboardView = ({
           handleNextWeek={handleNextWeek}
           myWeeklyCalendarDays={myWeeklyCalendarDays}
         />
+      )}
+
+      {/* 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) 전용 한줄 패널 */}
+      {(isOryukQualityManager || isJoyoungQualityManager) && setIsHanulQualityIssueModalOpen && (
+        <div
+          onClick={() => setIsHanulQualityIssueModalOpen(true)}
+          className="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/90 text-white rounded-xl sm:rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 border-2 border-indigo-500/50 shadow-md shadow-slate-950/40 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0 max-w-full animate-fadeIn cursor-pointer group"
+          title={
+            isOryukQualityManager
+              ? "오륙 부적합경보 및 품질이슈 등록/관리"
+              : "조영 부적합경보 및 품질이슈 등록/관리"
+          }
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white shadow-xs shrink-0 flex items-center justify-center animate-pulse group-hover:scale-105 transition-transform">
+              <ShieldAlert className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-black text-xs sm:text-sm text-white tracking-tight group-hover:text-rose-300 transition-colors">
+                {isOryukQualityManager ? "오륙 부적합경보 등록" : "조영 부적합경보 등록"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsHanulQualityIssueModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black shadow-md shadow-rose-950/40 active:scale-95 transition-all cursor-pointer whitespace-nowrap animate-pulse"
+              title="부적합경보 및 품질이슈 등록/관리"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>🚨 부적합경보 입력</span>
+              {(isOryukQualityManager ? activeMachiningQualityCount : activeHanulQualityCount) > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
+                  {isOryukQualityManager ? activeMachiningQualityCount : activeHanulQualityCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 🚨 중대재해 안전판 (이창엽 책임 대시보드에서는 비노출/삭제) */}

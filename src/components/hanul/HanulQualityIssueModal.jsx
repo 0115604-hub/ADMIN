@@ -27,7 +27,31 @@ import {
   resolveHanulQualityIssue,
   deleteHanulQualityIssue
 } from "../../services/hanulQualityIssueService";
+import {
+  MACHINING_QUALITY_PROJECTS,
+  MACHINING_DEFECT_TYPES,
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues,
+  saveMachiningQualityIssue,
+  resolveMachiningQualityIssue,
+  deleteMachiningQualityIssue
+} from "../../services/machiningQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+
+const ORYUK_PROCESSES = [
+  ...MACHINING_QUALITY_PROJECTS,
+  { id: "ext_line", name: "압출/성형 라인", badge: "압출", color: "teal" },
+  { id: "sam_all", name: "삼랑진공장 (전체)", badge: "전체", color: "blue" }
+];
+
+const JOYOUNG_PROCESSES = [
+  { id: "hal_all", name: "한림공장 (전체)", badge: "전체", color: "blue" },
+  { id: "joyoung_common", name: "한림공장 조영 (공통)", badge: "조영", color: "purple" },
+  { id: "9bqc", name: "9BQC (G/RUN)", badge: "9BQC", color: "indigo" },
+  { id: "lq2", name: "LQ2 (Hood Side)", badge: "LQ2", color: "purple" },
+  { id: "lq2a", name: "LQ2a (Hood Side)", badge: "LQ2a", color: "pink" },
+  { id: "burim", name: "부림텍 외주가공", badge: "부림텍", color: "emerald" }
+];
 
 // Client-side image compression
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -78,7 +102,38 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
 
 export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const { currentProfile } = useAuth();
-  const [issues, setIssues] = useState(() => getLocalHanulQualityIssues());
+
+  // 🌟 접속 관리자별 등록 모드 자동 판별 (오륙: 이창엽·윤경수 / 조영: 김동욱 / 한울: 한울)
+  const isOryukManager = Boolean(
+    currentProfile?.name === "이창엽" ||
+    currentProfile?.id === "sam_cy" ||
+    currentProfile?.name === "윤경수" ||
+    currentProfile?.id === "sam_ks"
+  );
+  const isJoyoungManager = Boolean(
+    currentProfile?.name === "김동욱" ||
+    currentProfile?.id === "hal_dw"
+  );
+  // 🌟 한울, 이창엽, 윤경수의 부적합경보등록 화면에서는 [첫화면 전사등록] 뱃지 생성 (김동욱 제외 또는 한울·이창엽·윤경수 전용)
+  const canBroadcastToFirstScreen = !isJoyoungManager;
+
+  const companyLabel = isOryukManager ? "오륙" : isJoyoungManager ? "조영" : "한울";
+  const headerBadgeLabel = isOryukManager
+    ? "(주)오륙 삼랑진공장 전담"
+    : isJoyoungManager
+    ? "(주)조영 한림공장 전담"
+    : "한울 외주가공 전담";
+  const processOptions = isOryukManager
+    ? ORYUK_PROCESSES
+    : isJoyoungManager
+    ? JOYOUNG_PROCESSES
+    : HANUL_PROCESSES;
+  const defectOptions = isOryukManager ? MACHINING_DEFECT_TYPES : HANUL_DEFECT_TYPES;
+  const defaultLineName = processOptions[0]?.name || "9BQC (G/RUN)";
+
+  const [issues, setIssues] = useState(() =>
+    isOryukManager ? getLocalMachiningQualityIssues() : getLocalHanulQualityIssues()
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingCauseImages, setIsProcessingCauseImages] = useState(false);
   const [isProcessingActionImages, setIsProcessingActionImages] = useState(false);
@@ -93,31 +148,51 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ALL", "ACTIVE", "RESOLVED"
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Form State: 발생원인 사진(causeImages)과 조치결과 사진(actionImages) 분리 및 등록일자(date) 명시
+  // Form State: 발생원인 사진(causeImages)과 조치결과 사진(actionImages) 분리 및 등록일자(date), 첫화면 전사등록(isFirstScreenBroadcast) 명시
   const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     date: todayStr,
     createdAt: undefined,
-    line: "9BQC (G/RUN)",
+    line: defaultLineName,
     defectType: "외관 스크래치 / 찍힘",
     title: "",
     content: "",
     actionResult: "",
     causeImages: [],
-    actionImages: []
+    actionImages: [],
+    isFirstScreenBroadcast: false
   });
+
+  // Reset default line when manager profile changes
+  useEffect(() => {
+    if (!editingIssueId) {
+      setForm((prev) => ({
+        ...prev,
+        line: defaultLineName
+      }));
+    }
+  }, [defaultLineName, editingIssueId]);
 
   const causeFileInputRef = useRef(null);
   const actionFileInputRef = useRef(null);
   const modalBodyRef = useRef(null);
 
-  // Real-time Cloud Sync
+  // Real-time Cloud Sync (오륙: machiningQualityIssues / 한울·조영: hanulQualityIssues)
   useEffect(() => {
-    const unsub = subscribeHanulQualityIssues((list) => {
-      setIssues(list);
-    });
-    return () => unsub();
-  }, []);
+    if (isOryukManager) {
+      setIssues(getLocalMachiningQualityIssues());
+      const unsub = subscribeMachiningQualityIssues((list) => {
+        setIssues(list);
+      });
+      return () => unsub();
+    } else {
+      setIssues(getLocalHanulQualityIssues());
+      const unsub = subscribeHanulQualityIssues((list) => {
+        setIssues(list);
+      });
+      return () => unsub();
+    }
+  }, [isOryukManager]);
 
   // Close on Escape key
   useEffect(() => {
@@ -211,33 +286,43 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
     setIsProcessing(true);
     try {
-      const authorName = currentProfile?.name || "한울";
-      const authorTitle = currentProfile?.title || "사원";
+      const authorName = currentProfile?.name || companyLabel;
+      const authorTitle = currentProfile?.title || "책임";
+      const isBroadcast = canBroadcastToFirstScreen ? Boolean(form.isFirstScreenBroadcast) : false;
 
       const payload = {
         ...form,
+        company: companyLabel,
+        plant: isOryukManager ? "삼랑진공장" : "한림공장",
         author: authorName,
         authorTitle,
-        status: "ACTIVE"
+        status: "ACTIVE",
+        isFirstScreenBroadcast: isBroadcast,
+        isFirstScreenOrigin: isBroadcast
       };
 
       if (editingIssueId) {
         payload.id = editingIssueId;
       }
 
-      await saveHanulQualityIssue(payload);
+      if (isOryukManager) {
+        await saveMachiningQualityIssue(payload);
+      } else {
+        await saveHanulQualityIssue(payload);
+      }
 
       // Reset form
       setForm({
         date: todayStr,
         createdAt: undefined,
-        line: "9BQC (G/RUN)",
+        line: defaultLineName,
         defectType: "외관 스크래치 / 찍힘",
         title: "",
         content: "",
         actionResult: "",
         causeImages: [],
-        actionImages: []
+        actionImages: [],
+        isFirstScreenBroadcast: false
       });
 
       const isEdit = Boolean(editingIssueId);
@@ -245,12 +330,14 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
       alert(
         isEdit
-          ? "🎉 한울 품질경보가 성공적으로 수정되었습니다."
-          : "🚨 한울 품질경보가 등록되었으며 작업자 로그인 팝업으로 즉시 실시간 전파됩니다!"
+          ? `🎉 ${companyLabel} 부적합경보가 성공적으로 수정되었습니다.`
+          : isBroadcast
+          ? `🚨 ${companyLabel} 부적합경보가 [현장 작업자 접속 팝업] 및 [첫화면 부적합품 경보]에 전사 등록되었습니다!`
+          : `🚨 ${companyLabel} 부적합경보가 등록되었으며 현장 작업자 접속 시 즉시 노출됩니다! (첫화면 부적합경보 미노출)`
       );
     } catch (err) {
       console.error("Submit error:", err);
-      alert("품질경보 등록 중 오류가 발생했습니다: " + err.message);
+      alert("부적합경보 등록 중 오류가 발생했습니다: " + err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -271,13 +358,14 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     setForm({
       date: issueDate,
       createdAt: issue.createdAt,
-      line: issue.line || "9BQC (G/RUN)",
+      line: issue.line || defaultLineName,
       defectType: issue.defectType || "외관 스크래치 / 찍힘",
       title: issue.title || "",
       content: issue.content || "",
       actionResult: issue.actionResult || issue.actionGuide || issue.resolutionNote || "",
       causeImages: causeImgs,
-      actionImages: actionImgs
+      actionImages: actionImgs,
+      isFirstScreenBroadcast: Boolean(issue.isFirstScreenBroadcast)
     });
 
     if (modalBodyRef.current) {
@@ -292,8 +380,12 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     if (note === null) return;
 
     try {
-      await resolveHanulQualityIssue(issue.id, note, currentProfile?.name || "한울");
-      alert("✅ 한울 품질경보가 [조치 완료] 처리되었습니다.");
+      if (isOryukManager) {
+        await resolveMachiningQualityIssue(issue.id, note, currentProfile?.name || companyLabel);
+      } else {
+        await resolveHanulQualityIssue(issue.id, note, currentProfile?.name || companyLabel);
+      }
+      alert(`✅ ${companyLabel} 부적합경보가 [조치 완료] 처리되었습니다.`);
     } catch (err) {
       console.error("Resolve error:", err);
       alert("조치 완료 처리 중 오류가 발생했습니다.");
@@ -304,7 +396,11 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const handleDelete = async (id) => {
     if (!window.confirm("이 품질경보를 삭제하시겠습니까?")) return;
     try {
-      await deleteHanulQualityIssue(id);
+      if (isOryukManager) {
+        await deleteMachiningQualityIssue(id);
+      } else {
+        await deleteHanulQualityIssue(id);
+      }
       if (editingIssueId === id) {
         setEditingIssueId(null);
       }
@@ -330,7 +426,14 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
       // Line filter
       if (selectedLineFilter !== "all") {
-        if (it.line !== selectedLineFilter && it.line !== "한울 가공·조립 (공통)" && it.line !== "한림공장 (전체)") {
+        if (
+          it.line !== selectedLineFilter &&
+          it.line !== "한울 가공·조립 (공통)" &&
+          it.line !== "한림공장 (전체)" &&
+          it.line !== "가공동 (공통)" &&
+          it.line !== "삼랑진공장 (전체)" &&
+          it.line !== "한림공장 조영 (공통)"
+        ) {
           return false;
         }
       }
@@ -383,14 +486,14 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
-                  한울 품질이슈 및 긴급공지
+                  {companyLabel} 부적합경보 등록
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white shadow-2xs">
-                  한울 외주가공 전담
+                  {headerBadgeLabel}
                 </span>
               </div>
               <p className="text-[11px] text-purple-200/90 font-medium truncate mt-0.5 hidden sm:block">
-                발생원인 사진 및 조치결과 사진을 분리하여 촬영·첨부할 수 있으며 작업자 로그인 시 실시간 공지됩니다.
+                등록 시 현장 작업자 접속 팝업에 즉시 노출되며, 기본값으로는 첫화면 부적합품 경보에 노출되지 않습니다.
               </p>
             </div>
           </div>
@@ -441,43 +544,72 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
           {/* 2. Top Section: Quality Issue Registration Panel (압출동과 100% 동일) */}
           {/* ========================================================================= */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className={`p-1.5 rounded-lg ${editingIssueId ? "bg-teal-600" : "bg-rose-600"} text-white shadow-xs`}>
                   {editingIssueId ? <Edit3 className="w-4 h-4" /> : <Flame className="w-4 h-4" />}
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    {editingIssueId ? "한울 품질이슈 수정" : "품질이슈 등록 및 현장전파"}
+                    {editingIssueId ? `${companyLabel} 부적합경보 수정` : `${companyLabel} 부적합경보 등록 및 현장전파`}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    발생원인 사진과 조치결과 사진을 분리하여 촬영·등록할 수 있습니다.
+                    기본 등록 시 현장 작업자 접속 시에만 노출됩니다. {canBroadcastToFirstScreen ? "우측 [첫화면 전사등록] 뱃지 선택 시 첫화면 부적합경보에도 함께 등록됩니다." : ""}
                   </p>
                 </div>
               </div>
 
-              {editingIssueId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingIssueId(null);
-                    setForm({
-                      date: todayStr,
-                      createdAt: undefined,
-                      line: "9BQC (G/RUN)",
-                      defectType: "외관 스크래치 / 찍힘",
-                      title: "",
-                      content: "",
-                      actionResult: "",
-                      causeImages: [],
-                      actionImages: []
-                    });
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
-                >
-                  수정 취소
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 🌟 한울 / 이창엽 / 윤경수 전용: [첫화면 전사등록] 선택 뱃지 */}
+                {canBroadcastToFirstScreen && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        isFirstScreenBroadcast: !prev.isFirstScreenBroadcast
+                      }))
+                    }
+                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer border-2 shadow-sm active:scale-95 ${
+                      form.isFirstScreenBroadcast
+                        ? "bg-gradient-to-r from-rose-600 via-amber-500 to-rose-600 text-white border-amber-300 ring-2 ring-rose-500/40 shadow-rose-500/30 animate-pulse"
+                        : "bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                    }`}
+                    title="선택 시 첫화면 부적합품 경보에 동시에 등록됩니다 (미선택 시 현장 작업자 접속 팝업에만 노출)"
+                  >
+                    <ShieldAlert className={`w-3.5 h-3.5 ${form.isFirstScreenBroadcast ? "text-white" : "text-rose-500"}`} />
+                    <span>
+                      {form.isFirstScreenBroadcast
+                        ? "🌐 첫화면 전사등록 선택됨 (첫화면 부적합경보 노출 ✓)"
+                        : "🌐 첫화면 전사등록 (클릭 시 첫화면 부적합경보 등록)"}
+                    </span>
+                  </button>
+                )}
+
+                {editingIssueId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingIssueId(null);
+                      setForm({
+                        date: todayStr,
+                        createdAt: undefined,
+                        line: defaultLineName,
+                        defectType: "외관 스크래치 / 찍힘",
+                        title: "",
+                        content: "",
+                        actionResult: "",
+                        causeImages: [],
+                        actionImages: [],
+                        isFirstScreenBroadcast: false
+                      });
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+                  >
+                    수정 취소
+                  </button>
+                )}
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -509,7 +641,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setForm({ ...form, line: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20"
                   >
-                    {HANUL_PROCESSES.map((l) => (
+                    {processOptions.map((l) => (
                       <option key={l.id} value={l.name}>
                         {l.name}
                       </option>
@@ -527,7 +659,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setForm({ ...form, defectType: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20"
                   >
-                    {HANUL_DEFECT_TYPES.map((d) => (
+                    {defectOptions.map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
@@ -752,7 +884,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    한울 품질이슈 및 긴급공지 목록
+                    {companyLabel} 부적합경보 및 품질이슈 목록
                   </h3>
                   <p className="text-[11px] text-slate-400">
                     총 {issues.length}건 등록됨 (현재 조건: {filteredIssues.length}건)
@@ -806,7 +938,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs"
                 >
                   <option value="all">전체 공정</option>
-                  {HANUL_PROCESSES.map((l) => (
+                  {processOptions.map((l) => (
                     <option key={l.id} value={l.name}>
                       {l.name}
                     </option>
@@ -819,7 +951,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
             {filteredIssues.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 space-y-2">
                 <CheckCircle2 className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-                <p>해당 조건의 한울 품질경보가 없습니다.</p>
+                <p>해당 조건의 {companyLabel} 부적합경보가 없습니다.</p>
               </div>
             ) : (
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
@@ -893,8 +1025,15 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
                           {/* 제목 */}
                           <td className="py-2 px-3">
-                            <div className="font-bold text-slate-900 dark:text-white max-w-[260px] sm:max-w-[320px] truncate" title={issue.title}>
-                              {issue.title}
+                            <div className="flex items-center gap-1.5 max-w-[260px] sm:max-w-[340px]">
+                              {issue.isFirstScreenBroadcast && (
+                                <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-black bg-gradient-to-r from-rose-600 to-amber-500 text-white shrink-0 shadow-2xs">
+                                  🌐 첫화면 전사등록
+                                </span>
+                              )}
+                              <span className="font-bold text-slate-900 dark:text-white truncate" title={issue.title}>
+                                {issue.title}
+                              </span>
                             </div>
                           </td>
 
