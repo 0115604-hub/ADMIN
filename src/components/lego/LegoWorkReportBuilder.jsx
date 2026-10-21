@@ -179,12 +179,13 @@ export const LEGO_IMAGE_REFERENCES = [
 export const PRESET_REPORTS = [
   {
     id: "REPORT_CUTTING",
-    name: "소재준비/단컷팅 일보",
+    name: "소재준비작업일보",
     badge: "정치절단 & 단컷팅",
     category: "MATERIAL_PREP",
     desc: "사진 8, 9, 15, 2, 3, 10, 16, 11 조합 - 정치절단, FRT/RR 단컷팅, 불량소재 8열 및 A/B/C 단면",
-    title: "소재 준비 작업 일보 (정치절단 & 단컷팅)",
-    subTitle: "▣ 공정명 : 정치절단 / 단컷팅  ※Record Time : 초물(Start) / 종물(Finish)",
+    title: "소재준비작업일보",
+    subTitle: "",
+    processName: "소재준비",
     formNo: "705-02(REV.4)",
     companyName: "(주)오륙",
     carModel: "JA",
@@ -489,7 +490,7 @@ export const PRESET_REPORTS = [
 ];
 
 export const LEGO_BLOCK_SWITCH_CATALOG = [
-  { key: "basicInfo", label: "작업 기본정보 (차종/품명/작업자)", badge: "사진 8" },
+  { key: "basicInfo", label: "작업 기본정보 (차종/품명/공정명/작업자)", badge: "사진 8" },
   { key: "workTimeOutput", label: "작업시간 및 생산실적 (FRT/RR)", badge: "사진 9" },
   { key: "specsCutting", label: "정치 절단 길이 & LOT (881/608/582)", badge: "사진 15" },
   { key: "stepCuttingFrt", label: "단컷팅 치수 FRT (49mm, 45mm)", badge: "사진 2" },
@@ -529,6 +530,16 @@ export const LegoWorkReportBuilder = ({
         const parsed = JSON.parse(saved);
         if (initialWorkerName) parsed.workerName = initialWorkerName;
         if (initialWorkDate) parsed.workDate = initialWorkDate;
+        if (
+          parsed.title === "소재 준비 작업 일보 (정치절단 & 단컷팅)" ||
+          parsed.title === "소재 준비 작업 일보" ||
+          parsed.title === "소재준비 작업일보"
+        ) {
+          parsed.title = "소재준비작업일보";
+        }
+        if (!parsed.processName) {
+          parsed.processName = "소재준비";
+        }
         parsed.activeBlocks = {
           downtimeDefectPanel: true,
           ...(parsed.activeBlocks || {})
@@ -583,9 +594,30 @@ export const LegoWorkReportBuilder = ({
     };
   }, []);
 
-  // Combined catalog: 17 standard blocks + saved custom photo-analyzed blocks
+  // Auto-persist currentReport to localStorage whenever it changes so no assembled blocks are ever lost
+  useEffect(() => {
+    try {
+      localStorage.setItem("oruk_custom_lego_report_v2", JSON.stringify(currentReport));
+    } catch (e) {
+      console.warn("Auto-save currentReport quota warning:", e);
+    }
+  }, [currentReport]);
+
+  // Combined catalog: standard blocks + saved custom photo-analyzed blocks
   const combinedSwitchCatalog = useMemo(() => {
-    const customSwitchItems = customBlocks.map((cb, idx) => ({
+    const mergedCustomMap = new Map();
+    customBlocks.forEach((cb) => {
+      const k = cb.key || cb.id;
+      if (k) mergedCustomMap.set(k, cb);
+    });
+    if (Array.isArray(currentReport.customBlocks)) {
+      currentReport.customBlocks.forEach((cb) => {
+        const k = cb.key || cb.id;
+        if (k && !mergedCustomMap.has(k)) mergedCustomMap.set(k, cb);
+      });
+    }
+    const allCustomList = Array.from(mergedCustomMap.values());
+    const customSwitchItems = allCustomList.map((cb, idx) => ({
       key: cb.key || cb.id,
       label: cb.label || cb.title || `사진분석 블록 ${idx + 1}`,
       badge: cb.badge || `사진 ${18 + idx}`,
@@ -593,7 +625,7 @@ export const LegoWorkReportBuilder = ({
       customData: cb
     }));
     return [...LEGO_BLOCK_SWITCH_CATALOG, ...customSwitchItems];
-  }, [customBlocks]);
+  }, [customBlocks, currentReport.customBlocks]);
 
   // Ordered block switches (persisted in currentReport.blockOrder)
   const orderedBlockItems = useMemo(() => {
@@ -676,7 +708,20 @@ export const LegoWorkReportBuilder = ({
   useEffect(() => {
     if (initialTemplateData) {
       if (initialTemplateData.legoConfig) {
-        setCurrentReport(JSON.parse(JSON.stringify(initialTemplateData.legoConfig)));
+        const cfg = JSON.parse(JSON.stringify(initialTemplateData.legoConfig));
+        if (initialTemplateData.title) cfg.title = initialTemplateData.title;
+        if (initialTemplateData.carModel) cfg.carModel = initialTemplateData.carModel;
+        if (initialTemplateData.partName) cfg.partName = initialTemplateData.partName;
+        if (initialTemplateData.processName) cfg.processName = initialTemplateData.processName;
+        if (Array.isArray(cfg.customBlocks) && cfg.customBlocks.length > 0) {
+          setCustomBlocks((prev) => {
+            const map = new Map();
+            prev.forEach((b) => map.set(b.key || b.id, b));
+            cfg.customBlocks.forEach((b) => map.set(b.key || b.id, b));
+            return Array.from(map.values());
+          });
+        }
+        setCurrentReport(cfg);
       } else {
         setCurrentReport((prev) => {
           const clone = JSON.parse(JSON.stringify(prev));
@@ -684,6 +729,7 @@ export const LegoWorkReportBuilder = ({
           if (initialTemplateData.subTitle) clone.subTitle = initialTemplateData.subTitle;
           if (initialTemplateData.carModel) clone.carModel = initialTemplateData.carModel;
           if (initialTemplateData.partName) clone.partName = initialTemplateData.partName;
+          if (initialTemplateData.processName) clone.processName = initialTemplateData.processName;
           if (initialTemplateData.formNo) clone.formNo = initialTemplateData.formNo;
           if (initialTemplateData.companyName) clone.companyName = initialTemplateData.companyName;
           if (initialTemplateData.specs && initialTemplateData.specs.length > 0) {
@@ -723,13 +769,64 @@ export const LegoWorkReportBuilder = ({
 
   // Toggle active block
   const handleToggleBlock = (blockKey) => {
+    const normalizedKey = blockKey === "rightAngleHeader" ? "rightAngleMatrix" : blockKey;
     setCurrentReport((prev) => ({
       ...prev,
       activeBlocks: {
         ...prev.activeBlocks,
-        [blockKey]: !prev.activeBlocks?.[blockKey]
+        [normalizedKey]: !prev.activeBlocks?.[normalizedKey]
       }
     }));
+  };
+
+  // Build complete snapshot of assembled Lego blocks so nothing is ever omitted on save
+  const buildFullLegoConfig = (overrides = {}) => {
+    const mergedCustomMap = new Map();
+    customBlocks.forEach((cb) => {
+      const k = cb.key || cb.id;
+      if (k) mergedCustomMap.set(k, cb);
+    });
+    if (Array.isArray(currentReport.customBlocks)) {
+      currentReport.customBlocks.forEach((cb) => {
+        const k = cb.key || cb.id;
+        if (k && !mergedCustomMap.has(k)) mergedCustomMap.set(k, cb);
+      });
+    }
+    const allCustomBlocks = Array.from(mergedCustomMap.values());
+    const mergedCustomBlockTables = { ...(currentReport.customBlockTables || {}) };
+    const enrichedCustomBlocks = allCustomBlocks.map((cb) => {
+      const bKey = cb.key || cb.id;
+      const tbl = mergedCustomBlockTables[bKey];
+      const columns =
+        Array.isArray(tbl?.columns) && tbl.columns.length > 0
+          ? tbl.columns
+          : Array.isArray(cb.columns) && cb.columns.length > 0
+          ? cb.columns
+          : ["항목 1", "항목 2", "항목 3"];
+      const rows = Array.isArray(tbl?.rows)
+        ? tbl.rows
+        : Array.isArray(cb.rows)
+        ? cb.rows
+        : [["", "", ""]];
+      mergedCustomBlockTables[bKey] = { columns, rows };
+      return {
+        ...cb,
+        id: bKey,
+        key: bKey,
+        columns,
+        rows
+      };
+    });
+
+    return {
+      ...currentReport,
+      ...overrides,
+      blockOrder: orderedBlockItems.map((b) => b.key),
+      activeBlocks: { ...(currentReport.activeBlocks || {}) },
+      customBlockTables: mergedCustomBlockTables,
+      customBlocks: enrichedCustomBlocks,
+      downtimeEvents: currentReport.downtimeEvents || []
+    };
   };
 
   // Update Field helper
@@ -770,11 +867,11 @@ export const LegoWorkReportBuilder = ({
   // Open Save-to-Catalog Modal
   const handleOpenSaveCatalogModal = () => {
     setCatalogMeta({
-      title: currentReport.title || "신규 레고블록 일보 양식",
+      title: currentReport.title || "소재준비작업일보",
       categoryId: "MATERIAL_PREP",
       carModel: currentReport.carModel || "JA",
       partName: currentReport.partName || "G/RUN",
-      processName: currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단 / 단컷팅"
+      processName: currentReport.processName || "소재준비"
     });
     setIsSaveCatalogModalOpen(true);
   };
@@ -783,39 +880,70 @@ export const LegoWorkReportBuilder = ({
   const handleConfirmSaveCatalog = async () => {
     try {
       const curCat = REPORT_MAJOR_CATEGORIES.find((c) => c.id === catalogMeta.categoryId) || REPORT_MAJOR_CATEGORIES[1];
+      const fullLegoConfig = buildFullLegoConfig({
+        title: catalogMeta.title || currentReport.title || "소재준비작업일보",
+        carModel: catalogMeta.carModel || currentReport.carModel || "JA",
+        partName: catalogMeta.partName || currentReport.partName || "G/RUN",
+        processName: catalogMeta.processName || currentReport.processName || "소재준비"
+      });
       const tplPayload = {
         id: `tpl_lego_${Date.now()}`,
         categoryId: catalogMeta.categoryId,
         categoryName: curCat.name,
-        title: catalogMeta.title || currentReport.title || `${catalogMeta.carModel} 작업일보`,
-        subTitle: currentReport.subTitle || `▣ 공정명 : ${catalogMeta.processName}`,
-        carModel: catalogMeta.carModel || currentReport.carModel || "신규차종",
-        partName: catalogMeta.partName || currentReport.partName || "신규품명",
-        processName: catalogMeta.processName || "가공",
+        title: fullLegoConfig.title,
+        subTitle: "",
+        carModel: fullLegoConfig.carModel,
+        partName: fullLegoConfig.partName,
+        processName: fullLegoConfig.processName,
         subProcess: "",
         divisionType: "SECTION_ABC",
         formNo: currentReport.formNo || "705-02(REV.4)",
         companyName: currentReport.companyName || "(주)오륙",
         isLegoModular: true,
         isDatabaseBacked: true,
-        legoConfig: currentReport,
+        legoConfig: fullLegoConfig,
         blocks: {
-          timeAndQty: Boolean(currentReport.activeBlocks?.workTimeOutput),
-          specAndLot: Boolean(currentReport.activeBlocks?.specsCutting || currentReport.activeBlocks?.drawingSpecCheck),
-          machineCondition: Boolean(currentReport.activeBlocks?.injectionTemp || currentReport.activeBlocks?.injectionCondition),
-          defectMatrix: Boolean(currentReport.activeBlocks?.defectMaterialMatrix || currentReport.activeBlocks?.jointDefectMatrix || currentReport.activeBlocks?.rightAngleMatrix),
-          maintenance: Boolean(currentReport.activeBlocks?.remarks)
+          timeAndQty: Boolean(fullLegoConfig.activeBlocks?.workTimeOutput || fullLegoConfig.activeBlocks?.timeAndOutput),
+          specAndLot: Boolean(
+            fullLegoConfig.activeBlocks?.specsCutting ||
+              fullLegoConfig.activeBlocks?.stepCuttingFrt ||
+              fullLegoConfig.activeBlocks?.stepCuttingRr ||
+              fullLegoConfig.activeBlocks?.drawingSpecCheck ||
+              fullLegoConfig.activeBlocks?.subMaterialLot
+          ),
+          machineCondition: Boolean(
+            fullLegoConfig.activeBlocks?.injectionTemp ||
+              fullLegoConfig.activeBlocks?.injectionCondition ||
+              fullLegoConfig.activeBlocks?.jointMaterial
+          ),
+          defectMatrix: Boolean(
+            fullLegoConfig.activeBlocks?.defectMaterialMatrix ||
+              fullLegoConfig.activeBlocks?.defectSectionAbc ||
+              fullLegoConfig.activeBlocks?.jointDefectMatrix ||
+              fullLegoConfig.activeBlocks?.rightAngleMatrix ||
+              fullLegoConfig.activeBlocks?.frtRightAngleDefects
+          ),
+          maintenance: Boolean(fullLegoConfig.activeBlocks?.remarks || fullLegoConfig.activeBlocks?.downtimeDefectPanel)
         },
-        specs: (currentReport.specsCutting || []).map((s) => ({
+        specs: (fullLegoConfig.specsCutting || []).map((s) => ({
           id: s.id,
           section: s.section,
           name: s.section,
           frtSpec: s.spec1,
-          rrSpec: s.spec2
+          rrSpec: s.spec1,
+          spec: s.spec1,
+          startVal: s.start1,
+          halfVal: s.half1,
+          finishVal: s.finish1,
+          lotStart: s.lotStart,
+          lotHalf: s.lotHalf,
+          lotFinish: s.lotFinish,
+          lotNo: s.lotNo
         })),
         updatedAt: new Date().toISOString()
       };
 
+      setCurrentReport(fullLegoConfig);
       await saveWorkReportTemplate(tplPayload);
       if (onSaveToTemplateManager) {
         onSaveToTemplateManager(tplPayload);
@@ -1160,61 +1288,68 @@ export const LegoWorkReportBuilder = ({
     setIsSubmitting(true);
     try {
       const now = new Date().toISOString();
-      const reportId = `lego_report_${currentReport.carModel || "JA"}_${Date.now()}`;
+      const fullLegoConfig = buildFullLegoConfig();
+      const reportId = `lego_report_${fullLegoConfig.carModel || "JA"}_${Date.now()}`;
 
       // Assemble unified report payload
       const reportPayload = {
         id: reportId,
         reportType: "LEGO_MODULAR_WORK_REPORT",
-        title: currentReport.title || "레고블럭 작업일보",
-        subTitle: currentReport.subTitle || "",
-        formNo: currentReport.formNo || "705-02",
-        companyName: currentReport.companyName || "(주)오륙",
-        carModel: currentReport.carModel || "JA",
-        project: currentReport.carModel || "JA",
-        partName: currentReport.partName || "G/RUN",
-        processName: currentReport.processName || "단컷팅 / 조인트",
-        workerName: currentReport.workerName || "작업자",
-        worker: currentReport.workerName || "작업자",
-        writer: currentReport.workerName || "작업자",
-        workDate: currentReport.workDate || new Date().toISOString().slice(0, 10),
-        date: currentReport.workDate || new Date().toISOString().slice(0, 10),
-        shift: currentReport.shift || "주간",
-        startTime: currentReport.startTime || "08:00",
-        finishTime: currentReport.finishTime || "17:00",
-        specsCutting: currentReport.specsCutting || [],
-        stepCuttingFrt: currentReport.stepCuttingFrt || [],
-        stepCuttingRr: currentReport.stepCuttingRr || [],
-        subMaterialLot: currentReport.subMaterialLot || "",
-        defectMaterialMatrix: currentReport.defectMaterialMatrix || [],
-        defectSectionAbc: currentReport.defectSectionAbc || [],
-        jointMaterial: currentReport.jointMaterial || {},
-        injectionTemps: currentReport.injectionTemps || [],
-        injectionConditions: currentReport.injectionConditions || [],
-        jointDefects: currentReport.jointDefects || [],
-        drawingSpecs: currentReport.drawingSpecs || [],
-        machines: currentReport.machines || [],
-        extrusionDefects: currentReport.extrusionDefects || [],
-        jointDefectsList: currentReport.jointDefectsList || [],
-        postDefectsList: currentReport.postDefectsList || [],
-        frtRightAngleDefects: currentReport.frtRightAngleDefects || [],
-        customBlockTables: currentReport.customBlockTables || {},
-        remarks: currentReport.remarks || "",
-        activeBlocks: currentReport.activeBlocks,
+        title: fullLegoConfig.title || "소재준비작업일보",
+        subTitle: "",
+        formNo: fullLegoConfig.formNo || "705-02",
+        companyName: fullLegoConfig.companyName || "(주)오륙",
+        carModel: fullLegoConfig.carModel || "JA",
+        project: fullLegoConfig.carModel || "JA",
+        partName: fullLegoConfig.partName || "G/RUN",
+        processName: fullLegoConfig.processName || "소재준비",
+        workerName: fullLegoConfig.workerName || "작업자",
+        worker: fullLegoConfig.workerName || "작업자",
+        writer: fullLegoConfig.workerName || "작업자",
+        workDate: fullLegoConfig.workDate || new Date().toISOString().slice(0, 10),
+        date: fullLegoConfig.workDate || new Date().toISOString().slice(0, 10),
+        shift: fullLegoConfig.shift || "주간",
+        startTime: fullLegoConfig.startTime || "08:00",
+        finishTime: fullLegoConfig.finishTime || "17:00",
+        workTimeOutput: fullLegoConfig.workTimeOutput || [],
+        specsCutting: fullLegoConfig.specsCutting || [],
+        stepCuttingFrt: fullLegoConfig.stepCuttingFrt || [],
+        stepCuttingRr: fullLegoConfig.stepCuttingRr || [],
+        subMaterialLot: fullLegoConfig.subMaterialLot || "",
+        defectMaterialMatrix: fullLegoConfig.defectMaterialMatrix || [],
+        defectSectionAbc: fullLegoConfig.defectSectionAbc || [],
+        jointMaterial: fullLegoConfig.jointMaterial || {},
+        injectionTemps: fullLegoConfig.injectionTemps || [],
+        injectionConditions: fullLegoConfig.injectionConditions || [],
+        jointDefects: fullLegoConfig.jointDefects || [],
+        drawingSpecs: fullLegoConfig.drawingSpecs || [],
+        machines: fullLegoConfig.machines || [],
+        extrusionDefects: fullLegoConfig.extrusionDefects || [],
+        jointDefectsList: fullLegoConfig.jointDefectsList || [],
+        postDefectsList: fullLegoConfig.postDefectsList || [],
+        frtRightAngleDefects: fullLegoConfig.frtRightAngleDefects || [],
+        customBlockTables: fullLegoConfig.customBlockTables || {},
+        customBlocks: fullLegoConfig.customBlocks || [],
+        downtimeEvents: fullLegoConfig.downtimeEvents || [],
+        remarks: fullLegoConfig.remarks || "",
+        activeBlocks: fullLegoConfig.activeBlocks,
+        blockOrder: fullLegoConfig.blockOrder,
+        legoConfig: fullLegoConfig,
         createdAt: now,
         updatedAt: now
       };
 
       // 1. Save to local storage draft (quota-safe)
+      setCurrentReport(fullLegoConfig);
       try {
-        localStorage.setItem("oruk_custom_lego_report_v2", JSON.stringify(currentReport));
+        localStorage.setItem("oruk_custom_lego_report_v2", JSON.stringify(fullLegoConfig));
       } catch (storageErr) {
         console.warn("Draft localStorage quota warning:", storageErr);
       }
 
       // 2. 🌟 5대 공정 양식 보관함에 최우선 즉시 등록 (중첩 배열 방어 및 실시간 동기화)
-      const procText = `${currentReport.processName || ""} ${currentReport.title || ""} ${currentReport.subTitle || ""}`;
-      let matchedCatId = currentReport.category || "MATERIAL_PREP";
+      const procText = `${fullLegoConfig.processName || ""} ${fullLegoConfig.title || ""}`;
+      let matchedCatId = fullLegoConfig.category || "MATERIAL_PREP";
       if (procText.includes("압출")) {
         matchedCatId = "EXTRUSION";
       } else if (procText.includes("조인트") || procText.includes("사출")) {
@@ -1230,33 +1365,52 @@ export const LegoWorkReportBuilder = ({
         REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
 
       const savedTplPayload = await saveWorkReportTemplate({
-        id: `tpl_lego_${currentReport.carModel || "JA"}_${Date.now()}`,
+        id: `tpl_lego_${fullLegoConfig.carModel || "JA"}_${Date.now()}`,
         categoryId: matchedCatObj.id,
         categoryName: matchedCatObj.name,
-        title: currentReport.title || `${currentReport.carModel || "신규"} 레고블록 작업일보`,
-        subTitle: currentReport.subTitle || `▣ 공정명 : ${currentReport.processName || "정치절단 / 단컷팅"}`,
-        carModel: currentReport.carModel || "JA",
-        partName: currentReport.partName || "G/RUN",
-        processName: currentReport.processName || (currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단"),
-        formNo: currentReport.formNo || "705-02(REV.4)",
-        companyName: currentReport.companyName || "(주)오륙",
+        title: fullLegoConfig.title || "소재준비작업일보",
+        subTitle: "",
+        carModel: fullLegoConfig.carModel || "JA",
+        partName: fullLegoConfig.partName || "G/RUN",
+        processName: fullLegoConfig.processName || "소재준비",
+        formNo: fullLegoConfig.formNo || "705-02(REV.4)",
+        companyName: fullLegoConfig.companyName || "(주)오륙",
         isLegoModular: true,
         isDatabaseBacked: true,
-        legoConfig: currentReport,
+        legoConfig: fullLegoConfig,
         blocks: {
-          timeAndQty: Boolean(currentReport.activeBlocks?.workTimeOutput),
-          specAndLot: Boolean(currentReport.activeBlocks?.specsCutting || currentReport.activeBlocks?.drawingSpecCheck),
-          machineCondition: Boolean(currentReport.activeBlocks?.injectionTemp || currentReport.activeBlocks?.injectionCondition),
-          defectMatrix: Boolean(currentReport.activeBlocks?.defectMaterialMatrix || currentReport.activeBlocks?.jointDefectMatrix || currentReport.activeBlocks?.rightAngleMatrix),
-          maintenance: Boolean(currentReport.activeBlocks?.remarks || currentReport.activeBlocks?.downtimeDefectPanel)
+          timeAndQty: Boolean(fullLegoConfig.activeBlocks?.workTimeOutput || fullLegoConfig.activeBlocks?.timeAndOutput),
+          specAndLot: Boolean(
+            fullLegoConfig.activeBlocks?.specsCutting ||
+              fullLegoConfig.activeBlocks?.stepCuttingFrt ||
+              fullLegoConfig.activeBlocks?.stepCuttingRr ||
+              fullLegoConfig.activeBlocks?.drawingSpecCheck ||
+              fullLegoConfig.activeBlocks?.subMaterialLot
+          ),
+          machineCondition: Boolean(
+            fullLegoConfig.activeBlocks?.injectionTemp ||
+              fullLegoConfig.activeBlocks?.injectionCondition ||
+              fullLegoConfig.activeBlocks?.jointMaterial
+          ),
+          defectMatrix: Boolean(
+            fullLegoConfig.activeBlocks?.defectMaterialMatrix ||
+              fullLegoConfig.activeBlocks?.defectSectionAbc ||
+              fullLegoConfig.activeBlocks?.jointDefectMatrix ||
+              fullLegoConfig.activeBlocks?.rightAngleMatrix ||
+              fullLegoConfig.activeBlocks?.frtRightAngleDefects
+          ),
+          maintenance: Boolean(fullLegoConfig.activeBlocks?.remarks || fullLegoConfig.activeBlocks?.downtimeDefectPanel)
         },
-        specs: (currentReport.specsCutting || []).map((s) => ({
+        specs: (fullLegoConfig.specsCutting || []).map((s) => ({
           id: s.id,
           section: s.section,
           name: s.section,
           frtSpec: s.spec1,
           rrSpec: s.spec1,
           spec: s.spec1,
+          startVal: s.start1,
+          halfVal: s.half1,
+          finishVal: s.finish1,
           lotStart: s.lotStart,
           lotHalf: s.lotHalf,
           lotFinish: s.lotFinish,
@@ -1624,30 +1778,13 @@ export const LegoWorkReportBuilder = ({
               <span>기본 메타데이터 수정</span>
             </h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="col-span-2">
-                <label className="text-[11px] font-bold text-slate-400 block mb-0.5">공정명 (Process name)</label>
-                <input
-                  type="text"
-                  value={currentReport.processName ?? "단컷팅 / 조인트"}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCurrentReport((prev) => ({
-                      ...prev,
-                      processName: val,
-                      subTitle: `▣ 공정명 : ${val}`
-                    }));
-                  }}
-                  placeholder="예: 정치절단 / 단컷팅 / 조인트 / 직각검사"
-                  className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center text-cyan-600 dark:text-cyan-400"
-                />
-              </div>
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-0.5">차종명 (Car model)</label>
                 <input
                   type="text"
                   value={currentReport.carModel || ""}
                   onChange={(e) => handleUpdateField("carModel", e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center"
+                  className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center text-cyan-600 dark:text-cyan-400"
                 />
               </div>
               <div>
@@ -1657,6 +1794,22 @@ export const LegoWorkReportBuilder = ({
                   value={currentReport.partName || ""}
                   onChange={(e) => handleUpdateField("partName", e.target.value)}
                   className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[11px] font-bold text-slate-400 block mb-0.5">공정명 (Process name)</label>
+                <input
+                  type="text"
+                  value={currentReport.processName ?? "소재준비"}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCurrentReport((prev) => ({
+                      ...prev,
+                      processName: val
+                    }));
+                  }}
+                  placeholder="예: 소재준비 / 정치절단 / 단컷팅 / 조인트 / 직각검사"
+                  className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center text-indigo-600 dark:text-indigo-400"
                 />
               </div>
               <div>
@@ -1708,11 +1861,11 @@ export const LegoWorkReportBuilder = ({
           <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 text-slate-900 dark:text-white print:p-0 print:border-none print:shadow-none">
             
             {/* ================================================================= */}
-            {/* 🏷️ [일보 헤더: 제목 & 결재란 (제목 클릭 수정 가능)] */}
+            {/* 🏷️ [일보 헤더: 제목 & 결재란 (한 줄 통일 & 제목 클릭 수정 가능)] */}
             {/* ================================================================= */}
             <div className="border-b-2 border-slate-900 dark:border-slate-700 pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                {/* Editable Report Title */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Editable Report Title (한 줄 통일: 소재준비작업일보) */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono font-bold text-slate-400">양식번호: {currentReport.formNo || "705-02"}</span>
@@ -1720,17 +1873,10 @@ export const LegoWorkReportBuilder = ({
                   </div>
                   <input
                     type="text"
-                    value={currentReport.title || ""}
+                    value={currentReport.title || "소재준비작업일보"}
                     onChange={(e) => handleUpdateField("title", e.target.value)}
-                    className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-400 focus:border-indigo-500 outline-none w-full py-0.5 mt-0.5"
+                    className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-400 focus:border-indigo-500 outline-none w-full py-1 mt-0.5"
                     title="클릭하여 일보 제목을 자유롭게 수정하세요."
-                  />
-                  <input
-                    type="text"
-                    value={currentReport.subTitle || ""}
-                    onChange={(e) => handleUpdateField("subTitle", e.target.value)}
-                    className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 bg-transparent border-b border-dashed border-transparent hover:border-slate-400 focus:border-indigo-500 outline-none w-full py-0.5 mt-1"
-                    title="클릭하여 공정명 부제목을 수정하세요."
                   />
                 </div>
 
@@ -1763,40 +1909,49 @@ export const LegoWorkReportBuilder = ({
             <div className="flex flex-col gap-5">
 
             {/* ================================================================= */}
-            {/* 🧱 BLOCK 8: 작업 기본 정보 (사진 8) */}
+            {/* 🧱 BLOCK 8: 작업 기본 정보 (사진 8) - 차종 → 품명 → 공정명 순서 */}
             {/* ================================================================= */}
             {renderBlockWrapper("basicInfo", "[블록 8] 작업 기본 정보 헤더", (
               <div className="rounded-2xl p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                     <span>🧱 [블록 8] 작업 기본 정보 헤더</span>
-                    <span className="text-[10px] text-slate-400">(사진 8 실물 일치)</span>
+                    <span className="text-[10px] text-slate-400">(차종 · 품명 · 공정명 · 작업자 · 근무시간)</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <span className="text-[10px] font-bold text-slate-400 block">차종 (Car model)</span>
+                    <input
+                      type="text"
+                      value={currentReport.carModel || ""}
+                      onChange={(e) => handleUpdateField("carModel", e.target.value)}
+                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-cyan-400"
+                    />
+                  </div>
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <span className="text-[10px] font-bold text-slate-400 block">품 명 (Part name)</span>
+                    <input
+                      type="text"
+                      value={currentReport.partName || ""}
+                      onChange={(e) => handleUpdateField("partName", e.target.value)}
+                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300"
+                    />
+                  </div>
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">공정명 (Process)</span>
                     <input
                       type="text"
-                      value={currentReport.processName ?? "단컷팅 / 조인트"}
+                      value={currentReport.processName ?? "소재준비"}
                       onChange={(e) => {
                         const val = e.target.value;
                         setCurrentReport((prev) => ({
                           ...prev,
-                          processName: val,
-                          subTitle: `▣ 공정명 : ${val}`
+                          processName: val
                         }));
                       }}
                       className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-indigo-400"
                     />
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">차종 (Car model)</span>
-                    <span className="font-black text-xs text-indigo-600 dark:text-cyan-400">{currentReport.carModel}</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">품 명 (Part name)</span>
-                    <span className="font-black text-xs">{currentReport.partName}</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">작업자 (Worker)</span>
@@ -2947,7 +3102,10 @@ export const LegoWorkReportBuilder = ({
             {/* ================================================================= */}
             {/* 🧱 CUSTOM PHOTO-ANALYZED LEGO BLOCKS (그림파일 분석·저장 블록들) */}
             {/* ================================================================= */}
-            {customBlocks.map((cb, cbIdx) => {
+            {combinedSwitchCatalog
+              .filter((item) => item.isCustom && item.customData)
+              .map((item, cbIdx) => {
+              const cb = item.customData;
               const bKey = cb.key || cb.id;
               const cols = Array.isArray(currentReport.customBlockTables?.[bKey]?.columns) &&
                 currentReport.customBlockTables[bKey].columns.length > 0

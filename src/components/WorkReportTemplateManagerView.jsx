@@ -31,9 +31,66 @@ import {
   saveWorkReportTemplate,
   deleteWorkReportTemplate,
   deleteAllWorkReportTemplates,
-  cloneWorkReportTemplate
+  cloneWorkReportTemplate,
+  getLocalCustomLegoBlocks
 } from "../services/workReportTemplateService";
-import LegoWorkReportBuilder from "./lego/LegoWorkReportBuilder.jsx";
+import LegoWorkReportBuilder, { LEGO_BLOCK_SWITCH_CATALOG } from "./lego/LegoWorkReportBuilder.jsx";
+
+// Helper to resolve all catalog items (standard + custom blocks) for a template in exact assembled blockOrder
+const getOrderedBlocksForTemplate = (tpl) => {
+  const cfg = tpl?.legoConfig;
+  if (!cfg) return [];
+  const customMap = new Map();
+  getLocalCustomLegoBlocks().forEach((cb) => {
+    const k = cb.key || cb.id;
+    if (k) customMap.set(k, cb);
+  });
+  if (Array.isArray(cfg.customBlocks)) {
+    cfg.customBlocks.forEach((cb) => {
+      const k = cb.key || cb.id;
+      if (k) customMap.set(k, cb);
+    });
+  }
+  if (cfg.customBlockTables && typeof cfg.customBlockTables === "object") {
+    Object.entries(cfg.customBlockTables).forEach(([k, tbl]) => {
+      if (!customMap.has(k)) {
+        customMap.set(k, {
+          id: k,
+          key: k,
+          label: `커스텀 블록 (${k})`,
+          title: `커스텀 블록`,
+          columns: tbl?.columns || [],
+          rows: tbl?.rows || []
+        });
+      }
+    });
+  }
+  const customItems = Array.from(customMap.values()).map((cb, idx) => ({
+    key: cb.key || cb.id,
+    label: cb.label || cb.title || `사진분석 블록 ${idx + 1}`,
+    badge: cb.badge || `사진 ${18 + idx}`,
+    isCustom: true,
+    customData: cb
+  }));
+  const allCatalog = [...LEGO_BLOCK_SWITCH_CATALOG, ...customItems];
+  const savedOrder = Array.isArray(cfg.blockOrder) ? cfg.blockOrder : [];
+  const seen = new Set();
+  const ordered = [];
+  savedOrder.forEach((key) => {
+    const found = allCatalog.find((b) => b.key === key);
+    if (found && !seen.has(key)) {
+      seen.add(key);
+      ordered.push(found);
+    }
+  });
+  allCatalog.forEach((b) => {
+    if (!seen.has(b.key)) {
+      seen.add(b.key);
+      ordered.push(b);
+    }
+  });
+  return ordered;
+};
 
 export const WorkReportTemplateManagerView = () => {
   const [managerViewMode, setManagerViewMode] = useState("LEGO_BUILDER"); // 'LEGO_BUILDER' | 'CATALOG'
@@ -110,13 +167,13 @@ export const WorkReportTemplateManagerView = () => {
       id: "",
       categoryId: selectedCategory,
       categoryName: curCat?.name || "소재준비일보",
-      title: `${curCat?.name || "작업"} 일보`,
-      subTitle: "▣ 공정명 : 신규 공정",
+      title: selectedCategory === "MATERIAL_PREP" ? "소재준비작업일보" : `${curCat?.name.replace("일보", "") || "작업"}작업일보`,
+      subTitle: "",
       formNo: "705-02(REV.4)",
       companyName: "(주)오륙",
       carModel: "신규차종",
       partName: "신규품명",
-      processName: curCat?.name.replace("일보", "") || "가공",
+      processName: curCat?.name.replace("일보", "") || "소재준비",
       subProcess: "",
       divisionType: "SECTION_ABC",
       blocks: {
@@ -424,8 +481,10 @@ export const WorkReportTemplateManagerView = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredTemplates.map((tpl) => {
-            const specCount = (tpl.specs || []).length;
+            const specCount = (tpl.legoConfig?.specsCutting || tpl.specs || []).length;
             const defectCount = (tpl.defectCategories || []).reduce((acc, c) => acc + (c.items || []).length, 0);
+            const orderedBlocks = getOrderedBlocksForTemplate(tpl);
+            const activeOrderedBlocks = orderedBlocks.filter((b) => Boolean(tpl.legoConfig?.activeBlocks?.[b.key]));
 
             return (
               <div
@@ -433,7 +492,7 @@ export const WorkReportTemplateManagerView = () => {
                 className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all space-y-3.5 flex flex-col justify-between"
               >
                 <div>
-                  {/* Card Header */}
+                  {/* Card Header: 차종 → 품명 → 공정명 순서 표시 */}
                   <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -443,20 +502,17 @@ export const WorkReportTemplateManagerView = () => {
                         <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                           {tpl.partName}
                         </h3>
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40">
+                          {tpl.processName || tpl.legoConfig?.processName || "소재준비"}
+                        </span>
                         {/* 🌟 보관함 뱃지 & 데이터베이스 뱃지 */}
                         <span className="px-2.5 py-0.8 rounded-full text-[11px] font-black bg-gradient-to-r from-cyan-600 via-cyan-500 to-blue-600 text-white flex items-center gap-1.5 shadow-sm border border-cyan-300/40">
                           <Database className="w-3.5 h-3.5 fill-cyan-100 text-white" />
                           <span>DB 보관함 공식등록</span>
                         </span>
-                        {tpl.isLegoModular && (
-                          <span className="px-2.5 py-0.8 rounded-full text-[11px] font-black bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center gap-1.5 shadow-sm border border-purple-300/40">
-                            <Layers className="w-3.5 h-3.5 text-purple-200" />
-                            <span>레고 블록</span>
-                          </span>
-                        )}
                       </div>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold mt-0.5">
-                        {tpl.title} • {tpl.processName}
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold mt-1">
+                        {tpl.title || "소재준비작업일보"}
                       </span>
                     </div>
 
@@ -465,50 +521,78 @@ export const WorkReportTemplateManagerView = () => {
                     </span>
                   </div>
 
-                  {/* Active Lego Blocks Indicator */}
+                  {/* Active Lego Blocks Indicator (조립된 전체 블록 순서대로 누락 없이 표시) */}
                   <div className="pt-2 space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 block">장착된 레고 블록:</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">
+                      장착된 레고 블록 ({activeOrderedBlocks.length > 0 ? `${activeOrderedBlocks.length}개 블록 조립됨` : "표준 블록"}):
+                    </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {tpl.blocks?.timeAndQty && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                          ⏱️ 시간/생산량
-                        </span>
-                      )}
-                      {tpl.blocks?.specAndLot && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          📐 치수실측({specCount}개)
-                        </span>
-                      )}
-                      {tpl.blocks?.machineCondition && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                          🌡️ 성형/설비조건
-                        </span>
-                      )}
-                      {tpl.blocks?.defectMatrix && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                          ⚠️ 불량집계({defectCount}개)
-                        </span>
-                      )}
-                      {tpl.blocks?.maintenance && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                          🔧 설비보전/칼날
-                        </span>
+                      {activeOrderedBlocks.length > 0 ? (
+                        activeOrderedBlocks.map((b, bIdx) => (
+                          <span
+                            key={b.key}
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                              b.isCustom
+                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                            }`}
+                          >
+                            {bIdx + 1}. {b.label}
+                          </span>
+                        ))
+                      ) : (
+                        <>
+                          {tpl.blocks?.timeAndQty && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              ⏱️ 시간/생산량
+                            </span>
+                          )}
+                          {tpl.blocks?.specAndLot && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              📐 치수실측({specCount}개)
+                            </span>
+                          )}
+                          {tpl.blocks?.machineCondition && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              🌡️ 성형/설비조건
+                            </span>
+                          )}
+                          {tpl.blocks?.defectMatrix && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                              ⚠️ 불량집계({defectCount}개)
+                            </span>
+                          )}
+                          {tpl.blocks?.maintenance && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              🔧 설비보전/칼날
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
 
                   {/* Specs Quick Peek */}
                   <div className="mt-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 text-[11px] space-y-1">
-                    <span className="font-bold text-slate-600 dark:text-slate-300 block">주요 스펙 요약:</span>
-                    <div className="text-slate-500 dark:text-slate-400 space-y-0.5">
-                      {(tpl.specs || []).slice(0, 3).map((s) => (
-                        <div key={s.id} className="flex items-center justify-between">
-                          <span>{s.name}</span>
-                          <span className="font-black text-indigo-600 dark:text-indigo-400">{s.frtSpec || s.spec || "-"}</span>
+                    <span className="font-bold text-slate-600 dark:text-slate-300 block">
+                      기본정보 (차종 · 품명 · 공정명) 및 스펙 요약:
+                    </span>
+                    <div className="flex items-center justify-between text-[10.5px] font-black text-slate-700 dark:text-slate-200 pb-1 border-b border-slate-200 dark:border-slate-700">
+                      <span>차종: {tpl.carModel || "-"}</span>
+                      <span>품명: {tpl.partName || "-"}</span>
+                      <span>공정명: {tpl.processName || tpl.legoConfig?.processName || "소재준비"}</span>
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400 space-y-0.5 pt-0.5">
+                      {(tpl.legoConfig?.specsCutting || tpl.specs || []).slice(0, 3).map((s, idx) => (
+                        <div key={s.id || idx} className="flex items-center justify-between">
+                          <span>단면 {s.section || s.name}</span>
+                          <span className="font-black text-indigo-600 dark:text-indigo-400">{s.spec1 || s.frtSpec || s.spec || "-"}</span>
                         </div>
                       ))}
-                      {(tpl.specs || []).length > 3 && (
-                        <span className="text-[10px] text-slate-400 block text-right font-bold">+ 외 {(tpl.specs.length - 3)}개 항목</span>
+                      {(tpl.legoConfig?.specsCutting || tpl.specs || []).length > 3 && (
+                        <span className="text-[10px] text-slate-400 block text-right font-bold">
+                          + 외 {(tpl.legoConfig?.specsCutting || tpl.specs || []).length - 3}개 항목
+                        </span>
                       )}
                     </div>
                   </div>
@@ -604,14 +688,48 @@ export const WorkReportTemplateManagerView = () => {
 };
 
 // ============================================================================
-// Material Prep Standard A4 Sheet (705-02 REV.4 1:1 Pixel-Perfect Replica)
-// 블록 1: 작업시간 & 생산량 (구분: FRT/RR, A/B/C 계획·실적)
-// 블록 2: 정치 절단 길이 & LOT NO. (규격, 초/중/종 실측, LOT NO.)
-// 블록 3: 불량소재구분 (압출소재 불량 5종 + 공정간 불량 3종 매트릭스)
-// 블록 4: 칼날교체 & 설비이상 조치
+// Standard A4 Sheet & Assembled Lego Block Renderer
+// - 상단 제목 한 줄 통일 (소재준비작업일보)
+// - 기본 정보 헤더: 차종 -> 품명 -> 공정명 -> 작업자 -> 근무시간 순서
+// - 레고 블록 조합기에서 조립한 모든 블록(표준 18종 + 사진분석 커스텀 블록 + 비가동/부적합 패널)을
+//   설계한 blockOrder 순서 그대로 누락 없이 100% 렌더링
 // ============================================================================
 export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false }) => {
-  const specs = template?.specs || [];
+  const cfg = template?.legoConfig || null;
+  const orderedBlocks = useMemo(() => getOrderedBlocksForTemplate(template), [template]);
+  const hasLegoBlocks = Boolean(cfg && cfg.activeBlocks && Object.keys(cfg.activeBlocks).length > 0);
+
+  const rawTitle = cfg?.title || template?.title || "소재준비작업일보";
+  const unifiedTitle =
+    rawTitle === "소재 준비 작업 일보" || rawTitle === "소재 준비 작업 일보 (G/RUN)"
+      ? "소재준비작업일보"
+      : rawTitle;
+
+  const carModelVal = cfg?.carModel || template?.carModel || "9BQC";
+  const partNameVal = cfg?.partName || template?.partName || "G/RUN";
+  const processNameVal = cfg?.processName || template?.processName || "소재준비";
+  const workerNameVal = cfg?.workerName || template?.workerName || "";
+  const workDateVal = cfg?.workDate || "";
+  const workTimeRange =
+    cfg?.startTime || cfg?.finishTime ? `${cfg?.startTime || "08:00"} ~ ${cfg?.finishTime || "17:00"}` : "";
+
+  const specs =
+    Array.isArray(cfg?.specsCutting) && cfg.specsCutting.length > 0
+      ? cfg.specsCutting.map((s) => ({
+          id: s.id,
+          section: s.section,
+          name: s.section,
+          frtSpec: s.spec1,
+          spec: s.spec1,
+          startVal: s.start1,
+          halfVal: s.half1,
+          finishVal: s.finish1,
+          lotStart: s.lotStart ?? s.lotNo,
+          lotHalf: s.lotHalf ?? s.lotNo,
+          lotFinish: s.lotFinish ?? s.lotNo
+        }))
+      : template?.specs || [];
+
   const defectCategories = template?.defectCategories || [];
   const extrusionItems = defectCategories[0]?.items || [
     "스코치(Scortch)",
@@ -626,134 +744,89 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
     "기타 ( Etc )"
   ];
 
-  return (
-    <div className="w-full bg-white text-black p-4 sm:p-6 border-2 border-black font-sans text-xs space-y-2 select-text">
-      {/* Title & Approval Box */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 text-center pt-1">
-          <h1 className="text-xl sm:text-2xl font-black text-black inline-block tracking-wider border-b-[3px] border-double border-black pb-0.5">
-            {template?.title || "소재 준비 작업 일보 (G/RUN)"}
-          </h1>
-        </div>
-        <table className="border-collapse border border-black text-[11px] w-40 text-center font-bold shrink-0">
-          <thead>
-            <tr className="border-b border-black">
-              <th className="border-r border-black py-0.5 w-1/3">작 성</th>
-              <th className="border-r border-black py-0.5 w-1/3">검 토</th>
-              <th className="py-0.5 w-1/3">승 인</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="h-10 text-slate-300">
-              <td className="border-r border-black align-bottom pb-1">(인)</td>
-              <td className="border-r border-black align-bottom pb-1">(인)</td>
-              <td className="align-bottom pb-1">(인)</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Subtitle / Meta row 1 */}
-      <div className="flex items-center justify-between text-xs font-bold text-black pt-1">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span>▣공정명 : {template?.processName || "정치 절단"}</span>
-          <span className="text-[11px] text-slate-700">※Record Time : Start / Half / Finish</span>
-        </div>
-        <div className="text-[11px]">
-          작업일자(Date) : 20&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일
-        </div>
-      </div>
-
-      {/* Header Info Box (Car Model / Part Name / Worker) */}
+  // Basic Info Header Table (차종 -> 품명 -> 공정명 -> 작업자 -> 근무시간 순서)
+  const renderBasicInfoHeader = (badgeText = "[블록 8] 작업 기본 정보 헤더") => (
+    <div className="relative" key="basicInfo">
+      {showBlockBadges && (
+        <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+          {badgeText}
+        </span>
+      )}
       <table className="w-full border-collapse border border-black text-xs font-bold">
         <tbody>
           <tr>
-            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">차종(Car model)</td>
-            <td className="border border-black w-[22%] p-1 text-center font-black">{template?.carModel || "9BQC"}</td>
-            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">품 명(Part name)</td>
-            <td className="border border-black w-[22%] p-1 text-center font-black">{template?.partName || "G/RUN"}</td>
-            <td className="border border-black bg-white w-[14%] p-1 text-center font-bold">작업자(Worker)</td>
-            <td className="border border-black w-[14%] p-1 text-center font-black"></td>
+            <td className="border border-black bg-[#fef9c3] w-[11%] p-1 text-center font-bold">차종(Car model)</td>
+            <td className="border border-black w-[15%] p-1 text-center font-black">{carModelVal}</td>
+            <td className="border border-black bg-[#fef9c3] w-[11%] p-1 text-center font-bold">품 명(Part name)</td>
+            <td className="border border-black w-[15%] p-1 text-center font-black">{partNameVal}</td>
+            <td className="border border-black bg-[#fef9c3] w-[11%] p-1 text-center font-bold">공정명(Process)</td>
+            <td className="border border-black w-[15%] p-1 text-center font-black text-indigo-900">{processNameVal}</td>
+            <td className="border border-black bg-[#fef9c3] w-[10%] p-1 text-center font-bold">작업자(Worker)</td>
+            <td className="border border-black w-[12%] p-1 text-center font-black">{workerNameVal}</td>
           </tr>
         </tbody>
       </table>
+    </div>
+  );
 
-      {/* ======================================================== */}
-      {/* 🧱 [블록 1: 작업시간 및 생산량] */}
-      {/* ======================================================== */}
-      {template?.blocks?.timeAndQty && (
-        <div className="relative">
+  // Render an individual assembled Lego Block by key
+  const renderAssembledBlock = (blockItem, orderIdx) => {
+    const key = blockItem.key;
+    const badgeLabel = `[조립 ${orderIdx + 1}] ${blockItem.label}`;
+
+    if (key === "basicInfo") {
+      return renderBasicInfoHeader(badgeLabel);
+    }
+
+    if (key === "workTimeOutput") {
+      const rows = Array.isArray(cfg?.workTimeOutput) ? cfg.workTimeOutput : [];
+      return (
+        <div key={key} className="relative">
           {showBlockBadges && (
             <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
-              [블록 1] 작업시간 & 생산량
+              {badgeLabel}
             </span>
           )}
           <table className="w-full border-collapse border border-black text-xs text-center font-bold">
             <thead>
-              <tr className="bg-[#fef9c3] border-b border-black">
-                <th colSpan={2} className="border-r border-black p-1 w-1/3">구 분(Division)</th>
-                <th className="border-r border-black p-1 w-1/3">FRT</th>
-                <th className="p-1 w-1/3">RR</th>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th rowSpan={2} className="border-r border-black p-1 w-[20%]">구 분(Division)</th>
+                <th colSpan={3} className="border-r border-black p-1">A단면 실적</th>
+                <th colSpan={3} className="p-1">B단면 실적</th>
+              </tr>
+              <tr className="bg-[#fef9c3]/60 border-b border-black text-[10px]">
+                <th className="border-r border-black p-1">시작시간</th>
+                <th className="border-r border-black p-1">종료시간</th>
+                <th className="border-r border-black p-1">생산수량</th>
+                <th className="border-r border-black p-1">시작시간</th>
+                <th className="border-r border-black p-1">종료시간</th>
+                <th className="p-1">생산수량</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-black">
-                <td className="border-r border-black bg-[#fef9c3] p-1 w-1/6 font-bold">작업시간(time)</td>
-                <td className="border-r border-black p-1 w-1/6 font-bold">시작(S)~종료(F)</td>
-                <td className="border-r border-black p-1">~</td>
-                <td className="p-1"></td>
-              </tr>
-              <tr className="border-b border-black">
-                <td rowSpan={3} className="border-r border-black bg-[#fef9c3] p-1 font-bold">
-                  생산량 (Q,ty)
-                </td>
-                <td className="border-r border-black p-1 font-bold">
-                  <div className="flex justify-between px-2 text-[11px]">
-                    <span>(계획/실적)</span>
-                    <span>A</span>
-                  </div>
-                </td>
-                <td className="border-r border-black p-1">/</td>
-                <td className="p-1">/</td>
-              </tr>
-              <tr className="border-b border-black">
-                <td className="border-r border-black p-1 font-bold">
-                  <div className="flex justify-between px-2 text-[11px]">
-                    <span>(Plan/Output)</span>
-                    <span>B</span>
-                  </div>
-                </td>
-                <td className="border-r border-black p-1">/</td>
-                <td className="p-1">/</td>
-              </tr>
-              <tr className="border-b border-black">
-                <td className="border-r border-black p-1 font-bold">
-                  <div className="flex justify-end px-2 text-[11px]">
-                    <span>C</span>
-                  </div>
-                </td>
-                <td className="border-r border-black p-1">/</td>
-                {/* Diagonal Cross-out (X) cell for Section C on RR */}
-                <td className="p-1 relative overflow-hidden h-6">
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
-                    <line x1="0" y1="0" x2="100%" y2="100%" stroke="black" strokeWidth="1" />
-                    <line x1="100%" y1="0" x2="0" y2="100%" stroke="black" strokeWidth="1" />
-                  </svg>
-                </td>
-              </tr>
+              {rows.map((r, rIdx) => (
+                <tr key={r.id || rIdx} className="border-b border-black">
+                  <td className="border-r border-black bg-[#fef9c3]/40 p-1 font-black">{r.division}</td>
+                  <td className="border-r border-black p-1 font-mono">{r.startA || ""}</td>
+                  <td className="border-r border-black p-1 font-mono">{r.finishA || ""}</td>
+                  <td className="border-r border-black p-1 font-mono font-black text-indigo-900">{r.qtyA ?? ""}</td>
+                  <td className="border-r border-black p-1 font-mono">{r.startB || ""}</td>
+                  <td className="border-r border-black p-1 font-mono">{r.finishB || ""}</td>
+                  <td className="p-1 font-mono font-black text-indigo-900">{r.qtyB ?? ""}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-      )}
+      );
+    }
 
-      {/* ======================================================== */}
-      {/* 🧱 [블록 2: 정치 절단 길이 & LOT NO.] */}
-      {/* ======================================================== */}
-      {template?.blocks?.specAndLot && (
-        <div className="relative">
+    if (key === "specsCutting") {
+      return (
+        <div key={key} className="relative">
           {showBlockBadges && (
             <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
-              [블록 2] 정치 절단 길이 & LOT NO.
+              {badgeLabel}
             </span>
           )}
           <table className="w-full border-collapse border border-black text-xs text-center font-bold">
@@ -771,7 +844,6 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
                 const totalSpecs = specs.length;
                 return (
                   <React.Fragment key={spec.id || sIdx}>
-                    {/* Sub-row 1: 규격(Spec) */}
                     <tr className="border-b border-black">
                       {isFirst && (
                         <td
@@ -793,8 +865,6 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
                         {spec.frtSpec || spec.spec || "-"}
                       </td>
                     </tr>
-
-                    {/* Sub-row 2: 초/중/종 실측치 (초물, 중물, 종물 3개만 기록) */}
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
                         초/중/종
@@ -809,8 +879,6 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
                         {spec.finishVal || spec.finish1 || ""}
                       </td>
                     </tr>
-
-                    {/* Sub-row 3: LOT NO. (3개 칸) */}
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
                         LOT NO.
@@ -831,129 +899,951 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
             </tbody>
           </table>
         </div>
-      )}
+      );
+    }
 
-      {/* ======================================================== */}
-      {/* 🧱 [블록 3: 불량소재구분 매트릭스] */}
-      {/* ======================================================== */}
-      {template?.blocks?.defectMatrix && (
-        <div className="relative">
+    if (key === "stepCuttingFrt" || key === "stepCuttingRr") {
+      const list = key === "stepCuttingFrt" ? cfg?.stepCuttingFrt || [] : cfg?.stepCuttingRr || [];
+      const titleText = key === "stepCuttingFrt" ? "단컷팅 - FRT 구간 치수" : "단컷팅 - RR 구간 치수";
+      return (
+        <div key={key} className="relative">
           {showBlockBadges && (
             <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
-              [블록 3] 불량소재 구분 매트릭스
+              {badgeLabel}
             </span>
           )}
-          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
-            <thead>
-              <tr className="bg-[#fef9c3] border-b border-black">
-                <th colSpan={2} className="border-r border-black p-1 w-[25%]">불량소재구분</th>
-                <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
-                <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
-                <th className="border-r border-black p-1 w-[12.5%]">Section "C"</th>
-                <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
-                <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
-                <th className="p-1 w-[12.5%]">Section "C"</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* 압출소재 불량 (Extrusion Badness) */}
-              {extrusionItems.map((item, idx) => (
-                <tr key={`ext_${idx}`} className="border-b border-black">
-                  {idx === 0 && (
-                    <td
-                      rowSpan={extrusionItems.length}
-                      className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
-                    >
-                      <div className="leading-snug">
-                        압출소재<br />불량<br />(Extrusion<br />Badness)
-                      </div>
-                    </td>
-                  )}
-                  <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
-                    {item}
-                  </td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="p-0.5 h-4"></td>
+          <div className="border border-black">
+            <div className="bg-[#fef9c3] border-b border-black px-2 py-1 font-black text-[11px]">
+              ■ {titleText}
+            </div>
+            <table className="w-full border-collapse text-xs text-center font-bold">
+              <thead>
+                <tr className="bg-slate-50 border-b border-black text-[11px]">
+                  <th className="border-r border-black p-1 w-1/4">구분</th>
+                  {list.map((c, idx) => (
+                    <th key={c.id || idx} className="border-r last:border-r-0 border-black p-1">
+                      {c.section}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-
-              {/* 공정간 불량 (Process Badness) */}
-              {processItems.map((item, idx) => (
-                <tr key={`proc_${idx}`} className="border-b border-black">
-                  {idx === 0 && (
-                    <td
-                      rowSpan={processItems.length}
-                      className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
-                    >
-                      <div className="leading-snug">
-                        공정간<br />불량(Process<br />Badness)
-                      </div>
+              </thead>
+              <tbody>
+                <tr className="border-b border-black">
+                  <td className="border-r border-black p-1 bg-[#fef9c3]/50 font-bold">SPEC</td>
+                  {list.map((c, idx) => (
+                    <td key={c.id || idx} className="border-r last:border-r-0 border-black p-1 font-black text-indigo-900">
+                      {c.spec}
                     </td>
-                  )}
-                  <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
-                    {item}
-                  </td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="border-r border-black p-0.5 h-4"></td>
-                  <td className="p-0.5 h-4"></td>
+                  ))}
                 </tr>
-              ))}
-
-              {/* 불량 합계(Bad Sum) */}
-              <tr className="border-b border-black font-black bg-slate-50">
-                <td colSpan={2} className="border-r border-black p-1 text-center">
-                  불량 합계(Bad Sum)
-                </td>
-                <td className="border-r border-black p-1 h-5"></td>
-                <td className="border-r border-black p-1 h-5"></td>
-                <td className="border-r border-black p-1 h-5"></td>
-                <td className="border-r border-black p-1 h-5"></td>
-                <td className="border-r border-black p-1 h-5"></td>
-                <td className="p-1 h-5"></td>
-              </tr>
-            </tbody>
-          </table>
+                <tr className="border-b border-black">
+                  <td className="border-r border-black p-1 font-bold">초물(Start)</td>
+                  {list.map((c, idx) => (
+                    <td key={c.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono">
+                      {c.startVal || ""}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-b border-black">
+                  <td className="border-r border-black p-1 font-bold">중물(Half)</td>
+                  {list.map((c, idx) => (
+                    <td key={c.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono">
+                      {c.halfVal || ""}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="border-r border-black p-1 font-bold">종물(Finish)</td>
+                  {list.map((c, idx) => (
+                    <td key={c.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono">
+                      {c.finishVal || ""}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      )}
+      );
+    }
 
-      {/* ======================================================== */}
-      {/* 🧱 [블록 4: 칼날교체 & 설비 이상 조치사항] */}
-      {/* ======================================================== */}
-      {template?.blocks?.maintenance && (
-        <div className="relative">
+    if (key === "subMaterialLot") {
+      return (
+        <div key={key} className="relative">
           {showBlockBadges && (
             <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
-              [블록 4] 칼날교체 & 설비이상 조치
+              {badgeLabel}
             </span>
           )}
           <table className="w-full border-collapse border border-black text-xs font-bold">
             <tbody>
               <tr>
-                <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
-                  칼날교체 시간
+                <td className="border-r border-black bg-[#fef9c3] p-1.5 w-[25%] text-center font-black">
+                  부자재 LOT NO. (패드 5T)
                 </td>
-                <td className="border-r border-black p-2 w-[25%] h-12"></td>
-                <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
-                  설비 이상 조치사항
+                <td className="p-1.5 font-mono font-bold text-left px-3">
+                  {cfg?.subMaterialLot || "-"}
                 </td>
-                <td className="p-2 w-[25%] h-12"></td>
               </tr>
             </tbody>
           </table>
+        </div>
+      );
+    }
+
+    if (key === "defectMaterialMatrix") {
+      const rows = Array.isArray(cfg?.defectMaterialMatrix) ? cfg.defectMaterialMatrix : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th rowSpan={2} colSpan={2} className="border-r border-black p-1 w-[22%]">구 분(Division)</th>
+                <th colSpan={4} className="border-r border-black p-1">FRT</th>
+                <th colSpan={4} className="p-1">RR</th>
+              </tr>
+              <tr className="bg-[#fef9c3]/60 border-b border-black text-[10px]">
+                <th className="border-r border-black p-0.5">LH A</th>
+                <th className="border-r border-black p-0.5">RH A</th>
+                <th className="border-r border-black p-0.5">LH B</th>
+                <th className="border-r border-black p-0.5">RH B</th>
+                <th className="border-r border-black p-0.5">LH A</th>
+                <th className="border-r border-black p-0.5">RH A</th>
+                <th className="border-r border-black p-0.5">LH B</th>
+                <th className="p-0.5">RH B</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={row.id || idx} className="border-b border-black">
+                  {idx === 0 && (
+                    <td rowSpan={Math.min(4, rows.length)} className="border-r border-black bg-[#fef9c3]/40 p-1 font-black w-16">
+                      압출소재<br />불량
+                    </td>
+                  )}
+                  {idx === 4 && (
+                    <td rowSpan={Math.max(1, rows.length - 4)} className="border-r border-black bg-[#fef9c3]/40 p-1 font-black w-16">
+                      공정간<br />불량
+                    </td>
+                  )}
+                  <td className="border-r border-black p-1 text-left px-2 font-bold">{row.name}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.frtLhA ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.frtRhA ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.frtLhB ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.frtRhB ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.rrLhA ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.rrRhA ?? ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{row.rrLhB ?? ""}</td>
+                  <td className="p-0.5 font-mono">{row.rrRhB ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "defectSectionAbc") {
+      const rows = Array.isArray(cfg?.defectSectionAbc) ? cfg.defectSectionAbc : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1 w-1/2">불량소재구분 (Section A / B / C)</th>
+                <th className="border-r border-black p-1">Section A</th>
+                <th className="border-r border-black p-1">Section B</th>
+                <th className="p-1">Section C</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={row.id || idx} className="border-b border-black">
+                  <td className="border-r border-black p-1 text-left px-2 font-bold">{row.name}</td>
+                  <td className="border-r border-black p-1 font-mono">{row.secA ?? 0}</td>
+                  <td className="border-r border-black p-1 font-mono">{row.secB ?? 0}</td>
+                  <td className="p-1 font-mono">{row.secC ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "timeAndOutput") {
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1">구 분</th>
+                <th className="border-r border-black p-1">작업자</th>
+                <th className="border-r border-black p-1">작업시간</th>
+                <th className="border-r border-black p-1">정품수량</th>
+                <th className="border-r border-black p-1">불량수량</th>
+                <th className="p-1">재조인트</th>
+              </tr>
+            </thead>
+            <tbody>
+              {["FRT LH", "FRT RH", "RR LH", "RR RH"].map((div) => (
+                <tr key={div} className="border-b border-black">
+                  <td className="border-r border-black p-1 bg-slate-50 font-black">{div}</td>
+                  <td className="border-r border-black p-1">{workerNameVal || "-"}</td>
+                  <td className="border-r border-black p-1 font-mono">{workTimeRange || "08:00 ~ 17:00"}</td>
+                  <td className="border-r border-black p-1 font-mono font-black">350</td>
+                  <td className="border-r border-black p-1 font-mono">1</td>
+                  <td className="p-1 font-mono">1</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "jointMaterial") {
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs font-bold">
+            <tbody>
+              <tr>
+                <td className="border-r border-black bg-[#fef9c3] p-1.5 w-[20%] text-center font-black">조인트 재료명</td>
+                <td className="border-r border-black p-1.5 w-[30%] text-center font-black text-indigo-900">
+                  {cfg?.jointMaterial?.gradeName || "-"}
+                </td>
+                <td className="border-r border-black bg-[#fef9c3] p-1.5 w-[20%] text-center font-black">재료 LOT NO.</td>
+                <td className="p-1.5 w-[30%] text-center font-mono">
+                  {cfg?.jointMaterial?.lotNo || "-"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "injectionTemp") {
+      const temps = Array.isArray(cfg?.injectionTemps) ? cfg.injectionTemps : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th colSpan={2} className="border-r border-black p-1 w-1/4">사출온도 구분</th>
+                <th className="border-r border-black p-1">노즐(Nozzle)</th>
+                <th className="border-r border-black p-1">실린더 1(N2)</th>
+                <th className="border-r border-black p-1">실린더 2(H3)</th>
+                <th className="p-1">실린더 3(H4)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {temps.map((t, idx) => (
+                <tr key={t.id || idx} className="border-b border-black">
+                  {idx === 0 && (
+                    <td rowSpan={3} className="border-r border-black bg-[#fef9c3]/40 p-1 font-black w-14">Sett'g</td>
+                  )}
+                  {idx === 3 && (
+                    <td rowSpan={3} className="border-r border-black bg-[#fef9c3]/40 p-1 font-black w-14">Actual</td>
+                  )}
+                  <td className="border-r border-black p-1 font-bold">{t.machine}</td>
+                  <td className="border-r border-black p-1 font-mono">{t.nozzle}</td>
+                  <td className="border-r border-black p-1 font-mono">{t.cyl1}</td>
+                  <td className="border-r border-black p-1 font-mono">{t.cyl2}</td>
+                  <td className="p-1 font-mono">{t.cyl3}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "injectionCondition") {
+      const conds = Array.isArray(cfg?.injectionConditions) ? cfg.injectionConditions : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1 w-1/4">사출조건 항목</th>
+                <th className="border-r border-black p-1 w-1/4">SPEC</th>
+                <th className="border-r border-black p-1">초물(Start)</th>
+                <th className="border-r border-black p-1">중물(Half)</th>
+                <th className="p-1">종물(Finish)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conds.map((c, idx) => (
+                <tr key={c.id || idx} className="border-b border-black">
+                  <td className="border-r border-black p-1 font-bold bg-slate-50">{c.name}</td>
+                  <td className="border-r border-black p-1 font-black text-indigo-900">{c.spec}</td>
+                  <td className="border-r border-black p-1 font-mono">{c.startVal}</td>
+                  <td className="border-r border-black p-1 font-mono">{c.halfVal}</td>
+                  <td className="p-1 font-mono">{c.finishVal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "jointDefectMatrix") {
+      const rows = Array.isArray(cfg?.jointDefects) ? cfg.jointDefects : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th rowSpan={2} className="border-r border-black p-1 w-[22%]">공정불량 구분</th>
+                <th colSpan={5} className="border-r border-black p-1">폐기불량 (FRT A/B/C · RR A/B)</th>
+                <th colSpan={2} className="border-r border-black p-1">재조인트 (FRT/RR)</th>
+                <th colSpan={2} className="p-1">공정간불량 (FRT/RR)</th>
+              </tr>
+              <tr className="bg-[#fef9c3]/60 border-b border-black text-[10px]">
+                <th className="border-r border-black p-0.5">F-A</th>
+                <th className="border-r border-black p-0.5">F-B</th>
+                <th className="border-r border-black p-0.5">F-C</th>
+                <th className="border-r border-black p-0.5">R-A</th>
+                <th className="border-r border-black p-0.5">R-B</th>
+                <th className="border-r border-black p-0.5">FRT</th>
+                <th className="border-r border-black p-0.5">RR</th>
+                <th className="border-r border-black p-0.5">FRT</th>
+                <th className="p-0.5">RR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr key={idx} className="border-b border-black">
+                  <td className="border-r border-black p-1 text-left px-2 font-bold">{r.name}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.frtA || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.frtB || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.frtC || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.rrA || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.rrB || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.reworkFrt || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.reworkRr || ""}</td>
+                  <td className="border-r border-black p-0.5 font-mono">{r.processFrt || ""}</td>
+                  <td className="p-0.5 font-mono">{r.processRr || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "drawingSpecCheck") {
+      const rows = Array.isArray(cfg?.drawingSpecs) ? cfg.drawingSpecs : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1 w-1/4">도면 치수 항목</th>
+                <th className="border-r border-black p-1 w-1/4">규 격(Spec)</th>
+                <th className="border-r border-black p-1">초물(Start)</th>
+                <th className="border-r border-black p-1">중물(Half)</th>
+                <th className="p-1">종물(Finish)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((ds, idx) => (
+                <tr key={ds.id || idx} className="border-b border-black">
+                  <td className="border-r border-black p-1 font-bold bg-slate-50">{ds.section}</td>
+                  <td className="border-r border-black p-1 font-black text-indigo-900">{ds.spec}</td>
+                  <td className="border-r border-black p-1 font-mono">{ds.startVal || ""}</td>
+                  <td className="border-r border-black p-1 font-mono">{ds.halfVal || ""}</td>
+                  <td className="p-1 font-mono">{ds.finishVal || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "rightAngleMatrix") {
+      const machines = Array.isArray(cfg?.machines) ? cfg.machines : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1 w-1/4">완제품 직각검사 호기</th>
+                {machines.map((m, idx) => (
+                  <th key={m.id || idx} className="border-r last:border-r-0 border-black p-1">{m.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-black">
+                <td className="border-r border-black p-1 bg-slate-50 font-bold">검사수량</td>
+                {machines.map((m, idx) => (
+                  <td key={m.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono">{m.inspectQty}</td>
+                ))}
+              </tr>
+              <tr className="border-b border-black">
+                <td className="border-r border-black p-1 bg-slate-50 font-bold">정품수량</td>
+                {machines.map((m, idx) => (
+                  <td key={m.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono font-black text-indigo-900">{m.goodQty}</td>
+                ))}
+              </tr>
+              <tr>
+                <td className="border-r border-black p-1 bg-slate-50 font-bold">불량(리워크/폐기)</td>
+                {machines.map((m, idx) => (
+                  <td key={m.id || idx} className="border-r last:border-r-0 border-black p-1 font-mono">
+                    {m.reworkQty || 0} / {m.scrapQty || 0}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "frtRightAngleDefects") {
+      const rows = Array.isArray(cfg?.frtRightAngleDefects) ? cfg.frtRightAngleDefects : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+            <thead>
+              <tr className="bg-[#fef9c3] border-b border-black text-[11px]">
+                <th className="border-r border-black p-1 w-1/2">FRT 직각검사 불량 항목</th>
+                <th className="border-r border-black p-1">FRT LH</th>
+                <th className="border-r border-black p-1">FRT RH</th>
+                <th className="p-1">합 계</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={row.id || idx} className="border-b border-black">
+                  <td className="border-r border-black p-1 text-left px-2 font-bold">{row.name}</td>
+                  <td className="border-r border-black p-1 font-mono">{row.frtLh || 0}</td>
+                  <td className="border-r border-black p-1 font-mono">{row.frtRh || 0}</td>
+                  <td className="p-1 font-mono font-black">{(Number(row.frtLh) || 0) + (Number(row.frtRh) || 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "remarks") {
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <table className="w-full border-collapse border border-black text-xs font-bold">
+            <tbody>
+              <tr>
+                <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[22%] font-black">
+                  특기사항 및 조치사항
+                </td>
+                <td className="p-2 text-left font-bold">
+                  {cfg?.remarks || ""}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (key === "downtimeDefectPanel") {
+      const events = Array.isArray(cfg?.downtimeEvents) ? cfg.downtimeEvents : [];
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <div className="border border-black">
+            <div className="bg-[#fef9c3] border-b border-black px-2 py-1 font-black text-[11px] flex items-center justify-between">
+              <span>■ 비가동 및 부적합품 발생내역 (조치전·후 사진 포함)</span>
+              <span className="text-[10px] font-bold">총 {events.length}건</span>
+            </div>
+            <table className="w-full border-collapse text-xs text-center font-bold">
+              <thead>
+                <tr className="bg-slate-50 border-b border-black text-[10.5px]">
+                  <th className="border-r border-black p-1 w-[14%]">구분</th>
+                  <th className="border-r border-black p-1 w-[22%]">유형/원인</th>
+                  <th className="border-r border-black p-1 w-[16%]">시간(분)</th>
+                  <th className="border-r border-black p-1 w-[14%]">수량</th>
+                  <th className="p-1">조치내용 및 사진</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-2 text-slate-500 text-[11px]">
+                      등록된 비가동/부적합 내역 없음 (실제 작업 시 조치전·후 사진 등록)
+                    </td>
+                  </tr>
+                ) : (
+                  events.map((ev, idx) => (
+                    <tr key={ev.id || idx} className="border-b last:border-b-0 border-black">
+                      <td className="border-r border-black p-1 font-black">
+                        {ev.category === "DEFECT" ? "부적합품" : "비가동"}
+                      </td>
+                      <td className="border-r border-black p-1">{ev.type || "-"}</td>
+                      <td className="border-r border-black p-1 font-mono">
+                        {ev.startTime || ""}{ev.endTime ? `~${ev.endTime}` : ""} {ev.minutes ? `(${ev.minutes}분)` : ""}
+                      </td>
+                      <td className="border-r border-black p-1 font-mono">{ev.defectQty || 0}</td>
+                      <td className="p-1 text-left px-2">
+                        <div>{ev.actionNote || ev.reason || "-"}</div>
+                        {(ev.beforePhotoUrl || ev.afterPhotoUrl) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            {ev.beforePhotoUrl && (
+                              <img src={ev.beforePhotoUrl} alt="조치전" className="h-10 w-14 object-cover border border-black" />
+                            )}
+                            {ev.afterPhotoUrl && (
+                              <img src={ev.afterPhotoUrl} alt="조치후" className="h-10 w-14 object-cover border border-black" />
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // Custom Photo-Analyzed Block (custom_*)
+    if (blockItem.isCustom) {
+      const cb = blockItem.customData || {};
+      const tbl = cfg?.customBlockTables?.[key];
+      const cols =
+        Array.isArray(tbl?.columns) && tbl.columns.length > 0
+          ? tbl.columns
+          : Array.isArray(cb.columns) && cb.columns.length > 0
+          ? cb.columns
+          : ["항목 1", "항목 2", "항목 3"];
+      const rows =
+        Array.isArray(tbl?.rows) && tbl.rows.length > 0
+          ? tbl.rows
+          : Array.isArray(cb.rows) && cb.rows.length > 0
+          ? cb.rows
+          : [["", "", ""]];
+
+      return (
+        <div key={key} className="relative">
+          {showBlockBadges && (
+            <span className="absolute -top-2.5 left-2 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+              {badgeLabel}
+            </span>
+          )}
+          <div className="border border-black">
+            <div className="bg-[#fef9c3] border-b border-black px-2 py-1 font-black text-[11px]">
+              ■ {cb.title || cb.label || blockItem.label}
+            </div>
+            <table className="w-full border-collapse text-xs text-center font-bold">
+              <thead>
+                <tr className="bg-slate-50 border-b border-black text-[11px]">
+                  {cols.map((colName, cIdx) => (
+                    <th key={cIdx} className="border-r last:border-r-0 border-black p-1">
+                      {colName}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((rowArr, rIdx) => {
+                  const cells = Array.isArray(rowArr) ? rowArr : Array.isArray(rowArr?.cells) ? rowArr.cells : [];
+                  return (
+                    <tr key={rIdx} className="border-b last:border-b-0 border-black">
+                      {cols.map((_, cIdx) => (
+                        <td
+                          key={cIdx}
+                          className={`border-r last:border-r-0 border-black p-1 ${
+                            cIdx === 0 ? "bg-slate-50 font-black" : "font-mono"
+                          }`}
+                        >
+                          {cells[cIdx] ?? ""}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="w-full bg-white text-black p-4 sm:p-6 border-2 border-black font-sans text-xs space-y-2.5 select-text">
+      {/* Title & Approval Box (상단 제목 한 줄 통일: 소재준비작업일보) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 text-center pt-1">
+          <h1 className="text-xl sm:text-2xl font-black text-black inline-block tracking-wider border-b-[3px] border-double border-black pb-0.5">
+            {unifiedTitle}
+          </h1>
+        </div>
+        <table className="border-collapse border border-black text-[11px] w-40 text-center font-bold shrink-0">
+          <thead>
+            <tr className="border-b border-black">
+              <th className="border-r border-black py-0.5 w-1/3">작 성</th>
+              <th className="border-r border-black py-0.5 w-1/3">검 토</th>
+              <th className="py-0.5 w-1/3">승 인</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="h-10 text-slate-400">
+              <td className="border-r border-black align-bottom pb-1 text-black font-black">{workerNameVal || "(인)"}</td>
+              <td className="border-r border-black align-bottom pb-1">(인)</td>
+              <td className="align-bottom pb-1">(인)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Work Date Meta Row (공정명 중복 줄 제거 -> 기본정보 헤더의 차종·품명·공정명 순으로 일원화) */}
+      <div className="flex items-center justify-between text-xs font-bold text-black pt-0.5">
+        <span className="text-[11px] text-slate-700">※Record Time : Start / Half / Finish</span>
+        <div className="text-[11px]">
+          작업일자(Date) : {workDateVal || "20    년    월    일"}
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
+      {/* CASE A: 레고 블록 조합기에서 조립·설계한 블록이 있는 경우 (100% 순서/구현 일치) */}
+      {/* ==================================================================== */}
+      {hasLegoBlocks ? (
+        <div className="space-y-2.5">
+          {!cfg?.activeBlocks?.basicInfo && renderBasicInfoHeader()}
+          {orderedBlocks
+            .filter((b) => Boolean(cfg?.activeBlocks?.[b.key]))
+            .map((b, idx) => renderAssembledBlock(b, idx))}
+        </div>
+      ) : (
+        /* ==================================================================== */
+        /* CASE B: 레거시 양식 호환 렌더링 */
+        /* ==================================================================== */
+        <div className="space-y-2.5">
+          {renderBasicInfoHeader()}
+
+          {template?.blocks?.timeAndQty && (
+            <div className="relative">
+              {showBlockBadges && (
+                <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+                  [블록 1] 작업시간 & 생산량
+                </span>
+              )}
+              <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+                <thead>
+                  <tr className="bg-[#fef9c3] border-b border-black">
+                    <th colSpan={2} className="border-r border-black p-1 w-1/3">구 분(Division)</th>
+                    <th className="border-r border-black p-1 w-1/3">FRT</th>
+                    <th className="p-1 w-1/3">RR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black bg-[#fef9c3] p-1 w-1/6 font-bold">작업시간(time)</td>
+                    <td className="border-r border-black p-1 w-1/6 font-bold">시작(S)~종료(F)</td>
+                    <td className="border-r border-black p-1">~</td>
+                    <td className="p-1"></td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td rowSpan={3} className="border-r border-black bg-[#fef9c3] p-1 font-bold">
+                      생산량 (Q,ty)
+                    </td>
+                    <td className="border-r border-black p-1 font-bold">
+                      <div className="flex justify-between px-2 text-[11px]">
+                        <span>(계획/실적)</span>
+                        <span>A</span>
+                      </div>
+                    </td>
+                    <td className="border-r border-black p-1">/</td>
+                    <td className="p-1">/</td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold">
+                      <div className="flex justify-between px-2 text-[11px]">
+                        <span>(Plan/Output)</span>
+                        <span>B</span>
+                      </div>
+                    </td>
+                    <td className="border-r border-black p-1">/</td>
+                    <td className="p-1">/</td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold">
+                      <div className="flex justify-end px-2 text-[11px]">
+                        <span>C</span>
+                      </div>
+                    </td>
+                    <td className="border-r border-black p-1">/</td>
+                    <td className="p-1 relative overflow-hidden h-6">
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                        <line x1="0" y1="0" x2="100%" y2="100%" stroke="black" strokeWidth="1" />
+                        <line x1="100%" y1="0" x2="0" y2="100%" stroke="black" strokeWidth="1" />
+                      </svg>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {template?.blocks?.specAndLot && (
+            <div className="relative">
+              {showBlockBadges && (
+                <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+                  [블록 2] 정치 절단 길이 & LOT NO.
+                </span>
+              )}
+              <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+                <thead>
+                  <tr className="bg-[#fef9c3] border-b border-black">
+                    <th colSpan={3} className="border-r border-black p-1 w-[28%]">구 분(Division)</th>
+                    <th className="border-r border-black p-1 w-[24%]">초물(Start)</th>
+                    <th className="border-r border-black p-1 w-[24%]">중물(Half)</th>
+                    <th className="p-1 w-[24%]">종물(Finish)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {specs.map((spec, sIdx) => {
+                    const isFirst = sIdx === 0;
+                    const totalSpecs = specs.length;
+                    return (
+                      <React.Fragment key={spec.id || sIdx}>
+                        <tr className="border-b border-black">
+                          {isFirst && (
+                            <td
+                              rowSpan={totalSpecs * 3}
+                              className="border-r border-black bg-[#fef9c3] p-1 font-bold w-[10%] text-center align-middle"
+                            >
+                              <div className="leading-snug">
+                                정치 절단<br />길이(Spec<br />cutting)
+                              </div>
+                            </td>
+                          )}
+                          <td rowSpan={3} className="border-r border-black p-1 w-[9%] text-center font-bold">
+                            {spec.section || spec.name || `Section ${sIdx + 1}`}
+                          </td>
+                          <td className="border-r border-black p-0.5 text-center text-[11px] font-bold w-[9%]">
+                            규격(Spec)
+                          </td>
+                          <td colSpan={3} className="p-0.5 text-center font-black text-indigo-900 bg-slate-50/50">
+                            {spec.frtSpec || spec.spec || "-"}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-black">
+                          <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                            초/중/종
+                          </td>
+                          <td className="border-r border-black p-0.5 h-6 text-center font-mono">
+                            {spec.startVal || spec.start1 || ""}
+                          </td>
+                          <td className="border-r border-black p-0.5 h-6 text-center font-mono">
+                            {spec.halfVal || spec.half1 || ""}
+                          </td>
+                          <td className="p-0.5 h-6 text-center font-mono">
+                            {spec.finishVal || spec.finish1 || ""}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-black">
+                          <td className="border-r border-black p-0.5 text-center text-[11px] font-bold">
+                            LOT NO.
+                          </td>
+                          <td className="border-r border-black p-0.5 h-6 text-center font-mono text-[10.5px]">
+                            {spec.lotStart || spec.lotNo || ""}
+                          </td>
+                          <td className="border-r border-black p-0.5 h-6 text-center font-mono text-[10.5px]">
+                            {spec.lotHalf || spec.lotNo || ""}
+                          </td>
+                          <td className="p-0.5 h-6 text-center font-mono text-[10.5px]">
+                            {spec.lotFinish || spec.lotNo || ""}
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {template?.blocks?.defectMatrix && (
+            <div className="relative">
+              {showBlockBadges && (
+                <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+                  [블록 3] 불량소재 구분 매트릭스
+                </span>
+              )}
+              <table className="w-full border-collapse border border-black text-xs text-center font-bold">
+                <thead>
+                  <tr className="bg-[#fef9c3] border-b border-black">
+                    <th colSpan={2} className="border-r border-black p-1 w-[25%]">불량소재구분</th>
+                    <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
+                    <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
+                    <th className="border-r border-black p-1 w-[12.5%]">Section "C"</th>
+                    <th className="border-r border-black p-1 w-[12.5%]">Section "A"</th>
+                    <th className="border-r border-black p-1 w-[12.5%]">Section "B"</th>
+                    <th className="p-1 w-[12.5%]">Section "C"</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extrusionItems.map((item, idx) => (
+                    <tr key={`ext_${idx}`} className="border-b border-black">
+                      {idx === 0 && (
+                        <td
+                          rowSpan={extrusionItems.length}
+                          className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
+                        >
+                          <div className="leading-snug">
+                            압출소재<br />불량<br />(Extrusion<br />Badness)
+                          </div>
+                        </td>
+                      )}
+                      <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
+                        {item}
+                      </td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="p-0.5 h-4"></td>
+                    </tr>
+                  ))}
+                  {processItems.map((item, idx) => (
+                    <tr key={`proc_${idx}`} className="border-b border-black">
+                      {idx === 0 && (
+                        <td
+                          rowSpan={processItems.length}
+                          className="border-r border-black p-1 font-bold w-[12%] text-center align-middle"
+                        >
+                          <div className="leading-snug">
+                            공정간<br />불량(Process<br />Badness)
+                          </div>
+                        </td>
+                      )}
+                      <td className="border-r border-black p-0.5 text-center text-[10.5px] font-bold w-[13%]">
+                        {item}
+                      </td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="border-r border-black p-0.5 h-4"></td>
+                      <td className="p-0.5 h-4"></td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-black font-black bg-slate-50">
+                    <td colSpan={2} className="border-r border-black p-1 text-center">
+                      불량 합계(Bad Sum)
+                    </td>
+                    <td className="border-r border-black p-1 h-5"></td>
+                    <td className="border-r border-black p-1 h-5"></td>
+                    <td className="border-r border-black p-1 h-5"></td>
+                    <td className="border-r border-black p-1 h-5"></td>
+                    <td className="border-r border-black p-1 h-5"></td>
+                    <td className="p-1 h-5"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {template?.blocks?.maintenance && (
+            <div className="relative">
+              {showBlockBadges && (
+                <span className="absolute -top-2.5 left-2 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs z-10">
+                  [블록 4] 칼날교체 & 설비이상 조치
+                </span>
+              )}
+              <table className="w-full border-collapse border border-black text-xs font-bold">
+                <tbody>
+                  <tr>
+                    <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
+                      칼날교체 시간
+                    </td>
+                    <td className="border-r border-black p-2 w-[25%] h-12"></td>
+                    <td className="border-r border-black bg-[#fef9c3] p-2 text-center w-[25%] font-bold">
+                      설비 이상 조치사항
+                    </td>
+                    <td className="p-2 w-[25%] h-12"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* Footer */}
       <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-black text-black">
-        <span>{template?.formNo || "705-02(REV.4)"}</span>
-        <span className="font-black text-sm">{template?.companyName || "(주)오륙"}</span>
+        <span>{cfg?.formNo || template?.formNo || "705-02(REV.4)"}</span>
+        <span className="font-black text-sm">{cfg?.companyName || template?.companyName || "(주)오륙"}</span>
         <span>A4(210×297)</span>
       </div>
     </div>
@@ -965,20 +1855,45 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
 // ============================================================================
 const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
   const [formData, setFormData] = useState(template);
-  const isMaterialPrep = formData.categoryId === "MATERIAL_PREP" || formData.divisionType === "SECTION_ABC";
+  const hasLegoConfig = Boolean(formData?.legoConfig?.activeBlocks);
+  const orderedBlocks = useMemo(() => getOrderedBlocksForTemplate(formData), [formData]);
 
   const updateField = (field, val) => {
-    setFormData((prev) => ({ ...prev, [field]: val }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: val,
+      legoConfig: prev.legoConfig
+        ? {
+            ...prev.legoConfig,
+            [field]: val
+          }
+        : prev.legoConfig
+    }));
   };
 
   const toggleBlock = (blockKey) => {
-    setFormData((prev) => ({
-      ...prev,
-      blocks: {
-        ...prev.blocks,
-        [blockKey]: !prev.blocks?.[blockKey]
+    setFormData((prev) => {
+      if (prev.legoConfig?.activeBlocks) {
+        const nextActive = {
+          ...prev.legoConfig.activeBlocks,
+          [blockKey]: !prev.legoConfig.activeBlocks[blockKey]
+        };
+        return {
+          ...prev,
+          legoConfig: {
+            ...prev.legoConfig,
+            activeBlocks: nextActive
+          }
+        };
       }
-    }));
+      return {
+        ...prev,
+        blocks: {
+          ...prev.blocks,
+          [blockKey]: !prev.blocks?.[blockKey]
+        }
+      };
+    });
   };
 
   const handleAddSpec = () => {
@@ -997,21 +1912,54 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
     };
     setFormData((prev) => ({
       ...prev,
-      specs: [...(prev.specs || []), newSpec]
+      specs: [...(prev.specs || []), newSpec],
+      legoConfig: prev.legoConfig
+        ? {
+            ...prev.legoConfig,
+            specsCutting: [
+              ...(prev.legoConfig.specsCutting || []),
+              {
+                id: newSpec.id,
+                section: letter,
+                spec1: "600 ± 5mm",
+                start1: "",
+                half1: "",
+                finish1: "",
+                lotStart: "",
+                lotHalf: "",
+                lotFinish: ""
+              }
+            ]
+          }
+        : prev.legoConfig
     }));
   };
 
   const handleRemoveSpec = (idToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      specs: (prev.specs || []).filter((s) => s.id !== idToRemove)
+      specs: (prev.specs || []).filter((s) => s.id !== idToRemove),
+      legoConfig: prev.legoConfig
+        ? {
+            ...prev.legoConfig,
+            specsCutting: (prev.legoConfig.specsCutting || []).filter((s) => s.id !== idToRemove)
+          }
+        : prev.legoConfig
     }));
   };
 
   const handleUpdateSpec = (id, key, val) => {
     setFormData((prev) => ({
       ...prev,
-      specs: (prev.specs || []).map((s) => (s.id === id ? { ...s, [key]: val } : s))
+      specs: (prev.specs || []).map((s) => (s.id === id ? { ...s, [key]: val } : s)),
+      legoConfig: prev.legoConfig
+        ? {
+            ...prev.legoConfig,
+            specsCutting: (prev.legoConfig.specsCutting || []).map((s) =>
+              s.id === id && key === "frtSpec" ? { ...s, spec1: val } : s
+            )
+          }
+        : prev.legoConfig
     }));
   };
 
@@ -1054,7 +2002,7 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                 작업일보 템플릿 전체보기 및 양식 편집
               </h3>
               <p className="text-xs text-indigo-200">
-                {formData.categoryName} • {formData.carModel} • {formData.partName}
+                {formData.carModel} • {formData.partName} • {formData.processName || "소재준비"}
               </p>
             </div>
           </div>
@@ -1080,14 +2028,23 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
           {/* LEFT: Builder Controls */}
           <div className="lg:col-span-5 p-4 sm:p-5 border-r border-slate-200 dark:border-slate-800 space-y-4 overflow-y-auto">
-            {/* Step 1: Base Meta */}
+            {/* Step 1: Base Meta (한 줄 제목 통일 + 차종 -> 품명 -> 공정명 순서) */}
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
               <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
-                1. 기본 정보 설정
+                1. 기본 정보 설정 (차종 · 품명 · 공정명 순)
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">일보 제목 (한 줄 통일)</label>
+                <input
+                  type="text"
+                  value={formData.title || "소재준비작업일보"}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-black text-center"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">차종명</label>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">1. 차종명</label>
                   <input
                     type="text"
                     value={formData.carModel || ""}
@@ -1096,7 +2053,7 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">품명</label>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">2. 품명</label>
                   <input
                     type="text"
                     value={formData.partName || ""}
@@ -1104,78 +2061,91 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                     className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">공정명</label>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">3. 공정명</label>
                   <input
                     type="text"
                     value={formData.processName || ""}
                     onChange={(e) => updateField("processName", e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
+                    className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center text-indigo-600 dark:text-indigo-400"
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">양식 번호</label>
-                  <input
-                    type="text"
-                    value={formData.formNo || "705-02(REV.4)"}
-                    onChange={(e) => updateField("formNo", e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
-                  />
-                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">양식 번호</label>
+                <input
+                  type="text"
+                  value={formData.formNo || "705-02(REV.4)"}
+                  onChange={(e) => updateField("formNo", e.target.value)}
+                  className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
+                />
               </div>
             </div>
 
-            {/* Step 2: Lego Block Toggles */}
+            {/* Step 2: Lego Block Toggles (조립된 전체 레고 블록 스위치) */}
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
-                  2. 레고 블록 ON/OFF 스위치
+                  2. 조립 레고 블록 ON/OFF 스위치
                 </span>
                 <span className="text-[10px] font-bold text-slate-400">실시간 우측 서식 연동</span>
               </div>
-              <div className="space-y-1.5">
-                {(isMaterialPrep
-                  ? [
-                      { key: "timeAndQty", label: "⏱️ [블록 1] 작업시간 & 생산량 (FRT/RR, A/B/C 계획·실적)" },
-                      { key: "specAndLot", label: "📐 [블록 2] 정치 절단 길이 & LOT NO. (초/중/종 실측)" },
-                      { key: "defectMatrix", label: "⚠️ [블록 3] 불량소재구분 매트릭스 (압출 5종 + 공정간 3종)" },
-                      { key: "maintenance", label: "🔧 [블록 4] 칼날교체 & 설비이상 조치 블록" }
-                    ]
+              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                {hasLegoConfig
+                  ? orderedBlocks.map((b, idx) => {
+                      const isChecked = Boolean(formData.legoConfig?.activeBlocks?.[b.key]);
+                      return (
+                        <label
+                          key={b.key}
+                          className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition ${
+                            isChecked
+                              ? "bg-indigo-50/70 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700"
+                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 opacity-65"
+                          }`}
+                        >
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                            {idx + 1}. {b.label}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleBlock(b.key)}
+                            className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                          />
+                        </label>
+                      );
+                    })
                   : [
                       { key: "timeAndQty", label: "⏱️ [블록 1] 작업시간 & 생산량 블록" },
-                      { key: "specAndLot", label: "📐 [블록 2] 주요 규격 실측 & LOT 번호 블록" },
-                      { key: "machineCondition", label: "🌡️ [블록 3] 성형/설비 조건 블록" },
-                      { key: "defectMatrix", label: "⚠️ [블록 4] 불량 세부 매트릭스 블록" },
-                      { key: "maintenance", label: "🔧 [블록 5] 설비보전 & 칼날교체 블록" }
-                    ]
-                ).map((b) => (
-                  <label
-                    key={b.key}
-                    className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-400 transition"
-                  >
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{b.label}</span>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(formData.blocks?.[b.key])}
-                      onChange={() => toggleBlock(b.key)}
-                      className="w-4 h-4 accent-indigo-600 cursor-pointer"
-                    />
-                  </label>
-                ))}
+                      { key: "specAndLot", label: "📐 [블록 2] 정치 절단 길이 & LOT NO." },
+                      { key: "defectMatrix", label: "⚠️ [블록 3] 불량소재구분 매트릭스" },
+                      { key: "maintenance", label: "🔧 [블록 4] 칼날교체 & 설비이상 조치" }
+                    ].map((b) => (
+                      <label
+                        key={b.key}
+                        className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-400 transition"
+                      >
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{b.label}</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.blocks?.[b.key])}
+                          onChange={() => toggleBlock(b.key)}
+                          className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                        />
+                      </label>
+                    ))}
               </div>
             </div>
 
             {/* Step 3: Spec Items Editor */}
-            {formData.blocks?.specAndLot && (
+            {(formData.blocks?.specAndLot || formData.legoConfig?.activeBlocks?.specsCutting) && (
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
                       3. 정치 절단 치수 규격(Spec) 설정
                     </span>
-                    <span className="text-[10px] text-slate-400">FRT 및 RR 단면별 기준 규격</span>
+                    <span className="text-[10px] text-slate-400">단면별 기준 규격</span>
                   </div>
                   <button
                     onClick={handleAddSpec}
@@ -1187,7 +2157,7 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {(formData.specs || []).map((s, idx) => (
                     <div
-                      key={s.id}
+                      key={s.id || idx}
                       className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
@@ -1219,7 +2189,7 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                             type="text"
                             value={s.rrSpec || ""}
                             onChange={(e) => handleUpdateSpec(s.id, "rrSpec", e.target.value)}
-                            placeholder="예: 488 ± 3mm(가절단)"
+                            placeholder="예: 488 ± 3mm"
                             className="w-full px-2 py-1 rounded border text-center font-bold text-purple-600 dark:text-purple-400"
                           />
                         </div>
@@ -1229,206 +2199,20 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
                 </div>
               </div>
             )}
-
-            {/* Step 4: Defect Items Editor */}
-            {formData.blocks?.defectMatrix && (
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                    4. 불량 세부 매트릭스 항목
-                  </span>
-                </div>
-
-                {/* Group 1: 압출소재 불량 */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    <span>압출소재 불량 ({formData.defectCategories?.[0]?.items?.length || 0}개)</span>
-                    <button
-                      onClick={() => handleAddDefect(0)}
-                      className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black cursor-pointer hover:bg-rose-500"
-                    >
-                      + 항목 추가
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {(formData.defectCategories?.[0]?.items || []).map((item, itemIdx) => (
-                      <span
-                        key={`grp0_${itemIdx}`}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                      >
-                        <span>{item}</span>
-                        <button
-                          onClick={() => handleRemoveDefect(0, itemIdx)}
-                          className="hover:text-black dark:hover:text-white font-black cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Group 2: 공정간 불량 */}
-                <div className="space-y-1.5 pt-1 border-t border-slate-200 dark:border-slate-700/60">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    <span>공정간 불량 ({formData.defectCategories?.[1]?.items?.length || 0}개)</span>
-                    <button
-                      onClick={() => handleAddDefect(1)}
-                      className="px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black cursor-pointer hover:bg-amber-500"
-                    >
-                      + 항목 추가
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {(formData.defectCategories?.[1]?.items || []).map((item, itemIdx) => (
-                      <span
-                        key={`grp1_${itemIdx}`}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                      >
-                        <span>{item}</span>
-                        <button
-                          onClick={() => handleRemoveDefect(1, itemIdx)}
-                          className="hover:text-black dark:hover:text-white font-black cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* RIGHT: Live A4 Sheet Preview */}
+          {/* RIGHT: Live A4 Sheet Preview (조립된 전체 블록 100% 반영) */}
           <div className="lg:col-span-7 p-4 sm:p-6 bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-start overflow-y-auto">
             <div className="flex items-center justify-between w-full mb-2">
               <span className="text-xs font-black text-slate-600 dark:text-slate-400">
-                실시간 1:1 표준 A4 서식 연동 미리보기
+                실시간 1:1 조립 블록 & 표준 A4 서식 미리보기
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                705-02(REV.4) 규격
+                설계 블록 100% 동기화
               </span>
             </div>
 
-            {/* RENDER 1:1 REPLICA FOR MATERIAL PREP */}
-            {isMaterialPrep ? (
-              <MaterialPrepStandardA4Sheet template={formData} showBlockBadges={true} />
-            ) : (
-              <div className="w-full bg-white text-black p-5 rounded-2xl shadow-xl border border-slate-300 text-xs space-y-2 min-w-[500px]">
-                {/* Title & Approval */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 text-center pt-1">
-                    <h2 className="text-xl font-black border-b-4 border-double border-black inline-block pb-0.5">
-                      {formData.title || "작업 일보"}
-                    </h2>
-                  </div>
-                  <table className="border-collapse border border-black text-[9px] w-32 shrink-0">
-                    <tr className="bg-slate-100 font-bold"><th className="border border-black">작 성</th><th className="border border-black">검 토</th><th className="border border-black">승 인</th></tr>
-                    <tr className="h-8 text-slate-400"><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td><td className="border border-black text-center">(인)</td></tr>
-                  </table>
-                </div>
-
-                {/* Meta row */}
-                <div className="flex items-center justify-between text-[10px] font-bold">
-                  <span>▣ 공정명 : {formData.processName}</span>
-                  <span>작업일자 : 2026년 10월 16일</span>
-                </div>
-                <table className="w-full border-collapse border border-black text-[10px]">
-                  <tr>
-                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">차종</td>
-                    <td className="border border-black font-black p-1 text-center">{formData.carModel}</td>
-                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">품명</td>
-                    <td className="border border-black font-black p-1 text-center">{formData.partName}</td>
-                    <td className="border border-black bg-slate-100 font-bold p-1 w-16 text-center">작업자</td>
-                    <td className="border border-black font-black p-1 text-center">박종미</td>
-                  </tr>
-                </table>
-
-                {/* Block 1: Time & Qty */}
-                {formData.blocks?.timeAndQty && (
-                  <div className="border border-black p-1.5 bg-yellow-50/40 text-[10px] space-y-1">
-                    <span className="font-black block text-slate-700">[블록 1: 작업시간 & 생산량 (계획/실적)]</span>
-                    <div className="grid grid-cols-3 gap-1 text-center font-bold">
-                      <div className="border p-1 bg-white">시간: 06:30 ~ 17:30</div>
-                      <div className="border p-1 bg-white">계획: 800 EA</div>
-                      <div className="border p-1 bg-white text-indigo-700 font-black">실적: 800 EA</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Block 2: Spec & LOT */}
-                {formData.blocks?.specAndLot && (
-                  <div className="border border-black p-1.5 space-y-1">
-                    <span className="font-black text-[10px] block text-slate-700">[블록 2: 주요 규격 치수 실측 & LOT 관리]</span>
-                    <table className="w-full border-collapse border border-black text-[9.5px]">
-                      <tr className="bg-yellow-100 font-bold">
-                        <th className="border border-black p-0.5">단면/항목</th>
-                        <th className="border border-black p-0.5">규격(Spec)</th>
-                        <th className="border border-black p-0.5">초물</th>
-                        <th className="border border-black p-0.5">중물</th>
-                        <th className="border border-black p-0.5">종물</th>
-                      </tr>
-                      {(formData.specs || []).map((s) => (
-                        <tr key={s.id}>
-                          <td className="border border-black p-0.5 text-center font-bold">{s.name}</td>
-                          <td className="border border-black p-0.5 text-center text-indigo-800 font-black">{s.frtSpec || s.spec}</td>
-                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                          <td className="border border-black p-0.5 text-center bg-emerald-50 text-emerald-800 font-bold">OK</td>
-                        </tr>
-                      ))}
-                    </table>
-                  </div>
-                )}
-
-                {/* Block 3: Machine Condition */}
-                {formData.blocks?.machineCondition && (
-                  <div className="border border-black p-1.5 bg-amber-50/50 text-[10px]">
-                    <span className="font-black block text-amber-900 mb-0.5">[블록 3: 성형 / 사출 / 가류 조건]</span>
-                    <div className="grid grid-cols-4 gap-1 text-center font-bold text-[9px]">
-                      <div className="border p-1 bg-white">노즐: 220℃</div>
-                      <div className="border p-1 bg-white">실린더: 215℃</div>
-                      <div className="border p-1 bg-white">압력: 140 bar</div>
-                      <div className="border p-1 bg-white">시간: 90 sec</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Block 4: Defect Matrix */}
-                {formData.blocks?.defectMatrix && (
-                  <div className="border border-black p-1.5 space-y-1">
-                    <span className="font-black text-[10px] block text-slate-700">[블록 4: 불량 세부 매트릭스]</span>
-                    <div className="flex flex-wrap gap-1 text-[9px]">
-                      {(formData.defectCategories || []).flatMap((c) =>
-                        (c.items || []).map((item, idx) => (
-                          <span key={idx} className="border border-rose-300 px-1.5 py-0.5 bg-rose-50 rounded font-bold">
-                            {item}: 0
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Block 5: Maintenance */}
-                {formData.blocks?.maintenance && (
-                  <div className="border border-black p-1.5 text-[9.5px]">
-                    <div className="grid grid-cols-2 gap-1 font-bold">
-                      <div className="border p-1 bg-yellow-50">칼날교체: 08:30 완료</div>
-                      <div className="border p-1 bg-white">설비이상: 특이사항 없음</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[9px] font-bold pt-1 text-slate-500 border-t border-slate-300">
-                  <span>{formData.formNo || "705-02(REV.4)"}</span>
-                  <span className="font-black text-black">{formData.companyName || "(주)오륙"}</span>
-                  <span>A4(210×297)</span>
-                </div>
-              </div>
-            )}
+            <MaterialPrepStandardA4Sheet template={formData} showBlockBadges={true} />
           </div>
         </div>
 
@@ -1475,8 +2259,6 @@ const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
 // A4 Print Preview Modal (Standard sheet ready for A4 printing)
 // ============================================================================
 const A4PrintPreviewModal = ({ template, onClose }) => {
-  const isMaterialPrep = template?.categoryId === "MATERIAL_PREP" || template?.divisionType === "SECTION_ABC";
-
   return (
     <div className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-white text-black w-full max-w-4xl max-h-[94vh] rounded-3xl p-5 sm:p-8 overflow-y-auto space-y-4 shadow-2xl text-left">
@@ -1499,76 +2281,8 @@ const A4PrintPreviewModal = ({ template, onClose }) => {
           </div>
         </div>
 
-        {/* Paper Container */}
-        {isMaterialPrep ? (
-          <MaterialPrepStandardA4Sheet template={template} showBlockBadges={false} />
-        ) : (
-          <div className="border-2 border-black p-6 rounded-none space-y-3 font-sans text-xs">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div className="flex-1 text-center pt-2">
-                <h1 className="text-2xl font-black border-b-4 border-double border-black inline-block pb-1">
-                  {template.title}
-                </h1>
-              </div>
-              <table className="border-collapse border border-black text-xs w-40 text-center">
-                <tr className="bg-slate-100 font-bold"><th className="border border-black py-1">작 성</th><th className="border border-black py-1">검 토</th><th className="border border-black py-1">승 인</th></tr>
-                <tr className="h-12"><td className="border border-black">(인)</td><td className="border border-black">(인)</td><td className="border border-black">(인)</td></tr>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between font-bold text-xs">
-              <span>▣ 공정명 : {template.processName}</span>
-              <span>작업일자 : 2026년 10월 16일</span>
-            </div>
-
-            <table className="w-full border-collapse border border-black text-xs text-center font-bold">
-              <tr>
-                <td className="border border-black bg-slate-100 w-24 p-1">차종</td>
-                <td className="border border-black font-black p-1">{template.carModel}</td>
-                <td className="border border-black bg-slate-100 w-24 p-1">품 명</td>
-                <td className="border border-black font-black p-1">{template.partName}</td>
-                <td className="border border-black bg-slate-100 w-24 p-1">작업자</td>
-                <td className="border border-black font-black p-1">박종미</td>
-              </tr>
-            </table>
-
-            {/* Specs */}
-            {template.blocks?.specAndLot && (
-              <table className="w-full border-collapse border border-black text-xs text-center">
-                <thead>
-                  <tr className="bg-yellow-200 font-black">
-                    <th className="border border-black p-1">검사 부위 및 항목</th>
-                    <th className="border border-black p-1">규격(Spec)</th>
-                    <th className="border border-black p-1">초물 (Start)</th>
-                    <th className="border border-black p-1">중물 (Middle)</th>
-                    <th className="border border-black p-1">종물 (Finish)</th>
-                    <th className="border border-black p-1">판정</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(template.specs || []).map((s) => (
-                    <tr key={s.id}>
-                      <td className="border border-black p-1 font-bold">{s.name}</td>
-                      <td className="border border-black p-1 font-black text-indigo-900">{s.frtSpec || s.spec}</td>
-                      <td className="border border-black p-1">-</td>
-                      <td className="border border-black p-1">-</td>
-                      <td className="border border-black p-1">-</td>
-                      <td className="border border-black p-1 font-bold text-emerald-700">OK</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {/* Footer */}
-            <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-black">
-              <span>{template.formNo || "705-02(REV.4)"}</span>
-              <span className="font-black text-sm">{template.companyName || "(주)오륙"}</span>
-              <span>A4(210×297)</span>
-            </div>
-          </div>
-        )}
+        {/* Paper Container (설계한 모든 블록을 100% 반영하여 출력) */}
+        <MaterialPrepStandardA4Sheet template={template} showBlockBadges={false} />
       </div>
     </div>
   );
