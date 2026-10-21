@@ -3510,7 +3510,7 @@ export const ExtrusionWorkReportModal = ({
             {/* Section 4: 비가동 및 부적합품 발생내역 (전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
             {/* ========================================================================= */}
             <CommonDowntimeDefectPanel
-              title="④ 비가동 및 부적합품 발생내역"
+              title="비가동 및 부적합품 발생내역"
               plantLabel="압출동"
               unitLabel="폐기중량(kg)"
               events={dtEvents}

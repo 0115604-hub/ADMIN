@@ -2931,7 +2931,7 @@ export const LegoWorkReportBuilder = ({
 
             {renderBlockWrapper("downtimeDefectPanel", "비가동 및 부적합품 발생내역 (조치전·후 사진)", (
               <CommonDowntimeDefectPanel
-                title="④ 비가동 및 부적합품 발생내역"
+                title="비가동 및 부적합품 발생내역"
                 plantLabel={currentReport.companyName || "작업일보 공통"}
                 unitLabel="부적합량(EA/kg)"
                 events={currentReport.downtimeEvents || []}

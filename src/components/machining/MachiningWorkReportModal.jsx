@@ -1297,7 +1297,7 @@ export const MachiningWorkReportModal = ({
 
           {/* ⏱️ 비가동 및 부적합품 발생내역 (전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
           <CommonDowntimeDefectPanel
-            title="④ 비가동 및 부적합품 발생내역"
+            title="비가동 및 부적합품 발생내역"
             plantLabel="가공동"
             unitLabel="부적합량(EA)"
             events={downtimeEvents}

@@ -98,7 +98,7 @@ const MERGED_CATEGORIES = [
  * 기존의 '비가동 및 부적합품 발생내역' 틀을 유지하면서 부적합품 등록 및 조치전/조치후 사진 첨부 지원
  */
 const CommonDowntimeDefectPanel = ({
-  title = "④ 비가동 및 부적합품 발생내역",
+  title = "비가동 및 부적합품 발생내역",
   plantLabel = "",
   unitLabel = "폐기량/수량",
   events,
