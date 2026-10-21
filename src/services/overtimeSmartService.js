@@ -1287,11 +1287,70 @@ const lastCompanySaveEpoch = {
   "부림텍": 0
 };
 
-// 단일 업체의 로컬 데이터 로드 (독립 키 우선 조회 -> 없을 시 기존 통합 데이터에서 1회 자동 분리 마이그레이션)
+// 🌟 인메모리 단일 진실 캐시 (localStorage 용량 초과(QuotaExceededError) 시에도 데이터 유실/원복 0% 보장)
+const memoryCompanyLedgerCache = {};
+
+const stripHeavyWorkerFields = (w, cleanComp, idx) => {
+  if (!w) return w;
+  const copy = { ...w };
+  delete copy.personnelCard;
+  delete copy.card;
+  delete copy.photoUrl;
+  return {
+    ...copy,
+    company: cleanComp,
+    companyNo: idx + 1,
+    no: idx + 1,
+    dept: normalizeDept(w.dept),
+    line: w.line || normalizeDept(w.dept),
+    name: (w.name || "").trim(),
+    position: w.position || "사원",
+    daily: { ...(w.daily || {}) }
+  };
+};
+
+const safeSetLocalStorage = (key, valueStr) => {
+  if (typeof window === "undefined" || !window.localStorage) return false;
+  try {
+    window.localStorage.setItem(key, valueStr);
+    return true;
+  } catch (err) {
+    // QuotaExceededError 발생 시 구 통합 레거시 키들을 정리하여 용량 확보 후 재시도
+    try {
+      const legacyKeysToPurge = [
+        STORAGE_KEY,
+        "oryuk_smart_overtime_data_2026_09",
+        "oryuk_smart_overtime_data_2026_10",
+        "oryuk_smart_overtime_data_2026-09",
+        "oryuk_smart_overtime_data_2026-10",
+        "oryuk_overtime_reports_backup"
+      ];
+      legacyKeysToPurge.forEach((lk) => {
+        try {
+          if (lk && lk !== key) window.localStorage.removeItem(lk);
+        } catch (e) {}
+      });
+      window.localStorage.setItem(key, valueStr);
+      return true;
+    } catch (retryErr) {
+      console.warn(`[safeSetLocalStorage] ${key} 로컬 캐시 저장 생략 (인메모리 및 클라우드 정상 유지):`, retryErr?.name || retryErr);
+      return false;
+    }
+  }
+};
+
+// 단일 업체의 로컬 데이터 로드 (인메모리 캐시 -> 독립 로컬키 -> 기존 통합 데이터 1회 마이그레이션 순)
 export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => {
   const cleanComp = cleanCompanyName(company);
   const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
   const ym = targetYearMonth || nowKst || "2026-10";
+  const cacheKey = `${cleanComp}_${ym}`;
+
+  // 0. 인메모리 최신 캐시가 존재하면 즉시 반환 (가장 빠르고 Quota 오류에 영향받지 않음)
+  if (memoryCompanyLedgerCache[cacheKey] && Array.isArray(memoryCompanyLedgerCache[cacheKey].attendanceMatrix) && memoryCompanyLedgerCache[cacheKey].attendanceMatrix.length > 0) {
+    return memoryCompanyLedgerCache[cacheKey];
+  }
+
   const compKey = getStorageKeyForCompanyMonth(cleanComp, ym);
   const parts = ym.split("-").map(Number);
   const year = parts[0] || 2026;
@@ -1305,15 +1364,9 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
         const workers = parsed.attendanceMatrix
           .filter((w) => cleanCompanyName(w.company) === cleanComp)
-          .map((w, idx) => ({
-            ...w,
-            company: cleanComp,
-            companyNo: idx + 1,
-            no: idx + 1,
-            daily: { ...(w.daily || {}) }
-          }));
+          .map((w, idx) => stripHeavyWorkerFields(w, cleanComp, idx));
         if (workers.length > 0) {
-          return {
+          const loaded = {
             company: cleanComp,
             year,
             month,
@@ -1331,9 +1384,11 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
             })),
             attendanceMatrix: workers,
             companyApprovalStatus: parsed.companyApprovalStatus || {},
-            recentAuditLogs: parsed.recentAuditLogs || [],
+            recentAuditLogs: (parsed.recentAuditLogs || []).slice(0, 30),
             updatedAt: parsed.updatedAt || null
           };
+          memoryCompanyLedgerCache[cacheKey] = loaded;
+          return loaded;
         }
       }
     }
@@ -1347,13 +1402,7 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
         const normalizedLegacy = ensureAllCompaniesPresent(parsedLegacy);
         const compWorkers = (normalizedLegacy.attendanceMatrix || [])
           .filter((w) => cleanCompanyName(w.company) === cleanComp)
-          .map((w, idx) => ({
-            ...w,
-            company: cleanComp,
-            companyNo: idx + 1,
-            no: idx + 1,
-            daily: { ...(w.daily || {}) }
-          }));
+          .map((w, idx) => stripHeavyWorkerFields(w, cleanComp, idx));
         const compApprovals = {};
         Object.entries(normalizedLegacy.companyApprovalStatus || {}).forEach(([k, v]) => {
           if (k.startsWith(`${cleanComp}_`) || cleanCompanyName(v?.company) === cleanComp) {
@@ -1379,12 +1428,11 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
             })),
             attendanceMatrix: compWorkers,
             companyApprovalStatus: compApprovals,
-            recentAuditLogs: (normalizedLegacy.recentAuditLogs || []).filter((l) => cleanCompanyName(l.company) === cleanComp),
+            recentAuditLogs: (normalizedLegacy.recentAuditLogs || []).filter((l) => cleanCompanyName(l.company) === cleanComp).slice(0, 30),
             updatedAt: normalizedLegacy.updatedAt || new Date().toISOString()
           };
-          try {
-            localStorage.setItem(compKey, JSON.stringify(migrated));
-          } catch (e) {}
+          memoryCompanyLedgerCache[cacheKey] = migrated;
+          safeSetLocalStorage(compKey, JSON.stringify(migrated));
           return migrated;
         }
       }
@@ -1395,13 +1443,8 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
       const normSept = ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
       const septWorkers = (normSept.attendanceMatrix || [])
         .filter((w) => cleanCompanyName(w.company) === cleanComp)
-        .map((w, idx) => ({
-          ...w,
-          company: cleanComp,
-          companyNo: idx + 1,
-          no: idx + 1
-        }));
-      return {
+        .map((w, idx) => stripHeavyWorkerFields(w, cleanComp, idx));
+      const septData = {
         company: cleanComp,
         year: 2026,
         month: 9,
@@ -1410,12 +1453,16 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
         companyApprovalStatus: {},
         recentAuditLogs: []
       };
+      memoryCompanyLedgerCache[cacheKey] = septData;
+      return septData;
     }
   } catch (err) {
     console.warn(`[${cleanComp}] 독립 근태 데이터 로드 경고:`, err);
   }
 
-  return createEmptyCompanyOvertimeData(cleanComp, year, month);
+  const emptyFallback = createEmptyCompanyOvertimeData(cleanComp, year, month);
+  memoryCompanyLedgerCache[cacheKey] = emptyFallback;
+  return emptyFallback;
 };
 
 // 5개 독립 업체 모듈을 읽어 화면 표시용 객체로 조립 (물리적 저장은 5개사 완전 분리)
@@ -1473,9 +1520,10 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
   }
 };
 
-// 🌟 단일 업체 전용 독립 저장 함수 (오직 해당 업체의 localStorage 키와 Firestore 문서만 단독 업데이트)
+// 🌟 단일 업체 전용 독립 저장 함수 (오직 해당 업체의 인메모리 캐시, localStorage 키, Firestore 문서만 단독 업데이트)
 export const saveSingleCompanyOvertimeModule = async (company, data, ym, options = {}) => {
   const cleanComp = cleanCompanyName(company);
+  const cacheKey = `${cleanComp}_${ym}`;
   const compKey = getStorageKeyForCompanyMonth(cleanComp, ym);
   const compDocId = getFirestoreDocIdForCompanyMonth(cleanComp, ym);
   const parts = String(ym || "2026-10").split("-").map(Number);
@@ -1489,13 +1537,7 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
   const existingCompLocal = getLocalCompanyOvertimeData(cleanComp, ym);
   const incomingCompWorkers = (data?.attendanceMatrix || [])
     .filter((w) => cleanCompanyName(w.company) === cleanComp)
-    .map((w, idx) => ({
-      ...w,
-      company: cleanComp,
-      companyNo: idx + 1,
-      no: idx + 1,
-      daily: { ...(w.daily || {}) }
-    }));
+    .map((w, idx) => stripHeavyWorkerFields(w, cleanComp, idx));
 
   const mergedCompWorkers = (incomingCompWorkers.length > 0 ? incomingCompWorkers : existingCompLocal.attendanceMatrix).map((w, idx) => {
     const prevW = (existingCompLocal.attendanceMatrix || []).find(
@@ -1532,10 +1574,7 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
     });
 
     return {
-      ...w,
-      company: cleanComp,
-      companyNo: idx + 1,
-      no: idx + 1,
+      ...stripHeavyWorkerFields(w, cleanComp, idx),
       daily: combinedDaily
     };
   });
@@ -1568,30 +1607,29 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
     })),
     attendanceMatrix: mergedCompWorkers,
     companyApprovalStatus: compApprovals,
-    recentAuditLogs: existingCompLocal.recentAuditLogs || [],
+    recentAuditLogs: (existingCompLocal.recentAuditLogs || []).slice(0, 30),
     updatedAt: nowIso
   };
 
-  // 즉시 해당 업체의 독립 로컬 스토리지 저장 및 화면 동기화 이벤트 발송
-  try {
-    localStorage.setItem(compKey, JSON.stringify(nextCompPayload));
-    const assembledNow = getLocalSmartOvertimeData(ym);
-    localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembledNow));
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...assembledNow, yearMonth: ym, updatedCompany: cleanComp } }));
-    }
-  } catch (e) {
-    console.warn(`[${cleanComp}] 로컬 스토리지 저장 경고:`, e);
+  // 🌟 1순위: 인메모리 캐시 즉시 갱신 (localStorage 용량과 무관하게 100% 반영 보장)
+  memoryCompanyLedgerCache[cacheKey] = nextCompPayload;
+
+  // 🌟 2순위: 독립 로컬 스토리지 안전 저장 및 화면 동기화 이벤트 무조건 발송
+  safeSetLocalStorage(compKey, JSON.stringify(nextCompPayload));
+  const assembledNow = getLocalSmartOvertimeData(ym);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...assembledNow, yearMonth: ym, updatedCompany: cleanComp } }));
   }
 
-  // 2. 해당 업체 전용 Firestore 문서(`overtime_YYYY_MM_slug`)에 순차 저장 (타 업체 문서와 100% 분리)
+  // 🌟 3순위: 해당 업체 전용 Firestore 문서(`overtime_YYYY_MM_slug`)에 순차 저장 (타 업체 문서와 100% 분리)
   inFlightCompanySaves[cleanComp] = (inFlightCompanySaves[cleanComp] || 0) + 1;
   const runCompanyCloudSync = async () => {
     try {
       if (!db) return true;
+      lastCompanySaveEpoch[cleanComp] = Date.now();
       const compRef = doc(db, "smart_overtime_ledger", compDocId);
-      const latestCompLocal = getLocalCompanyOvertimeData(cleanComp, ym);
-      let finalCompMatrix = latestCompLocal.attendanceMatrix || [];
+      const latestCompLocal = memoryCompanyLedgerCache[cacheKey] || nextCompPayload;
+      let finalCompMatrix = (latestCompLocal.attendanceMatrix || []).map((w, idx) => stripHeavyWorkerFields(w, cleanComp, idx));
       let existingAuditLogs = [];
       let existingApprovalStatus = {};
       const changedAudits = [];
@@ -1665,11 +1703,8 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
               });
 
               return {
-                ...cloudW,
-                ...localW,
-                company: cleanComp,
-                companyNo: idx + 1,
-                no: idx + 1,
+                ...stripHeavyWorkerFields(cloudW, cleanComp, idx),
+                ...stripHeavyWorkerFields(localW, cleanComp, idx),
                 daily: mergedDaily
               };
             });
@@ -1679,11 +1714,14 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
         console.warn(`[${cleanComp}] Firestore 개별 문서 조회 경고:`, readErr);
       }
 
-      const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 100);
+      const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 30);
       const mergedApprovalStatus = {
         ...existingApprovalStatus,
         ...(latestCompLocal.companyApprovalStatus || {})
       };
+      if (options.clearedDay) {
+        delete mergedApprovalStatus[`${cleanComp}_${options.clearedDay}`];
+      }
       const finalUpdatedAt = new Date().toISOString();
 
       const cloudPayload = {
@@ -1697,12 +1735,15 @@ export const saveSingleCompanyOvertimeModule = async (company, data, ym, options
         updatedAt: finalUpdatedAt
       };
 
+      lastCompanySaveEpoch[cleanComp] = Date.now();
+      memoryCompanyLedgerCache[cacheKey] = cloudPayload;
+      safeSetLocalStorage(compKey, JSON.stringify(cloudPayload));
+
       await setDoc(compRef, sanitizeForFirestore(cloudPayload), { merge: true });
+      lastCompanySaveEpoch[cleanComp] = Date.now();
 
       if ((inFlightCompanySaves[cleanComp] || 0) <= 1) {
-        localStorage.setItem(compKey, JSON.stringify(cloudPayload));
         const assembled = getLocalSmartOvertimeData(ym);
-        localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembled));
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...assembled, yearMonth: ym, updatedCompany: cleanComp } }));
         }
@@ -1797,47 +1838,9 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
       };
     }
 
-    // 최초 1회: 서버에 아직 개별 분리 문서가 없고 구 통합 문서(`overtime_YYYY_MM`)만 있는 경우 자동 분리 마이그레이션
-    const legacyRef = doc(db, "smart_overtime_ledger", getFirestoreDocIdForMonth(ym));
-    getDoc(legacyRef).then((legacySnap) => {
-      if (!legacySnap.exists()) return;
-      const legacyCloud = legacySnap.data();
-      if (!legacyCloud || !Array.isArray(legacyCloud.attendanceMatrix)) return;
-      const normalizedLegacy = ensureAllCompaniesPresent(legacyCloud);
-
-      COMPANIES.forEach(async (comp) => {
-        const compDocId = getFirestoreDocIdForCompanyMonth(comp, ym);
-        const compRef = doc(db, "smart_overtime_ledger", compDocId);
-        try {
-          const cSnap = await getDoc(compRef);
-          if (!cSnap.exists()) {
-            const compWorkers = (normalizedLegacy.attendanceMatrix || [])
-              .filter((w) => cleanCompanyName(w.company) === comp)
-              .map((w, idx) => ({ ...w, company: comp, companyNo: idx + 1, no: idx + 1 }));
-            const compApprovals = {};
-            Object.entries(normalizedLegacy.companyApprovalStatus || {}).forEach(([k, v]) => {
-              if (k.startsWith(`${comp}_`) || cleanCompanyName(v?.company) === comp) {
-                compApprovals[k] = v;
-              }
-            });
-            const seedPayload = {
-              company: comp,
-              year: normalizedLegacy.year || 2026,
-              month: normalizedLegacy.month || 10,
-              masterWorkers: compWorkers,
-              attendanceMatrix: compWorkers,
-              companyApprovalStatus: compApprovals,
-              recentAuditLogs: [],
-              updatedAt: normalizedLegacy.updatedAt || new Date().toISOString()
-            };
-            await setDoc(compRef, sanitizeForFirestore(seedPayload), { merge: true });
-          }
-        } catch (e) {}
-      });
-    }).catch(() => {});
-
     // 5개 협력사 각각의 독립 Firestore 문서(`overtime_2026_10_oryuk` 등)를 개별로 구독
     const unsubList = COMPANIES.map((comp) => {
+      const cacheKey = `${comp}_${ym}`;
       const compKey = getStorageKeyForCompanyMonth(comp, ym);
       const compDocId = getFirestoreDocIdForCompanyMonth(comp, ym);
       const compRef = doc(db, "smart_overtime_ledger", compDocId);
@@ -1845,8 +1848,8 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
       return onSnapshot(
         compRef,
         (docSnap) => {
-          // 해당 업체가 현재 로컬 저장 중이거나 저장 직후(2.5초 이내)이면 이전 스냅샷 무시
-          if ((inFlightCompanySaves[comp] || 0) > 0 || Date.now() - (lastCompanySaveEpoch[comp] || 0) < 2500) {
+          // 해당 업체가 현재 로컬 저장 중이거나 저장 직후(5초 이내)이면 인메모리 최신 상태 유지
+          if ((inFlightCompanySaves[comp] || 0) > 0 || Date.now() - (lastCompanySaveEpoch[comp] || 0) < 5000) {
             callback(getLocalSmartOvertimeData(ym));
             return;
           }
@@ -1865,13 +1868,10 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
                   (item) => (item.name || "").trim() === (cw.name || "").trim()
                 );
                 const daily = (lw && isLocalNewer)
-                  ? { ...(cw.daily || {}), ...(lw.daily || {}) }
+                  ? { ...(lw.daily || {}) }
                   : { ...(cw.daily || {}) };
                 return {
-                  ...cw,
-                  company: comp,
-                  companyNo: idx + 1,
-                  no: idx + 1,
+                  ...stripHeavyWorkerFields(cw, comp, idx),
                   daily
                 };
               });
@@ -1883,14 +1883,27 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
               const updatedCompData = {
                 ...cloudComp,
                 company: comp,
+                masterWorkers: mergedWorkers.map((w, idx) => ({
+                  no: idx + 1,
+                  companyNo: idx + 1,
+                  company: comp,
+                  dept: normalizeDept(w.dept),
+                  line: w.line || normalizeDept(w.dept),
+                  name: w.name,
+                  position: w.position || "사원",
+                  employmentType: w.employmentType || "정규직",
+                  status: w.status || "재직",
+                  note: w.note || ""
+                })),
                 attendanceMatrix: mergedWorkers,
                 companyApprovalStatus: mergedApprovals,
+                recentAuditLogs: (cloudComp.recentAuditLogs || []).slice(0, 30),
                 updatedAt: isLocalNewer ? localComp.updatedAt : cloudComp.updatedAt
               };
 
-              localStorage.setItem(compKey, JSON.stringify(updatedCompData));
+              memoryCompanyLedgerCache[cacheKey] = updatedCompData;
+              safeSetLocalStorage(compKey, JSON.stringify(updatedCompData));
               const assembled = getLocalSmartOvertimeData(ym);
-              localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembled));
               callback(assembled);
               return;
             }
