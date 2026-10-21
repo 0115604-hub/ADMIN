@@ -22,6 +22,12 @@ import { LEGO_IMAGE_REFERENCES } from "./LegoWorkReportBuilder.jsx";
 
 // Block Metadata for labels and descriptions
 export const BLOCK_METADATA_MAP = {
+  timeAndOutput: {
+    number: "블록 1",
+    title: "조인트 작업자 / 시간 / 생산수량",
+    desc: "구분(FRT LH/RH, RR LH/RH), 작업자, 작업시간 및 정품/불량/재조인트 수량 관리",
+    imgFile: "/lego_images/lego_block_1.png"
+  },
   basicInfo: {
     number: "블록 8",
     title: "공정명 & 차종/품명 표준 헤더",
@@ -158,28 +164,31 @@ export const LegoBlockEditorModal = ({
     onClose();
   };
 
+  const inputBaseCls =
+    "bg-slate-800 text-white border border-slate-600 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 outline-none placeholder:text-slate-400";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-slate-900 rounded-3xl border-2 border-indigo-500/50 shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-white">
         
         {/* =================================================================== */}
-        {/* Modal Header */}
+        {/* Modal Header (고시인성 다크 네이비 헤더) */}
         {/* =================================================================== */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-2xl bg-indigo-600 text-white shadow-md">
+        <div className="p-4 sm:p-5 border-b border-slate-700/90 bg-gradient-to-r from-slate-950 via-indigo-950/90 to-slate-950 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-lg ring-1 ring-indigo-400/50">
               <Edit3 className="w-5 h-5" />
             </span>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
                   {meta.number}
                 </span>
-                <h2 className="text-base sm:text-lg font-black tracking-tight">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
                   {meta.title} 편집
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-300 font-medium mt-1">
                 {meta.desc}
               </p>
             </div>
@@ -190,10 +199,10 @@ export const LegoBlockEditorModal = ({
               <button
                 type="button"
                 onClick={() => setShowPhotoPreview(!showPhotoPreview)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer border ${
                   showPhotoPreview
-                    ? "bg-amber-500 text-slate-950 border-amber-400 font-black shadow-xs"
-                    : "bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50"
+                    ? "bg-amber-400 text-slate-950 border-amber-300 shadow-sm"
+                    : "bg-slate-800 text-amber-300 border-amber-500/50 hover:bg-slate-700"
                 }`}
                 title="Excel '레고 양식.xlsx' 원본 실물 사진 대조"
               >
@@ -205,7 +214,8 @@ export const LegoBlockEditorModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer"
+              title="닫기"
             >
               <X className="w-5 h-5" />
             </button>
@@ -216,21 +226,21 @@ export const LegoBlockEditorModal = ({
         {/* Photo Reference Preview (Toggleable) */}
         {/* =================================================================== */}
         {showPhotoPreview && meta.imgFile && (
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 flex flex-col items-center animate-fadeIn">
+          <div className="p-3 bg-slate-950 border-b border-amber-500/40 flex flex-col items-center animate-fadeIn">
             <div className="flex items-center justify-between w-full mb-1.5 px-1">
-              <span className="text-xs font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>엑셀 '레고 양식.xlsx' 실물 원본 캡처 ({meta.number})</span>
               </span>
               <button
                 type="button"
                 onClick={() => setShowPhotoPreview(false)}
-                className="text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline"
+                className="text-xs font-bold text-amber-300 hover:underline cursor-pointer"
               >
                 접기 ✕
               </button>
             </div>
-            <div className="max-h-60 overflow-auto rounded-xl border border-amber-300 dark:border-amber-800 bg-white p-1">
+            <div className="max-h-60 overflow-auto rounded-xl border border-amber-500/40 bg-white p-1.5">
               <img
                 src={meta.imgFile}
                 alt={meta.title}
@@ -241,84 +251,122 @@ export const LegoBlockEditorModal = ({
         )}
 
         {/* =================================================================== */}
-        {/* Modal Scrollable Body */}
+        {/* Modal Scrollable Body (다크 슬레이트 배경 + 고대비 입력창) */}
         {/* =================================================================== */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-left text-xs">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-left text-xs bg-slate-900 [&_input]:bg-slate-800 [&_input]:text-white [&_input]:border-slate-600 [&_input]:focus:border-cyan-400 [&_select]:bg-slate-800 [&_select]:text-white [&_select]:border-slate-600 [&_textarea]:bg-slate-800 [&_textarea]:text-white [&_textarea]:border-slate-600">
           
-          {/* 1. BASIC INFO BLOCK 8 */}
-          {blockKey === "basicInfo" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* 0. TIME AND OUTPUT BLOCK 1 */}
+          {blockKey === "timeAndOutput" && (
+            <div className="space-y-4 bg-slate-950/90 p-4 rounded-2xl border border-slate-700">
+              <span className="font-black text-sm text-cyan-300 block">
+                조인트 작업자 및 근무시간 기본 설정 (블록 1)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">일보 전체 제목</label>
-                  <input
-                    type="text"
-                    value={draftReport.title || ""}
-                    onChange={(e) => setDraftReport({ ...draftReport, title: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">공정명 부제목 (Sub-title)</label>
-                  <input
-                    type="text"
-                    value={draftReport.subTitle || ""}
-                    onChange={(e) => setDraftReport({ ...draftReport, subTitle: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">차종 (Car Model)</label>
-                  <input
-                    type="text"
-                    value={draftReport.carModel || ""}
-                    onChange={(e) => setDraftReport({ ...draftReport, carModel: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold text-indigo-600 dark:text-cyan-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">품명 (Part Name)</label>
-                  <input
-                    type="text"
-                    value={draftReport.partName || ""}
-                    onChange={(e) => setDraftReport({ ...draftReport, partName: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">작업자 성명</label>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">작업자 성명</label>
                   <input
                     type="text"
                     value={draftReport.workerName || ""}
                     onChange={(e) => setDraftReport({ ...draftReport, workerName: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
+                    className={`w-full px-3 py-2 rounded-xl font-bold ${inputBaseCls}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">양식 번호 (Form No)</label>
-                  <input
-                    type="text"
-                    value={draftReport.formNo || ""}
-                    onChange={(e) => setDraftReport({ ...draftReport, formNo: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">근무 시작 시간</label>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">시작 시간</label>
                   <input
                     type="time"
                     value={draftReport.startTime || "08:00"}
                     onChange={(e) => setDraftReport({ ...draftReport, startTime: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono font-bold"
+                    className={`w-full px-3 py-2 rounded-xl font-mono font-bold ${inputBaseCls}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">근무 종료 시간</label>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">종료 시간</label>
                   <input
                     type="time"
                     value={draftReport.finishTime || "17:00"}
                     onChange={(e) => setDraftReport({ ...draftReport, finishTime: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono font-bold"
+                    className={`w-full px-3 py-2 rounded-xl font-mono font-bold ${inputBaseCls}`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 1. BASIC INFO BLOCK 8 */}
+          {blockKey === "basicInfo" && (
+            <div className="space-y-4 bg-slate-950/90 p-4 rounded-2xl border border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">일보 전체 제목</label>
+                  <input
+                    type="text"
+                    value={draftReport.title || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, title: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">공정명 부제목 (Sub-title)</label>
+                  <input
+                    type="text"
+                    value={draftReport.subTitle || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, subTitle: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">차종 (Car Model)</label>
+                  <input
+                    type="text"
+                    value={draftReport.carModel || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, carModel: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-black text-amber-300 ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">품명 (Part Name)</label>
+                  <input
+                    type="text"
+                    value={draftReport.partName || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, partName: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">작업자 성명</label>
+                  <input
+                    type="text"
+                    value={draftReport.workerName || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, workerName: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">양식 번호 (Form No)</label>
+                  <input
+                    type="text"
+                    value={draftReport.formNo || ""}
+                    onChange={(e) => setDraftReport({ ...draftReport, formNo: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-mono font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">근무 시작 시간</label>
+                  <input
+                    type="time"
+                    value={draftReport.startTime || "08:00"}
+                    onChange={(e) => setDraftReport({ ...draftReport, startTime: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-mono font-bold ${inputBaseCls}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-cyan-300 block mb-1">근무 종료 시간</label>
+                  <input
+                    type="time"
+                    value={draftReport.finishTime || "17:00"}
+                    onChange={(e) => setDraftReport({ ...draftReport, finishTime: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl font-mono font-bold ${inputBaseCls}`}
                   />
                 </div>
               </div>
@@ -329,7 +377,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "workTimeOutput" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-500">구분별 작업시간 및 실적 행 관리:</span>
+                <span className="font-black text-sm text-cyan-300">구분별 작업시간 및 실적 행 관리:</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -356,23 +404,23 @@ export const LegoBlockEditorModal = ({
                 </button>
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <div className="overflow-x-auto border border-slate-700 rounded-2xl bg-slate-950/80">
                 <table className="w-full text-center border-collapse">
-                  <thead className="bg-slate-100 dark:bg-slate-800 text-[11px]">
-                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="p-2">구분 명칭</th>
-                      <th className="p-2">A단면 시작</th>
-                      <th className="p-2">A단면 종료</th>
-                      <th className="p-2">A단면 수량</th>
-                      <th className="p-2">B단면 시작</th>
-                      <th className="p-2">B단면 종료</th>
-                      <th className="p-2">B단면 수량</th>
-                      <th className="p-2">삭제</th>
+                  <thead className="bg-slate-800 text-cyan-300 text-[11px] font-black">
+                    <tr className="border-b border-slate-700">
+                      <th className="p-2.5">구분 명칭</th>
+                      <th className="p-2.5">A단면 시작</th>
+                      <th className="p-2.5">A단면 종료</th>
+                      <th className="p-2.5">A단면 수량</th>
+                      <th className="p-2.5">B단면 시작</th>
+                      <th className="p-2.5">B단면 종료</th>
+                      <th className="p-2.5">B단면 수량</th>
+                      <th className="p-2.5">삭제</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(draftReport.workTimeOutput || []).map((row, idx) => (
-                      <tr key={row.id || idx} className="border-b border-slate-100 dark:border-slate-800">
+                      <tr key={row.id || idx} className="border-b border-slate-800">
                         <td className="p-1.5">
                           <input
                             type="text"
@@ -464,7 +512,7 @@ export const LegoBlockEditorModal = ({
                               const updated = draftReport.workTimeOutput.filter((_, i) => i !== idx);
                               setDraftReport({ ...draftReport, workTimeOutput: updated });
                             }}
-                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                            className="p-1 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -482,8 +530,8 @@ export const LegoBlockEditorModal = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="font-black text-sm text-indigo-600 dark:text-indigo-400">정치 절단 단면별 규격 & 허용공차 설정</span>
-                  <span className="text-[11px] text-slate-400 block">사진 15 실물 데이터 (A: 881±3 / 488±3 가절단, B: 608±5 / 658±5, C: 582±5 / 658±6)</span>
+                  <span className="font-black text-sm text-cyan-300">정치 절단 단면별 규격 & 허용공차 설정</span>
+                  <span className="text-[11px] text-slate-300 block mt-0.5">사진 15 실물 데이터 (A: 881±3 / 488±3 가절단, B: 608±5 / 658±5, C: 582±5 / 658±6)</span>
                 </div>
                 <button
                   type="button"
@@ -517,13 +565,13 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2.5">
                 {(draftReport.specsCutting || []).map((row, idx) => (
-                  <div key={row.id || idx} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 space-y-2">
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <div key={row.id || idx} className="p-3.5 rounded-2xl border border-slate-700 bg-slate-950/90 space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-black flex items-center justify-center text-xs">
                           {row.section}
                         </span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                        <span className="font-black text-white">
                           {row.section} 단면 규격 정의
                         </span>
                       </div>
@@ -533,16 +581,16 @@ export const LegoBlockEditorModal = ({
                           const updated = draftReport.specsCutting.filter((_, i) => i !== idx);
                           setDraftReport({ ...draftReport, specsCutting: updated });
                         }}
-                        className="px-2 py-1 text-xs text-rose-500 hover:bg-rose-50 rounded-lg flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 text-xs font-bold text-rose-400 hover:bg-rose-500/20 rounded-lg flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>삭제</span>
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-0.5">단면 명칭</label>
+                        <label className="text-[11px] font-bold text-slate-300 block mb-1">단면 명칭</label>
                         <input
                           type="text"
                           value={row.section || ""}
@@ -551,11 +599,11 @@ export const LegoBlockEditorModal = ({
                             const updated = draftReport.specsCutting.map((r, i) => i === idx ? { ...r, section: val } : r);
                             setDraftReport({ ...draftReport, specsCutting: updated });
                           }}
-                          className="w-full px-2 py-1 rounded border text-center font-bold"
+                          className="w-full px-2.5 py-1.5 rounded-lg border text-center font-bold"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-0.5">SPEC (절단 길이 / 공차)</label>
+                        <label className="text-[11px] font-bold text-slate-300 block mb-1">SPEC (절단 길이 / 공차)</label>
                         <input
                           type="text"
                           value={row.spec1 || ""}
@@ -564,20 +612,20 @@ export const LegoBlockEditorModal = ({
                             const updated = draftReport.specsCutting.map((r, i) => i === idx ? { ...r, spec1: val } : r);
                             setDraftReport({ ...draftReport, specsCutting: updated });
                           }}
-                          className="w-full px-2 py-1 rounded border font-bold text-indigo-600 dark:text-indigo-400 text-center"
+                          className="w-full px-2.5 py-1.5 rounded-lg border font-black text-cyan-300 text-center"
                           placeholder="예: 881 ± 3mm"
                         />
                       </div>
                     </div>
 
                     {/* LOT NO. 3개 입력 칸 (초물 / 중물 / 종물) */}
-                    <div className="pt-1 border-t border-slate-200/80 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-indigo-500 block mb-1">
+                    <div className="pt-2 border-t border-slate-800">
+                      <span className="text-[11px] font-black text-amber-300 block mb-1.5">
                         📦 LOT NO. (초물 • 중물 • 종물 3개 칸)
                       </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 block mb-0.5">초물 LOT</label>
+                          <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">초물 LOT</label>
                           <input
                             type="text"
                             value={row.lotStart ?? row.lotNo ?? ""}
@@ -586,12 +634,12 @@ export const LegoBlockEditorModal = ({
                               const updated = draftReport.specsCutting.map((r, i) => i === idx ? { ...r, lotStart: val, lotNo: val } : r);
                               setDraftReport({ ...draftReport, specsCutting: updated });
                             }}
-                            className="w-full px-2 py-1 rounded border font-mono text-xs text-center"
+                            className="w-full px-2 py-1.5 rounded-lg border font-mono text-xs text-center"
                             placeholder="초물 LOT"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 block mb-0.5">중물 LOT</label>
+                          <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">중물 LOT</label>
                           <input
                             type="text"
                             value={row.lotHalf ?? row.lotNo ?? ""}
@@ -600,12 +648,12 @@ export const LegoBlockEditorModal = ({
                               const updated = draftReport.specsCutting.map((r, i) => i === idx ? { ...r, lotHalf: val } : r);
                               setDraftReport({ ...draftReport, specsCutting: updated });
                             }}
-                            className="w-full px-2 py-1 rounded border font-mono text-xs text-center"
+                            className="w-full px-2 py-1.5 rounded-lg border font-mono text-xs text-center"
                             placeholder="중물 LOT"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 block mb-0.5">종물 LOT</label>
+                          <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">종물 LOT</label>
                           <input
                             type="text"
                             value={row.lotFinish ?? row.lotNo ?? ""}
@@ -614,7 +662,7 @@ export const LegoBlockEditorModal = ({
                               const updated = draftReport.specsCutting.map((r, i) => i === idx ? { ...r, lotFinish: val } : r);
                               setDraftReport({ ...draftReport, specsCutting: updated });
                             }}
-                            className="w-full px-2 py-1 rounded border font-mono text-xs text-center"
+                            className="w-full px-2 py-1.5 rounded-lg border font-mono text-xs text-center"
                             placeholder="종물 LOT"
                           />
                         </div>
@@ -637,7 +685,7 @@ export const LegoBlockEditorModal = ({
                 return (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-600 dark:text-slate-300">
+                      <span className="font-black text-sm text-cyan-300">
                         {isFrt ? "FRT 단컷팅 구간 치수 행 관리" : "RR 단컷팅 구간 치수 행 관리"}
                       </span>
                       <button
@@ -664,21 +712,21 @@ export const LegoBlockEditorModal = ({
                       </button>
                     </div>
 
-                    <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-2xl">
+                    <div className="overflow-x-auto border border-slate-700 rounded-2xl bg-slate-950/80">
                       <table className="w-full text-center border-collapse">
-                        <thead className="bg-slate-100 dark:bg-slate-800 text-[11px]">
-                          <tr className="border-b border-slate-200 dark:border-slate-700">
-                            <th className="p-2">구간 명칭</th>
-                            <th className="p-2">기준 SPEC (치수)</th>
-                            <th className="p-2">초물 실측</th>
-                            <th className="p-2">중물 실측</th>
-                            <th className="p-2">종물 실측</th>
-                            <th className="p-2">삭제</th>
+                        <thead className="bg-slate-800 text-cyan-300 text-[11px] font-black">
+                          <tr className="border-b border-slate-700">
+                            <th className="p-2.5">구간 명칭</th>
+                            <th className="p-2.5">기준 SPEC (치수)</th>
+                            <th className="p-2.5">초물 실측</th>
+                            <th className="p-2.5">중물 실측</th>
+                            <th className="p-2.5">종물 실측</th>
+                            <th className="p-2.5">삭제</th>
                           </tr>
                         </thead>
                         <tbody>
                           {list.map((row, idx) => (
-                            <tr key={row.id || idx} className="border-b border-slate-100 dark:border-slate-800">
+                            <tr key={row.id || idx} className="border-b border-slate-800">
                               <td className="p-2">
                                 <input
                                   type="text"
@@ -700,7 +748,7 @@ export const LegoBlockEditorModal = ({
                                     const updated = list.map((r, i) => i === idx ? { ...r, spec: val } : r);
                                     setDraftReport({ ...draftReport, [listKey]: updated });
                                   }}
-                                  className="w-24 px-2 py-1 rounded border text-center font-bold text-indigo-600 dark:text-cyan-400"
+                                  className="w-24 px-2 py-1 rounded border text-center font-black text-cyan-300"
                                 />
                               </td>
                               <td className="p-2">
@@ -746,7 +794,7 @@ export const LegoBlockEditorModal = ({
                                     const updated = list.filter((_, i) => i !== idx);
                                     setDraftReport({ ...draftReport, [listKey]: updated });
                                   }}
-                                  className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                                  className="p-1 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -764,19 +812,19 @@ export const LegoBlockEditorModal = ({
 
           {/* 5. SUB MATERIAL LOT (BLOCK 11) */}
           {blockKey === "subMaterialLot" && (
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block">
+            <div className="space-y-3 bg-slate-950/90 p-4 rounded-2xl border border-slate-700">
+              <label className="text-xs font-black text-cyan-300 block">
                 부자재 LOT 명칭 및 기본 번호
               </label>
               <input
                 type="text"
                 value={draftReport.subMaterialLot || ""}
                 onChange={(e) => setDraftReport({ ...draftReport, subMaterialLot: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold text-sm"
+                className="w-full px-3 py-2 rounded-xl border border-slate-600 bg-slate-800 text-white font-bold text-sm"
                 placeholder="예: 패드 5T: 2026.10.19-01"
               />
-              <p className="text-[11px] text-slate-400">
-                💡 '레고 양식.xlsx' 사진 11 실물 규격: <strong>패드 5T 입고일자 및 LOT</strong> (부품 도면 규격: 5T*5W*60L)
+              <p className="text-xs text-slate-300">
+                💡 '레고 양식.xlsx' 사진 11 실물 규격: <strong className="text-amber-300">패드 5T 입고일자 및 LOT</strong> (부품 도면 규격: 5T*5W*60L)
               </p>
             </div>
           )}
@@ -785,7 +833,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "defectMaterialMatrix" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-sm text-cyan-300">
                   불량소재 항목 목록 (압출소재불량 / 공정간불량)
                 </span>
                 <button
@@ -818,7 +866,7 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2">
                 {(draftReport.defectMaterialMatrix || []).map((row, idx) => (
-                  <div key={row.id || idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
+                  <div key={row.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
                     <select
                       value={row.category || "압출소재불량"}
                       onChange={(e) => {
@@ -826,7 +874,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.defectMaterialMatrix.map((r, i) => i === idx ? { ...r, category: val } : r);
                         setDraftReport({ ...draftReport, defectMaterialMatrix: updated });
                       }}
-                      className="px-2 py-1 rounded border text-xs font-bold bg-white dark:bg-slate-900"
+                      className="px-2.5 py-1.5 rounded-lg border text-xs font-bold bg-slate-800 text-cyan-300"
                     >
                       <option value="압출소재불량">압출소재불량</option>
                       <option value="공정간불량">공정간불량</option>
@@ -841,7 +889,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.defectMaterialMatrix.map((r, i) => i === idx ? { ...r, name: val } : r);
                         setDraftReport({ ...draftReport, defectMaterialMatrix: updated });
                       }}
-                      className="flex-1 px-2 py-1 rounded border font-bold text-xs"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                       placeholder="불량명 (예: 외면 흠, 오염 등)"
                     />
 
@@ -851,7 +899,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.defectMaterialMatrix.filter((_, i) => i !== idx);
                         setDraftReport({ ...draftReport, defectMaterialMatrix: updated });
                       }}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -865,7 +913,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "defectSectionAbc" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-sm text-cyan-300">
                   Section A / B / C 단면별 불량소재구분 항목
                 </span>
                 <button
@@ -892,7 +940,7 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2">
                 {(draftReport.defectSectionAbc || []).map((row, idx) => (
-                  <div key={row.id || idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
+                  <div key={row.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
                     <input
                       type="text"
                       value={row.name || ""}
@@ -901,7 +949,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.defectSectionAbc.map((r, i) => i === idx ? { ...r, name: val } : r);
                         setDraftReport({ ...draftReport, defectSectionAbc: updated });
                       }}
-                      className="flex-1 px-2 py-1 rounded border font-bold text-xs"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                       placeholder="불량명 (예: 길이 미달, 와이어 노출, 단컷팅 등)"
                     />
                     <button
@@ -910,7 +958,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.defectSectionAbc.filter((_, i) => i !== idx);
                         setDraftReport({ ...draftReport, defectSectionAbc: updated });
                       }}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -922,9 +970,9 @@ export const LegoBlockEditorModal = ({
 
           {/* 8. JOINT MATERIAL (BLOCK 4) */}
           {blockKey === "jointMaterial" && (
-            <div className="space-y-4">
+            <div className="space-y-4 bg-slate-950/90 p-4 rounded-2xl border border-slate-700">
               <div>
-                <label className="text-xs font-bold text-slate-500 block mb-1">
+                <label className="text-xs font-black text-cyan-300 block mb-1">
                   조인트 재료명 (Joint grade name)
                 </label>
                 <input
@@ -934,12 +982,12 @@ export const LegoBlockEditorModal = ({
                     ...draftReport,
                     jointMaterial: { ...draftReport.jointMaterial, gradeName: e.target.value }
                   })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-600 bg-slate-800 text-white font-bold"
                   placeholder="예: SJ-4004B (EPDM)"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 block mb-1">
+                <label className="text-xs font-black text-cyan-300 block mb-1">
                   조인트 재료일자 및 LOT (Joint material lot no)
                 </label>
                 <input
@@ -949,7 +997,7 @@ export const LegoBlockEditorModal = ({
                     ...draftReport,
                     jointMaterial: { ...draftReport.jointMaterial, lotNo: e.target.value }
                   })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono font-bold"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-600 bg-slate-800 text-white font-mono font-bold"
                   placeholder="예: 2026.10.15-M02"
                 />
               </div>
@@ -959,26 +1007,26 @@ export const LegoBlockEditorModal = ({
           {/* 9. INJECTION TEMP (BLOCK 5) */}
           {blockKey === "injectionTemp" && (
             <div className="space-y-3">
-              <span className="font-bold text-slate-600 dark:text-slate-300 block">
+              <span className="font-black text-sm text-cyan-300 block">
                 사출 온도 기준 행 관리 (Sett'g / Actual x 호기별 노즐/실린더 온도)
               </span>
 
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <div className="overflow-x-auto border border-slate-700 rounded-2xl bg-slate-950/80">
                 <table className="w-full text-center border-collapse">
-                  <thead className="bg-slate-100 dark:bg-slate-800 text-[11px]">
-                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="p-2">구분</th>
-                      <th className="p-2">라인 / 설비명</th>
-                      <th className="p-2">노즐 (Nozzle)</th>
-                      <th className="p-2">실린더 1 (N2)</th>
-                      <th className="p-2">실린더 2 (H3)</th>
-                      <th className="p-2">실린더 3 (H4)</th>
+                  <thead className="bg-slate-800 text-cyan-300 text-[11px] font-black">
+                    <tr className="border-b border-slate-700">
+                      <th className="p-2.5">구분</th>
+                      <th className="p-2.5">라인 / 설비명</th>
+                      <th className="p-2.5">노즐 (Nozzle)</th>
+                      <th className="p-2.5">실린더 1 (N2)</th>
+                      <th className="p-2.5">실린더 2 (H3)</th>
+                      <th className="p-2.5">실린더 3 (H4)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(draftReport.injectionTemps || []).map((t, idx) => (
-                      <tr key={t.id || idx} className="border-b border-slate-100 dark:border-slate-800">
-                        <td className="p-1 font-bold text-[11px] bg-slate-50 dark:bg-slate-900">{t.lineType}</td>
+                      <tr key={t.id || idx} className="border-b border-slate-800">
+                        <td className="p-1.5 font-black text-[11px] bg-slate-900 text-amber-300">{t.lineType}</td>
                         <td className="p-1">
                           <input
                             type="text"
@@ -1050,15 +1098,15 @@ export const LegoBlockEditorModal = ({
           {/* 10. INJECTION CONDITION (BLOCK 6) */}
           {blockKey === "injectionCondition" && (
             <div className="space-y-3">
-              <span className="font-bold text-slate-600 dark:text-slate-300 block">
+              <span className="font-black text-sm text-cyan-300 block">
                 사출 조건 항목 및 기준 SPEC 관리 (거리/속도/압력/시간)
               </span>
 
               <div className="space-y-2">
                 {(draftReport.injectionConditions || []).map((c, idx) => (
-                  <div key={c.id || idx} className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 items-center">
+                  <div key={c.id || idx} className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90 items-center">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">조건 명칭</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">조건 명칭</label>
                       <input
                         type="text"
                         value={c.name || ""}
@@ -1071,7 +1119,7 @@ export const LegoBlockEditorModal = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">SPEC 기준</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">SPEC 기준</label>
                       <input
                         type="text"
                         value={c.spec || ""}
@@ -1080,11 +1128,11 @@ export const LegoBlockEditorModal = ({
                           const updated = draftReport.injectionConditions.map((r, i) => i === idx ? { ...r, spec: val } : r);
                           setDraftReport({ ...draftReport, injectionConditions: updated });
                         }}
-                        className="w-full px-2 py-1 rounded border font-bold text-indigo-600 dark:text-cyan-400"
+                        className="w-full px-2 py-1 rounded border font-black text-cyan-300"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">초물 (Start)</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">초물 (Start)</label>
                       <input
                         type="text"
                         value={c.startVal || ""}
@@ -1097,7 +1145,7 @@ export const LegoBlockEditorModal = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">중물 (Half)</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">중물 (Half)</label>
                       <input
                         type="text"
                         value={c.halfVal || ""}
@@ -1110,7 +1158,7 @@ export const LegoBlockEditorModal = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">종물 (Finish)</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">종물 (Finish)</label>
                       <input
                         type="text"
                         value={c.finishVal || ""}
@@ -1132,7 +1180,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "jointDefectMatrix" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-sm text-cyan-300">
                   조인트 10대 공정불량 항목 관리
                 </span>
                 <button
@@ -1164,8 +1212,8 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2">
                 {(draftReport.jointDefects || []).map((row, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
-                    <span className="w-6 text-center font-bold text-slate-400">{idx + 1}</span>
+                  <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
+                    <span className="w-6 text-center font-black text-cyan-300">{idx + 1}</span>
                     <input
                       type="text"
                       value={row.name || ""}
@@ -1174,7 +1222,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.jointDefects.map((r, i) => i === idx ? { ...r, name: val } : r);
                         setDraftReport({ ...draftReport, jointDefects: updated });
                       }}
-                      className="flex-1 px-2 py-1 rounded border font-bold text-xs"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                       placeholder="불량명 (예: 떨어짐, 양부족, 밀림 등)"
                     />
                     <button
@@ -1183,7 +1231,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.jointDefects.filter((_, i) => i !== idx);
                         setDraftReport({ ...draftReport, jointDefects: updated });
                       }}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1197,7 +1245,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "drawingSpecCheck" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-sm text-cyan-300">
                   도면 중요 치수 및 검사 포인트 설정 (사진 12)
                 </span>
                 <button
@@ -1225,9 +1273,9 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2">
                 {(draftReport.drawingSpecs || []).map((row, idx) => (
-                  <div key={row.id || idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 items-center">
+                  <div key={row.id || idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded-xl border border-slate-700 bg-slate-950/90 items-center">
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-0.5">포인트 / 단면명</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">포인트 / 단면명</label>
                       <input
                         type="text"
                         value={row.section || ""}
@@ -1236,11 +1284,11 @@ export const LegoBlockEditorModal = ({
                           const updated = draftReport.drawingSpecs.map((r, i) => i === idx ? { ...r, section: val } : r);
                           setDraftReport({ ...draftReport, drawingSpecs: updated });
                         }}
-                        className="w-full px-2 py-1 rounded border font-bold text-xs"
+                        className="w-full px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-0.5">SPEC 기준 규격</label>
+                      <label className="text-[10.5px] font-bold text-slate-300 block mb-0.5">SPEC 기준 규격</label>
                       <input
                         type="text"
                         value={row.spec || ""}
@@ -1249,7 +1297,7 @@ export const LegoBlockEditorModal = ({
                           const updated = draftReport.drawingSpecs.map((r, i) => i === idx ? { ...r, spec: val } : r);
                           setDraftReport({ ...draftReport, drawingSpecs: updated });
                         }}
-                        className="w-full px-2 py-1 rounded border font-bold text-indigo-600 dark:text-cyan-400 text-xs"
+                        className="w-full px-2.5 py-1.5 rounded-lg border font-black text-cyan-300 text-xs"
                       />
                     </div>
                     <div className="flex items-center gap-2 justify-end pt-3">
@@ -1259,7 +1307,7 @@ export const LegoBlockEditorModal = ({
                           const updated = draftReport.drawingSpecs.filter((_, i) => i !== idx);
                           setDraftReport({ ...draftReport, drawingSpecs: updated });
                         }}
-                        className="px-2.5 py-1 text-xs text-rose-500 hover:bg-rose-50 rounded-lg flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 text-xs font-bold text-rose-400 hover:bg-rose-500/20 rounded-lg flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>삭제</span>
@@ -1275,12 +1323,12 @@ export const LegoBlockEditorModal = ({
           {blockKey === "rightAngleMatrix" && (
             <div className="space-y-4">
               {/* Tab Selector */}
-              <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+              <div className="flex items-center gap-2 p-1 bg-slate-950 border border-slate-700 rounded-xl w-fit flex-wrap">
                 <button
                   type="button"
                   onClick={() => setRightAngleTab("machines")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    rightAngleTab === "machines" ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs font-black" : "text-slate-500"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    rightAngleTab === "machines" ? "bg-indigo-600 text-white shadow-xs font-black" : "text-slate-300 hover:text-white"
                   }`}
                 >
                   호기 라인 ({draftReport.machines?.length || 0})
@@ -1288,8 +1336,8 @@ export const LegoBlockEditorModal = ({
                 <button
                   type="button"
                   onClick={() => setRightAngleTab("extrusion")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    rightAngleTab === "extrusion" ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs font-black" : "text-slate-500"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    rightAngleTab === "extrusion" ? "bg-indigo-600 text-white shadow-xs font-black" : "text-slate-300 hover:text-white"
                   }`}
                 >
                   압출불량 ({draftReport.extrusionDefects?.length || 0})
@@ -1297,8 +1345,8 @@ export const LegoBlockEditorModal = ({
                 <button
                   type="button"
                   onClick={() => setRightAngleTab("joint")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    rightAngleTab === "joint" ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs font-black" : "text-slate-500"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    rightAngleTab === "joint" ? "bg-indigo-600 text-white shadow-xs font-black" : "text-slate-300 hover:text-white"
                   }`}
                 >
                   조인트불량 ({draftReport.jointDefectsList?.length || 0})
@@ -1306,8 +1354,8 @@ export const LegoBlockEditorModal = ({
                 <button
                   type="button"
                   onClick={() => setRightAngleTab("post")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    rightAngleTab === "post" ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs font-black" : "text-slate-500"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    rightAngleTab === "post" ? "bg-indigo-600 text-white shadow-xs font-black" : "text-slate-300 hover:text-white"
                   }`}
                 >
                   후가공불량 ({draftReport.postDefectsList?.length || 0})
@@ -1318,7 +1366,7 @@ export const LegoBlockEditorModal = ({
               {rightAngleTab === "machines" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-500">검사 호기 라인 등록</span>
+                    <span className="font-black text-sm text-cyan-300">검사 호기 라인 등록</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -1346,7 +1394,7 @@ export const LegoBlockEditorModal = ({
 
                   <div className="space-y-2">
                     {(draftReport.machines || []).map((m, idx) => (
-                      <div key={m.id || idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
+                      <div key={m.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
                         <input
                           type="text"
                           value={m.name || ""}
@@ -1355,7 +1403,7 @@ export const LegoBlockEditorModal = ({
                             const updated = draftReport.machines.map((r, i) => i === idx ? { ...r, name: val } : r);
                             setDraftReport({ ...draftReport, machines: updated });
                           }}
-                          className="w-32 px-2 py-1 rounded border font-bold text-xs"
+                          className="w-32 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                           placeholder="호기명"
                         />
                         <input
@@ -1366,7 +1414,7 @@ export const LegoBlockEditorModal = ({
                             const updated = draftReport.machines.map((r, i) => i === idx ? { ...r, workTime: val } : r);
                             setDraftReport({ ...draftReport, machines: updated });
                           }}
-                          className="flex-1 px-2 py-1 rounded border font-mono text-xs"
+                          className="flex-1 px-2.5 py-1.5 rounded-lg border font-mono text-xs"
                           placeholder="작업시간"
                         />
                         <button
@@ -1375,7 +1423,7 @@ export const LegoBlockEditorModal = ({
                             const updated = draftReport.machines.filter((_, i) => i !== idx);
                             setDraftReport({ ...draftReport, machines: updated });
                           }}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                          className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1395,7 +1443,7 @@ export const LegoBlockEditorModal = ({
                     return (
                       <>
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-500">
+                          <span className="font-black text-sm text-cyan-300">
                             {rightAngleTab === "extrusion" ? "압출 불량 항목" : rightAngleTab === "joint" ? "조인트 불량 항목" : "후가공 불량 항목"} 목록
                           </span>
                           <button
@@ -1423,8 +1471,8 @@ export const LegoBlockEditorModal = ({
 
                         <div className="space-y-2">
                           {list.map((row, idx) => (
-                            <div key={row.id || idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
-                              <span className="w-6 text-center font-bold text-slate-400">{idx + 1}</span>
+                            <div key={row.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
+                              <span className="w-6 text-center font-black text-cyan-300">{idx + 1}</span>
                               <input
                                 type="text"
                                 value={row.name || ""}
@@ -1433,7 +1481,7 @@ export const LegoBlockEditorModal = ({
                                   const updated = list.map((r, i) => i === idx ? { ...r, name: val } : r);
                                   setDraftReport({ ...draftReport, [listKey]: updated });
                                 }}
-                                className="flex-1 px-2 py-1 rounded border font-bold text-xs"
+                                className="flex-1 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                               />
                               <button
                                 type="button"
@@ -1441,7 +1489,7 @@ export const LegoBlockEditorModal = ({
                                   const updated = list.filter((_, i) => i !== idx);
                                   setDraftReport({ ...draftReport, [listKey]: updated });
                                 }}
-                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                                className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1460,7 +1508,7 @@ export const LegoBlockEditorModal = ({
           {blockKey === "frtRightAngleDefects" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-sm text-cyan-300">
                   FRT 직각검사 불량 집계 항목 (사진 17 실물 매핑)
                 </span>
                 <button
@@ -1486,8 +1534,8 @@ export const LegoBlockEditorModal = ({
 
               <div className="space-y-2">
                 {(draftReport.frtRightAngleDefects || []).map((row, idx) => (
-                  <div key={row.id || idx} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60">
-                    <span className="w-6 text-center font-bold text-slate-400">{idx + 1}</span>
+                  <div key={row.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 bg-slate-950/90">
+                    <span className="w-6 text-center font-black text-cyan-300">{idx + 1}</span>
                     <input
                       type="text"
                       value={row.name || ""}
@@ -1496,7 +1544,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.frtRightAngleDefects.map((r, i) => i === idx ? { ...r, name: val } : r);
                         setDraftReport({ ...draftReport, frtRightAngleDefects: updated });
                       }}
-                      className="flex-1 px-2 py-1 rounded border font-bold text-xs"
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border font-bold text-xs"
                       placeholder="불량명 (예: 립컷팅 누락, 패드 누락 등)"
                     />
                     <button
@@ -1505,7 +1553,7 @@ export const LegoBlockEditorModal = ({
                         const updated = draftReport.frtRightAngleDefects.filter((_, i) => i !== idx);
                         setDraftReport({ ...draftReport, frtRightAngleDefects: updated });
                       }}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1517,15 +1565,15 @@ export const LegoBlockEditorModal = ({
 
           {/* 15. REMARKS (BLOCK 16+) */}
           {blockKey === "remarks" && (
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block">
+            <div className="space-y-3 bg-slate-950/90 p-4 rounded-2xl border border-slate-700">
+              <label className="text-xs font-black text-cyan-300 block">
                 특기 사항 및 조치 사항 기본 문구
               </label>
               <textarea
                 rows={4}
                 value={draftReport.remarks || ""}
                 onChange={(e) => setDraftReport({ ...draftReport, remarks: e.target.value })}
-                className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-medium text-xs leading-relaxed"
+                className="w-full p-3 rounded-2xl border border-slate-600 bg-slate-800 text-white font-medium text-xs leading-relaxed"
                 placeholder="칼날 교체 주기, 설비 이상 조치 이력 등을 입력하세요."
               />
             </div>
@@ -1534,13 +1582,13 @@ export const LegoBlockEditorModal = ({
         </div>
 
         {/* =================================================================== */}
-        {/* Modal Footer Actions */}
+        {/* Modal Footer Actions (다크 푸터) */}
         {/* =================================================================== */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between gap-3">
+        <div className="p-4 border-t border-slate-700/90 bg-slate-950 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 font-bold text-xs transition cursor-pointer"
           >
             취소
           </button>
@@ -1548,7 +1596,7 @@ export const LegoBlockEditorModal = ({
           <button
             type="button"
             onClick={handleApplyChanges}
-            className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
           >
             <Check className="w-4 h-4" />
             <span>이 블록 변경사항 적용</span>
