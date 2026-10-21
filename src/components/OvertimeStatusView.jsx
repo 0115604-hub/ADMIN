@@ -774,8 +774,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setIsPersonnelModalOpen(true);
   };
 
-  // Dynamic Month & Year from global Header context
-  const { selectedMonth = getCurrentYearMonth() } = useMonth() || {};
+  // 🌟 일일 근태 입력 및 대시보드 연동은 항상 실시간 KST 당월(예: 2026-10)을 단일 기준으로 사용
+  // (상단 헤더 월 선택기가 9월 손익조회 등으로 변경되어 있어도 당일 근태가 9월에 잘못 저장되는 현상 원천 차단)
+  const selectedMonth = useMemo(() => {
+    try {
+      const kst = getKSTDateString(new Date());
+      if (kst && kst.length >= 7) return kst.slice(0, 7);
+    } catch (e) {}
+    return getCurrentYearMonth() || "2026-10";
+  }, []);
   const [currentYear, currentMonthNum] = useMemo(() => {
     const ym = selectedMonth || getCurrentYearMonth();
     const parts = ym.split("-").map(Number);
@@ -1145,11 +1152,38 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   };
 
-  // 📤 1단계 심플 승인: [마감 상신]
+  // 📤 1단계 심플 승인: [마감 상신] (평일 미선택 인원이 있을 경우 자동으로 '🟢 정시'로 채워 누락 없이 함께 저장)
   const handleSubmitCompanyDayAttendance = async () => {
     const comp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
+    const cleanComp = cleanCompanyName(comp);
     const d = selectedDay || 1;
-    const compWorkers = (filteredAttendanceWorkers || []).filter((w) => selectedCompanyFilter === "전체" || cleanCompanyName(w.company) === cleanCompanyName(comp));
+    const isWk = isWeekendDay(d);
+
+    const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
+      ? [...effectiveMatrix]
+      : (smartData?.attendanceMatrix || []);
+    const updatedMatrix = currentMatrix.map((w) => ({
+      ...w,
+      daily: { ...(w.daily || {}) }
+    }));
+
+    let autoFilledCount = 0;
+    if (!isWk) {
+      updatedMatrix.forEach((w) => {
+        const wComp = cleanCompanyName(w.company);
+        if (selectedCompanyFilter === "전체" || wComp === cleanComp) {
+          const curVal = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
+          const strVal = String(curVal || "").trim();
+          if (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null") {
+            w.daily[d] = "🟢";
+            w.daily[String(d)] = "🟢";
+            autoFilledCount++;
+          }
+        }
+      });
+    }
+
+    const compWorkers = updatedMatrix.filter((w) => selectedCompanyFilter === "전체" || cleanCompanyName(w.company) === cleanComp);
     const attended = compWorkers.filter((w) => {
       const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
       return calculateWorkerDailyHours(val).isAttended;
@@ -1164,7 +1198,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return sum + (weekdayOt + weekendOt);
     }, 0);
 
-    const confirmMsg = `📤 [${comp} ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 등록]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H\n\n위 내용으로 등록하시겠습니까?`;
+    const autoFillNotice = autoFilledCount > 0 ? `\n(※ 미선택 ${autoFilledCount}명 정시(🟢) 자동 포함)` : "";
+    const confirmMsg = `📤 [${comp} ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 등록]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H${autoFillNotice}\n\n위 내용으로 등록하시겠습니까?`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsSaving(true);
@@ -1177,8 +1212,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         otHours,
         totalHours
       };
-      const updated = await saveCompanyDayApprovalStatus(smartData, selectedMonth || "2026-10", comp, d, statusData);
+      const baseLedger = {
+        ...smartData,
+        year: currentYear,
+        month: currentMonthNum,
+        attendanceMatrix: updatedMatrix
+      };
+      const updated = await saveCompanyDayApprovalStatus(baseLedger, selectedMonth || "2026-10", comp, d, statusData);
       setSmartData(updated);
+      setHasUnsavedChanges(false);
       triggerToast(`📤 [${comp}] ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 근태가 등록되었습니다.`);
     } catch (err) {
       console.error(err);
@@ -2174,6 +2216,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       });
       // 보고서 등록 또는 원장 입력 시 작성완료(unwritten = false) 판정
       if (hasReport) return false;
+      const approvalKey = `${cleanComp}_${d}`;
+      const approvalStatus = smartData?.companyApprovalStatus?.[approvalKey]?.status || "DRAFT";
+      if (approvalStatus === "APPROVED" || approvalStatus === "SUBMITTED") return false;
       const compWorkers = (effectiveMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp);
       if (compWorkers.length === 0) return true;
       const enteredCount = compWorkers.filter((w) => {
@@ -2183,7 +2228,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }).length;
       return enteredCount === 0;
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
-  }, [effectiveMatrix, legacyReports, selectedDay, currentYear, currentMonthNum]);
+  }, [effectiveMatrix, smartData?.companyApprovalStatus, legacyReports, selectedDay, currentYear, currentMonthNum]);
 
   // Filtered attendance rows for Daily Input and Summary tabs (인사카드 마스터 기준 부서/직위/공정 100% 동기화)
   const filteredAttendanceWorkers = useMemo(() => {

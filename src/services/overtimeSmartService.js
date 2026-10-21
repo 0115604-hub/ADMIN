@@ -1205,9 +1205,15 @@ export const createEmptySmartOvertimeData = (year = 2026, month = 10) => {
   };
 };
 
+// Sequential save queue & in-flight tracker to prevent Firestore getDoc/setDoc race conditions and stale onSnapshot overwrites
+let smartSaveQueue = Promise.resolve();
+let inFlightSmartSaves = 0;
+let lastLocalSaveEpoch = 0;
+
 export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
   try {
-    const ym = targetYearMonth || "2026-10";
+    const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
+    const ym = targetYearMonth || nowKst || "2026-10";
     const key = getStorageKeyForMonth(ym);
 
     // 1. If requesting September (2026-09), return authoritative INITIAL_SMART_OVERTIME_DATA
@@ -1241,42 +1247,137 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
 };
 
 export const saveSmartOvertimeData = async (data, targetYearMonth = null, options = {}) => {
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
+  const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : (nowKst || "2026-10"));
+  const key = getStorageKeyForMonth(ym);
+  const docId = getFirestoreDocIdForMonth(ym);
+
+  const targetComp = options.targetCompany ? cleanCompanyName(options.targetCompany) : null;
+  const isTargetAll = !targetComp || targetComp === "전체" || targetComp === "5개사 통합" || targetComp === "전사" || targetComp === "ALL";
+
+  const nowIso = new Date().toISOString();
+  lastLocalSaveEpoch = Date.now();
+
+  // 1. Immediately merge with any existing localStorage data so rapid consecutive saves never lose another company's local edits
+  let baseLocal = null;
   try {
-    const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : "2026-10");
-    const key = getStorageKeyForMonth(ym);
-    const docId = getFirestoreDocIdForMonth(ym);
+    const rawExisting = localStorage.getItem(key);
+    if (rawExisting) {
+      baseLocal = JSON.parse(rawExisting);
+    }
+  } catch (e) {}
 
-    const targetComp = options.targetCompany ? cleanCompanyName(options.targetCompany) : null;
-    const isTargetAll = !targetComp || targetComp === "전체" || targetComp === "5개사 통합" || targetComp === "전사" || targetComp === "ALL";
+  const incomingNormalized = ensureAllCompaniesPresent({
+    ...data,
+    updatedAt: nowIso
+  });
 
-    const normalizedData = ensureAllCompaniesPresent(data);
-    localStorage.setItem(key, JSON.stringify(normalizedData));
+  if (baseLocal && Array.isArray(baseLocal.attendanceMatrix) && !options.fullReplace) {
+    incomingNormalized.attendanceMatrix = incomingNormalized.attendanceMatrix.map((w) => {
+      const wComp = cleanCompanyName(w.company);
+      const isTargetWorker = isTargetAll || wComp === targetComp;
+      const prevW = baseLocal.attendanceMatrix.find(
+        (pw) => (pw.name || "").trim() === (w.name || "").trim() && cleanCompanyName(pw.company) === wComp
+      );
+      if (!prevW) return w;
+      const prevDaily = prevW.daily || {};
+      const nextDaily = w.daily || {};
+      const combinedDaily = isTargetWorker
+        ? { ...prevDaily, ...nextDaily }
+        : { ...nextDaily, ...prevDaily };
+
+      if (isTargetWorker && options.clearedDay) {
+        delete combinedDaily[options.clearedDay];
+        delete combinedDaily[String(options.clearedDay)];
+      }
+      if (isTargetWorker && options.targetDay !== undefined && options.targetDay !== null) {
+        const tDay = options.targetDay;
+        const tVal = nextDaily[tDay] ?? nextDaily[String(tDay)];
+        if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
+          delete combinedDaily[tDay];
+          delete combinedDaily[String(tDay)];
+        } else {
+          combinedDaily[tDay] = tVal;
+          combinedDaily[String(tDay)] = tVal;
+        }
+      }
+      return {
+        ...w,
+        daily: combinedDaily
+      };
+    });
+
+    const prevApprovals = { ...(baseLocal.companyApprovalStatus || {}) };
+    if (options.clearedDay) {
+      if (isTargetAll) {
+        COMPANIES.forEach((c) => {
+          delete prevApprovals[`${cleanCompanyName(c)}_${options.clearedDay}`];
+        });
+      } else if (targetComp) {
+        delete prevApprovals[`${targetComp}_${options.clearedDay}`];
+      }
+    }
+    incomingNormalized.companyApprovalStatus = {
+      ...prevApprovals,
+      ...(data?.companyApprovalStatus || {})
+    };
+  }
+
+  try {
+    localStorage.setItem(key, JSON.stringify(incomingNormalized));
     if (ym === "2026-09" || ym === "2026_09") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(incomingNormalized));
     }
-
-    // Dispatch custom event for immediate same-page multi-component updates
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...normalizedData, yearMonth: ym } }));
+      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...incomingNormalized, yearMonth: ym } }));
     }
+  } catch (localErr) {
+    console.warn("Local storage immediate save warning:", localErr);
+  }
 
-    if (db) {
+  // 2. Queue Cloud Firestore sync sequentially so concurrent saves never overwrite each other
+  inFlightSmartSaves++;
+  const runCloudSync = async () => {
+    try {
+      if (!db) return true;
       const ref = doc(db, "smart_overtime_ledger", docId);
-      let mergedMatrix = normalizedData.attendanceMatrix || [];
 
+      // Always read the freshest localStorage state at the moment this queued job runs
+      let latestLocal = incomingNormalized;
+      try {
+        const rawLatest = localStorage.getItem(key);
+        if (rawLatest) {
+          const parsedLatest = JSON.parse(rawLatest);
+          if (parsedLatest && Array.isArray(parsedLatest.attendanceMatrix)) {
+            latestLocal = ensureAllCompaniesPresent(parsedLatest);
+          }
+        }
+      } catch (e) {}
+
+      let mergedMatrix = latestLocal.attendanceMatrix || [];
       const changedAudits = [];
       let existingAuditLogs = [];
       let existingApprovalStatus = {};
 
-      // Concurrency protection & audit diffing: merge with remote doc so one company never wipes out another company's attendance
       try {
         const cloudSnap = await getDoc(ref);
         if (cloudSnap.exists()) {
           const cloudData = cloudSnap.data();
           existingAuditLogs = Array.isArray(cloudData?.recentAuditLogs) ? cloudData.recentAuditLogs : [];
           existingApprovalStatus = (cloudData && typeof cloudData.companyApprovalStatus === "object" && cloudData.companyApprovalStatus !== null)
-            ? cloudData.companyApprovalStatus
+            ? { ...cloudData.companyApprovalStatus }
             : {};
+
+          if (options.clearedDay) {
+            if (isTargetAll) {
+              COMPANIES.forEach((c) => {
+                delete existingApprovalStatus[`${cleanCompanyName(c)}_${options.clearedDay}`];
+              });
+            } else if (targetComp) {
+              delete existingApprovalStatus[`${targetComp}_${options.clearedDay}`];
+            }
+          }
+
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
             mergedMatrix = mergedMatrix.map((localW) => {
               const cloudW = cloudData.attendanceMatrix.find(
@@ -1291,26 +1392,26 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
               let mergedDaily = {};
 
               if (options.fullReplace || options.replaceCompanyDaily) {
-                // Explicit full replacement (e.g. bulk excel import)
                 mergedDaily = { ...localDaily };
               } else {
-                // 🔒 Non-destructive Cloud Preservation: Start with authoritative cloudDaily so historical dates are NEVER lost!
+                // Start with cloudDaily, then overlay non-empty localDaily so neither cloud nor local unsynced edits are lost
                 mergedDaily = { ...cloudDaily };
+                Object.keys(localDaily).forEach((d) => {
+                  const val = localDaily[d];
+                  if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
+                    mergedDaily[d] = val;
+                    mergedDaily[String(d)] = val;
+                  }
+                });
 
                 if (isTargetWorker) {
-                  // Merge localDaily changes
-                  Object.keys(localDaily).forEach((d) => {
-                    const val = localDaily[d];
-                    if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-                      mergedDaily[d] = val;
-                      mergedDaily[String(d)] = val;
-                    }
-                  });
-                  // If a specific target day was edited, respect its value even if set to '-'
                   if (options.targetDay !== undefined && options.targetDay !== null) {
                     const tDay = options.targetDay;
                     const tVal = localDaily[tDay] ?? localDaily[String(tDay)];
-                    if (tVal !== undefined && tVal !== null) {
+                    if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
+                      delete mergedDaily[tDay];
+                      delete mergedDaily[String(tDay)];
+                    } else {
                       mergedDaily[tDay] = tVal;
                       mergedDaily[String(tDay)] = tVal;
                     }
@@ -1319,13 +1420,9 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                     delete mergedDaily[options.clearedDay];
                     delete mergedDaily[String(options.clearedDay)];
                   }
-                } else {
-                  // 🔒 Untargeted workers: strictly preserve authoritative cloud data!
-                  // Do NOT merge localDaily from untargeted companies to prevent client dirty cache leakage.
                 }
               }
 
-              // Clean any invalid string keys
               Object.keys(mergedDaily).forEach((d) => {
                 const val = mergedDaily[d];
                 if (val === "" || val === "미입력" || val === "undefined" || val === "null") {
@@ -1334,14 +1431,12 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                 }
               });
 
-              // ⭐ Audit Diff Tracking: Detect exact cell changes for forensic accountability
               if (isTargetWorker) {
                 const comparedDays = new Set([
                   ...Object.keys(cloudDaily || {}),
                   ...Object.keys(mergedDaily || {})
                 ]);
                 comparedDays.forEach((d) => {
-                  // Only track integer day keys to avoid duplicate string/number entries
                   if (isNaN(Number(d))) return;
                   const beforeVal = String(cloudDaily?.[d] || "").trim();
                   const afterVal = String(mergedDaily?.[d] || "").trim();
@@ -1378,41 +1473,54 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
       }
 
       const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 100);
-
       const mergedApprovalStatus = {
         ...existingApprovalStatus,
-        ...(normalizedData.companyApprovalStatus || {})
+        ...(latestLocal.companyApprovalStatus || {})
       };
+      const finalUpdatedAt = new Date().toISOString();
 
       await setDoc(
         ref,
         sanitizeForFirestore({
-          year: normalizedData.year || parseInt(ym.split("-")[0], 10) || 2026,
-          month: normalizedData.month || parseInt(ym.split("-")[1], 10) || 10,
-          masterWorkers: normalizedData.masterWorkers || [],
+          year: latestLocal.year || parseInt(ym.split("-")[0], 10) || 2026,
+          month: latestLocal.month || parseInt(ym.split("-")[1], 10) || 10,
+          masterWorkers: latestLocal.masterWorkers || [],
           attendanceMatrix: mergedMatrix,
           companyApprovalStatus: mergedApprovalStatus,
           recentAuditLogs: updatedAuditLogs,
-          updatedAt: new Date().toISOString()
+          updatedAt: finalUpdatedAt
         }),
         { merge: true }
       );
 
-      // Immediately keep local storage & runtime listeners in sync with mergedMatrix
-      const finalData = { ...normalizedData, attendanceMatrix: mergedMatrix, companyApprovalStatus: mergedApprovalStatus, recentAuditLogs: updatedAuditLogs };
-      localStorage.setItem(key, JSON.stringify(finalData));
-      if (ym === "2026-09" || ym === "2026_09") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+      // Only update localStorage with finalData if no newer local save happened while setDoc was running
+      if (inFlightSmartSaves <= 1) {
+        const finalData = {
+          ...latestLocal,
+          attendanceMatrix: mergedMatrix,
+          companyApprovalStatus: mergedApprovalStatus,
+          recentAuditLogs: updatedAuditLogs,
+          updatedAt: finalUpdatedAt
+        };
+        localStorage.setItem(key, JSON.stringify(finalData));
+        if (ym === "2026-09" || ym === "2026_09") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...finalData, yearMonth: ym } }));
+        }
       }
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...finalData, yearMonth: ym } }));
-      }
+      return true;
+    } catch (err) {
+      console.error("Failed to save smart overtime data:", err);
+      return false;
+    } finally {
+      inFlightSmartSaves = Math.max(0, inFlightSmartSaves - 1);
     }
-    return true;
-  } catch (err) {
-    console.error("Failed to save smart overtime data:", err);
-    return false;
-  }
+  };
+
+  smartSaveQueue = smartSaveQueue.then(runCloudSync, runCloudSync);
+  return smartSaveQueue;
 };
 
 export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, day, statusData) => {
@@ -1446,7 +1554,8 @@ export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, d
 
 export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => {
   try {
-    const ym = targetYearMonth || "2026-10";
+    const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
+    const ym = targetYearMonth || nowKst || "2026-10";
     const key = getStorageKeyForMonth(ym);
     const docId = getFirestoreDocIdForMonth(ym);
 
@@ -1474,12 +1583,53 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
     const unsubscribe = onSnapshot(
       ref,
       (docSnap) => {
+        // 🔒 If a local save is currently in-flight or happened within the last 2.5 seconds,
+        // do NOT let a stale Firestore snapshot overwrite localStorage and revert UI to '작성전'!
+        if (inFlightSmartSaves > 0 || Date.now() - lastLocalSaveEpoch < 2500) {
+          callback(getLocalSmartOvertimeData(ym));
+          return;
+        }
+
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            const normalized = ensureAllCompaniesPresent(cloudData);
-            localStorage.setItem(key, JSON.stringify(normalized));
-            callback(normalized);
+            const normalizedCloud = ensureAllCompaniesPresent(cloudData);
+
+            // Merge non-destructively with local storage if local storage has newer or unsynced entries
+            let localCurrent = null;
+            try {
+              const rawLocal = localStorage.getItem(key);
+              if (rawLocal) localCurrent = JSON.parse(rawLocal);
+            } catch (e) {}
+
+            const isLocalNewer = Boolean(
+              localCurrent?.updatedAt &&
+              (!cloudData.updatedAt || String(localCurrent.updatedAt) > String(cloudData.updatedAt))
+            );
+
+            if (localCurrent && Array.isArray(localCurrent.attendanceMatrix) && isLocalNewer) {
+              normalizedCloud.attendanceMatrix = normalizedCloud.attendanceMatrix.map((cw) => {
+                const lw = localCurrent.attendanceMatrix.find(
+                  (item) => (item.name || "").trim() === (cw.name || "").trim() && cleanCompanyName(item.company) === cleanCompanyName(cw.company)
+                );
+                if (!lw) return cw;
+                return {
+                  ...cw,
+                  daily: {
+                    ...(cw.daily || {}),
+                    ...(lw.daily || {})
+                  }
+                };
+              });
+              normalizedCloud.companyApprovalStatus = {
+                ...(normalizedCloud.companyApprovalStatus || {}),
+                ...(localCurrent.companyApprovalStatus || {})
+              };
+              normalizedCloud.updatedAt = localCurrent.updatedAt;
+            }
+
+            localStorage.setItem(key, JSON.stringify(normalizedCloud));
+            callback(normalizedCloud);
             return;
           }
         }

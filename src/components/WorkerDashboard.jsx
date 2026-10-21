@@ -526,16 +526,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, []);
 
-  // 5 Company Smart Overtime Ledger & Reports Subscription
-  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  // 5 Company Smart Overtime Ledger & Reports Subscription (항상 실시간 KST 당월 기준)
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => {
+    const todayYM = getKSTDateString().slice(0, 7);
+    return getLocalSmartOvertimeData(todayYM);
+  });
   const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
 
   useEffect(() => {
+    const todayYM = getKSTDateString().slice(0, 7);
+    setSmartOvertimeData(getLocalSmartOvertimeData(todayYM));
     const unsubSmart = subscribeSmartOvertimeData((data) => {
       if (data && data.attendanceMatrix) {
         setSmartOvertimeData(data);
       }
-    });
+    }, todayYM);
     const unsubReports = subscribeOvertimeReports((reports) => {
       setOvertimeReports(reports || []);
     });
@@ -598,11 +603,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const approvalStatus = approvalInfo.status || "DRAFT";
 
       const hasAnyAttendance = enteredCount > 0;
-      const isApproved = hasAnyAttendance && approvalStatus === "APPROVED";
-      const isSubmitted = hasAnyAttendance && approvalStatus === "SUBMITTED";
+      const isApproved = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "APPROVED";
+      const isSubmitted = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "SUBMITTED";
       const isFullyEntered = compWorkers.length > 0 && enteredCount >= compWorkers.length;
-      const isWritten = hasAnyAttendance && (isFullyEntered || isApproved || isSubmitted);
-      const isPartiallyWritten = hasAnyAttendance && !isWritten;
+      const isWritten = hasAnyAttendance || isApproved || isSubmitted;
+      const isPartiallyWritten = hasAnyAttendance && !isFullyEntered && !isApproved && !isSubmitted;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
