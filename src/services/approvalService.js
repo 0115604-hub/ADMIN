@@ -1318,35 +1318,45 @@ export const syncPlantOvertimeToApprovalBox = async ({
       hour12: false
     }).replace(/\. /g, "-").replace(/\./g, "");
 
-    const currentApprovalDocs = getLocalApprovalDocs();
     const deletedIds = getDeletedApprovalIds();
     const syncedDocs = [];
 
-    for (const targetPlant of targetPlants) {
-      const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
-      const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
+    // Check whether this is genuine weekend overtime or legal holiday
+    const isActualOvertime = isWeekend || isWeekendByDate(workDateStr);
 
-      // Filter reports for this plant and date with strict partner company isolation
-      const plantReports = allReports.filter(r => {
-        if (!r) return false;
+    // ⭐ 평일은 작성자 전결로 처리하므로 전자결재함 문서 생성을 하지 않음 (주말/공휴일 특근만 5개사 개별로 상신)
+    if (!isActualOvertime) {
+      return [];
+    }
+
+    const COMP_SLUG_MAP = {
+      "오륙": "oryuk",
+      "유성": "yuseong",
+      "조영": "joyoung",
+      "한울": "hanul",
+      "부림텍": "burimtech"
+    };
+
+    const targetCompanyList = cleanComp && COMP_SLUG_MAP[cleanComp]
+      ? [cleanComp]
+      : ["오륙", "유성", "조영", "한울", "부림텍"];
+
+    // 구버전 공장 취합 결재 문서(`appr_ot_samrangjin_*`, `appr_ot_hanlim_*`) 영구 정리
+    for (const legacyPlantKey of ["samrangjin", "hanlim"]) {
+      const legacySynthId = `appr_ot_${legacyPlantKey}_${workDateStr.replace(/-/g, "")}`;
+      try {
+        await deleteDoc(doc(db, COLLECTION_NAME, legacySynthId));
+      } catch (e) {}
+    }
+
+    for (const targetComp of targetCompanyList) {
+      const compSlug = COMP_SLUG_MAP[targetComp] || "oryuk";
+      const targetPlant = (targetComp === "오륙" || targetComp === "유성") ? "삼랑진공장" : "한림공장";
+
+      const compReports = allReports.filter((r) => {
+        if (!r || r.isSynthesized) return false;
         const repComp = cleanCompanyName(r.company);
-
-        // Prevent cross-plant contamination:
-        if (targetPlant === "삼랑진공장" && (repComp === "조영" || repComp === "한울" || repComp === "부림텍")) {
-          return false;
-        }
-        if (targetPlant === "한림공장" && (repComp === "오륙" || repComp === "유성")) {
-          return false;
-        }
-
-        const matchesPlant = (
-          r.plant === targetPlant ||
-          (r.plant && r.plant.includes(targetPlant.replace("공장", ""))) ||
-          targetCompanies.some(c => repComp === cleanCompanyName(c)) ||
-          targetCompanies.some(c => r.title && r.title.includes(c))
-        );
-        if (!matchesPlant) return false;
-
+        if (repComp !== targetComp) return false;
         const dateMatch = (
           r.workDate === workDateStr ||
           (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0")) && r.workDate.includes(String(monthNum).padStart(2, "0"))) ||
@@ -1355,160 +1365,50 @@ export const syncPlantOvertimeToApprovalBox = async ({
         return dateMatch;
       });
 
-      // Check whether this is genuine weekend overtime or legal holiday
-      const isActualOvertime = isWeekend || isWeekendByDate(workDateStr);
+      const canonicalDocId = `appr_ot_${compSlug}_${workDateStr.replace(/-/g, "")}`;
 
-      // ⭐ 평일은 전자결재함 자동 생성 생략 (근태/특근관리 탭에서 전담 관리)
-      if (!isActualOvertime) {
+      if (deletedIds.has(canonicalDocId) || compReports.length === 0) {
         continue;
       }
 
-      const reportCategoryName = "특근보고서";
-      const docTypeName = "특근보고서 (취합)";
-      const docType = "OVERTIME";
-      const draftComment = "특근 취합 기안 상신";
-      const summaryHeader = "1. 특근 요약";
-      const taskHeader = `• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`;
-
-      const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
-
-      // ⭐ If document was deleted by user, strictly respect deletion and do not auto-resurrect
-      if (deletedIds.has(canonicalDocId)) {
-        continue;
-      }
-
-      // If no reports exist for this plant on this date:
-      if (plantReports.length === 0) {
-        continue;
-      }
-
-      // Aggregate data directly from all matching reports for this plant
-      const companySummaries = [];
-      let totalPlantWorkers = 0;
-      let totalPlantHours = 0;
-      let totalPlantCost = 0;
-      const participatingCompanies = new Set();
-
-      plantReports.forEach(compRep => {
-        const rawComp = compRep.company || (Array.isArray(compRep.companies) && compRep.companies[0]) || compRep.title || targetPlant;
-        const comp = cleanCompanyName(rawComp) || (targetPlant === "삼랑진공장" ? "오륙" : "한울");
-        participatingCompanies.add(comp);
-
-        const attendedItems = (compRep.items || []).filter(it => {
-          const isOff = Number(it.hours || 0) === 0 || it.attendanceCode === "-" || it.attendanceCode === "휴무" || it.attendanceCode === "결근" || it.attendanceCode === "연차" || it.attendanceCode === "휴가" || it.startTime === "-";
-          return !isOff;
-        });
-
-        let workerCount = Number(compRep.attendedWorkers) || (attendedItems.length > 0 ? attendedItems.length : (Number(compRep.totalWorkers) || 0));
-        let workerHours = Number(compRep.totalHours) || (attendedItems.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0));
-        let workerCost = Number(compRep.cost) || (workerHours * 15000);
-        let managersList = [];
-        let workersList = [];
-
-        if (attendedItems.length > 0) {
-          attendedItems.forEach(it => {
-            const isManagerCategory = (it.category || "").includes("관리") || (it.dept || "").includes("관리") || (it.workContent || "").includes("총괄");
-            const namesFromItem = [];
-            if (it.workerName) {
-              namesFromItem.push(it.workerName);
-            } else if (it.names) {
-              const parts = String(it.names).split(",").map(n => n.replace(/외 \d+명/g, "").trim()).filter(Boolean);
-              namesFromItem.push(...parts);
-            }
-
-            namesFromItem.forEach(name => {
-              const cleanName = name.trim();
-              if (!cleanName) return;
-              if (isManagerCategory || KNOWN_MANAGERS.includes(cleanName)) {
-                managersList.push(cleanName);
-              } else {
-                workersList.push(cleanName);
-              }
-            });
-          });
-        }
-
-        const uniqueManagers = Array.from(new Set(managersList));
-        const uniqueWorkers = Array.from(new Set(workersList)).filter(w => !uniqueManagers.includes(w));
-        const actualCount = (uniqueManagers.length + uniqueWorkers.length) || workerCount || 0;
-
-        companySummaries.push({
-          company: comp,
-          workerCount: actualCount,
-          workerHours: workerHours || (actualCount * 8),
-          workerCost: workerCost || (actualCount * 8 * 15000),
-          managers: uniqueManagers,
-          workers: uniqueWorkers
-        });
-        totalPlantWorkers += actualCount;
-        totalPlantHours += (workerHours || (actualCount * 8));
-        totalPlantCost += (workerCost || (actualCount * 8 * 15000));
+      const compRep = compReports[0];
+      const attendedItems = (compRep.items || []).filter((it) => {
+        const isOff = Number(it.hours || 0) === 0 || it.attendanceCode === "-" || it.attendanceCode === "휴무" || it.attendanceCode === "결근" || it.attendanceCode === "연차" || it.attendanceCode === "휴가" || it.startTime === "-";
+        return !isOff;
       });
 
-      // If no workers or no valid companies for this plant on this date:
-      if (totalPlantWorkers === 0 || companySummaries.length === 0) {
+      const workerCount = Number(compRep.attendedWorkers) || (attendedItems.length > 0 ? attendedItems.length : (Number(compRep.totalWorkers) || 0));
+      const workerHours = Number(compRep.totalHours) || (attendedItems.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0)) || (workerCount * 8);
+      const workerCost = Number(compRep.cost) || (workerHours * 15000);
+
+      if (workerCount === 0) {
         continue;
       }
 
-      // ⭐ 1. Check local cache
-      const localDoc = getLocalApprovalDocs().find(d => 
-        d.id === canonicalDocId ||
-        (d.plant === targetPlant && (d.type === "OVERTIME" || d.type === "ATTENDANCE") && (
-          (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-          (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-          (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
-        ))
-      );
+      const workerNames = attendedItems.map((it) => it.workerName || it.names).filter(Boolean);
+      const localDoc = getLocalApprovalDocs().find((d) => d.id === canonicalDocId);
 
-      // ⭐ 2. Fetch live Cloud Firestore doc to prevent overwriting cloud approvals
       let cloudDoc = null;
       try {
         const docSnap = await getDoc(doc(db, COLLECTION_NAME, canonicalDocId));
         if (docSnap.exists()) {
           cloudDoc = { id: docSnap.id, ...docSnap.data() };
         }
-      } catch (e) {
-        console.warn("Could not fetch remote doc in syncPlantOvertimeToApprovalBox:", e);
-      }
+      } catch (e) {}
 
       const existingDoc = cloudDoc || localDoc;
       const priorSteps = Array.isArray(cloudDoc?.steps) && cloudDoc.steps.length > 0
         ? cloudDoc.steps
-        : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0
-            ? localDoc.steps
-            : []);
+        : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0 ? localDoc.steps : []);
 
-      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "오상민";
-      const drafterTitle = "선임";
+      const drafterName = compRep.author?.split(" ")[0] || (targetPlant === "삼랑진공장" ? "조인주" : "오상민");
+      const drafterTitle = compRep.authorTitle || "선임";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
-      const titleCompList = participatingCompanies.size > 0 ? Array.from(participatingCompanies) : targetCompanies;
-      const title = `[특근보고서] ${monthNum}월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
-      const department = targetPlant === "삼랑진공장"
-        ? (titleCompList.includes("유성") ? "생산총괄 ((주)오륙 + 유성)" : "생산총괄 ((주)오륙)")
-        : (titleCompList.length === 1 ? `생산총괄 ((주)${titleCompList[0]})` : `생산총괄 (${titleCompList.map(c => `(주)${c}`).join(" + ")})`);
+      const title = `[특근보고서] ${monthNum}월 ${dayNum}일(${dayLabel}) ${targetComp} 특근보고서`;
+      const department = `${targetPlant} (${targetComp})`;
+      const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetComp}] 특근보고서\n\n1. 특근 요약\n• 소속: ${targetPlant} - ${targetComp}\n• 특근 투입: ${workerCount}명 (${workerHours} M/H) | 예상 노무비: ₩${workerCost.toLocaleString()}\n\n2. 투입 작업자 명단\n• ${workerNames.join(", ") || "특근 투입 인원"}\n\n3. 주요 작업 내용\n• 현대/기아 납품 물량 대응 및 ${targetComp} 주말/공휴일 특근 가동`;
 
-      // ⭐ 세부투입현황: 회사별로 관리자 / 작업자 분리 표시
-      const breakdownText = companySummaries.map(cs => {
-        const mgrText = cs.managers.length > 0 ? cs.managers.join(", ") : "-";
-        const wrkText = cs.workers.length > 0 ? (cs.workers.length > 10 ? cs.workers.slice(0, 10).join(", ") + ` 외 ${cs.workers.length - 10}명` : cs.workers.join(", ")) : "-";
-        return `• ${cs.company} (${cs.workerCount}명)\n  - 관리자: ${mgrText}\n  - 작업자: ${wrkText}`;
-      }).join("\n");
-
-      // ⭐ 초간결 특근 취합 결재 문서 내용
-      const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetPlant}] ${reportCategoryName} 취합
-
-${summaryHeader}
-• 대상: ${targetPlant} (${titleCompList.join(", ")})
-• 총 투입: ${totalPlantWorkers}명 (${totalPlantHours} M/H) | 총 노무비: ₩${totalPlantCost.toLocaleString()}
-
-2. 회사별 세부 투입 현황
-${breakdownText || "• 등록된 근로자 명단 취합 완료"}
-
-3. 주요 작업 내용
-${taskHeader}`;
-
-      // ⭐ Build 4-Step Approval Seal Line with Strict Preservation of Existing Approvals (김동욱, 윤경수, 이명재, 대표이사 등)
       const isPastOvertime = (workDateStr && workDateStr < "2026-10-01") || existingDoc?.status === "APPROVED";
       const isAlreadyFullyApproved = existingDoc?.status === "APPROVED" || (Array.isArray(priorSteps) && priorSteps.length === 4 && priorSteps.every((s) => s && s.status === "APPROVED"));
 
@@ -1518,7 +1418,7 @@ ${taskHeader}`;
         title: priorSteps[0]?.title || drafterTitle,
         status: "APPROVED",
         date: priorSteps[0]?.date || `${workDateStr} 18:00:00`,
-        comment: priorSteps[0]?.comment || draftComment
+        comment: priorSteps[0]?.comment || "특근보고서 개별 상신"
       };
 
       const isStep1Approved = isAlreadyFullyApproved || isPastOvertime || priorSteps[1]?.status === "APPROVED";
@@ -1559,19 +1459,19 @@ ${taskHeader}`;
       };
 
       const steps = [step0, step1, step2, step3];
-      const approvedCount = steps.filter(st => st.status === "APPROVED").length;
+      const approvedCount = steps.filter((st) => st.status === "APPROVED").length;
 
       let finalDocStatus = "IN_PROGRESS";
       let finalCurrentStep = 2;
       if (approvedCount === 4 || isPastOvertime || isAlreadyFullyApproved) {
         finalDocStatus = "APPROVED";
         finalCurrentStep = 4;
-      } else if (steps.some(st => st.status === "REJECTED")) {
+      } else if (steps.some((st) => st.status === "REJECTED")) {
         finalDocStatus = "REJECTED";
-        finalCurrentStep = steps.findIndex(st => st.status === "REJECTED") + 1;
-      } else if (steps.some(st => st.status === "HOLD")) {
+        finalCurrentStep = steps.findIndex((st) => st.status === "REJECTED") + 1;
+      } else if (steps.some((st) => st.status === "HOLD")) {
         finalDocStatus = "HOLD";
-        finalCurrentStep = steps.findIndex(st => st.status === "HOLD") + 1;
+        finalCurrentStep = steps.findIndex((st) => st.status === "HOLD") + 1;
       } else {
         finalDocStatus = "IN_PROGRESS";
         finalCurrentStep = Math.min(approvedCount + 1, 4);
@@ -1579,11 +1479,12 @@ ${taskHeader}`;
 
       const approvalDoc = normalizeApprovalDoc({
         id: canonicalDocId,
-        docNumber: existingDoc?.docNumber || `ORYUK-${yearNum}-${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
-        type: docType,
-        typeName: docTypeName,
+        docNumber: existingDoc?.docNumber || `ORYUK-${yearNum}-${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}-${compSlug.toUpperCase()}`,
+        type: "OVERTIME",
+        typeName: "특근보고서",
         title,
         plant: targetPlant,
+        company: targetComp,
         department,
         drafter: step0.name,
         drafterTitle: step0.title,
@@ -1591,7 +1492,7 @@ ${taskHeader}`;
         createdAt: existingDoc?.createdAt || `${workDateStr} 18:00:00`,
         updatedAt: existingDoc?.updatedAt || `${workDateStr} 18:00:00`,
         content,
-        amount: `₩${totalPlantCost.toLocaleString()}`,
+        amount: `₩${workerCost.toLocaleString()}`,
         status: finalDocStatus,
         currentStep: finalCurrentStep,
         steps,
@@ -1599,7 +1500,6 @@ ${taskHeader}`;
         holdReason: existingDoc?.holdReason || ""
       });
 
-      // Always suppress telegram during background aggregation sync
       const saved = await saveApprovalDocument(approvalDoc, { suppressTelegram: true });
       syncedDocs.push(saved);
     }

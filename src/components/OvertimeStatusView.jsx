@@ -51,7 +51,6 @@ import {
 } from "lucide-react";
 import PersonnelCardModal from "./PersonnelCardModal.jsx";
 import Absence4MModal from "./Absence4MModal.jsx";
-import UnifiedAttendanceAuditModal from "./UnifiedAttendanceAuditModal.jsx";
 import {
   getWorkerPersonnelCard,
   saveWorkerPersonnelCard,
@@ -86,8 +85,6 @@ import {
   calculateWorkerDailyHours,
   calculateWorkerMonthlyTotals,
   calculateDailySummary,
-  calculateCompanySummary,
-  calculateDeptSummary,
   getLocalSmartOvertimeData,
   saveSmartOvertimeData,
   saveCompanyDayApprovalStatus,
@@ -95,8 +92,6 @@ import {
   exportSmartOvertimeToExcel,
   normalizeDept,
   ensureAllCompaniesPresent,
-  buildMatrixFromReports,
-  reconcileMatrixWithReports,
   getKoreanHolidayInfo,
   KOREAN_HOLIDAY_NAMES_2026
 } from "../services/overtimeSmartService.js";
@@ -383,7 +378,7 @@ export const getCleanReportReason = (reasonStr, report) => {
   return res;
 };
 
-// ⭐ 전자결재함 연동: 실시간 결재 상태 및 결재 단계(담당/책임/이사/대표) 자동 매칭
+// ⭐ 전자결재함 연동: 5개사 개별 특근보고서 실시간 결재 상태 및 결재 단계(담당/책임/이사/대표) 자동 매칭
 export const getLiveApprovalForReport = (report, approvalDocs = []) => {
   if (!report) {
     return {
@@ -401,63 +396,25 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
   }
 
   const workDateStr = report.workDate || "";
-  const plantName = report.plant || getPlantForCompany(report.company || "");
-  const plantKey = plantName === "삼랑진공장" ? "samrangjin" : "hanlim";
-  const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+  const cleanComp = cleanCompanyName(report.company || "오륙");
+  const plantName = report.plant || getPlantForCompany(cleanComp);
+  const compSlugMap = { "오륙": "oryuk", "유성": "yuseong", "조영": "joyoung", "한울": "hanul", "부림텍": "burimtech" };
+  const compSlug = compSlugMap[cleanComp] || "oryuk";
+  const canonicalDocId = `appr_ot_${compSlug}_${workDateStr.replace(/-/g, "")}`;
 
-  const isWk = isWeekendByDate(workDateStr || report.title);
-  const hasSpecialOvertime = report.reportType === "특근보고서" || (report.title && report.title.includes("특근") && !report.title.includes("근태"));
-  const isActualOvertime = isWk || hasSpecialOvertime;
-
-  // ⭐ 1. 평일 근태보고서는 작성자 전결로 처리 (결재대기 없이 전결 승인 완료)
-  if (!isActualOvertime) {
-    const drafterName = report.author?.split(" ")[0] || "작성자";
-    const drafterTitle = report.authorTitle || "선임";
-    const dateStr = report.workDate || report.updatedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
-    return {
-      status: "APPROVED",
-      statusLabel: "결재완료 (작성자 전결)",
-      currentStep: 4,
-      steps: [
-        { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: dateStr, comment: "작성자 전결" },
-        { role: "책임", name: plantName === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "APPROVED", date: dateStr, comment: "전결" },
-        { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: dateStr, comment: "전결" },
-        { role: "대표", name: "권태형", title: "대표", status: "APPROVED", date: dateStr, comment: "전결" }
-      ],
-      approvalDoc: null
-    };
-  }
-
-  // 1. Try finding canonical plant-level synthesis approval doc
+  // 1. 5개사 개별 특근보고서 결재문서 조회
   let matchedDoc = (approvalDocs || []).find((d) => d.id === canonicalDocId);
 
-  // 2. Try matching by docType/type, plant, and workDate
+  // 2. 업체명 및 일자 기준 매칭
   if (!matchedDoc && workDateStr) {
     matchedDoc = (approvalDocs || []).find(
       (d) =>
         (d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "특근보고서") &&
-        (d.plant === plantName || d.company === report.company || (d.id && d.id.includes(plantKey))) &&
+        (cleanCompanyName(d.company || "") === cleanComp || (d.title && d.title.includes(cleanComp))) &&
         (d.workDate === workDateStr ||
           (d.id && d.id.includes(workDateStr.replace(/-/g, ""))) ||
-          (d.title && d.title.includes(workDateStr)) ||
-          (d.docNumber && d.docNumber.includes(workDateStr.replace(/-/g, "").slice(4))))
+          (d.title && d.title.includes(workDateStr)))
     );
-  }
-
-  // 3. Try matching by day number in title
-  if (!matchedDoc) {
-    const dayMatch =
-      (report.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) ||
-      (report.workDateFormatted || "").match(/(\d{1,2})월\s*(\d{1,2})일/);
-    if (dayMatch) {
-      matchedDoc = (approvalDocs || []).find(
-        (d) =>
-          (d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "특근보고서") &&
-          (d.plant === plantName || (d.title && d.title.includes(plantName)) || (d.id && d.id.includes(plantKey))) &&
-          d.title &&
-          d.title.includes(dayMatch[0])
-      );
-    }
   }
 
   if (matchedDoc && Array.isArray(matchedDoc.steps) && matchedDoc.steps.length > 0) {
@@ -515,198 +472,6 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
     steps: normalizedSteps,
     approvalDoc: null
   };
-};
-
-// ⭐ 공장별 소속 협력사 근태/특근 보고서 일자별 자동 취합 생성 함수 (Plant-Level Synthesis Engine)
-// 취합 조건:
-// - 평일 근태: 취합하지 않고 협력사별 개별 보고서 유지
-// - 주말/공휴일 특근:
-//   1) 삼랑진공장: (주)오륙, 유성을 모아서 삼랑진공장 특근보고서 1개로 취합 (내용이 있는 업체만 뱃지/명단 포함)
-//   2) 한림공장: (주)조영산업, 한울, 부림텍을 모아서 한림공장 특근보고서 1개로 취합 (내용이 있는 업체만 뱃지/명단 포함)
-export const generateSynthesizedPlantReports = (reports = []) => {
-  const dateMap = new Map();
-
-  (reports || []).forEach((r) => {
-    if (!r || !r.workDate || r.isSynthesized) return;
-    const dateKey = r.workDate;
-    if (!dateMap.has(dateKey)) {
-      dateMap.set(dateKey, []);
-    }
-    dateMap.get(dateKey).push(r);
-  });
-
-  const synthList = [];
-
-  const checkHasContent = (r) => {
-    if (!r) return false;
-    const w = r.totalWorkers || (r.items ? r.items.length : 0);
-    const h = r.totalHours || 0;
-    const c = r.cost || 0;
-    if (w > 0 || h > 0 || c > 0) return true;
-    if (Array.isArray(r.items) && r.items.length > 0) {
-      return r.items.some((it) => (Number(it.count) || 0) > 0 || (it.names && String(it.names).trim() !== ""));
-    }
-    return false;
-  };
-
-  dateMap.forEach((reps, workDate) => {
-    const isWk = isWeekendByDate(workDate);
-    const dateParts = String(workDate).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
-    const yearNum = dateParts && dateParts[1] ? parseInt(dateParts[1], 10) : 2026;
-    const monthNum = dateParts && dateParts[2] ? parseInt(dateParts[2], 10) : 10;
-    const dayNum = dateParts && dateParts[3] ? parseInt(dateParts[3], 10) : 1;
-    const dayLabel = getDayOfWeekKorean(workDate, yearNum, monthNum);
-
-    const hasSpecialOvertime = reps.some(
-      (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
-    );
-    const isActualOvertime = isWk || hasSpecialOvertime;
-
-    // ⭐ 평일 근태는 취합하지 않고, 주말/공휴일 특근 보고서만 취합 생성!
-    if (!isActualOvertime) {
-      return;
-    }
-
-    // 🏭 1. 삼랑진공장 그룹 (오륙, 유성)
-    const samrangjinReps = reps.filter((r) => {
-      const comp = r.company || "";
-      const plant = r.plant || "";
-      return comp.includes("오륙") || comp.includes("유성") || plant === "삼랑진공장";
-    });
-
-    // 🏭 2. 한림공장 그룹 (조영, 한울, 부림텍)
-    const hanlimReps = reps.filter((r) => {
-      const comp = r.company || "";
-      const plant = r.plant || "";
-      return comp.includes("조영") || comp.includes("한울") || comp.includes("부림") || plant === "한림공장";
-    });
-
-    // 1) 삼랑진공장 특근 취합 보고서 생성 (오륙, 유성 중 실제 내용이 있는 업체만 뱃지/내역 포함)
-    if (samrangjinReps.length > 0) {
-      const plant = "삼랑진공장";
-      const activeReps = samrangjinReps.filter(checkHasContent);
-      const targetReps = activeReps.length > 0 ? activeReps : samrangjinReps;
-      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
-
-      const drafterName = "조인주";
-      const drafterTitle = "선임";
-      const leadName = "윤경수";
-
-      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.attendedWorkers || (r.items ? r.items.filter(it => (Number(it.hours) || 0) > 0).length : (r.totalWorkers || 0))), 0);
-      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = targetReps.flatMap((r) => r.items || []).map(it => {
-        if (isWk && (it.attendanceCode === "결근" || it.hours === 0 || !it.attendanceCode || it.attendanceCode === "-")) {
-          return { ...it, attendanceCode: "-", workContent: `${it.company || ""} ${it.dept || ""} 미출근`, workDetails: `${it.company || ""} ${it.dept || ""} 미출근` };
-        }
-        return it;
-      });
-
-      const compBreakdownText = targetReps.map((cr) => {
-        const wCount = cr.attendedWorkers || (cr.items ? cr.items.filter(it => (Number(it.hours) || 0) > 0).length : (cr.totalWorkers || 0));
-        const hCount = cr.totalHours || (wCount * 8);
-        const cAmt = cr.cost || (hCount * 15000);
-        return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
-      }).join("\n");
-
-      synthList.push({
-        id: `synth_sam_${workDate.replace(/-/g, "")}`,
-        isSynthesized: true,
-        plant,
-        company: `${companies.join(", ")} 취합`,
-        companies: companies,
-        title: `[삼랑진공장] ${monthNum}월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
-        reportType: "특근보고서 (취합)",
-        workDate,
-        workDateFormatted: `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
-        author: drafterName,
-        authorTitle: drafterTitle,
-        updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
-        status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
-        approval: [
-          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
-          { role: "책임", name: leadName, title: "책임", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
-          { role: "이사", name: "이명재", title: "이사", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
-          { role: "대표", name: "권태형", title: "대표", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
-        ],
-        totalWorkers,
-        totalHours,
-        cost,
-        items: allItems,
-        childReports: targetReps,
-        reasons: [
-          `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (${companies.join(", ")})`,
-          `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
-          `2. 협력사별 투입 현황:\n${compBreakdownText}`,
-          `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 특근 가동 현황 취합`
-        ]
-      });
-    }
-
-    // 2) 한림공장 특근 취합 보고서 생성 (조영, 한울, 부림텍 중 실제 내용이 있는 업체만 뱃지/내역 포함)
-    if (hanlimReps.length > 0) {
-      const plant = "한림공장";
-      const activeReps = hanlimReps.filter(checkHasContent);
-      const targetReps = activeReps.length > 0 ? activeReps : hanlimReps;
-      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.attendedWorkers || (r.items ? r.items.filter(it => (Number(it.hours) || 0) > 0).length : (r.totalWorkers || 0))), 0);
-      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = targetReps.flatMap((r) => r.items || []).map(it => {
-        if (isWk && (it.attendanceCode === "결근" || it.hours === 0 || !it.attendanceCode || it.attendanceCode === "-")) {
-          return { ...it, attendanceCode: "-", workContent: `${it.company || ""} ${it.dept || ""} 미출근`, workDetails: `${it.company || ""} ${it.dept || ""} 미출근` };
-        }
-        return it;
-      });
-
-      const drafterName = "오상민";
-      const drafterTitle = "선임";
-      const leadName = "김동욱";
-
-      const compBreakdownText = targetReps.map((cr) => {
-        const wCount = cr.attendedWorkers || (cr.items ? cr.items.filter(it => (Number(it.hours) || 0) > 0).length : (cr.totalWorkers || 0));
-        const hCount = cr.totalHours || (wCount * 8);
-        const cAmt = cr.cost || (hCount * 15000);
-        return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
-      }).join("\n");
-
-      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
-
-      synthList.push({
-        id: `synth_hal_${workDate.replace(/-/g, "")}`,
-        isSynthesized: true,
-        plant,
-        company: `${companies.join(", ")} 취합`,
-        companies: companies,
-        title: `[한림공장] ${monthNum}월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
-        reportType: "특근보고서 (취합)",
-        workDate,
-        workDateFormatted: `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
-        author: drafterName,
-        authorTitle: drafterTitle,
-        updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
-        status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
-        approval: [
-          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
-          { role: "책임", name: leadName, title: "책임", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
-          { role: "이사", name: "이명재", title: "이사", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
-          { role: "대표", name: "권태형", title: "대표", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
-        ],
-        totalWorkers,
-        totalHours,
-        cost,
-        items: allItems,
-        childReports: targetReps,
-        reasons: [
-          `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (${companies.join(", ")})`,
-          `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
-          `2. 협력사별 투입 현황:\n${compBreakdownText}`,
-          `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 특근 가동 현황 취합`
-        ]
-      });
-    }
-  });
-
-  return synthList;
 };
 
 export const OvertimeStatusView = ({ onNavigateTab }) => {
@@ -923,7 +688,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setReportListFilter(selectedCompanyFilter);
     }
   }, [selectedCompanyFilter]);
-  const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
   const [dateSortOrder, setDateSortOrder] = useState("DESC"); // "DESC" (가까운 날 / 최신순), "ASC" (과거순 1일->30일)
   const [reportListSearch, setReportListSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -945,8 +709,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
-  const [selectedWeekendDay, setSelectedWeekendDay] = useState(3);
-  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   // Show Toast notification
   const triggerToast = (msg) => {
@@ -1025,22 +787,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setIsDayUnlockedForEdit(false);
   }, [selectedDay, selectedCompanyFilter, selectedMonth]);
 
-  const currentDayApprovedReport = useMemo(() => {
-    const d = selectedDay || 1;
-    const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const cleanComp = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? null : cleanCompanyName(selectedCompanyFilter);
-    return (legacyReports || []).find((r) => {
-      if (!r || r.isSynthesized) return false;
-      const rDateKey = getReportDateSortKey(r);
-      if (rDateKey !== targetDateStr) return false;
-      if (r.status !== "APPROVED") return false;
-      if (!cleanComp) return true;
-      const rComp = cleanCompanyName(r.company || "");
-      return rComp === cleanComp;
-    });
-  }, [legacyReports, selectedDay, currentYear, currentMonthNum, selectedCompanyFilter]);
-
-  // 🔒 1단계 심플 승인: 최종 승인(APPROVED) 상태일 때만 편집 잠금
+  // 🔒 평일(작성자 전결) 또는 특근(최종 승인) 완료(APPROVED) 상태일 때 편집 잠금
   const currentCompanyDayKey = `${cleanCompanyName(selectedCompanyFilter)}_${selectedDay}`;
   const currentCompanyApproval = smartData?.companyApprovalStatus?.[currentCompanyDayKey];
   const isDayLocked = currentCompanyApproval?.status === "APPROVED" && !isDayUnlockedForEdit;
@@ -1161,12 +908,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   };
 
-  // 📤 1단계 심플 승인: [마감 상신] (평일 미선택 인원이 있을 경우 자동으로 '🟢 정시'로 채워 누락 없이 함께 저장)
+  // 📤 평일: [작성자 전결] 즉시 마감 처리 / 특근일(주말·공휴일): [5개사 개별 특근보고서] 작성 및 상신
   const handleSubmitCompanyDayAttendance = async () => {
     const comp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
     const cleanComp = cleanCompanyName(comp);
     const d = selectedDay || 1;
     const isWk = isWeekendDay(d);
+    const authorName = currentProfile?.name || "현장관리자";
+    const nowTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
     const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
       ? [...effectiveMatrix]
@@ -1180,7 +929,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     if (!isWk) {
       updatedMatrix.forEach((w) => {
         const wComp = cleanCompanyName(w.company);
-        if (selectedCompanyFilter === "전체" || wComp === cleanComp) {
+        if (wComp === cleanComp) {
           const curVal = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
           const strVal = String(curVal || "").trim();
           if (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null") {
@@ -1192,7 +941,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       });
     }
 
-    const compWorkers = updatedMatrix.filter((w) => selectedCompanyFilter === "전체" || cleanCompanyName(w.company) === cleanComp);
+    const compWorkers = updatedMatrix.filter((w) => cleanCompanyName(w.company) === cleanComp);
     const attended = compWorkers.filter((w) => {
       const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
       return calculateWorkerDailyHours(val).isAttended;
@@ -1207,16 +956,105 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return sum + (weekdayOt + weekendOt);
     }, 0);
 
-    const autoFillNotice = autoFilledCount > 0 ? `\n(※ 미선택 ${autoFilledCount}명 정시(🟢) 자동 포함)` : "";
-    const confirmMsg = `📤 [${comp} ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 등록]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H${autoFillNotice}\n\n위 내용으로 등록하시겠습니까?`;
+    // 1️⃣ 평일 근태: 작성자 전결(APPROVED) 즉시 마감 처리 (별도 보고서 미생성)
+    if (!isWk) {
+      const autoFillNotice = autoFilledCount > 0 ? `\n(※ 미선택 ${autoFilledCount}명 정시(🟢) 자동 포함)` : "";
+      const confirmMsg = `✅ [${cleanComp} ${currentMonthNum}월 ${d}일(${getDayLabel(d)}) 평일 근태 완료 - 작성자 전결]\n\n총원: ${compWorkers.length}명\n출근: ${attended}명 (잔업: ${otHours}H)\n총공수: ${totalHours} M/H${autoFillNotice}\n\n평일 근태보고는 작성자 전결로 즉시 완료(마감) 처리됩니다.\n계속하시겠습니까?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      setIsSaving(true);
+      try {
+        const statusData = {
+          status: "APPROVED",
+          submittedBy: authorName,
+          submittedAt: nowTime,
+          approvedBy: `${authorName} (작성자 전결)`,
+          approvedAt: nowTime,
+          attendedCount: attended,
+          otHours,
+          totalHours
+        };
+        const baseLedger = {
+          ...smartData,
+          year: currentYear,
+          month: currentMonthNum,
+          attendanceMatrix: updatedMatrix
+        };
+        const updated = await saveCompanyDayApprovalStatus(baseLedger, selectedMonth || "2026-10", cleanComp, d, statusData);
+        setSmartData(updated);
+        setIsDayUnlockedForEdit(false);
+        setHasUnsavedChanges(false);
+        triggerToast(`✅ [${cleanComp}] ${currentMonthNum}월 ${d}일(${getDayLabel(d)}) 평일 근태가 작성자 전결로 완료(마감)되었습니다.`);
+      } catch (err) {
+        console.error(err);
+        alert("평일 근태 전결 처리 중 오류가 발생했습니다: " + (err?.message || err));
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // 2️⃣ 특근일(주말/공휴일): 5개사 개별 특근보고서 작성 및 상신 (취합 없음)
+    const confirmMsg = `📤 [${cleanComp} ${currentMonthNum}월 ${d}일(${getDayLabel(d)}) 특근보고서 개별 상신]\n\n특근 인원: ${attended}명 (총원: ${compWorkers.length}명)\n특근 공수: ${totalHours} M/H\n예상 노무비: ₩${(totalHours * 15000).toLocaleString()}\n\n[${cleanComp}] 개별 특근보고서를 작성하여 상신하시겠습니까?`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsSaving(true);
     try {
+      const workDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const plant = getPlantForCompany(cleanComp);
+      const compSlugMap = { "오륙": "oryuk", "유성": "yuseong", "조영": "joyoung", "한울": "hanul", "부림텍": "burim" };
+      const compSlug = compSlugMap[cleanComp] || "oryuk";
+      const reportId = `report_ot_${compSlug}_${workDateStr.replace(/-/g, "_")}`;
+
+      const reportItems = compWorkers.map((w, idx) => {
+        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
+        const { workHours, weekdayOt, weekendOt } = calculateWorkerDailyHours(val);
+        return {
+          no: idx + 1,
+          company: cleanComp,
+          dept: normalizeDept(w.dept),
+          line: w.line || normalizeDept(w.dept),
+          workerName: w.name,
+          position: w.position || "사원",
+          attendanceCode: val || "-",
+          hours: workHours || 0,
+          otHours: (weekdayOt || 0) + (weekendOt || 0),
+          cost: (workHours || 0) * 15000
+        };
+      });
+
+      const specialReport = {
+        id: reportId,
+        plant,
+        company: cleanComp,
+        companies: [cleanComp],
+        workDate: workDateStr,
+        workDateFormatted: `${workDateStr} (${getDayLabel(d)})`,
+        title: `${currentMonthNum}월 ${d}일(${getDayLabel(d)}) ${cleanComp} 특근보고서`,
+        reportCategory: "WEEKEND_SPECIAL",
+        author: authorName,
+        totalWorkers: attended,
+        attendedWorkers: attended,
+        totalHours,
+        otHours,
+        cost: totalHours * 15000,
+        items: reportItems,
+        reasons: [`[${cleanComp}] ${currentMonthNum}월 ${d}일(${getDayLabel(d)}) 휴일 특근 실시 (투입 ${attended}명 / ${totalHours} M/H)`],
+        status: "PENDING",
+        updatedAt: new Date().toISOString()
+      };
+
+      const savedRep = await saveOvertimeReport(specialReport);
+      const nextReports = [
+        savedRep || specialReport,
+        ...(legacyReports || []).filter((r) => r && r.id !== reportId)
+      ];
+      setLegacyReports(nextReports);
+
       const statusData = {
         status: "SUBMITTED",
-        submittedBy: currentProfile?.name || "현장관리자",
-        submittedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        submittedBy: authorName,
+        submittedAt: nowTime,
         attendedCount: attended,
         otHours,
         totalHours
@@ -1227,13 +1065,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         month: currentMonthNum,
         attendanceMatrix: updatedMatrix
       };
-      const updated = await saveCompanyDayApprovalStatus(baseLedger, selectedMonth || "2026-10", comp, d, statusData);
+      const updated = await saveCompanyDayApprovalStatus(baseLedger, selectedMonth || "2026-10", cleanComp, d, statusData);
       setSmartData(updated);
       setHasUnsavedChanges(false);
-      triggerToast(`📤 [${comp}] ${currentMonthNum}월 ${d}일 오늘(${getDayLabel(d)}) 근태가 등록되었습니다.`);
+
+      await syncPlantOvertimeToApprovalBox({
+        plant,
+        company: cleanComp,
+        workDate: workDateStr,
+        matrix: updatedMatrix,
+        reports: nextReports
+      });
+
+      triggerToast(`📤 [${cleanComp}] ${currentMonthNum}월 ${d}일(${getDayLabel(d)}) 개별 특근보고서가 상신되었습니다.`);
     } catch (err) {
       console.error(err);
-      alert("상신 중 오류가 발생했습니다: " + (err?.message || err));
+      alert("특근보고서 상신 중 오류가 발생했습니다: " + (err?.message || err));
     } finally {
       setIsSaving(false);
     }
@@ -1681,32 +1528,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     triggerToast(`✏️ ${report.workDate ? report.workDate.split("-")[1] + "월 " + report.workDate.split("-")[2] + "일" : ""} [${report.company || report.plant || "오륙"}] 근태 수정 화면으로 이동했습니다. 작업자 근태 변경 후 [수정 및 재등록]을 클릭하세요.`);
   };
 
-  // ⭐ USER ACTION: 특근보고서 삭제 핸들러
-  // ⭐ USER ACTION: 보고서 삭제 핸들러 (개별 및 취합 보고서 모두 지원)
+  // ⭐ USER ACTION: 5개사 개별 특근보고서 삭제 핸들러
   const handleDeleteReport = async (reportOrId, e) => {
     if (e) e.stopPropagation();
-    const isSynth = typeof reportOrId === "object" && reportOrId?.isSynthesized;
     const reportId = typeof reportOrId === "object" ? reportOrId.id : reportOrId;
     const targetRep = typeof reportOrId === "object" ? reportOrId : legacyReports.find((r) => r.id === reportId);
-    const repName = targetRep?.title || "선택한 보고서";
+    const repName = targetRep?.title || "선택한 특근보고서";
 
-    if (!window.confirm(`정말로 이 보고서를 삭제하시겠습니까?\n(${repName})`)) return;
+    if (!window.confirm(`정말로 이 특근보고서를 삭제하시겠습니까?\n(${repName})`)) return;
     try {
-      let nextReports = legacyReports;
-      if (isSynth && targetRep?.childReports && targetRep.childReports.length > 0) {
-        for (const cr of targetRep.childReports) {
-          await deleteOvertimeReport(cr.id);
-        }
-        const childIds = new Set(targetRep.childReports.map(cr => cr.id));
-        nextReports = legacyReports.filter((r) => !childIds.has(r.id));
-      } else {
-        await deleteOvertimeReport(reportId);
-        nextReports = legacyReports.filter((r) => r.id !== reportId);
-      }
+      await deleteOvertimeReport(reportId);
+      const nextReports = legacyReports.filter((r) => r.id !== reportId);
       setLegacyReports(nextReports);
-      
-      // 🔒 Authoritative Principle: Deleting a report document does NOT erase worker attendance in the master ledger.
-      // The primary attendance matrix remains intact unless explicitly edited by an authorized user.
+
       const currentMatrix = smartData.attendanceMatrix || [];
       if (targetRep) {
         await syncPlantOvertimeToApprovalBox({
@@ -1719,11 +1553,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         });
       }
 
-      if (selectedLegacyReport && (selectedLegacyReport.id === reportId || (isSynth && targetRep.childReports?.some(cr => cr.id === selectedLegacyReport.id)))) {
+      if (selectedLegacyReport && selectedLegacyReport.id === reportId) {
         setIsLegacyModalOpen(false);
         setSelectedLegacyReport(null);
       }
-      triggerToast("🗑️ 보고서가 정상적으로 삭제되었습니다.");
+      triggerToast("🗑️ 특근보고서가 정상적으로 삭제되었습니다.");
     } catch (err) {
       console.error(err);
       alert("삭제 중 오류가 발생했습니다: " + err.message);
@@ -2081,15 +1915,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
 
     return matrix.filter((w) => {
-      // Company Filter
-      if (workerMgmtCompanyFilter !== "전체") {
-        if (workerMgmtCompanyFilter === "삼랑진공장") {
-          if (w.company !== "오륙" && w.company !== "유성") return false;
-        } else if (workerMgmtCompanyFilter === "한림공장") {
-          if (w.company !== "조영" && w.company !== "한울" && w.company !== "부림텍") return false;
-        } else {
-          if (cleanCompanyName(w.company) !== cleanCompanyName(workerMgmtCompanyFilter)) return false;
-        }
+      // 5개사 독립 모듈 필터
+      if (workerMgmtCompanyFilter && workerMgmtCompanyFilter !== "전체") {
+        if (cleanCompanyName(w.company) !== cleanCompanyName(workerMgmtCompanyFilter)) return false;
       }
 
       // Skill Level Filter
@@ -2170,57 +1998,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // 🔒 Master Matrix with Dynamic Reconciliation (2026년 10월 이후는 원장이 단일 진실 원천이므로 자동 치유 비활성화)
-  const { effectiveMatrix, hasHealedMatrix } = useMemo(() => {
-    const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
-    const isNewArchitecture = currentYear > 2026 || (currentYear === 2026 && currentMonthNum >= 10);
-    if (isNewArchitecture) {
-      return { effectiveMatrix: rawMatrix, hasHealedMatrix: false };
-    }
-    const { matrix: reconciled, hasHealed } = reconcileMatrixWithReports(
-      rawMatrix,
-      legacyReports || [],
-      currentYear,
-      currentMonthNum
-    );
-    return { effectiveMatrix: reconciled, hasHealedMatrix: hasHealed };
-  }, [smartData, legacyReports, currentYear, currentMonthNum]);
+  // 🔒 Master Matrix (단일 진실 원천)
+  const effectiveMatrix = useMemo(() => {
+    return smartData?.attendanceMatrix || smartData?.masterWorkers || [];
+  }, [smartData]);
 
-  // 🔒 Background Auto-Healing write-back permanently disabled to eliminate background mutation side-effects.
-
-  // Calculations & Summaries for 5 Companies (실시간 보고서와 통합된 effectiveMatrix 기준)
+  // Calculations & Summaries for 5 Companies
   const dailySummary = useMemo(() => {
     return calculateDailySummary(effectiveMatrix || [], selectedDay, currentYear, currentMonthNum);
   }, [effectiveMatrix, selectedDay, currentYear, currentMonthNum]);
-
-  const companySummary = useMemo(() => {
-    return calculateCompanySummary(effectiveMatrix || []);
-  }, [effectiveMatrix]);
-
-  const deptSummary = useMemo(() => {
-    return calculateDeptSummary(effectiveMatrix || [], selectedDay);
-  }, [effectiveMatrix, selectedDay]);
 
   const unwrittenCompanies = useMemo(() => {
     const d = selectedDay || 1;
     const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     return COMPANIES.filter((comp) => {
       const cleanComp = cleanCompanyName(comp);
-      // 1. 등록된 근태/특근 보고서가 존재하는지 확인
+      // 1. 등록된 특근 보고서가 존재하는지 확인
       const hasReport = (legacyReports || []).some((r) => {
         if (!r) return false;
         const rDateKey = getReportDateSortKey(r);
         if (rDateKey !== targetDateStr) return false;
         const rComp = cleanCompanyName(r.company || "");
-        if (rComp && rComp !== "전체" && rComp !== "5개사 통합" && rComp !== "전사" && rComp !== "통합" && rComp !== "ALL") {
-          return rComp === cleanComp;
-        }
-        if (Array.isArray(r.companies) && r.companies.length > 0) {
-          return r.companies.some((c) => cleanCompanyName(c) === cleanComp);
-        }
-        return false;
+        return rComp === cleanComp;
       });
-      // 보고서 등록 또는 원장 입력 시 작성완료(unwritten = false) 판정
       if (hasReport) return false;
       const approvalKey = `${cleanComp}_${d}`;
       const approvalStatus = smartData?.companyApprovalStatus?.[approvalKey]?.status || "DRAFT";
@@ -2335,83 +2135,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
   }, [selectedCompanyPopup, dailySummary, effectiveMatrix, selectedDay, personnelCardsMap]);
 
-  // Real-time Plant Summary for the Selected Upcoming Weekend
-  const weekendPlantSummary = useMemo(() => {
-    const day = selectedWeekendDay; // e.g. 12 (or 5)
-    const matrix = effectiveMatrix || [];
-
-    // 1. 삼랑진공장 ((주)오륙 + 유성)
-    const samWorkers = matrix.filter((w) => {
-      const isSam = w.company === "(주)오륙" || w.company === "유성" || w.company === "오륙" || w.company === "유성산업";
-      const val = w.daily ? w.daily[day] : "";
-      const { isAttended, workHours } = calculateWorkerDailyHours(val);
-      return isSam && isAttended && workHours > 0;
-    });
-
-    const samHours = samWorkers.reduce((sum, w) => {
-      const { workHours } = calculateWorkerDailyHours(w.daily?.[day]);
-      return sum + (workHours || 8);
-    }, 0);
-    const samCost = samHours * 15000;
-
-    const samLineMap = {};
-    samWorkers.forEach((w) => {
-      const cat = w.line || normalizeDept(w.dept) || "가공";
-      samLineMap[cat] = (samLineMap[cat] || 0) + 1;
-    });
-    let samLines = Object.entries(samLineMap).map(([name, count]) => ({ name, count }));
-
-    // 2. 한림공장 ((주)조영산업 + 한울 + 부림텍)
-    const halWorkers = matrix.filter((w) => {
-      const isHal = w.company === "(주)조영산업" || w.company === "한울" || w.company === "부림텍";
-      const val = w.daily ? w.daily[day] : "";
-      const { isAttended, workHours } = calculateWorkerDailyHours(val);
-      return isHal && isAttended && workHours > 0;
-    });
-
-    const halHours = halWorkers.reduce((sum, w) => {
-      const { workHours } = calculateWorkerDailyHours(w.daily?.[day]);
-      return sum + (workHours || 8);
-    }, 0);
-    const halCost = halHours * 15000;
-
-    const halLineMap = {};
-    halWorkers.forEach((w) => {
-      const cat = w.line || normalizeDept(w.dept) || "가공";
-      halLineMap[cat] = (halLineMap[cat] || 0) + 1;
-    });
-    let halLines = Object.entries(halLineMap).map(([name, count]) => ({ name, count }));
-
-    const dayNumStr = String(day).padStart(2, "0");
-    const monthNumStr = String(currentMonthNum).padStart(2, "0");
-    const dayLabelStr = getDayLabel(day);
-
-    return {
-      samrangjin: {
-        plant: "삼랑진공장",
-        companies: "(주)오륙, 유성",
-        dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
-        author: "조인주 선임",
-        headcount: samWorkers.length,
-        manHours: samHours,
-        cost: samCost,
-        lines: samLines,
-        reportId: `report_samrangjin_${currentYear}_${monthNumStr}_${dayNumStr}`
-      },
-      hallim: {
-        plant: "한림공장",
-        companies: "(주)조영산업, 한울, 부림텍",
-        dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
-        author: (dayLabelStr === "일" ? "황수현 선임" : "오상민 선임"),
-        headcount: halWorkers.length,
-        manHours: halHours,
-        cost: halCost,
-        lines: halLines,
-        reportId: `report_hanlim_${currentYear}_${monthNumStr}_${dayNumStr}`
-      }
-    };
-  }, [selectedWeekendDay, smartData, currentYear, currentMonthNum, getDayLabel]);
-
   return (
     <div className="space-y-4 sm:space-y-6 pb-16 min-w-0 max-w-full">
       {/* Toast Notification */}
@@ -2463,7 +2186,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <span>상세</span>
             </button>
 
-            {/* 2. 근태보고서 관리 */}
+            {/* 2. 특근보고서 관리 (5개사 개별 상신) */}
             <button
               type="button"
               onClick={() => setActiveTab("legacy_reports")}
@@ -2474,7 +2197,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               }`}
             >
               <FileText className="w-3.5 h-3.5 text-purple-400" />
-              <span>근태보고서 관리</span>
+              <span>특근보고서 관리</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
                 activeTab === "legacy_reports"
                   ? "bg-purple-100 text-purple-900"
@@ -2747,7 +2470,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 </div>
               </div>
 
-              {/* Right Group: 1단계 심플 승인 관리 바 */}
+              {/* Right Group: 평일 작성자 전결 / 특근 5개사 개별 상신 바 */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {(() => {
                   const currentComp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
@@ -2755,13 +2478,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   const approvalInfo = smartData?.companyApprovalStatus?.[approvalKey] || { status: "DRAFT" };
                   const isApproved = approvalInfo.status === "APPROVED";
                   const isSubmitted = approvalInfo.status === "SUBMITTED";
+                  const isWkDay = isWeekendDay(selectedDay);
 
                   if (isApproved) {
                     return (
                       <div className="flex items-center gap-2">
                         <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-400/50 flex items-center gap-1.5 shadow-sm">
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span>✅ 최종 승인 마감 ({approvalInfo.approvedBy || "대표이사"})</span>
+                          <span>
+                            {isWkDay
+                              ? `✅ 특근 최종 승인 마감 (${approvalInfo.approvedBy || "대표이사"})`
+                              : `✅ 평일 전결 완료 (${approvalInfo.approvedBy || "작성자 전결"})`}
+                          </span>
                         </span>
                         <button
                           type="button"
@@ -2780,14 +2508,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     return (
                       <div className="flex items-center gap-2">
                         <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1.5 shadow-sm animate-pulse">
-                          <span>🟡 마감 상신됨 (승인 대기)</span>
+                          <span>🟡 특근보고서 상신됨 (승인 대기)</span>
                         </span>
                         <button
                           type="button"
                           onClick={handleApproveCompanyDayAttendance}
                           disabled={isSaving}
                           className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-                          title="클릭 시 당일 근태를 최종 승인 완료(마감)합니다."
+                          title="클릭 시 당일 특근을 최종 승인 완료(마감)합니다."
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>✅ 최종 승인</span>
@@ -2811,11 +2539,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       type="button"
                       onClick={handleSubmitCompanyDayAttendance}
                       disabled={isSaving}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950"
-                      title="당일 근태 입력을 등록하고 상신합니다."
+                      className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
+                        isWkDay
+                          ? "bg-purple-500 hover:bg-purple-400 text-white"
+                          : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
+                      }`}
+                      title={
+                        isWkDay
+                          ? "해당 업체의 개별 특근보고서를 작성하여 전자결재 상신합니다."
+                          : "평일 근태보고는 작성자 전결로 즉시 완료(마감) 처리됩니다."
+                      }
                     >
-                      <Send className="w-4 h-4" />
-                      <span>📤 [{currentComp}] 오늘({getDayLabel(selectedDay)}) 등록</span>
+                      {isWkDay ? <Send className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>
+                        {isWkDay
+                          ? `📤 [${currentComp}] ${currentMonthNum}/${selectedDay}(${getDayLabel(selectedDay)}) 특근보고서 개별 상신`
+                          : `✅ [${currentComp}] ${currentMonthNum}/${selectedDay}(${getDayLabel(selectedDay)}) 평일 근태 완료 (작성자 전결)`}
+                      </span>
                     </button>
                   );
                 })()}
@@ -2832,6 +2572,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               const approvalInfo = smartData?.companyApprovalStatus?.[approvalKey] || { status: "DRAFT" };
               const isApproved = approvalInfo.status === "APPROVED";
               const isSubmitted = approvalInfo.status === "SUBMITTED";
+              const isWkDay = isWeekendDay(selectedDay);
 
               if (isApproved) {
                 return (
@@ -2840,11 +2581,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <span className="text-xl">🎉</span>
                       <div>
                         <div className="font-black text-xs sm:text-sm flex items-center gap-2 text-emerald-300">
-                          <span>[{currentComp}] {currentMonthNum}월 {selectedDay}일 일일 근태 최종 승인 완료 (마감)</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">승인 마감</span>
+                          <span>
+                            {isWkDay
+                              ? `[${currentComp}] ${currentMonthNum}월 ${selectedDay}일 특근보고서 최종 승인 완료 (마감)`
+                              : `[${currentComp}] ${currentMonthNum}월 ${selectedDay}일 평일 근태 완료 (작성자 전결 마감)`}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            {isWkDay ? "특근 승인 마감" : "작성자 전결"}
+                          </span>
                         </div>
                         <p className="text-[11px] text-emerald-400/80 mt-0.5">
-                          {approvalInfo.approvedBy || "대표이사"}님이 {approvalInfo.approvedAt || "최종 승인"} 완료하였습니다. (수정이 필요한 경우 우측 마감 해제를 눌러주세요)
+                          {approvalInfo.approvedBy || "작성자 전결"} ({approvalInfo.approvedAt || "완료"}) 처리되었습니다. (수정이 필요한 경우 우측 마감 해제를 눌러주세요)
                         </p>
                       </div>
                     </div>
@@ -2866,11 +2613,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <span className="text-xl">🟡</span>
                       <div>
                         <div className="font-black text-xs sm:text-sm flex items-center gap-2 text-amber-300">
-                          <span>[{currentComp}] {currentMonthNum}월 {selectedDay}일 마감 상신 접수 (승인 대기 중)</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">승인 대기</span>
+                          <span>[{currentComp}] {currentMonthNum}월 {selectedDay}일 개별 특근보고서 상신 접수 (결재 대기 중)</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">특근 결재 대기</span>
                         </div>
                         <p className="text-[11px] text-amber-400/80 mt-0.5">
-                          {approvalInfo.submittedBy || "현장관리자"}님이 {approvalInfo.submittedAt || "방금"} 마감 상신하였습니다.
+                          {approvalInfo.submittedBy || "현장관리자"}님이 {approvalInfo.submittedAt || "방금"} [{currentComp}] 개별 특근보고서를 상신하였습니다.
                         </p>
                       </div>
                     </div>
@@ -3999,27 +3746,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
           {/* 4. Filter Controls Bar */}
           <div className="p-2 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-            {/* Left: Company Filter Pills */}
+            {/* Left: 5개사 독립 모듈 필터 */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
                 <Filter className="w-3.5 h-3.5 text-purple-500" />
-                <span>업체:</span>
+                <span>업체(5개사 독립):</span>
               </span>
 
               {/* 삼랑진 그룹 */}
               <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-amber-600/50 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setWorkerMgmtCompanyFilter("삼랑진공장")}
-                  className={`text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-0.5 transition-all cursor-pointer ${
-                    workerMgmtCompanyFilter === "삼랑진공장"
-                      ? "bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300"
-                      : "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50"
-                  }`}
-                >
-                  <Factory className="w-3 h-3" />
-                  <span>삼랑진공장</span>
-                </button>
+                <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-amber-950 text-amber-300 border border-amber-700/60 flex items-center gap-0.5">
+                  <Factory className="w-3 h-3 text-amber-400" />
+                  <span>삼랑진</span>
+                </span>
                 {["오륙", "유성"].map((comp) => (
                   <button
                     key={comp}
@@ -4038,18 +3777,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
               {/* 한림 그룹 */}
               <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-emerald-600/50 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setWorkerMgmtCompanyFilter("한림공장")}
-                  className={`text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-0.5 transition-all cursor-pointer ${
-                    workerMgmtCompanyFilter === "한림공장"
-                      ? "bg-emerald-500 text-slate-950 shadow-xs ring-1 ring-emerald-300"
-                      : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
-                  }`}
-                >
-                  <Factory className="w-3 h-3" />
-                  <span>한림공장</span>
-                </button>
+                <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700/60 flex items-center gap-0.5">
+                  <Factory className="w-3 h-3 text-emerald-400" />
+                  <span>한림</span>
+                </span>
                 {["조영", "한울", "부림텍"].map((comp) => (
                   <button
                     key={comp}
@@ -4353,32 +4084,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📑 TAB 3: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
+      {/* 📑 TAB 3: 특근보고서 관리 (5개사 개별 특근보고서 상신 전용 - 취합 없음) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
           {(() => {
-            const synthReports = generateSynthesizedPlantReports(legacyReports);
-            const weekdayReports = (legacyReports || []).filter((r) => !isWeekendByDate(r.workDate || r.title));
-            const baseList = [...weekdayReports, ...synthReports];
+            const baseList = (legacyReports || []).filter(
+              (r) => r && !r.isSynthesized && isWeekendByDate(r.workDate || r.title)
+            );
 
             const filtered = baseList.filter((r) => {
-              if (reportListFilter !== "전체") {
-                const matchPlant = r.plant === reportListFilter;
-                let matchComp = false;
-                if (r.isSynthesized) {
-                  matchComp = Array.isArray(r.companies) && r.companies.some((c) => 
-                    c === reportListFilter || 
-                    c.includes(reportListFilter.replace(/\(주\)/g, "").trim()) ||
-                    reportListFilter.includes(c.replace(/\(주\)/g, "").trim())
-                  );
-                } else {
-                  matchComp =
-                    r.company === reportListFilter ||
-                    (Array.isArray(r.companies) && r.companies.includes(reportListFilter)) ||
-                    (typeof r.company === "string" && r.company.includes(reportListFilter.replace(/\(주\)/g, "").trim()));
-                }
-                if (!matchPlant && !matchComp) return false;
+              if (reportListFilter && reportListFilter !== "전체") {
+                const rComp = cleanCompanyName(r.company || "");
+                const fComp = cleanCompanyName(reportListFilter);
+                if (rComp !== fComp) return false;
               }
               if (reportListSearch.trim()) {
                 const q = reportListSearch.toLowerCase().trim();
@@ -4389,7 +4108,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   r.author,
                   r.plant,
                   r.company,
-                  ...(Array.isArray(r.companies) ? r.companies : []),
                   ...(Array.isArray(r.reasons) ? r.reasons.map((rs) => (typeof rs === "string" ? rs : rs.text || "")) : [])
                 ]
                   .filter(Boolean)
@@ -4409,20 +4127,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 if (dateB !== dateA) return dateB.localeCompare(dateA);
               }
 
-              // Same date secondary sort: Samrangjin first, then Hallim
-              const plantOrder = { "삼랑진공장": 1, "한림공장": 2 };
-              const plantA = plantOrder[a.plant] || 3;
-              const plantB = plantOrder[b.plant] || 3;
-              if (plantA !== plantB) return plantA - plantB;
-
-              // Synthesized reports first, then individual reports
-              if (a.isSynthesized && !b.isSynthesized) return -1;
-              if (!a.isSynthesized && b.isSynthesized) return 1;
-
-              return (a.company || "").localeCompare(b.company || "");
+              const orderA = COMPANIES.indexOf(cleanCompanyName(a.company));
+              const orderB = COMPANIES.indexOf(cleanCompanyName(b.company));
+              return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
             });
 
-            // 날짜별 그룹화 (같은 날짜면 좌측에 날짜 1개만 사용)
+            // 날짜별 그룹화
             const dateGroups = [];
             const dateGroupMap = new Map();
 
@@ -4442,34 +4152,27 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
             return (
               <div className="space-y-3">
-                {/* 🧭 소속 공장/협력사 필터 & 날짜정렬 & 검색창 (단일 깔끔 제어바) */}
+                {/* 🧭 5개사 개별 필터 & 날짜정렬 & 검색창 */}
                 <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-                  {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
+                  {/* Left: 5개사 개별 필터 버튼군 */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-slate-400 mr-0.5 flex items-center gap-1 shrink-0">
                       <Filter className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>소속:</span>
+                      <span>5개사 개별 특근보고서:</span>
                     </span>
 
-                    {/* 삼랑진공장 그룹 */}
+                    {/* 삼랑진 그룹 */}
                     <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => setReportListFilter("삼랑진공장")}
-                        className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          reportListFilter === "삼랑진공장"
-                            ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                            : "text-amber-300 hover:bg-amber-950"
-                        }`}
-                      >
-                        삼랑진공장
-                      </button>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-950 text-amber-300 font-black text-xs border border-amber-700/60 flex items-center gap-1">
+                        <Factory className="w-3 h-3 text-amber-400" />
+                        <span>삼랑진</span>
+                      </span>
                       {["오륙", "유성"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
                           onClick={() => setReportListFilter(comp)}
-                          className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                          className={`px-2.5 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
                             reportListFilter === comp
                               ? "bg-amber-400 text-slate-950 font-black shadow-xs"
                               : "text-slate-300 hover:text-white hover:bg-slate-800"
@@ -4480,25 +4183,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       ))}
                     </div>
 
-                    {/* 한림공장 그룹 */}
+                    {/* 한림 그룹 */}
                     <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-emerald-700/60 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => setReportListFilter("한림공장")}
-                        className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                          reportListFilter === "한림공장"
-                            ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
-                            : "text-emerald-300 hover:bg-emerald-950"
-                        }`}
-                      >
-                        한림공장
-                      </button>
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 font-black text-xs border border-emerald-700/60 flex items-center gap-1">
+                        <Factory className="w-3 h-3 text-emerald-400" />
+                        <span>한림</span>
+                      </span>
                       {["조영", "한울", "부림텍"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
                           onClick={() => setReportListFilter(comp)}
-                          className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                          className={`px-2.5 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
                             reportListFilter === comp
                               ? "bg-emerald-400 text-slate-950 font-black shadow-xs"
                               : "text-slate-300 hover:text-white hover:bg-slate-800"
@@ -4512,7 +4208,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
                   {/* Right: 날짜 정렬 버튼 + 검색창 */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    {/* 날짜 정렬 버튼 */}
                     <button
                       type="button"
                       onClick={() => setDateSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"))}
@@ -4523,12 +4218,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <span>{dateSortOrder === "DESC" ? "📅 가까운 날순 (최신순) ▼" : "📅 과거순 (1일→30일) ▲"}</span>
                     </button>
 
-                    {/* 검색창 */}
                     <div className="relative w-full sm:w-52 shrink-0">
                       <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                       <input
                         type="text"
-                        placeholder="보고서 검색 (일자/업체)..."
+                        placeholder="특근보고서 검색 (일자/업체)..."
                         value={reportListSearch}
                         onChange={(e) => setReportListSearch(e.target.value)}
                         className="w-full pl-7 pr-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 outline-hidden"
@@ -4537,16 +4231,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* 📋 Registered & Synthesized Reports List Cards (Grouped by Date) */}
+                {/* 📋 5개사 개별 특근보고서 목록 */}
                 {sortedFiltered.length === 0 ? (
                   <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
                     <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
                     <div className="space-y-1">
-                      <h4 className="font-black text-base text-white">조건에 해당하는 근태/특근 보고서가 없습니다</h4>
+                      <h4 className="font-black text-base text-white">등록된 [{reportListFilter}] 개별 특근보고서가 없습니다</h4>
                       <p className="text-xs text-slate-400">
-                        {reportListFilter !== "전체" || reportListSearch
-                          ? "선택된 소속 또는 검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
-                          : "'📝 근태/잔업/특근 등록' 탭에서 인원 근태를 작성한 후 보고서를 등록해보세요."}
+                        평일 근태는 작성자 전결로 처리되며, 특근일(주말/공휴일)에만 5개사 개별 특근보고서가 상신됩니다.
                       </p>
                     </div>
                     <button
@@ -4554,7 +4246,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>근태/잔업/특근 등록하러 가기</span>
+                      <span>특근 등록하러 가기</span>
                     </button>
                   </div>
                 ) : (
@@ -4562,58 +4254,25 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     {dateGroups.map((group, gIdx) => {
                       const sampleDateStr = group.workDate;
                       const formattedDate = formatShortMonthDay(sampleDateStr);
-                      const isGroupWeekend = isWeekendByDate(sampleDateStr);
 
                       return (
                         <div
                           key={group.dateKey || gIdx}
                           className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 sm:p-2.5 rounded-xl bg-slate-950 border border-slate-800/90 shadow-xs"
                         >
-                          {/* 📅 Left: Ultra-compact Minimized Date Pill Badge (공간 극대화 초소형 뱃지) */}
+                          {/* 📅 Left: 특근 일자 뱃지 */}
                           <div className="shrink-0 flex items-center justify-start sm:justify-center">
-                            <span
-                              className={`px-2 py-1 rounded-lg text-xs font-mono font-black border tracking-tight flex items-center gap-1.5 shrink-0 ${
-                                isGroupWeekend
-                                  ? "bg-rose-950/80 text-rose-300 border-rose-700/80 shadow-2xs"
-                                  : "bg-emerald-950/80 text-emerald-300 border-emerald-700/80 shadow-2xs"
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isGroupWeekend ? "bg-rose-400" : "bg-emerald-400"}`} />
+                            <span className="px-2 py-1 rounded-lg text-xs font-mono font-black border tracking-tight flex items-center gap-1.5 shrink-0 bg-rose-950/80 text-rose-300 border-rose-700/80 shadow-2xs">
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-rose-400" />
                               <span>{formattedDate}</span>
                             </span>
                           </div>
 
-                          {/* 📋 Right: Simple List of Reports */}
+                          {/* 📋 Right: 개별 특근보고서 목록 */}
                           <div className="flex-1 min-w-0 space-y-1">
                             {group.reports.map((report, rIdx) => {
-                              const isSynthesized = !!report.isSynthesized;
-                              let plantName = report.plant;
-                              if (!plantName || plantName.includes("삼랑진/한림") || plantName.includes("삼랑진한림") || plantName.includes("전체")) {
-                                plantName = getPlantForCompany(report.company || "");
-                              }
-                              if (report.company?.includes("조영") || report.company?.includes("한울") || report.company?.includes("부림")) {
-                                plantName = "한림공장";
-                              } else if (report.company?.includes("오륙") || report.company?.includes("유성")) {
-                                plantName = "삼랑진공장";
-                              }
-                              let companyName = report.company || "";
-                              if (!companyName || companyName === "전체") {
-                                if (Array.isArray(report.companies) && report.companies.length === 1) {
-                                  companyName = report.companies[0];
-                                } else if (Array.isArray(report.companies) && report.companies.length > 1) {
-                                  companyName = report.companies.join(", ");
-                                } else if (plantName === "한림공장") {
-                                  companyName = "(주)조영산업";
-                                } else {
-                                  companyName = "(주)오륙";
-                                }
-                              }
-
-                              const isWeekend = isWeekendByDate(report.workDate || report.title);
-                              const reportBadgeText = isSynthesized
-                                ? (isWeekend ? "특근보고서 (취합)" : "근태보고서 (취합)")
-                                : (isWeekend ? "특근보고서" : "근태보고서");
-
+                              const companyName = cleanCompanyName(report.company || "오륙");
+                              const plantName = getPlantForCompany(companyName);
                               const cost = report.cost || (report.totalHours ? report.totalHours * 15000 : 0);
                               const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
 
@@ -4621,63 +4280,32 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 <div
                                   key={report.id || rIdx}
                                   onClick={() => handleOpenLegacyReport(report)}
-                                  className={`px-2.5 py-1.5 rounded-lg transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-pointer border ${
-                                    isSynthesized
-                                      ? "border-indigo-600/60 bg-indigo-950/30 hover:border-indigo-400 hover:bg-indigo-950/50 shadow-xs"
-                                      : isWeekend
-                                      ? "border-slate-800 bg-slate-900/60 hover:border-rose-500/60 hover:bg-slate-900"
-                                      : "border-slate-800 bg-slate-900/60 hover:border-emerald-500/60 hover:bg-slate-900"
-                                  }`}
+                                  className="px-2.5 py-1.5 rounded-lg transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-pointer border border-slate-800 bg-slate-900/60 hover:border-rose-500/60 hover:bg-slate-900"
                                 >
-                                  {/* Left: 보고서 뱃지 + 공장 뱃지 + 회사 뱃지 */}
+                                  {/* Left: 특근보고서 뱃지 + 공장 뱃지 + 회사 뱃지 */}
                                   <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap min-w-0">
-                                    {/* 1. 보고서 뱃지 */}
-                                    <span
-                                      className={`px-2 py-0.5 rounded-md text-[11px] font-black shrink-0 border ${
-                                        isSynthesized
-                                          ? "bg-indigo-950 text-indigo-300 border-indigo-500/80 shadow-xs"
-                                          : isWeekend
-                                          ? "bg-rose-950 text-rose-300 border-rose-600/80"
-                                          : "bg-emerald-950 text-emerald-300 border-emerald-600/80"
-                                      }`}
-                                    >
-                                      {reportBadgeText}
+                                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black shrink-0 border bg-rose-950 text-rose-300 border-rose-600/80">
+                                      특근보고서 (개별)
                                     </span>
-
-                                    {/* 2. 공장 뱃지 (삼랑진공장, 한림공장) */}
                                     {renderPlantBadge(plantName)}
-
-                                    {/* 3. 회사 뱃지 (실제 내용이 있는 업체만 렌더링) */}
-                                    {isSynthesized ? (
-                                      Array.isArray(report.companies) && report.companies.length > 0 ? (
-                                        <div className="flex items-center gap-1 flex-wrap shrink-0">
-                                          {report.companies.map((c) => renderCompanyBadge(c))}
-                                        </div>
-                                      ) : report.company ? (
-                                        renderCompanyBadge(report.company)
-                                      ) : null
-                                    ) : (
-                                      renderCompanyBadge(companyName)
-                                    )}
+                                    {renderCompanyBadge(companyName)}
                                   </div>
 
-                                  {/* Right: 금액 + 초소형 미니멀 수정/삭제 뱃지 */}
+                                  {/* Right: 금액 + 수정/삭제 버튼 */}
                                   <div
                                     className="flex items-center gap-2 shrink-0 justify-between sm:justify-end"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {/* 금액 및 인원 */}
                                     <span className="text-xs font-mono font-black text-white shrink-0 tracking-tight">
                                       ₩{cost.toLocaleString()} <span className="text-[10.5px] text-slate-400 font-normal">({workersCount}명)</span>
                                     </span>
 
-                                    {/* 초소형 미니멀 액션 뱃지 버튼 (수정 / 삭제) */}
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
                                         onClick={() => handleEditReport(report)}
                                         className="px-1.5 py-0.5 rounded-md bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-[10.5px] flex items-center gap-0.5 cursor-pointer active:scale-95 transition-all shadow-2xs"
-                                        title="해당 일자 및 업체 근태/특근 수정 화면으로 이동"
+                                        title="해당 일자 및 업체 특근 수정 화면으로 이동"
                                       >
                                         <Edit3 className="w-2.5 h-2.5 text-cyan-400" />
                                         <span>수정</span>
@@ -4686,7 +4314,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         type="button"
                                         onClick={(e) => handleDeleteReport(report, e)}
                                         className="px-1.5 py-0.5 rounded-md bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-600 font-bold text-[10.5px] flex items-center gap-0.5 cursor-pointer active:scale-95 transition-all shadow-2xs"
-                                        title="보고서 삭제"
+                                        title="특근보고서 삭제"
                                       >
                                         <Trash2 className="w-2.5 h-2.5 text-rose-400" />
                                         <span>삭제</span>
@@ -5113,7 +4741,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         </div>
       )}
 
-      {/* 📑 MODAL: 근태/특근보고서 상세 확인 및 결재 모달 (등록 모달과 100% 동일한 정식 서식 + 공장별 취합 세부 내역 지원) */}
+      {/* 📑 MODAL: 5개사 개별 특근보고서 상세 확인 및 결재 모달 */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
         <div
@@ -5121,54 +4749,25 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
         >
           {(() => {
-            const isSynthesized = !!selectedLegacyReport.isSynthesized;
-            const isWk = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
             const rawTitle = selectedLegacyReport.title || "";
-            const repType = isSynthesized
-              ? (isWk ? "특근보고서 (취합)" : "근태보고서 (취합)")
-              : (isWk ? "특근보고서" : "근태보고서");
-
-            // ⭐ 실시간 전자결재 상태 및 결재선 연동
             const liveApproval = getLiveApprovalForReport(selectedLegacyReport, approvalDocs);
-
-            let cleanTitle = rawTitle;
-            if (!isSynthesized) {
-              if (isWk) {
-                cleanTitle = cleanTitle
-                  .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근보고서");
-                if (!cleanTitle.includes("특근보고서")) cleanTitle += " 특근보고서";
-              } else {
-                cleanTitle = cleanTitle
-                  .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|특근보고서|근태 및 특근보고서/g, "근태보고서");
-                if (!cleanTitle.includes("근태보고서")) cleanTitle += " 근태보고서";
-              }
-            }
+            let cleanTitle = rawTitle.replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근보고서");
+            if (!cleanTitle.includes("특근보고서")) cleanTitle += " 특근보고서";
 
             return (
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] cursor-default ${
-            isSynthesized
-              ? "border-2 border-indigo-500 shadow-indigo-950/50"
-              : isWk
-              ? "border-2 border-rose-500 shadow-rose-950/40"
-              : "border-2 border-cyan-400"
-          }`}>
+            className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] cursor-default border-2 border-rose-500 shadow-rose-950/40"
+          >
             {/* Modal Header */}
             <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className={`p-1.5 rounded-lg border ${
-                  isSynthesized
-                    ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
-                    : isWk
-                    ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
-                    : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
-                }`}>
-                  {isSynthesized ? <Sparkles className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                <span className="p-1.5 rounded-lg border bg-rose-500/20 text-rose-400 border-rose-500/30">
+                  <FileText className="w-5 h-5" />
                 </span>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
-                    <span>{isSynthesized ? "공장별 통합 취합 보고서 상세 내역" : "근태 및 특근실시 보고서 상세 내역"}</span>
+                    <span>[{cleanCompanyName(selectedLegacyReport.company || "오륙")}] 개별 특근보고서 상세 내역</span>
                     <span className="text-xs px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800 font-mono">
                       {selectedLegacyReport.workDateFormatted || selectedLegacyReport.workDate}
                     </span>
@@ -5198,18 +4797,18 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                     <div>
                       <span className="text-slate-400 font-bold block pb-0.5">작성자:</span>
-                      <span className="font-bold text-white">{selectedLegacyReport.author || "양인나 선임"}</span>
+                      <span className="font-bold text-white">{selectedLegacyReport.author || "현장관리자"}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-bold block pb-0.5">대상 업체/공장:</span>
+                      <span className="text-slate-400 font-bold block pb-0.5">소속 업체 (개별 상신):</span>
                       <span className="font-bold text-cyan-300">
-                        {selectedLegacyReport.company || selectedLegacyReport.plant || "통합"}
+                        {cleanCompanyName(selectedLegacyReport.company || "오륙")} ({getPlantForCompany(selectedLegacyReport.company || "오륙")})
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* 4 Approval Blocks (실제 전자결재함과 실시간 100% 동기화) */}
+                {/* 4 Approval Blocks */}
                 <div className="shrink-0 space-y-1">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[10.5px] font-black text-purple-300 flex items-center gap-1">
@@ -5226,7 +4825,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         : "text-yellow-400 animate-pulse"
                     }`}>
                       {liveApproval.status === "APPROVED"
-                        ? (!isWk ? "🟢 작성자 전결 승인 완료" : "🟢 결재 완료 (4/4)")
+                        ? "🟢 결재 완료 (4/4)"
                         : liveApproval.status === "HOLD"
                         ? "⏸️ 결재 보류"
                         : liveApproval.status === "REJECTED"
@@ -5264,7 +4863,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 <div className={`w-10 h-10 rounded-full border-2 ${sIdx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-5deg] select-none bg-white animate-scaleUp`}>
                                   <span className="text-[7px] font-bold">{cleanCompanyName(selectedLegacyReport.company || "오륙")}</span>
                                   <span className="text-[10px] font-black">{st.name?.slice(0, 3)}</span>
-                                  <span className="text-[7px]">{sIdx === 0 ? "기안" : (!isWk ? "전결" : "승인")}</span>
+                                  <span className="text-[7px]">{sIdx === 0 ? "기안" : "승인"}</span>
                                 </div>
                               )
                             ) : isHoldStep ? (
@@ -5290,7 +4889,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         );
                       })}
                     </div>
-                    {/* 날짜 행 */}
                     <div className="grid grid-cols-4 divide-x divide-slate-300 text-center text-[9.5px] bg-slate-50 text-slate-600 font-mono py-0.5 border-t border-slate-200">
                       {liveApproval.steps.map((st, sIdx) => (
                         <div key={sIdx} className="truncate px-0.5">
@@ -5304,56 +4902,32 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
               {/* Summary KPIs & Worker breakdown */}
               {(() => {
-                const isWkReport = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
                 const rawItems = selectedLegacyReport.items || [];
-
-                // Attended vs Non-attended
                 const attendedItems = rawItems.filter(it => {
                   const code = String(it.attendanceCode || it.category || "").trim();
                   const hrs = Number(it.hours) || 0;
-                  if (isWkReport) {
-                    if (code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0) {
-                      return false;
-                    }
-                    return true;
+                  if (code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0) {
+                    return false;
                   }
-                  return code !== "-" && code !== "미입력";
+                  return true;
                 });
 
                 const offItems = rawItems.filter(it => {
                   const code = String(it.attendanceCode || it.category || "").trim();
                   const hrs = Number(it.hours) || 0;
-                  if (isWkReport) {
-                    return code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0;
-                  }
-                  return false;
+                  return code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0;
                 });
 
-                const workersCount = isWkReport
-                  ? (attendedItems.length > 0 ? attendedItems.length : (selectedLegacyReport.totalWorkers || 0))
-                  : (selectedLegacyReport.totalWorkers || (rawItems.length > 0 ? rawItems.length : 0));
-
-                const totalHours = isWkReport
-                  ? (attendedItems.reduce((acc, it) => acc + (Number(it.hours) || 8), 0) || selectedLegacyReport.totalHours || (workersCount * 8))
-                  : (selectedLegacyReport.totalHours || (workersCount * 8));
-
+                const workersCount = attendedItems.length > 0 ? attendedItems.length : (selectedLegacyReport.totalWorkers || 0);
+                const totalHours = attendedItems.reduce((acc, it) => acc + (Number(it.hours) || 8), 0) || selectedLegacyReport.totalHours || (workersCount * 8);
                 const cost = selectedLegacyReport.cost || (totalHours * 15000);
 
                 const getBadge = (code) => {
                   const str = String(code || "").trim();
-                  if (str === "🟢" || str === "정시" || str === "17") return { label: "🟢 정시", bg: "bg-emerald-950 text-emerald-300 border-emerald-700/80" };
-                  if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
-                  if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
-                  if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
                   if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
                   if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
-                  if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
-                  if (str === "결근") {
-                    if (isWkReport) return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
-                    return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
-                  }
-                  if (str === "-" || str === "휴무" || str === "미출근") return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
-                  return { label: isWkReport ? "🌙 특근(8H)" : (str || "정시"), bg: isWkReport ? "bg-purple-950 text-purple-300 border-purple-700" : "bg-emerald-950 text-emerald-300 border-emerald-700" };
+                  if (str === "-" || str === "휴무" || str === "미출근" || str === "결근") return { label: "- 미출근", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                  return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700" };
                 };
 
                 return (
@@ -5361,7 +4935,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     {/* Summary KPIs */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                       <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10.5px] text-slate-400 font-bold block">{isWkReport ? "총 특근 투입 인원" : "총 출근/투입 인원"}</span>
+                        <span className="text-[10.5px] text-slate-400 font-bold block">총 특근 투입 인원</span>
                         <span className="font-mono font-black text-sm text-emerald-400">{workersCount}명</span>
                       </div>
                       <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
@@ -5369,8 +4943,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <span className="font-mono font-black text-sm text-cyan-300">{totalHours} M/H</span>
                       </div>
                       <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                        <span className="text-[10.5px] text-slate-400 font-bold block">소속 공장/업체</span>
-                        <span className="font-mono font-black text-sm text-purple-400">{selectedLegacyReport.company || selectedLegacyReport.plant || "-"}</span>
+                        <span className="text-[10.5px] text-slate-400 font-bold block">소속 업체</span>
+                        <span className="font-mono font-black text-sm text-purple-400">{cleanCompanyName(selectedLegacyReport.company || "오륙")}</span>
                       </div>
                       <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
                         <span className="text-[10.5px] text-slate-400 font-bold block">예상 총 노무비</span>
@@ -5378,64 +4952,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </div>
                     </div>
 
-                    {/* ⭐ If Synthesized: Render Child Reports Breakdown by Company */}
-                    {isSynthesized && selectedLegacyReport.childReports && selectedLegacyReport.childReports.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>소속 협력사별 개별 보고서 취합 내역 ({selectedLegacyReport.childReports.length}개사)</span>
-                        </span>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                          {selectedLegacyReport.childReports.map((cr, crIdx) => {
-                            const crItems = cr.items || [];
-                            const crAttendedItems = crItems.filter(it => {
-                              const code = String(it.attendanceCode || it.category || "").trim();
-                              const hrs = Number(it.hours) || 0;
-                              if (isWkReport) {
-                                if (code === "결근" || code === "-" || code === "휴무" || code === "미출근" || code === "미입력" || hrs === 0) {
-                                  return false;
-                                }
-                                return true;
-                              }
-                              return code !== "-" && code !== "미입력";
-                            });
-                            const crWorkers = isWkReport ? (crAttendedItems.length > 0 ? crAttendedItems.length : (cr.totalWorkers || 0)) : (cr.totalWorkers || crItems.length);
-                            const crHours = cr.totalHours || (crWorkers * 8);
-                            const crCost = cr.cost || (crHours * 15000);
-                            return (
-                              <div key={crIdx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-black text-indigo-300 text-xs flex items-center gap-1">
-                                    <Factory className="w-3.5 h-3.5 text-indigo-400" />
-                                    <span>{cr.company}</span>
-                                  </span>
-                                  <span className="text-[11px] font-bold text-slate-400">
-                                    작성: {cr.author || "선임"}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
-                                  <span className="text-emerald-300 font-bold">{crWorkers}명 {isWkReport ? "특근" : "출근"}</span>
-                                  <span className="text-cyan-300 font-bold">{crHours} M/H</span>
-                                  <span className="text-rose-300 font-black">₩{crCost.toLocaleString()}</span>
-                                </div>
-                                {crAttendedItems.length > 0 && (
-                                  <div className="text-[10.5px] text-slate-400 truncate">
-                                    작업자: {crAttendedItems.map(it => it.workerName || it.names).filter(Boolean).join(", ")}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Reason / Notes Area */}
                     {selectedLegacyReport.reasons && selectedLegacyReport.reasons.length > 0 && (
                       <div className="space-y-1 p-3 rounded-xl bg-slate-950 border border-slate-800">
                         <span className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
                           <FileText className="w-3.5 h-3.5 text-purple-400" />
-                          <span>{isSynthesized ? "취합 사유 및 주요 작업 내용" : "특근 사유 및 주요 작업 내용"}</span>
+                          <span>특근 사유 및 주요 작업 내용</span>
                         </span>
                         <div className="space-y-1 text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">
                           {selectedLegacyReport.reasons.map((rs, rIdx) => (
@@ -5445,24 +4967,24 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </div>
                     )}
 
-                    {/* 1. 특근/출근 투입 작업자 명단 */}
+                    {/* 1. 특근 투입 작업자 명단 */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-purple-400" />
-                          <span>{isWkReport ? (isSynthesized ? "전체 특근 투입 작업자 통합 명단" : "특근 투입 작업자 명단") : (isSynthesized ? "전체 투입 작업자 통합 명단" : "투입 작업자 명단")} ({attendedItems.length}명)</span>
+                          <span>특근 투입 작업자 명단 ({attendedItems.length}명)</span>
                         </span>
                       </div>
 
                       <div className="border border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto bg-slate-950/60 p-2">
                         {attendedItems.length === 0 ? (
                           <div className="py-6 text-center text-slate-500 font-bold text-xs">
-                            등록된 투입 인원 정보가 없습니다.
+                            등록된 특근 투입 인원 정보가 없습니다.
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
                             {attendedItems.map((it, idx) => {
-                              const badge = getBadge(it.attendanceCode || it.category || (isWkReport ? "특근" : "정시"));
+                              const badge = getBadge(it.attendanceCode || it.category || "특근");
                               return (
                                 <div
                                   key={idx}
@@ -5485,8 +5007,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </div>
                     </div>
 
-                    {/* 2. 주말 미출근 명단 (미출근 인원이 등록되어 있을 경우 별도 표시) */}
-                    {isWkReport && offItems.length > 0 && (
+                    {/* 2. 미출근 명단 */}
+                    {offItems.length > 0 && (
                       <div className="space-y-2 mt-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <span className="font-black text-slate-400 text-xs flex items-center gap-1.5">
@@ -5524,24 +5046,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
             {/* Modal Footer Actions */}
             <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0 gap-2">
-              {!isSynthesized ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteReport(selectedLegacyReport.id)}
-                  className="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>보고서 삭제</span>
-                </button>
-              ) : (
-                <div className="text-xs text-slate-500 font-bold flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>소속 협력사 실시간 통합 취합 보고서</span>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => handleDeleteReport(selectedLegacyReport.id)}
+                className="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>보고서 삭제</span>
+              </button>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* 1-Click Approval Action if User Has Authority */}
                 {liveApproval.approvalDoc && (() => {
                   const perm = checkApprovalPermission(liveApproval.approvalDoc, currentProfile, isAdmin);
                   if (perm.canApprove) {
@@ -5571,7 +5085,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   type="button"
                   onClick={() => handleEditReport(selectedLegacyReport)}
                   className="px-4 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700 font-black text-xs cursor-pointer shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
-                  title="이 보고서의 근태/특근 수정 및 재등록 화면으로 이동합니다"
+                  title="이 보고서의 특근 수정 및 재등록 화면으로 이동합니다"
                 >
                   <Edit3 className="w-4 h-4 text-cyan-400" />
                   <span>✏️ 이 보고서 수정하기</span>
@@ -5631,22 +5145,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           onSaveSyncWithReports={() => {}}
         />
       )}
-
-      {/* ========================================================================= */}
-      {/* 🔍 MODAL: 전사 5개사 일괄 정합성 단일 검증 모달 */}
-      {/* ========================================================================= */}
-      <UnifiedAttendanceAuditModal
-        isOpen={isAuditModalOpen}
-        onClose={() => setIsAuditModalOpen(false)}
-        selectedDay={selectedDay}
-        currentYear={currentYear}
-        currentMonthNum={currentMonthNum}
-        attendanceMatrix={effectiveMatrix || smartData?.attendanceMatrix || []}
-        legacyReports={legacyReports || []}
-        onSelectCompany={(comp) => {
-          setSelectedCompanyFilter(comp);
-        }}
-      />
 
       {/* ========================================================================= */}
       {/* 🗑️ MODAL: 마스터 근로자 인원 영구 삭제 확인 모달 */}
