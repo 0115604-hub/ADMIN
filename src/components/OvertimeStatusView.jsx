@@ -480,7 +480,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
-      setSelectedCompanyPopup(null);
       setSelectedCompanyManageWorkers(null);
       setIsLegacyModalOpen(false);
       setSelectedLegacyReport(null);
@@ -491,10 +490,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return () => unsub();
   }, []);
 
-
-  const handleOpenCompanyPopup = (compName) => {
-    pushModalHistory("company_status_popup");
-    setSelectedCompanyPopup(compName);
+  // ⭐ 5개 협력사 카드(뱃지) 탭 시 팝업 없이 즉시 해당 업체의 근태선택 테이블 표시
+  const handleSelectCompanyAttendanceTable = (compName) => {
+    const cleanComp = cleanCompanyName(compName);
+    setSelectedCompanyFilter(cleanComp);
+    setActiveTab("daily_input");
   };
 
   const handleOpenManageWorkers = (compName) => {
@@ -695,11 +695,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [showToast, setShowToast] = useState(false);
 
 
-  // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
-  const [selectedCompanyPopup, setSelectedCompanyPopup] = useState(null); // e.g. "(주)오륙"
-  const [selectedCompanyManageWorkers, setSelectedCompanyManageWorkers] = useState(null); // e.g. "(주)오륙" (근로자 추가/삭제 전용 모달)
+  // ⭐ 근로자 추가/삭제 관리 전용 모달 State
+  const [selectedCompanyManageWorkers, setSelectedCompanyManageWorkers] = useState(null);
   const [manageWorkerSearch, setManageWorkerSearch] = useState("");
-  const [popupShowAddWorker, setPopupShowAddWorker] = useState(false);
   const [quickNewWorkerName, setQuickNewWorkerName] = useState("");
   const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("생산팀");
   const [quickNewWorkerLine, setQuickNewWorkerLine] = useState("");
@@ -1543,14 +1541,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   };
 
-  // Quick Add Worker for a specific Company (from Company Popup & Personnel Management Modal)
+  // Quick Add Worker for a specific Company (from Personnel Management Modal)
   const handleQuickAddCompanyWorker = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!quickNewWorkerName.trim()) {
       alert("근로자 성명을 입력해주세요.");
       return;
     }
-    const company = cleanCompanyName(selectedCompanyManageWorkers || selectedCompanyPopup || "오륙");
+    const company = cleanCompanyName(selectedCompanyManageWorkers || selectedCompanyFilter || "오륙");
     const isPartner = isPartnerCompany(company);
     const dept = isPartner ? company : normalizeStandardDept(quickNewWorkerDept || "생산팀", company);
     const line = quickNewWorkerLine.trim() || dept;
@@ -1633,7 +1631,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setQuickNewWorkerName("");
     setQuickNewWorkerLine("");
-    setPopupShowAddWorker(false);
     triggerToast(`🎉 [${company}] ${name} (${dept}) 신규 근로자 등록 완료!`);
   };
 
@@ -2070,56 +2067,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
   }, [filteredAttendanceWorkers, selectedDay]);
 
-  // Data for Company Popup Modal (인사카드 동기화)
-  const popupCompanyData = useMemo(() => {
-    if (!selectedCompanyPopup) return null;
-    const company = selectedCompanyPopup;
-    const cleanComp = cleanCompanyName(company);
-    const breakdown = dailySummary.companyBreakdown?.[cleanComp] || dailySummary.companyBreakdown?.[company] || {
-      total: 0,
-      attended: 0,
-      regular: 0,
-      ot19: 0,
-      ot21: 0,
-      ot22: 0,
-      specialNight: 0,
-      absent: 0,
-      leave: 0,
-      otWorkers: 0,
-      otHours: 0,
-      totalHours: 0
-    };
-
-    const workers = (effectiveMatrix || [])
-      .map((w, originalMatrixIndex) => {
-        const c = cleanCompanyName(w.company);
-        const cardKey = `${c}_${w.name}`;
-        const savedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
-        const card = savedCard
-          ? getWorkerPersonnelCard({ ...w, personnelCard: savedCard }, originalMatrixIndex + 1)
-          : getWorkerPersonnelCard(w, originalMatrixIndex + 1);
-        return {
-          ...w,
-          dept: card.dept || normalizeDept(w.dept),
-          position: card.position || w.position || "사원",
-          originalMatrixIndex,
-          personnelCard: card,
-          card
-        };
-      })
-      .filter((w) => cleanCompanyName(w.company) === cleanComp)
-      .map((w, cIdx) => ({
-        ...w,
-        companyNo: cIdx + 1
-      }));
-
-    return {
-      company,
-      breakdown,
-      workers
-    };
-  }, [selectedCompanyPopup, dailySummary, effectiveMatrix, selectedDay, personnelCardsMap]);
-
   return (
     <div className="space-y-4 sm:space-y-6 pb-16 min-w-0 max-w-full">
       {/* Toast Notification */}
@@ -2195,9 +2142,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         </div>
 
         {/* ========================================================================= */}
-        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 유성, 조영, 한울, 부림텍) - 미니멀 패널 */}
+        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 유성, 조영, 한울, 부림텍) - 탭하면 즉시 각 사 근태선택 테이블 표시 */}
         {/* ========================================================================= */}
-        <div className="hidden md:block pt-1">
+        <div className="pt-1">
           <div className="flex items-center justify-between pb-2">
             <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-cyan-400" />
@@ -2211,6 +2158,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {COMPANIES.map((compName) => {
               const cleanComp = cleanCompanyName(compName);
+              const isSelectedCompany = activeTab === "daily_input" && cleanCompanyName(selectedCompanyFilter) === cleanComp;
               const breakdown = dailySummary.companyBreakdown?.[cleanComp] || dailySummary.companyBreakdown?.[compName] || {
                 total: 0,
                 attended: 0,
@@ -2236,17 +2184,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               return (
                 <div
                   key={compName}
-                  onClick={() => {
-                    handleOpenCompanyPopup(compName);
-                    setPopupShowAddWorker(false);
-                    setQuickNewWorkerDept("가공동");
-                  }}
-                  className="bg-slate-950/90 hover:bg-slate-900 rounded-2xl p-3 border border-slate-700/80 hover:border-cyan-400 transition-all duration-200 shadow-md flex flex-col justify-between cursor-pointer group active:scale-98 space-y-2"
-                  title="클릭 시 오늘자 근태/인원 현황 팝업 보기"
+                  onClick={() => handleSelectCompanyAttendanceTable(compName)}
+                  className={`rounded-2xl p-3 border transition-all duration-200 shadow-md flex flex-col justify-between cursor-pointer group active:scale-98 space-y-2 ${
+                    isSelectedCompany
+                      ? "bg-slate-900 border-2 border-cyan-400 ring-2 ring-cyan-400/25 shadow-cyan-950/50"
+                      : "bg-slate-950/90 hover:bg-slate-900 border-slate-700/80 hover:border-cyan-400"
+                  }`}
+                  title={`탭하면 [${compName}] 근태 선택 테이블로 즉시 전환됩니다`}
                 >
                   {/* 상단: 회사명 및 작성상태 미니 배지 */}
                   <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-800/80">
-                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors truncate">
+                    <span className={`font-black text-xs sm:text-sm flex items-center gap-1.5 transition-colors truncate ${
+                      isSelectedCompany ? "text-cyan-300" : "text-white group-hover:text-cyan-300"
+                    }`}>
                       <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
                       {compName}
                     </span>
@@ -3136,7 +3086,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         {["오륙", "유성"].map((comp) => {
                           const row = dailySummary.companyBreakdown?.[comp] || {};
                           return (
-                            <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <tr
+                              key={comp}
+                              onClick={() => handleSelectCompanyAttendanceTable(comp)}
+                              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                              title={`탭하면 [${comp}] 근태 선택 테이블로 즉시 이동합니다`}
+                            >
                               <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                                 <span>{comp}</span>
@@ -3179,7 +3134,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         {["조영", "한울", "부림텍"].map((comp) => {
                           const row = dailySummary.companyBreakdown?.[comp] || {};
                           return (
-                            <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <tr
+                              key={comp}
+                              onClick={() => handleSelectCompanyAttendanceTable(comp)}
+                              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                              title={`탭하면 [${comp}] 근태 선택 테이블로 즉시 이동합니다`}
+                            >
                               <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                                 <span>{comp}</span>
@@ -4321,223 +4281,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         </div>
       )}
 
-
-      {/* ========================================================================= */}
-      {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 3열 부서/성명/오늘근태 NO SCROLLING) */}
-      {popupCompanyData && (
-        <div
-          onClick={() => setSelectedCompanyPopup(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-5xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default"
-          >
-            {/* 1. Modal Header & Summary Pills Bar */}
-            <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0 gap-2">
-              <div className="flex items-center gap-3 flex-wrap min-w-0">
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                  <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
-                    <span>{popupCompanyData.company}</span>
-                    <span className="text-cyan-300 font-normal text-xs sm:text-sm">{currentMonthNum}월 {selectedDay}일 오늘자 근태 현황</span>
-                  </h3>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs font-mono font-black flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                    총원 {popupCompanyData.breakdown.total}명
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800">
-                    출근 {popupCompanyData.breakdown.attended}명
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">
-                    잔업 {popupCompanyData.breakdown.ot19 + popupCompanyData.breakdown.ot21 + popupCompanyData.breakdown.ot22 + popupCompanyData.breakdown.specialNight}명 (+{popupCompanyData.breakdown.otHours}H)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800">
-                    공수 {popupCompanyData.breakdown.totalHours}H
-                  </span>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (isDayLocked) {
-                        setIsDayUnlockedForEdit(true);
-                      }
-                      const isWk = isWeekendDay(selectedDay);
-                      const targetCode = isWk ? "특근" : "🟢";
-                      const cleanComp = cleanCompanyName(popupCompanyData.company);
-                      const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
-                        ? [...effectiveMatrix]
-                        : (smartData?.attendanceMatrix || []);
-                      const updatedMatrix = currentMatrix.map((w) => ({
-                        ...w,
-                        daily: { ...(w.daily || {}) }
-                      }));
-                      let updatedCount = 0;
-                      updatedMatrix.forEach((w) => {
-                        if (cleanCompanyName(w.company) === cleanComp) {
-                          const existingVal = String(w.daily?.[selectedDay] || "").trim();
-                          if (existingVal === "결근" || existingVal === "병결" || existingVal === "사결" || existingVal === "공결" || existingVal === "연차" || existingVal === "휴가" || existingVal === "병가") {
-                            return;
-                          }
-                          w.daily[selectedDay] = targetCode;
-                          w.daily[String(selectedDay)] = targetCode;
-                          updatedCount++;
-                        }
-                      });
-                      const newLedger = {
-                        ...smartData,
-                        year: currentYear,
-                        month: currentMonthNum,
-                        attendanceMatrix: updatedMatrix
-                      };
-                      setSmartData(newLedger);
-                      setHasUnsavedChanges(true);
-                      triggerToast(`${isWk ? "🌙" : "🟢"} [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(🌙)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
-                      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
-                        targetCompany: popupCompanyData?.company,
-                        targetDay: selectedDay,
-                        auditMeta: {
-                          operator: currentProfile?.name || "현장관리자",
-                          source: "POPUP_SET_ALL_REGULAR",
-                          reason: `[${popupCompanyData?.company}] Day ${selectedDay} 전체 인원 정시 채우기 (${updatedCount}명)`
-                        }
-                      });
-                    }}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isWeekendDay(selectedDay) ? "bg-purple-600 hover:bg-purple-500 border-purple-500" : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"} text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ml-1`}
-                    title={isWeekendDay(selectedDay) ? "해당 협력사 인원 전체를 오늘 특근(🌙)으로 일괄 선택합니다" : "해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"}
-                  >
-                    <CheckCheck className="w-3.5 h-3.5" />
-                    <span>{isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 정시전체선택"}</span>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedCompanyPopup(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* 2. Main Multi-Column Table (부서 | 성명 | 오늘근태) */}
-            <div className="p-3 sm:p-4 overflow-y-auto flex-1 text-xs">
-              {popupCompanyData.workers.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 font-bold">
-                  등록된 근로자가 없습니다.
-                </div>
-              ) : (
-                (() => {
-                  const workers = popupCompanyData.workers;
-                  const count = workers.length;
-                  const numCols = count > 30 ? 3 : count > 10 ? 2 : 1;
-                  const perCol = Math.ceil(count / numCols);
-
-                  const columns = [];
-                  for (let i = 0; i < numCols; i++) {
-                    columns.push(workers.slice(i * perCol, (i + 1) * perCol));
-                  }
-
-                  const isWkPopup = isWeekendDay(selectedDay);
-                  const renderBadge = (code) => {
-                    const str = code ? String(code).trim() : "";
-                    if (!str || str === "-") {
-                      return <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-400">{isWkPopup ? "- 미출근" : "-"}</span>;
-                    }
-                    if (str === "🟢" || str === "정시" || str === "17") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-600 text-white shadow-2xs">🟢정시</span>;
-                    }
-                    if (str === "19" || str === "19시") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-600 text-white shadow-2xs">🟡19시</span>;
-                    }
-                    if (str === "21" || str === "21시") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-orange-600 text-white shadow-2xs">🟠21시</span>;
-                    }
-                    if (str === "22" || str === "22시") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-rose-600 text-white shadow-2xs">🔴22시</span>;
-                    }
-                    if (str === "특근" || str === "주말특근") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-purple-600 text-white shadow-2xs">🌙특근</span>;
-                    }
-                    if (str === "야간" || str.includes("야간")) {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-indigo-600 text-white shadow-2xs">🌌야간</span>;
-                    }
-                    if (str === "연차") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-sky-600 text-white shadow-2xs">🌴연차</span>;
-                    }
-                    if (str === "반차") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-600 text-white shadow-2xs">⛅반차</span>;
-                    }
-                    if (str === "결근") {
-                      if (isWkPopup) {
-                        return <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">- 미출근</span>;
-                      }
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-red-600 text-white shadow-2xs">❌결근</span>;
-                    }
-                    if (str === "휴무" || str === "미출근") {
-                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">- 미출근</span>;
-                    }
-                    return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">{str}</span>;
-                  };
-                  return (
-                    <div className={`grid gap-2.5 ${numCols === 3 ? "grid-cols-1 md:grid-cols-3" : numCols === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-                      {columns.map((colWorkers, colIdx) => (
-                        <div key={colIdx} className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/70 shadow-xs">
-                          <table className="w-full text-left text-xs border-collapse">
-                            <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800">
-                              <tr>
-                                <th className="py-1 px-1.5 text-center w-7 text-slate-500 font-mono">No</th>
-                                <th className="hidden sm:table-cell py-1 px-1.5 w-14">부서</th>
-                                <th className="py-1 px-1.5 w-16">성명</th>
-                                <th className="py-1 px-1.5 text-center">오늘근태</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
-                              {colWorkers.map((worker, rowIdx) => {
-                                const globalNo = colIdx * perCol + rowIdx + 1;
-                                const currentVal = worker.daily ? worker.daily[selectedDay] : "";
-                                const cleanWorkerName = worker.name ? worker.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
-
-                                return (
-                                  <tr key={worker.originalMatrixIndex || globalNo} className="hover:bg-slate-800/60 transition-colors">
-                                    <td className="py-1 px-1.5 text-center font-mono text-slate-500 text-[10.5px]">
-                                      {globalNo}
-                                    </td>
-                                    <td className="hidden sm:table-cell py-1 px-1.5">
-                                      <span className="font-bold text-slate-300 text-[11px] whitespace-nowrap">{worker.dept}</span>
-                                    </td>
-                                    <td className="py-1 px-1.5 font-black text-white text-xs whitespace-nowrap">
-                                      {cleanWorkerName}
-                                    </td>
-                                    <td className="py-1 px-1.5 text-center whitespace-nowrap">
-                                      {renderBadge(currentVal)}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-
-            {/* 3. Modal Footer (Compact) */}
-            <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
-              <button
-                onClick={() => setSelectedCompanyPopup(null)}
-                className="px-4 py-1 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* ⭐ MODAL: 업체별 근로자 추가/삭제 관리 모달 */}
