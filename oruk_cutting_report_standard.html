@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>소재 준비 작업 일보 (G/RUN) - (주)오륙 표준 양식</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* A4 Paper Dimensions */
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 12mm 14mm;
+      margin: 15px auto;
+      background: #ffffff;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    /* Standard Table Styles */
+    table.form-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.5px solid #000;
+      font-size: 11.5px;
+    }
+
+    table.form-table th, table.form-table td {
+      border: 1px solid #000;
+      padding: 3px 4px;
+      vertical-align: middle;
+      text-align: center;
+    }
+
+    /* Table Header Colors matching the image */
+    .bg-form-header {
+      background-color: #fef08a !important; /* Yellowish beige as in original sheet */
+      font-weight: 700;
+      color: #000;
+    }
+
+    .bg-form-sub {
+      background-color: #fef9c3 !important;
+    }
+
+    /* Input Styling within Cells */
+    .cell-input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #0f172a;
+      outline: none;
+      padding: 2px 0;
+    }
+
+    .cell-input:focus {
+      background-color: #eff6ff;
+      border-radius: 2px;
+    }
+
+    /* Tolerance OK / NG Highlights */
+    .dim-ok {
+      background-color: #dcfce7 !important;
+      color: #166534 !important;
+      font-weight: 800;
+    }
+
+    .dim-ng {
+      background-color: #fee2e2 !important;
+      color: #991b1b !important;
+      font-weight: 800;
+      animation: pulse-border 1.5s infinite;
+    }
+
+    /* Crossed Out Line (Diagonal X) */
+    .crossed-cell {
+      background: linear-gradient(to top right, transparent calc(50% - 1px), #000, transparent calc(50% + 1px)),
+                  linear-gradient(to bottom right, transparent calc(50% - 1px), #000, transparent calc(50% + 1px));
+      background-color: #f8fafc;
+    }
+
+    /* Double Underline */
+    .double-underline {
+      border-bottom: 3.5px double #000;
+    }
+
+    /* Digital Stamp */
+    .stamp-badge {
+      width: 46px;
+      height: 46px;
+      border: 2px solid #dc2626;
+      border-radius: 50%;
+      color: #dc2626;
+      font-size: 10px;
+      font-weight: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+      transform: rotate(-8deg);
+      cursor: pointer;
+      user-select: none;
+      margin: 0 auto;
+    }
+
+    @media print {
+      body {
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .a4-page {
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        min-height: 297mm !important;
+      }
+    }
+  </style>
+</head>
+<body class="p-2 sm:p-6">
+
+  <!-- ========================================== -->
+  <!-- Top Action Toolbar (No Print) -->
+  <!-- ========================================== -->
+  <div class="no-print max-w-[210mm] mx-auto mb-4 bg-slate-900 text-white p-3 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-2.5">
+    <div class="flex items-center gap-2">
+      <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+      <span class="font-black text-sm tracking-wide">소재 준비 작업 일보 (정치 절단) — (주)오륙 표준 양식</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-800 text-indigo-200 border border-indigo-600 font-bold">705-02(REV.4)</span>
+    </div>
+
+    <div class="flex items-center gap-2 flex-wrap">
+      <button onclick="fillSampleData()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-black transition active:scale-95 flex items-center gap-1 cursor-pointer">
+        <span>⚡ 샘플 데이터 채우기</span>
+      </button>
+      <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-black transition active:scale-95 flex items-center gap-1 cursor-pointer shadow-sm">
+        <span>🖨️ A4 인쇄 / PDF 출력</span>
+      </button>
+      <button onclick="resetForm()" class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-bold transition active:scale-95 cursor-pointer">
+        <span>🔄 초기화</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- A4 Document Form Container -->
+  <!-- ========================================== -->
+  <div class="a4-page text-black" id="printArea">
+
+    <!-- 1. Document Title & Approval Table Header -->
+    <div class="flex items-start justify-between mb-2">
+      <!-- Title -->
+      <div class="pt-2 text-center flex-1">
+        <h1 class="text-2xl sm:text-3xl font-black tracking-widest inline-block pb-1.5 double-underline">
+          소재 준비 작업 일보 (G/RUN)
+        </h1>
+      </div>
+
+      <!-- Approval Stamp Box (작성 / 검토 / 승인) -->
+      <div class="w-48 shrink-0">
+        <table class="form-table text-xs">
+          <thead>
+            <tr class="bg-slate-50 font-bold">
+              <th class="w-1/3 py-1">작 성</th>
+              <th class="w-1/3 py-1">검 토</th>
+              <th class="w-1/3 py-1">승 인</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="h-12">
+              <td class="p-1 cursor-pointer relative" onclick="toggleStamp(this, '박종미')">
+                <div class="stamp-placeholder text-[10px] text-slate-400 font-normal">날인</div>
+              </td>
+              <td class="p-1 cursor-pointer relative" onclick="toggleStamp(this, '권태형')">
+                <div class="stamp-placeholder text-[10px] text-slate-400 font-normal">날인</div>
+              </td>
+              <td class="p-1 cursor-pointer relative" onclick="toggleStamp(this, '대표이사')">
+                <div class="stamp-placeholder text-[10px] text-slate-400 font-normal">날인</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. Sub Header: Process, Date, Car Model, Part Name, Worker -->
+    <div class="flex items-center justify-between text-xs font-bold mb-1.5 px-0.5">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-black">▣ 공정명 : 정치 절단</span>
+        <span class="text-slate-600 font-semibold">※ Record Time : Start / Half / Finish</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <span>작업일자(Date) : 20</span>
+        <input type="text" id="dateYear" value="26" class="w-6 text-center border-b border-black font-bold outline-none">
+        <span>년</span>
+        <input type="text" id="dateMonth" value="10" class="w-6 text-center border-b border-black font-bold outline-none">
+        <span>월</span>
+        <input type="text" id="dateDay" value="16" class="w-6 text-center border-b border-black font-bold outline-none">
+        <span>일</span>
+      </div>
+    </div>
+
+    <!-- Meta Info Table -->
+    <table class="form-table mb-2">
+      <tbody>
+        <tr>
+          <td class="w-28 bg-slate-100 font-bold">차종(Car model)</td>
+          <td class="w-48 font-black text-sm">
+            <input type="text" value="9BQC" class="cell-input font-black" />
+          </td>
+          <td class="w-28 bg-slate-100 font-bold">품 명(Part name)</td>
+          <td class="font-black text-sm">
+            <input type="text" value="G/RUN" class="cell-input font-black" />
+          </td>
+          <td class="w-28 bg-slate-100 font-bold">작업자(Worker)</td>
+          <td class="w-40 font-black text-sm">
+            <input type="text" id="workerName" value="박종미" class="cell-input font-black" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!-- 3. Section 1: Work Time & Production Qty -->
+    <!-- ========================================== -->
+    <table class="form-table mb-2">
+      <thead>
+        <tr class="bg-form-header">
+          <th colspan="2" class="w-48 py-1.5">구 분(Division)</th>
+          <th class="w-1/2 py-1.5 text-center font-black">FRT</th>
+          <th class="w-1/2 py-1.5 text-center font-black">RR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bg-slate-50 font-bold w-24">작업시간(time)</td>
+          <td class="font-bold w-24">시작(S)~종료(F)</td>
+          <td colspan="2" class="py-1">
+            <div class="flex items-center justify-center gap-2">
+              <input type="text" id="startTime" value="06:30" class="w-20 text-center font-bold border-b border-slate-300 outline-none" />
+              <span>~</span>
+              <input type="text" id="endTime" value="17:30" class="w-20 text-center font-bold border-b border-slate-300 outline-none" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td rowspan="3" class="bg-slate-50 font-bold text-center">
+            생산량 (Q,ty)
+          </td>
+          <td class="font-bold text-center">
+            (계획/실적)<br><span class="text-[10px] font-normal text-slate-500">(Plan/Output)</span> A
+          </td>
+          <td>
+            <div class="flex items-center justify-center gap-1">
+              <input type="number" id="frtPlanA" placeholder="계획" value="800" oninput="calcTotals()" class="w-16 text-center font-bold outline-none" />
+              <span class="text-slate-400">/</span>
+              <input type="number" id="frtActualA" placeholder="실적" value="800" oninput="calcTotals()" class="w-16 text-center font-black text-indigo-700 outline-none" />
+            </div>
+          </td>
+          <td>
+            <div class="flex items-center justify-center gap-1">
+              <input type="number" id="rrPlanA" placeholder="계획" value="800" oninput="calcTotals()" class="w-16 text-center font-bold outline-none" />
+              <span class="text-slate-400">/</span>
+              <input type="number" id="rrActualA" placeholder="실적" value="800" oninput="calcTotals()" class="w-16 text-center font-black text-indigo-700 outline-none" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">B</td>
+          <td>
+            <div class="flex items-center justify-center gap-1">
+              <input type="number" id="frtPlanB" placeholder="계획" value="800" oninput="calcTotals()" class="w-16 text-center font-bold outline-none" />
+              <span class="text-slate-400">/</span>
+              <input type="number" id="frtActualB" placeholder="실적" value="800" oninput="calcTotals()" class="w-16 text-center font-black text-indigo-700 outline-none" />
+            </div>
+          </td>
+          <td>
+            <div class="flex items-center justify-center gap-1">
+              <input type="number" id="rrPlanB" placeholder="계획" value="800" oninput="calcTotals()" class="w-16 text-center font-bold outline-none" />
+              <span class="text-slate-400">/</span>
+              <input type="number" id="rrActualB" placeholder="실적" value="800" oninput="calcTotals()" class="w-16 text-center font-black text-indigo-700 outline-none" />
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">C</td>
+          <td>
+            <div class="flex items-center justify-center gap-1">
+              <input type="number" id="frtPlanC" placeholder="계획" value="800" oninput="calcTotals()" class="w-16 text-center font-bold outline-none" />
+              <span class="text-slate-400">/</span>
+              <input type="number" id="frtActualC" placeholder="실적" value="800" oninput="calcTotals()" class="w-16 text-center font-black text-indigo-700 outline-none" />
+            </div>
+          </td>
+          <!-- RR has no Section C (Crossed Out 'X' cell matching sheet) -->
+          <td class="crossed-cell relative group" title="RR은 C단면 없음 (비해당)">
+            <span class="text-[10px] text-slate-400 font-bold opacity-0 group-hover:opacity-100 transition">비해당</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!-- 4. Section 2: Spec Cutting Length & Inspection & LOT NO -->
+    <!-- ========================================== -->
+    <table class="form-table mb-2">
+      <thead>
+        <tr class="bg-form-header">
+          <th rowspan="2" colspan="2" class="w-40 py-1">구 분(Division)</th>
+          <th colspan="3" class="py-1 text-center font-black border-r-2 border-black">FRT</th>
+          <th colspan="3" class="py-1 text-center font-black">RR</th>
+        </tr>
+        <tr class="bg-form-sub font-bold text-xs">
+          <th class="w-16 py-1">초물(Start)</th>
+          <th class="w-16 py-1">중물(Half)</th>
+          <th class="w-16 py-1 border-r-2 border-black">종물(Finish)</th>
+          <th class="w-16 py-1">초물(Start)</th>
+          <th class="w-16 py-1">중물(Half)</th>
+          <th class="w-16 py-1">종물(Finish)</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Section A -->
+        <tr>
+          <td rowspan="3" class="font-black bg-slate-50 w-24 text-center text-xs">
+            정치 절단<br>길이(Spec<br>cutting)
+          </td>
+          <td class="font-bold w-16 text-center bg-slate-50">A</td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70 border-r-2 border-black">
+            규격(Spec): <span class="font-black text-indigo-900 text-sm">881 ± 3mm</span>
+          </td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70">
+            규격(Spec): <span class="font-black text-indigo-900 text-sm">488 ± 3mm(가절단)</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">초/중/종</td>
+          <!-- FRT A Measurements -->
+          <td><input type="text" id="m_frt_a_s" value="881.0" oninput="checkTolerance(this, 881, 3)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_frt_a_m" value="881.2" oninput="checkTolerance(this, 881, 3)" class="cell-input dim-ok" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="m_frt_a_e" value="880.8" oninput="checkTolerance(this, 881, 3)" class="cell-input dim-ok" /></td>
+          <!-- RR A Measurements -->
+          <td><input type="text" id="m_rr_a_s" value="488.0" oninput="checkTolerance(this, 488, 3)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_rr_a_m" value="487.8" oninput="checkTolerance(this, 488, 3)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_rr_a_e" value="488.3" oninput="checkTolerance(this, 488, 3)" class="cell-input dim-ok" /></td>
+        </tr>
+        <tr class="border-b-2 border-black">
+          <td class="font-bold text-center text-[10.5px]">LOT NO.</td>
+          <!-- FRT A LOT NO -->
+          <td><input type="text" id="lot_frt_a_s" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_frt_a_m" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="lot_frt_a_e" value="261016-2" class="cell-input text-[10.5px]" /></td>
+          <!-- RR A LOT NO -->
+          <td><input type="text" id="lot_rr_a_s" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_a_m" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_a_e" value="261016-2" class="cell-input text-[10.5px]" /></td>
+        </tr>
+
+        <!-- Section B -->
+        <tr>
+          <td rowspan="3" class="font-black bg-slate-50 text-center text-xs">
+            정치 절단<br>길이(Spec<br>cutting)
+          </td>
+          <td class="font-bold text-center bg-slate-50">B</td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70 border-r-2 border-black">
+            규격(Spec): <span class="font-black text-indigo-900 text-sm">608 ± 5mm</span>
+          </td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70">
+            규격(Spec): <span class="font-black text-indigo-900 text-sm">658 ± 5mm</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">초/중/종</td>
+          <!-- FRT B Measurements -->
+          <td><input type="text" id="m_frt_b_s" value="608.0" oninput="checkTolerance(this, 608, 5)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_frt_b_m" value="609.1" oninput="checkTolerance(this, 608, 5)" class="cell-input dim-ok" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="m_frt_b_e" value="607.5" oninput="checkTolerance(this, 608, 5)" class="cell-input dim-ok" /></td>
+          <!-- RR B Measurements -->
+          <td><input type="text" id="m_rr_b_s" value="658.0" oninput="checkTolerance(this, 658, 5)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_rr_b_m" value="658.2" oninput="checkTolerance(this, 658, 5)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_rr_b_e" value="657.9" oninput="checkTolerance(this, 658, 5)" class="cell-input dim-ok" /></td>
+        </tr>
+        <tr class="border-b-2 border-black">
+          <td class="font-bold text-center text-[10.5px]">LOT NO.</td>
+          <!-- FRT B LOT NO -->
+          <td><input type="text" id="lot_frt_b_s" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_frt_b_m" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="lot_frt_b_e" value="261016-2" class="cell-input text-[10.5px]" /></td>
+          <!-- RR B LOT NO -->
+          <td><input type="text" id="lot_rr_b_s" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_b_m" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_b_e" value="261016-2" class="cell-input text-[10.5px]" /></td>
+        </tr>
+
+        <!-- Section C -->
+        <tr>
+          <td rowspan="3" class="font-black bg-slate-50 text-center text-xs">
+            정치 절단<br>길이(Spec<br>cutting)
+          </td>
+          <td class="font-bold text-center bg-slate-50">C</td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70 border-r-2 border-black">
+            규격(Spec): <span class="font-black text-indigo-900 text-sm">582 ± 5mm</span>
+          </td>
+          <td colspan="3" class="p-1 font-bold text-center bg-slate-50/70 text-slate-400">
+            규격(Spec): <span class="font-semibold text-slate-400">658 ± 6mm (선택)</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">초/중/종</td>
+          <!-- FRT C Measurements -->
+          <td><input type="text" id="m_frt_c_s" value="582.0" oninput="checkTolerance(this, 582, 5)" class="cell-input dim-ok" /></td>
+          <td><input type="text" id="m_frt_c_m" value="582.4" oninput="checkTolerance(this, 582, 5)" class="cell-input dim-ok" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="m_frt_c_e" value="581.9" oninput="checkTolerance(this, 582, 5)" class="cell-input dim-ok" /></td>
+          <!-- RR C Measurements (usually empty or optional) -->
+          <td><input type="text" id="m_rr_c_s" placeholder="-" oninput="checkTolerance(this, 658, 6)" class="cell-input" /></td>
+          <td><input type="text" id="m_rr_c_m" placeholder="-" oninput="checkTolerance(this, 658, 6)" class="cell-input" /></td>
+          <td><input type="text" id="m_rr_c_e" placeholder="-" oninput="checkTolerance(this, 658, 6)" class="cell-input" /></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center text-[10.5px]">LOT NO.</td>
+          <!-- FRT C LOT NO -->
+          <td><input type="text" id="lot_frt_c_s" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_frt_c_m" value="261016-1" class="cell-input text-[10.5px]" /></td>
+          <td class="border-r-2 border-black"><input type="text" id="lot_frt_c_e" value="261016-2" class="cell-input text-[10.5px]" /></td>
+          <!-- RR C LOT NO -->
+          <td><input type="text" id="lot_rr_c_s" placeholder="-" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_c_m" placeholder="-" class="cell-input text-[10.5px]" /></td>
+          <td><input type="text" id="lot_rr_c_e" placeholder="-" class="cell-input text-[10.5px]" /></td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!-- 5. Section 3: Defect Matrix (불량소재구분) -->
+    <!-- ========================================== -->
+    <table class="form-table mb-2">
+      <thead>
+        <tr class="bg-form-header">
+          <th colspan="2" rowspan="2" class="py-1 w-48 text-center font-black">
+            불량소재구분
+          </th>
+          <th colspan="3" class="py-1 text-center font-black border-r-2 border-black">FRT</th>
+          <th colspan="3" class="py-1 text-center font-black">RR</th>
+        </tr>
+        <tr class="bg-form-sub font-bold text-xs">
+          <th class="w-16 py-1">Section "A"</th>
+          <th class="w-16 py-1">Section "B"</th>
+          <th class="w-16 py-1 border-r-2 border-black">Section "C"</th>
+          <th class="w-16 py-1">Section "A"</th>
+          <th class="w-16 py-1">Section "B"</th>
+          <th class="w-16 py-1">Section "C"</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Category 1: Extrusion Badness -->
+        <tr>
+          <td rowspan="5" class="bg-slate-50 font-black w-24 text-center leading-snug">
+            압출소재<br>불량<br><span class="text-[9.5px] font-normal text-slate-500">(Extrusion<br>Badness)</span>
+          </td>
+          <td class="font-bold text-center">스코치(Scorch)</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">외면 흠(Scratch)</td>
+          <td><input type="number" min="0" value="1" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="2" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="1" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">오염(Contamination)</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">길이 미달(Length Bad)</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="1" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr class="border-b-2 border-black">
+          <td class="font-bold text-center">와이어 노출</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+
+        <!-- Category 2: Process Badness -->
+        <tr>
+          <td rowspan="3" class="bg-slate-50 font-black w-24 text-center leading-snug">
+            공정간 불량<br><span class="text-[9.5px] font-normal text-slate-500">(Process<br>Badness)</span>
+          </td>
+          <td class="font-bold text-center">길이 (Length Bad)</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="1" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-center">단컷팅(Step Cutt,g)</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+        <tr class="border-b-2 border-black">
+          <td class="font-bold text-center">기타 ( Etc )</td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-0" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-1" oninput="calcTotals()" /></td>
+          <td class="border-r-2 border-black"><input type="number" min="0" value="0" class="cell-input def-input def-col-2" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-3" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-4" oninput="calcTotals()" /></td>
+          <td><input type="number" min="0" value="0" class="cell-input def-input def-col-5" oninput="calcTotals()" /></td>
+        </tr>
+
+        <!-- Defect Summary Row -->
+        <tr class="bg-form-sub font-black border-t-2 border-black">
+          <td colspan="2" class="py-1.5 text-center font-black text-xs">
+            불량 합계(Bad Sum)
+          </td>
+          <td class="font-black text-rose-700 text-center" id="sum_def_0">1</td>
+          <td class="font-black text-rose-700 text-center" id="sum_def_1">1</td>
+          <td class="font-black text-rose-700 text-center border-r-2 border-black" id="sum_def_2">2</td>
+          <td class="font-black text-rose-700 text-center" id="sum_def_3">1</td>
+          <td class="font-black text-rose-700 text-center" id="sum_def_4">1</td>
+          <td class="font-black text-rose-700 text-center" id="sum_def_5">0</td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <!-- ========================================== -->
+    <!-- 6. Section 4: Blade Change & Machine Trouble -->
+    <!-- ========================================== -->
+    <table class="form-table mb-4">
+      <tbody>
+        <tr class="h-16">
+          <td class="w-48 bg-form-header font-black text-center align-middle">
+            칼날교체 시간
+          </td>
+          <td class="w-1/3 p-2 align-top">
+            <textarea id="bladeTime" rows="2" class="w-full h-full text-xs font-bold outline-none resize-none bg-transparent" placeholder="예: 08:30 (1호기 칼날 교체 완료)">08:30 (1호기 칼날 교체)</textarea>
+          </td>
+          <td class="w-48 bg-form-header font-black text-center align-middle">
+            설비 이상 조치사항
+          </td>
+          <td class="p-2 align-top">
+            <textarea id="machineTrouble" rows="2" class="w-full h-full text-xs font-bold outline-none resize-none bg-transparent" placeholder="설비 이상 및 조치사항 입력">특이사항 없음 (정상 가동)</textarea>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- KPI Summary Pill (Bottom Badge) -->
+    <div class="flex items-center justify-between text-xs px-2 py-1 bg-slate-100 rounded-lg border border-slate-300 font-bold mb-3">
+      <div>
+        총 계획: <span id="kpiPlan" class="font-black text-slate-800">4,000 EA</span> |
+        총 실적: <span id="kpiActual" class="font-black text-indigo-700">4,000 EA</span> |
+        총 불량: <span id="kpiDefect" class="font-black text-rose-600">6 EA</span>
+      </div>
+      <div>
+        양품률: <span id="kpiYield" class="font-black text-emerald-700">99.85%</span>
+      </div>
+    </div>
+
+    <!-- 7. Document Footer -->
+    <div class="flex items-center justify-between text-xs font-bold px-1 text-slate-800 pt-1">
+      <div>705-02(REV.4)</div>
+      <div class="font-black text-sm tracking-wider">(주)오륙</div>
+      <div>A4(210×297)</div>
+    </div>
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- JavaScript Logic for Live Calculations -->
+  <!-- ========================================== -->
+  <script>
+    // Tolerance Checking Helper
+    function checkTolerance(inputEl, target, tol) {
+      const val = parseFloat(inputEl.value.trim());
+      if (isNaN(val) || inputEl.value.trim() === '') {
+        inputEl.className = 'cell-input';
+        return;
+      }
+      const min = target - tol;
+      const max = target + tol;
+      if (val >= min && val <= max) {
+        inputEl.className = 'cell-input dim-ok';
+      } else {
+        inputEl.className = 'cell-input dim-ng';
+      }
+    }
+
+    // Interactive Stamp Toggle
+    function toggleStamp(td, name) {
+      const existing = td.querySelector('.stamp-badge');
+      if (existing) {
+        td.innerHTML = '<div class="stamp-placeholder text-[10px] text-slate-400 font-normal">날인</div>';
+      } else {
+        const today = new Date();
+        const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+        td.innerHTML = `
+          <div class="stamp-badge">
+            <span class="text-[8px]">${name}</span>
+            <span class="text-[9px] font-black border-t border-b border-red-500 my-0.5 px-1">인</span>
+            <span class="text-[7.5px]">${dateStr}</span>
+          </div>
+        `;
+      }
+    }
+
+    // Auto-calculate production and defects
+    function calcTotals() {
+      // Production
+      const frtPlanA = Number(document.getElementById('frtPlanA').value) || 0;
+      const frtPlanB = Number(document.getElementById('frtPlanB').value) || 0;
+      const frtPlanC = Number(document.getElementById('frtPlanC').value) || 0;
+      const rrPlanA = Number(document.getElementById('rrPlanA').value) || 0;
+      const rrPlanB = Number(document.getElementById('rrPlanB').value) || 0;
+      const totalPlan = frtPlanA + frtPlanB + frtPlanC + rrPlanA + rrPlanB;
+
+      const frtActA = Number(document.getElementById('frtActualA').value) || 0;
+      const frtActB = Number(document.getElementById('frtActualB').value) || 0;
+      const frtActC = Number(document.getElementById('frtActualC').value) || 0;
+      const rrActA = Number(document.getElementById('rrActualA').value) || 0;
+      const rrActB = Number(document.getElementById('rrActualB').value) || 0;
+      const totalAct = frtActA + frtActB + frtActC + rrActA + rrActB;
+
+      // Defect column sums
+      let totalDefects = 0;
+      for (let col = 0; col < 6; col++) {
+        let colSum = 0;
+        const inputs = document.querySelectorAll(`.def-col-${col}`);
+        inputs.forEach(inp => {
+          colSum += Number(inp.value) || 0;
+        });
+        const sumEl = document.getElementById(`sum_def_${col}`);
+        if (sumEl) sumEl.textContent = colSum;
+        totalDefects += colSum;
+      }
+
+      // KPI display
+      document.getElementById('kpiPlan').textContent = totalPlan.toLocaleString() + ' EA';
+      document.getElementById('kpiActual').textContent = totalAct.toLocaleString() + ' EA';
+      document.getElementById('kpiDefect').textContent = totalDefects.toLocaleString() + ' EA';
+
+      const yieldRate = totalAct > 0 ? (((totalAct - totalDefects) / totalAct) * 100).toFixed(2) + '%' : '100.00%';
+      document.getElementById('kpiYield').textContent = yieldRate;
+    }
+
+    // Fill sample values
+    function fillSampleData() {
+      document.getElementById('frtPlanA').value = 850;
+      document.getElementById('frtActualA').value = 850;
+      document.getElementById('frtPlanB').value = 850;
+      document.getElementById('frtActualB').value = 850;
+      document.getElementById('frtPlanC').value = 850;
+      document.getElementById('frtActualC').value = 848;
+
+      document.getElementById('rrPlanA').value = 900;
+      document.getElementById('rrActualA').value = 900;
+      document.getElementById('rrPlanB').value = 900;
+      document.getElementById('rrActualB').value = 896;
+
+      // Measurements
+      const measMap = [
+        ['m_frt_a_s', 881.0, 881, 3],
+        ['m_frt_a_m', 881.3, 881, 3],
+        ['m_frt_a_e', 880.8, 881, 3],
+        ['m_rr_a_s', 488.2, 488, 3],
+        ['m_rr_a_m', 487.9, 488, 3],
+        ['m_rr_a_e', 488.5, 488, 3],
+
+        ['m_frt_b_s', 608.0, 608, 5],
+        ['m_frt_b_m', 609.5, 608, 5],
+        ['m_frt_b_e', 607.2, 608, 5],
+        ['m_rr_b_s', 658.0, 658, 5],
+        ['m_rr_b_m', 657.6, 658, 5],
+        ['m_rr_b_e', 658.4, 658, 5],
+
+        ['m_frt_c_s', 582.0, 582, 5],
+        ['m_frt_c_m', 581.5, 582, 5],
+        ['m_frt_c_e', 582.8, 582, 5],
+      ];
+
+      measMap.forEach(([id, val, target, tol]) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = val;
+          checkTolerance(el, target, tol);
+        }
+      });
+
+      calcTotals();
+    }
+
+    // Reset Form
+    function resetForm() {
+      if (!confirm('정말 양식을 초기화하시겠습니까?')) return;
+      document.querySelectorAll('.cell-input').forEach(inp => {
+        if (inp.type === 'number') inp.value = 0;
+        else inp.value = '';
+        inp.className = 'cell-input';
+      });
+      calcTotals();
+    }
+
+    // Initial run
+    window.addEventListener('DOMContentLoaded', () => {
+      calcTotals();
+    });
+  </script>
+</body>
+</html>
