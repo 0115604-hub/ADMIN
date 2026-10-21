@@ -43,6 +43,17 @@ export const SEVERITY_LEVELS = [
 // Initial starter mock issues (Empty by default)
 export const INITIAL_EXTRUSION_QUALITY_ISSUES = [];
 
+const sanitizeExtrusionAlert = (item) => {
+  if (!item || typeof item !== "object") return item;
+  if (item.isManuallyRestored === true) return item;
+  const idStr = String(item.id || "");
+  const tsMatch = idStr.match(/(\d{13})/);
+  if (!tsMatch || Number(tsMatch[1]) <= 1792541000000) {
+    return { ...item, isClosedByAdmin: true };
+  }
+  return item;
+};
+
 // Helper: Read local storage
 export const getLocalExtrusionQualityIssues = () => {
   try {
@@ -50,10 +61,9 @@ export const getLocalExtrusionQualityIssues = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        const clean = parsed.filter(i => i.id !== "ext_qual_demo_1" && i.id !== "ext_qual_demo_2");
-        if (clean.length !== parsed.length) {
-          saveLocalExtrusionQualityIssues(clean);
-        }
+        const clean = parsed
+          .filter(i => i.id !== "ext_qual_demo_1" && i.id !== "ext_qual_demo_2")
+          .map(sanitizeExtrusionAlert);
         return clean;
       }
     }
@@ -79,6 +89,10 @@ export const subscribeExtrusionQualityIssues = (onUpdate) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        if (snapshot.empty && snapshot.metadata?.fromCache) {
+          if (onUpdate) onUpdate(getLocalExtrusionQualityIssues());
+          return;
+        }
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
@@ -90,7 +104,7 @@ export const subscribeExtrusionQualityIssues = (onUpdate) => {
               data?.status === "DELETED"
             );
             if (!isDel && d.id !== "ext_qual_demo_1" && d.id !== "ext_qual_demo_2") {
-              remoteList.push({ id: d.id, ...data });
+              remoteList.push(sanitizeExtrusionAlert({ id: d.id, ...data }));
             }
           });
         }

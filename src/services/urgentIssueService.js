@@ -109,7 +109,6 @@ export const isMeetingExpired = (item, graceHours = 0) => {
 export const isLegacyDismissedQualityAlert = (item) => {
   if (!item || typeof item !== "object") return false;
   if (item.isManuallyRestored === true || item.raw?.isManuallyRestored === true) return false;
-  if (item.isClosedByAdmin === false || item.raw?.isClosedByAdmin === false) return false;
 
   const cat = String(item.category || "").trim();
   const isQualityAlert =
@@ -120,19 +119,16 @@ export const isLegacyDismissedQualityAlert = (item) => {
     cat.includes("부적합경보");
   if (!isQualityAlert) return false;
 
-  // 2026-10-21 08:43 KST (timestamp 1792539800000) 이후 신규 등록 건은 정상 활성 노출
+  // 2026-10-21 09:05 KST (timestamp 1792541000000) 이후 신규 등록 건은 정상 활성 노출
   const idStr = String(item.id || item.rawId || item._docId || "");
   const tsMatch = idStr.match(/(\d{13})/);
-  if (tsMatch && Number(tsMatch[1]) > 1792539800000) return false;
+  if (tsMatch && Number(tsMatch[1]) > 1792541000000) return false;
 
-  const createdStr = String(item.createdAt || item.raw?.createdAt || "");
-  if (createdStr >= "2026-10-20T23:43" || createdStr >= "2026-10-21 08:43" || createdStr >= "2026-10-21T08:43") {
-    return false;
-  }
-
-  // 기존 등록 건 중 NE1a 건만 첫 화면 유지, 나머지 부적합경보는 이미 권한자가 첫화면 삭제 처리 완료
-  const combined = `${item.title || ""} ${item.content || ""} ${item.line || ""} ${item.project || ""} ${item.defectType || ""} ${item.raw?.title || ""} ${item.raw?.defectType || ""} ${item.raw?.content || ""} ${item.raw?.project || ""}`.toLowerCase();
-  return !combined.includes("ne1a");
+  // 기존 등록 건 중 NE1a D/SIDE W사양 엠보불량발생(issue_1792119149332) 건만 첫 화면 유지, 나머지 기존 부적합경보(LQ2, 9BQC 등)는 이미 권한자가 첫화면 삭제 처리 완료
+  if (idStr.includes("1792119149332")) return false;
+  const combined = `${item.title || ""} ${item.content || ""} ${item.raw?.title || ""} ${item.raw?.content || ""}`.toLowerCase();
+  if (combined.includes("엠보불량") || combined.includes("ne1a d/side w사양")) return false;
+  return true;
 };
 
 export const isIssueClosed = (item, todayDateStr = "") => {
@@ -222,27 +218,70 @@ export const isHanulManagedIssue = (item) => {
   return false;
 };
 
+const FALLBACK_NE1A_ISSUE = {
+  id: "issue_1792119149332",
+  _docId: "issue_1792119149332",
+  customId: "issue_1792119149332",
+  category: "부적합경보",
+  plant: "한림공장",
+  author: "김동욱",
+  authorTitle: "책임",
+  title: "NE1a D/SIDE W사양 엠보불량발생",
+  content: "1.NE1a W사양으로 출하대기중 제품이 엠보마모로 인하여 전량불량판정\n  (품질: 배성한 책임)",
+  startDate: "2026-10-16",
+  expireDate: "2026-10-16",
+  targetDate: "2026-10-16",
+  createdAt: "2026-10-16-11:52",
+  updatedAt: "2026-10-21-08:10",
+  actionResult: "토일요일 8벌 부식완료\n월요일 정상가동중",
+  actionAuthor: "김동욱",
+  actionAt: "2026-10-21-08:10",
+  status: "RESOLVED",
+  isResolved: true,
+  isDeleted: false,
+  isFirstScreenOrigin: true,
+  origin: "FIRST_SCREEN",
+  fourM: "Machine",
+  replies: [],
+  images: [],
+  actionImages: []
+};
+
 // Helper: Read local storage
 export const getLocalUrgentIssues = () => {
   try {
-    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!data) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
-      return [];
+    const hardDeletedIdsRaw = localStorage.getItem("oryuk_hard_deleted_urgent_ids") || "[]";
+    let hardDeletedIds = [];
+    try {
+      hardDeletedIds = JSON.parse(hardDeletedIdsRaw);
+    } catch (_) {
+      hardDeletedIds = [];
     }
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
-    const clean = parsed
-      .filter((item) => !isHanulManagedIssue(item))
-      .map(sanitizeUrgentIssueItem);
 
-    if (clean.length !== parsed.length) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(clean));
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const parsed = data ? JSON.parse(data) : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+
+    const clean = list
+      .filter((item) => !isHanulManagedIssue(item))
+      .map((item) => {
+        const sanitized = sanitizeUrgentIssueItem(item);
+        if (isLegacyDismissedQualityAlert(sanitized)) {
+          return { ...sanitized, isDeleted: true, isClosedByAdmin: true };
+        }
+        return sanitized;
+      });
+
+    // Ctrl+F5 캐시 초기화 또는 쿼터 초과 시에도 NE1a 활성 경보가 증발하지 않도록 보장
+    const hasNe1a = clean.some((i) => String(i.id || i._docId || "") === "issue_1792119149332");
+    if (!hasNe1a && !hardDeletedIds.includes("issue_1792119149332")) {
+      clean.unshift({ ...FALLBACK_NE1A_ISSUE });
     }
+
     return clean;
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
-    return [];
+    return [{ ...FALLBACK_NE1A_ISSUE }];
   }
 };
 
@@ -328,6 +367,10 @@ export const subscribeUrgentIssues = (onUpdate) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        if (snapshot.empty) {
+          onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
+          return;
+        }
         const list = [];
         snapshot.forEach((d) => {
           const data = d.data();
@@ -337,9 +380,15 @@ export const subscribeUrgentIssues = (onUpdate) => {
             deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
             return;
           }
-          const isDel = Boolean(data.isDeleted === true || data.deleted === true || data.isDeleted === "true" || data.deleted === "true");
-          const item = { ...data, id: d.id, _docId: d.id, customId: data.id, isDeleted: isDel };
-          list.push(sanitizeUrgentIssueItem(item));
+          const sanitized = sanitizeUrgentIssueItem({ ...data, id: d.id, _docId: d.id, customId: data.id });
+          const isDel = Boolean(
+            data.isDeleted === true ||
+            data.deleted === true ||
+            data.isDeleted === "true" ||
+            data.deleted === "true" ||
+            isLegacyDismissedQualityAlert(sanitized)
+          );
+          list.push({ ...sanitized, isDeleted: isDel, isClosedByAdmin: isDel ? true : Boolean(data.isClosedByAdmin) });
         });
         const sorted = sortIssuesByCustomPriority(list);
         saveLocalUrgentIssues(sorted);
@@ -741,6 +790,14 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
   if (!strId) return getLocalUrgentIssues();
 
   try {
+    try {
+      const hardDeletedIds = JSON.parse(localStorage.getItem("oryuk_hard_deleted_urgent_ids") || "[]");
+      if (!hardDeletedIds.includes(strId)) {
+        hardDeletedIds.push(strId);
+        localStorage.setItem("oryuk_hard_deleted_urgent_ids", JSON.stringify(hardDeletedIds));
+      }
+    } catch (_) {}
+
     const current = getLocalUrgentIssues();
     const updated = current.filter(
       (i) =>

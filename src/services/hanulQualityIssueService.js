@@ -41,6 +41,17 @@ export const HANUL_SEVERITY_LEVELS = [
   { id: "INFO", label: "ℹ️ 품질 공지 (작업 표준 안내)", color: "blue", bg: "bg-blue-500", text: "text-blue-600" }
 ];
 
+const sanitizeHanulAlert = (item) => {
+  if (!item || typeof item !== "object") return item;
+  if (item.isManuallyRestored === true) return item;
+  const idStr = String(item.id || "");
+  const tsMatch = idStr.match(/(\d{13})/);
+  if (!tsMatch || Number(tsMatch[1]) <= 1792541000000) {
+    return { ...item, isClosedByAdmin: true };
+  }
+  return item;
+};
+
 // Helper: Read local storage
 export const getLocalHanulQualityIssues = () => {
   try {
@@ -48,7 +59,7 @@ export const getLocalHanulQualityIssues = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return parsed.map(sanitizeHanulAlert);
       }
     }
   } catch (e) {
@@ -73,6 +84,10 @@ export const subscribeHanulQualityIssues = (onUpdate) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        if (snapshot.empty && snapshot.metadata?.fromCache) {
+          onUpdate(getLocalHanulQualityIssues());
+          return;
+        }
         const remoteList = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
@@ -84,7 +99,7 @@ export const subscribeHanulQualityIssues = (onUpdate) => {
               data?.status === "DELETED"
             );
             if (!isDel) {
-              remoteList.push({ id: d.id, ...data });
+              remoteList.push(sanitizeHanulAlert({ id: d.id, ...data }));
             }
           });
         }

@@ -26,7 +26,8 @@ import {
   sortIssuesByCustomPriority,
   sortIssuesByLatest,
   isMeetingExpired,
-  isIssueClosed
+  isIssueClosed,
+  isLegacyDismissedQualityAlert
 } from "../services/urgentIssueService";
 import {
   subscribeExtrusionQualityIssues,
@@ -548,6 +549,7 @@ export const AuthModal = () => {
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -573,9 +575,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        isClosedByAdmin: closedByAdmin,
         deletedBy: alert.deletedBy || "",
-        isDeleted: Boolean(alert.isClosedByAdmin),
+        isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
         origin: "EXTRUSION_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -589,6 +591,7 @@ export const AuthModal = () => {
 
       const dateStr = normalizeDateStr(alert.targetDate || alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -614,9 +617,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        isClosedByAdmin: closedByAdmin,
         deletedBy: alert.deletedBy || "",
-        isDeleted: Boolean(alert.isClosedByAdmin),
+        isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
         origin: "HANUL_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -630,6 +633,7 @@ export const AuthModal = () => {
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -655,9 +659,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        isClosedByAdmin: closedByAdmin,
         deletedBy: alert.deletedBy || "",
-        isDeleted: Boolean(alert.isClosedByAdmin),
+        isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
         origin: "YUSEONG_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -671,6 +675,7 @@ export const AuthModal = () => {
 
       const dateStr = normalizeDateStr(alert.date || alert.createdAt, todayDateStr);
       const isResolved = Boolean(alert.isResolved) || alert.status === "RESOLVED" || alert.status === "CLOSED" || alert.status === "DONE" || Boolean(alert.actionResult && alert.actionResult.trim());
+      const closedByAdmin = Boolean(alert.isClosedByAdmin) || isLegacyDismissedQualityAlert({ ...alert, category: "부적합경보" });
       const causeImages = Array.isArray(alert.causeImages) ? alert.causeImages : (Array.isArray(alert.images) ? alert.images : []);
       const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
 
@@ -696,9 +701,9 @@ export const AuthModal = () => {
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         status: isResolved ? "RESOLVED" : (alert.status || "ACTIVE"),
         isResolved,
-        isClosedByAdmin: Boolean(alert.isClosedByAdmin),
+        isClosedByAdmin: closedByAdmin,
         deletedBy: alert.deletedBy || "",
-        isDeleted: Boolean(alert.isClosedByAdmin),
+        isDeleted: closedByAdmin,
         isFirstScreenOrigin: true,
         origin: "MACHINING_QUALITY",
         createdAt: alert.createdAt || dateStr,
@@ -718,7 +723,11 @@ export const AuthModal = () => {
     (externalQualityAlerts || []).forEach((item) => {
       const key = `${(item.title || "").trim().toLowerCase()}_${item.startDate || item.date || ""}`;
       seenKeys.add(key);
-      if (item.rawId) seenKeys.add(item.rawId);
+      if (item.rawId) {
+        seenKeys.add(item.rawId);
+        const tsMatch = String(item.rawId).match(/(\d{13})/);
+        if (tsMatch) seenKeys.add(`ts_${tsMatch[1]}`);
+      }
       if (item.id) seenKeys.add(item.id);
       list.push(item);
     });
@@ -730,7 +739,9 @@ export const AuthModal = () => {
 
       const key = `${(item.title || "").trim().toLowerCase()}_${(item.startDate || item.expireDate || item.date || "").slice(0, 10)}`;
       const cleanId = String(item.id || item._docId || "");
-      if (seenKeys.has(key) || seenKeys.has(cleanId)) return;
+      const tsMatch = cleanId.match(/(\d{13})/);
+      const tsKey = tsMatch ? `ts_${tsMatch[1]}` : "";
+      if (seenKeys.has(key) || seenKeys.has(cleanId) || (tsKey && seenKeys.has(tsKey))) return;
 
       list.push({
         ...item,
