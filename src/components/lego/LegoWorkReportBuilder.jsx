@@ -1156,6 +1156,7 @@ export const LegoWorkReportBuilder = ({
         carModel: currentReport.carModel || "JA",
         project: currentReport.carModel || "JA",
         partName: currentReport.partName || "G/RUN",
+        processName: currentReport.processName || "단컷팅 / 조인트",
         workerName: currentReport.workerName || "작업자",
         worker: currentReport.workerName || "작업자",
         writer: currentReport.workerName || "작업자",
@@ -1586,6 +1587,23 @@ export const LegoWorkReportBuilder = ({
               <span>기본 메타데이터 수정</span>
             </h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="col-span-2">
+                <label className="text-[11px] font-bold text-slate-400 block mb-0.5">공정명 (Process name)</label>
+                <input
+                  type="text"
+                  value={currentReport.processName ?? "단컷팅 / 조인트"}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCurrentReport((prev) => ({
+                      ...prev,
+                      processName: val,
+                      subTitle: `▣ 공정명 : ${val}`
+                    }));
+                  }}
+                  placeholder="예: 정치절단 / 단컷팅 / 조인트 / 직각검사"
+                  className="w-full px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-black text-center text-cyan-600 dark:text-cyan-400"
+                />
+              </div>
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-0.5">차종명 (Car model)</label>
                 <input
@@ -1721,7 +1739,19 @@ export const LegoWorkReportBuilder = ({
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">공정명 (Process)</span>
-                    <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">단컷팅 / 조인트</span>
+                    <input
+                      type="text"
+                      value={currentReport.processName ?? "단컷팅 / 조인트"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCurrentReport((prev) => ({
+                          ...prev,
+                          processName: val,
+                          subTitle: `▣ 공정명 : ${val}`
+                        }));
+                      }}
+                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-indigo-400"
+                    />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">차종 (Car model)</span>
