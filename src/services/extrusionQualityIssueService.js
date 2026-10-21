@@ -7,6 +7,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import {
   syncQualityAlertToFourMLedger,
   unregisterFromFourMLedger
@@ -163,14 +164,24 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     issueData.createdAt ||
     nowStr;
 
+  const isBroadcast =
+    issueData.isFirstScreenBroadcast !== undefined
+      ? Boolean(issueData.isFirstScreenBroadcast)
+      : Boolean(existing?.isFirstScreenBroadcast);
+
   const fullItem = {
     ...issueData,
     id,
+    company: issueData.company || existing?.company || "압출동",
+    targetWorkerGroup: issueData.targetWorkerGroup || existing?.targetWorkerGroup || "extrusion",
+    plant: issueData.plant || existing?.plant || "삼랑진공장",
+    building: "압출동",
     date: finalDate,
     time: issueData.time || existing?.time || now.toTimeString().slice(0, 5),
     line: issueData.line || existing?.line || "PCM 1호기",
-    title: issueData.title || existing?.title || "압출 품질 관리 이슈",
+    title: issueData.title || existing?.title || "압출동 부적합경보",
     defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
+    severity: issueData.severity || existing?.severity || "CRITICAL",
     status: issueData.status || existing?.status || "ACTIVE",
     content: issueData.content !== undefined ? issueData.content : (existing?.content || ""),
     actionResult: issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || existing?.actionResult || "",
@@ -179,6 +190,9 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     images: [...causeImages, ...actionImages],
     author: issueData.author || existing?.author || "설유철",
     authorTitle: issueData.authorTitle || existing?.authorTitle || "책임",
+    isFirstScreenBroadcast: isBroadcast,
+    isFirstScreenOrigin: isBroadcast,
+    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
     createdAt: finalCreatedAt,
     updatedAt: nowStr,
     acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : (existing?.acknowledgedBy || [])
@@ -195,10 +209,13 @@ export const saveExtrusionQualityIssue = async (issueData) => {
 
   saveLocalExtrusionQualityIssues(updated);
 
-  try {
-    await setDoc(doc(db, COLLECTION_NAME, id), fullItem);
-  } catch (e) {
-    console.warn("Firestore save extrusion quality issue fallback to local:", e);
+  if (db) {
+    try {
+      const payload = sanitizeForFirestore(fullItem);
+      await setDoc(doc(db, COLLECTION_NAME, id), payload);
+    } catch (e) {
+      console.warn("Firestore save extrusion quality issue fallback to local:", e);
+    }
   }
 
   // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화

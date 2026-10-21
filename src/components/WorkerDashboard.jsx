@@ -40,7 +40,11 @@ import {
 import { getKSTDateString, formatKSTDate, formatRelativeAccessTime } from "../utils/dateUtils";
 import { pushModalHistory, useModalHistory } from "../utils/modalHistory";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
-import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
+import {
+  isExtrusionWorkerProfile,
+  subscribeExtrusionQualityIssues,
+  getLocalExtrusionQualityIssues
+} from "../services/extrusionQualityIssueService";
 import { HanulWorkerDashboardView } from "./hanul/HanulWorkerDashboardView";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
 import { MachiningWorkerDashboardView } from "./machining/MachiningWorkerDashboardView";
@@ -401,6 +405,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [isHanulQualityIssueModalOpen, setIsHanulQualityIssueModalOpen] = useState(false);
   const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
   const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
+  const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [hanulReportProject, setHanulReportProject] = useState("9BQC");
   const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
   const [hanulReportEditData, setHanulReportEditData] = useState(null);
@@ -425,6 +430,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeExtrusionQualityIssues((list) => {
+      setExtrusionQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
   const activeHanulQualityCount = useMemo(() => {
     return (hanulQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
   }, [hanulQualityIssues]);
@@ -432,6 +444,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const activeMachiningQualityCount = useMemo(() => {
     return (machiningQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
   }, [machiningQualityIssues]);
+
+  const activeExtrusionQualityCount = useMemo(() => {
+    return (extrusionQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
+  }, [extrusionQualityIssues]);
 
   const handleOpenHanulReport = (proj = "9BQC", proc = "소재준비", editData = null) => {
     setHanulReportProject(proj);
@@ -1410,8 +1426,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               LOGS_PER_PAGE={LOGS_PER_PAGE}
               totalLogPages={totalLogPages}
               handleOpenWorkLogModal={handleOpenWorkLogModal}
-              setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
-              activeHanulQualityCount={activeHanulQualityCount}
               activeMachiningQualityCount={activeMachiningQualityCount}
             />
           ) : isPartnerProfile ? (
@@ -1707,6 +1721,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
               activeHanulQualityCount={activeHanulQualityCount}
               activeMachiningQualityCount={activeMachiningQualityCount}
+              activeExtrusionQualityCount={activeExtrusionQualityCount}
             />
           )}
         </>

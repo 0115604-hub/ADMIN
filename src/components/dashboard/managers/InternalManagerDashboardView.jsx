@@ -126,7 +126,8 @@ export const InternalManagerDashboardView = ({
   handleOpenWorkLogModal,
   setIsHanulQualityIssueModalOpen,
   activeHanulQualityCount = 0,
-  activeMachiningQualityCount = 0
+  activeMachiningQualityCount = 0,
+  activeExtrusionQualityCount = 0
 }) => {
   // 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) & 설유철 (압출동 부적합경보 등록) 판별
   const isOryukQualityManager = Boolean(
@@ -283,9 +284,9 @@ export const InternalManagerDashboardView = ({
             >
               <ShieldAlert className="w-3.5 h-3.5" />
               <span>🚨 부적합경보 입력</span>
-              {(isOryukQualityManager ? activeMachiningQualityCount : activeHanulQualityCount) > 0 && (
+              {(isOryukQualityManager ? activeMachiningQualityCount : isSeolQualityManager ? activeExtrusionQualityCount : activeHanulQualityCount) > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
-                  {isOryukQualityManager ? activeMachiningQualityCount : activeHanulQualityCount}
+                  {isOryukQualityManager ? activeMachiningQualityCount : isSeolQualityManager ? activeExtrusionQualityCount : activeHanulQualityCount}
                 </span>
               )}
             </button>

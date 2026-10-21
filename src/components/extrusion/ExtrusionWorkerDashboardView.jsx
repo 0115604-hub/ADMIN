@@ -389,7 +389,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-black text-sm sm:text-base text-rose-600 dark:text-rose-400">
-                  🚨 설유철 책임 압출 품질이슈 공유판
+                  🚨 압출동 부적합품 경보 공유판 (설유철 책임 전파)
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
                   {activeQualityCount}건 진행중

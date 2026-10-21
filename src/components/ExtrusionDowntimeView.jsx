@@ -68,7 +68,7 @@ export const ExtrusionDowntimeView = () => {
   const [activeSubTab, setActiveSubTab] = useState(() => {
     try {
       const saved = localStorage.getItem("factory_extrusion_active_subtab");
-      if (saved) return saved;
+      if (saved && saved !== "quality_issue") return saved;
     } catch (e) {}
     return "production";
   });
@@ -88,7 +88,7 @@ export const ExtrusionDowntimeView = () => {
   const [selectedLine, setSelectedLine] = useState(() => {
     try {
       const saved = localStorage.getItem("factory_extrusion_selected_line_v2");
-      if (saved) return saved;
+      if (saved && saved !== "quality_issue") return saved;
     } catch (e) {}
     return "all";
   });
@@ -321,7 +321,7 @@ export const ExtrusionDowntimeView = () => {
         </button>
 
         {/* ⭐ 설유철 화면 (또는 Admin) 전용 3번째 뱃지: [압출품질이슈] */}
-        {isSeolOrAdmin && (
+        {false && isSeolOrAdmin && (
           <button
             type="button"
             onClick={() => setActiveSubTab("quality_issue")}
@@ -350,7 +350,7 @@ export const ExtrusionDowntimeView = () => {
 
       {activeSubTab === "production" ? (
         <ExtrusionProductionTab />
-      ) : activeSubTab === "quality_issue" && isSeolOrAdmin ? (
+      ) : false && activeSubTab === "quality_issue" && isSeolOrAdmin ? (
         <ExtrusionQualityIssueTab />
       ) : (
         <div className="space-y-3.5">
