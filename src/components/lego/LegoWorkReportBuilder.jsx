@@ -163,6 +163,13 @@ export const LEGO_IMAGE_REFERENCES = [
     title: "[블록 17] FRT 직각검사 불량 집계표 (FRT LH / RH)",
     desc: "립컷팅 누락, 패드 누락, 외면 오염, 미사상, 과사상, 조인트 씹힘 등 (누락되었던 17번째 블록 완벽 탑재)",
     blockKey: "frtRightAngleDefects"
+  },
+  {
+    id: "img_18",
+    imgFile: "/lego_images/lego_block_10.png",
+    title: "[블록 18] 비가동 및 부적합품 발생내역 (조치전·후 사진)",
+    desc: "압출동·가공동·한울·부림텍·유성 공통 비가동 및 부적합품 등록 + 조치전/조치후 사진 첨부",
+    blockKey: "downtimeDefectPanel"
   }
 ];
 
@@ -203,7 +210,8 @@ export const PRESET_REPORTS = [
       drawingSpecCheck: false,
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
-      remarks: true
+      remarks: true,
+      downtimeDefectPanel: true
     },
     // 블록 15: 정치 절단 길이 (Spec cutting) - 실제 사진 15 실물 데이터 (초물/중물/종물 3회 측정 및 LOT NO. 3개)
     specsCutting: [
@@ -313,7 +321,8 @@ export const PRESET_REPORTS = [
       drawingSpecCheck: false,
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
-      remarks: true
+      remarks: true,
+      downtimeDefectPanel: true
     },
     jointMaterial: {
       gradeName: "SJ-4004B (EPDM)",
@@ -380,7 +389,8 @@ export const PRESET_REPORTS = [
       drawingSpecCheck: false,
       rightAngleMatrix: true,
       frtRightAngleDefects: true,
-      remarks: true
+      remarks: true,
+      downtimeDefectPanel: true
     },
     machines: [
       { id: "m_lh2", name: "LH 2호기", workTime: "08:00 ~ 17:00", inspectQty: 320, goodQty: 312, reworkQty: 6, scrapQty: 2 },
@@ -465,7 +475,8 @@ export const PRESET_REPORTS = [
       drawingSpecCheck: true,
       rightAngleMatrix: false,
       frtRightAngleDefects: false,
-      remarks: true
+      remarks: true,
+      downtimeDefectPanel: true
     },
     drawingSpecs: [
       { id: "ds_1", section: "RR LH A", spec: "482 ± 3 mm", startVal: "482.5", halfVal: "482.0", finishVal: "481.8" },
@@ -494,7 +505,8 @@ export const LEGO_BLOCK_SWITCH_CATALOG = [
   { key: "drawingSpecCheck", label: "도면 치수 & 패드 검사 (A/B/D)", badge: "사진 12" },
   { key: "rightAngleMatrix", label: "완제품 직각검사 종합 매트릭스", badge: "사진 13, 14" },
   { key: "frtRightAngleDefects", label: "FRT 직각검사 불량 집계표 (립컷팅)", badge: "사진 17" },
-  { key: "remarks", label: "특기 사항 및 조치사항", badge: "공통" }
+  { key: "remarks", label: "특기 사항 및 조치사항", badge: "공통" },
+  { key: "downtimeDefectPanel", label: "비가동 및 부적합품 발생내역 (조치전·후 사진)", badge: "공통" }
 ];
 
 export const DEFAULT_BLOCK_ORDER = LEGO_BLOCK_SWITCH_CATALOG.map((b) => b.key);
@@ -517,6 +529,10 @@ export const LegoWorkReportBuilder = ({
         const parsed = JSON.parse(saved);
         if (initialWorkerName) parsed.workerName = initialWorkerName;
         if (initialWorkDate) parsed.workDate = initialWorkDate;
+        parsed.activeBlocks = {
+          downtimeDefectPanel: true,
+          ...(parsed.activeBlocks || {})
+        };
         return parsed;
       }
     } catch {}
@@ -1189,83 +1205,86 @@ export const LegoWorkReportBuilder = ({
         updatedAt: now
       };
 
-      // 1. Save to local storage draft
-      localStorage.setItem("oruk_custom_lego_report_v2", JSON.stringify(currentReport));
-
-      // 2. Persist to official Machining Work Report Service
-      await saveMachiningWorkReport(reportPayload);
-
-      // 🌟 일보양식관리에도 DB 공식등록 뱃지를 가진 템플릿으로 자동 동기화 등록 (공정명 기반 5대 대분류 자동 매칭)
-      let savedTplPayload = null;
+      // 1. Save to local storage draft (quota-safe)
       try {
-        const procText = `${currentReport.processName || ""} ${currentReport.title || ""} ${currentReport.subTitle || ""}`;
-        let matchedCatId = currentReport.category || "MATERIAL_PREP";
-        if (procText.includes("압출")) {
-          matchedCatId = "EXTRUSION";
-        } else if (procText.includes("조인트") || procText.includes("사출")) {
-          matchedCatId = "JOINT";
-        } else if (procText.includes("후가공") || procText.includes("본드") || procText.includes("조립")) {
-          matchedCatId = "POST_PROCESSING";
-        } else if (procText.includes("검사") || procText.includes("직각") || procText.includes("치수")) {
-          matchedCatId = "INSPECTION";
-        } else if (procText.includes("절단") || procText.includes("컷팅") || procText.includes("소재")) {
-          matchedCatId = "MATERIAL_PREP";
-        }
-        const matchedCatObj =
-          REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
-
-        savedTplPayload = await saveWorkReportTemplate({
-          id: `tpl_lego_${currentReport.carModel || "JA"}_${Date.now()}`,
-          categoryId: matchedCatObj.id,
-          categoryName: matchedCatObj.name,
-          title: currentReport.title || `${currentReport.carModel || "신규"} 레고블록 작업일보`,
-          subTitle: currentReport.subTitle || `▣ 공정명 : ${currentReport.processName || "정치절단 / 단컷팅"}`,
-          carModel: currentReport.carModel || "JA",
-          partName: currentReport.partName || "G/RUN",
-          processName: currentReport.processName || (currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단"),
-          formNo: currentReport.formNo || "705-02(REV.4)",
-          companyName: currentReport.companyName || "(주)오륙",
-          isLegoModular: true,
-          isDatabaseBacked: true,
-          legoConfig: currentReport,
-          blocks: {
-            timeAndQty: Boolean(currentReport.activeBlocks?.workTimeOutput),
-            specAndLot: Boolean(currentReport.activeBlocks?.specsCutting || currentReport.activeBlocks?.drawingSpecCheck),
-            machineCondition: Boolean(currentReport.activeBlocks?.injectionTemp || currentReport.activeBlocks?.injectionCondition),
-            defectMatrix: Boolean(currentReport.activeBlocks?.defectMaterialMatrix || currentReport.activeBlocks?.jointDefectMatrix || currentReport.activeBlocks?.rightAngleMatrix),
-            maintenance: Boolean(currentReport.activeBlocks?.remarks)
-          },
-          specs: (currentReport.specsCutting || []).map((s) => ({
-            id: s.id,
-            section: s.section,
-            name: s.section,
-            frtSpec: s.spec1,
-            rrSpec: s.spec1,
-            spec: s.spec1,
-            lotStart: s.lotStart,
-            lotHalf: s.lotHalf,
-            lotFinish: s.lotFinish,
-            lotNo: s.lotNo
-          })),
-          updatedAt: now
-        });
-      } catch (syncErr) {
-        console.warn("Template catalog auto-sync non-critical error:", syncErr);
+        localStorage.setItem("oruk_custom_lego_report_v2", JSON.stringify(currentReport));
+      } catch (storageErr) {
+        console.warn("Draft localStorage quota warning:", storageErr);
       }
 
-      // 3. Dispatch system events for realtime sync across all dashboards
+      // 2. 🌟 5대 공정 양식 보관함에 최우선 즉시 등록 (중첩 배열 방어 및 실시간 동기화)
+      const procText = `${currentReport.processName || ""} ${currentReport.title || ""} ${currentReport.subTitle || ""}`;
+      let matchedCatId = currentReport.category || "MATERIAL_PREP";
+      if (procText.includes("압출")) {
+        matchedCatId = "EXTRUSION";
+      } else if (procText.includes("조인트") || procText.includes("사출")) {
+        matchedCatId = "JOINT";
+      } else if (procText.includes("후가공") || procText.includes("본드") || procText.includes("조립")) {
+        matchedCatId = "POST_PROCESSING";
+      } else if (procText.includes("검사") || procText.includes("직각") || procText.includes("치수")) {
+        matchedCatId = "INSPECTION";
+      } else if (procText.includes("절단") || procText.includes("컷팅") || procText.includes("소재")) {
+        matchedCatId = "MATERIAL_PREP";
+      }
+      const matchedCatObj =
+        REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
+
+      const savedTplPayload = await saveWorkReportTemplate({
+        id: `tpl_lego_${currentReport.carModel || "JA"}_${Date.now()}`,
+        categoryId: matchedCatObj.id,
+        categoryName: matchedCatObj.name,
+        title: currentReport.title || `${currentReport.carModel || "신규"} 레고블록 작업일보`,
+        subTitle: currentReport.subTitle || `▣ 공정명 : ${currentReport.processName || "정치절단 / 단컷팅"}`,
+        carModel: currentReport.carModel || "JA",
+        partName: currentReport.partName || "G/RUN",
+        processName: currentReport.processName || (currentReport.carModel ? `${currentReport.carModel} 가공` : "정치절단"),
+        formNo: currentReport.formNo || "705-02(REV.4)",
+        companyName: currentReport.companyName || "(주)오륙",
+        isLegoModular: true,
+        isDatabaseBacked: true,
+        legoConfig: currentReport,
+        blocks: {
+          timeAndQty: Boolean(currentReport.activeBlocks?.workTimeOutput),
+          specAndLot: Boolean(currentReport.activeBlocks?.specsCutting || currentReport.activeBlocks?.drawingSpecCheck),
+          machineCondition: Boolean(currentReport.activeBlocks?.injectionTemp || currentReport.activeBlocks?.injectionCondition),
+          defectMatrix: Boolean(currentReport.activeBlocks?.defectMaterialMatrix || currentReport.activeBlocks?.jointDefectMatrix || currentReport.activeBlocks?.rightAngleMatrix),
+          maintenance: Boolean(currentReport.activeBlocks?.remarks || currentReport.activeBlocks?.downtimeDefectPanel)
+        },
+        specs: (currentReport.specsCutting || []).map((s) => ({
+          id: s.id,
+          section: s.section,
+          name: s.section,
+          frtSpec: s.spec1,
+          rrSpec: s.spec1,
+          spec: s.spec1,
+          lotStart: s.lotStart,
+          lotHalf: s.lotHalf,
+          lotFinish: s.lotFinish,
+          lotNo: s.lotNo
+        })),
+        updatedAt: now
+      });
+
+      if (onSaveToTemplateManager) {
+        onSaveToTemplateManager(savedTplPayload);
+      }
+
+      // 3. Persist to official Machining Work Report Service (non-blocking error safe)
+      try {
+        await saveMachiningWorkReport(reportPayload);
+      } catch (machiningErr) {
+        console.warn("saveMachiningWorkReport warning:", machiningErr);
+      }
+
+      // 4. Dispatch system events for realtime sync across all dashboards
       window.dispatchEvent(new CustomEvent("machining-work-report-saved", { detail: reportPayload }));
       window.dispatchEvent(new CustomEvent("work-log-saved", { detail: reportPayload }));
 
-      // 4. Callback if passed
       if (onSaveWorkReport) {
         onSaveWorkReport(reportPayload);
       }
-      if (onSaveToTemplateManager) {
-        onSaveToTemplateManager(savedTplPayload || reportPayload);
-      }
 
-      showToast("🎉 [작업일보 등록 완료] 레고블럭 작업일보가 데이터베이스에 공식 저장되었습니다!");
+      showToast(`🎉 [공식 등록 완료] 5대 공정 양식 보관함(${matchedCatObj.name}) 및 DB에 공식 저장되었습니다!`);
     } catch (err) {
       console.error("작업일보 저장 오류:", err);
       alert("작업일보 저장 중 오류가 발생했습니다: " + err.message);
@@ -2910,6 +2929,21 @@ export const LegoWorkReportBuilder = ({
               </div>
             ), { customBadge: "공통" })}
 
+            {renderBlockWrapper("downtimeDefectPanel", "비가동 및 부적합품 발생내역 (조치전·후 사진)", (
+              <CommonDowntimeDefectPanel
+                title="④ 비가동 및 부적합품 발생내역"
+                plantLabel={currentReport.companyName || "작업일보 공통"}
+                unitLabel="부적합량(EA/kg)"
+                events={currentReport.downtimeEvents || []}
+                onChangeEvents={(nextEvents) =>
+                  setCurrentReport((prev) => ({
+                    ...prev,
+                    downtimeEvents: nextEvents
+                  }))
+                }
+              />
+            ), { customBadge: "공통" })}
+
             {/* ================================================================= */}
             {/* 🧱 CUSTOM PHOTO-ANALYZED LEGO BLOCKS (그림파일 분석·저장 블록들) */}
             {/* ================================================================= */}
@@ -3121,24 +3155,6 @@ export const LegoWorkReportBuilder = ({
                 </React.Fragment>
               );
             })}
-
-            {/* ================================================================= */}
-            {/* ⏱️ 비가동 및 부적합품 발생내역 (전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
-            {/* ================================================================= */}
-            <div className="pt-2">
-              <CommonDowntimeDefectPanel
-                title="④ 비가동 및 부적합품 발생내역"
-                plantLabel={currentReport.companyName || "작업일보 공통"}
-                unitLabel="부적합량(EA/kg)"
-                events={currentReport.downtimeEvents || []}
-                onChangeEvents={(nextEvents) =>
-                  setCurrentReport((prev) => ({
-                    ...prev,
-                    downtimeEvents: nextEvents
-                  }))
-                }
-              />
-            </div>
 
             </div>
 

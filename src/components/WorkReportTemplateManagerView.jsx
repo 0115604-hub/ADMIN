@@ -237,7 +237,12 @@ export const WorkReportTemplateManagerView = () => {
 
   // Callback when saved from Lego Builder
   const handleSaveFromLegoBuilder = (savedTpl) => {
-    setTemplates(getLocalWorkReportTemplates());
+    const localList = getLocalWorkReportTemplates();
+    if (savedTpl && savedTpl.id && !localList.some((t) => t.id === savedTpl.id)) {
+      setTemplates([savedTpl, ...localList]);
+    } else {
+      setTemplates(localList);
+    }
     if (savedTpl && savedTpl.categoryId) {
       setSelectedCategory(savedTpl.categoryId);
     }
@@ -265,7 +270,7 @@ export const WorkReportTemplateManagerView = () => {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>🧩 레고 블록 조합기 (17대 블록)</span>
+          <span>🧩 레고 블록 조합기</span>
         </button>
         <button
           type="button"

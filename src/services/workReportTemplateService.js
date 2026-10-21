@@ -7,8 +7,7 @@ import {
   getDocs,
   deleteDoc,
   onSnapshot,
-  query,
-  orderBy
+  query
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
@@ -55,19 +54,50 @@ export const REPORT_MAJOR_CATEGORIES = [
   }
 ];
 
-// 🌟 5대 공정 양식보관함 클린 리셋 버전 키 (과거 기본 템플릿 및 잔여 양식 일괄 정리)
 export const TEMPLATE_RESET_VERSION_KEY = "oruk_work_report_templates_reset_v3";
-
-// 초기 표준 템플릿 마스터 데이터 (사용자 요청으로 기존 기본 양식 전면 삭제하여 빈 배열로 초기화)
 export const DEFAULT_WORK_REPORT_TEMPLATES = [];
 
-// 로컬 스토리지 데이터 가져오기 (삭제 시 부활하지 않도록 순수 저장된 템플릿만 반환 + 방금 등록된 레고 작업일보 초안 자동 복원)
+// In-memory cache so localStorage quota limits never lose templates
+let memoryTemplatesCache = null;
+let memoryCustomBlocksCache = null;
+
+const normalizeTemplateDoc = (tpl) => {
+  if (!tpl) return tpl;
+  const copy = { ...tpl, isDatabaseBacked: true };
+  if (typeof copy.legoConfigJson === "string" && copy.legoConfigJson) {
+    try {
+      copy.legoConfig = JSON.parse(copy.legoConfigJson);
+    } catch {}
+  }
+  if (copy.legoConfig?.customBlockTables) {
+    const fixedTables = {};
+    Object.entries(copy.legoConfig.customBlockTables).forEach(([k, val]) => {
+      const rows = Array.isArray(val?.rows)
+        ? val.rows.map((r) => (Array.isArray(r) ? r : Array.isArray(r?.cells) ? r.cells : []))
+        : [];
+      fixedTables[k] = {
+        columns: Array.isArray(val?.columns) ? val.columns : [],
+        rows
+      };
+    });
+    copy.legoConfig = {
+      ...copy.legoConfig,
+      customBlockTables: fixedTables
+    };
+  }
+  return copy;
+};
+
+// 로컬 스토리지 데이터 가져오기
 export const getLocalWorkReportTemplates = () => {
   try {
-    // 최초 1회 기존 로컬 캐시 양식 일괄 초기화 보장
     if (localStorage.getItem(TEMPLATE_RESET_VERSION_KEY) !== "true") {
       localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify([]));
       localStorage.setItem(TEMPLATE_RESET_VERSION_KEY, "true");
+    }
+
+    if (Array.isArray(memoryTemplatesCache)) {
+      return memoryTemplatesCache.map(normalizeTemplateDoc);
     }
 
     const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
@@ -77,105 +107,70 @@ export const getLocalWorkReportTemplates = () => {
       if (Array.isArray(p)) parsed = p;
     }
 
-    // 만약 양식보관함이 비어 있는데 사용자가 방금 등록한 레고 작업일보('oruk_custom_lego_report_v2')가 있고 아직 복원된 적이 없다면 자동 복구
-    if (
-      parsed.length === 0 &&
-      localStorage.getItem("oruk_lego_draft_auto_restored_v1") !== "true"
-    ) {
-      const draftRaw = localStorage.getItem("oruk_custom_lego_report_v2");
-      if (draftRaw) {
-        try {
-          const draft = JSON.parse(draftRaw);
-          if (draft && draft.title) {
-            localStorage.setItem("oruk_lego_draft_auto_restored_v1", "true");
-            const procText = `${draft.processName || ""} ${draft.title || ""} ${draft.subTitle || ""}`;
-            let matchedCatId = draft.category || "MATERIAL_PREP";
-            if (procText.includes("압출")) matchedCatId = "EXTRUSION";
-            else if (procText.includes("조인트") || procText.includes("사출")) matchedCatId = "JOINT";
-            else if (procText.includes("후가공") || procText.includes("본드")) matchedCatId = "POST_PROCESSING";
-            else if (procText.includes("검사") || procText.includes("직각")) matchedCatId = "INSPECTION";
-            const catObj =
-              REPORT_MAJOR_CATEGORIES.find((c) => c.id === matchedCatId) || REPORT_MAJOR_CATEGORIES[1];
-
-            const restoredTpl = {
-              id: `tpl_lego_${draft.carModel || "JA"}_${Date.now()}`,
-              categoryId: catObj.id,
-              categoryName: catObj.name,
-              title: draft.title || `${draft.carModel || "신규"} 레고블록 작업일보`,
-              subTitle: draft.subTitle || `▣ 공정명 : ${draft.processName || "정치절단 / 단컷팅"}`,
-              carModel: draft.carModel || "JA",
-              partName: draft.partName || "G/RUN",
-              processName: draft.processName || "단컷팅 / 조인트",
-              formNo: draft.formNo || "705-02(REV.4)",
-              companyName: draft.companyName || "(주)오륙",
-              isLegoModular: true,
-              isDatabaseBacked: true,
-              legoConfig: draft,
-              blocks: {
-                timeAndQty: Boolean(draft.activeBlocks?.workTimeOutput),
-                specAndLot: Boolean(draft.activeBlocks?.specsCutting || draft.activeBlocks?.drawingSpecCheck),
-                machineCondition: Boolean(draft.activeBlocks?.injectionTemp || draft.activeBlocks?.injectionCondition),
-                defectMatrix: Boolean(draft.activeBlocks?.defectMaterialMatrix || draft.activeBlocks?.jointDefectMatrix || draft.activeBlocks?.rightAngleMatrix),
-                maintenance: Boolean(draft.activeBlocks?.remarks)
-              },
-              specs: (draft.specsCutting || []).map((s) => ({
-                id: s.id,
-                section: s.section,
-                name: s.section,
-                frtSpec: s.spec1,
-                rrSpec: s.spec1,
-                spec: s.spec1
-              })),
-              updatedAt: new Date().toISOString()
-            };
-            parsed = [restoredTpl];
-            localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(parsed));
-          }
-        } catch {}
-      }
-    }
-
-    return parsed.map((tpl) => ({
-      ...tpl,
-      isDatabaseBacked: true
-    }));
+    memoryTemplatesCache = parsed.map(normalizeTemplateDoc);
+    return memoryTemplatesCache;
   } catch (e) {
     console.warn("getLocalWorkReportTemplates fallback:", e);
-    return [];
+    return Array.isArray(memoryTemplatesCache) ? memoryTemplatesCache : [];
   }
 };
 
-// 로컬 스토리지 저장
+// 로컬 스토리지 저장 (QuotaExceededError 방어 + 즉시 이벤트 브로드캐스트 보장)
 export const saveLocalWorkReportTemplates = (templates) => {
+  const normalized = (Array.isArray(templates) ? templates : []).map(normalizeTemplateDoc);
+  memoryTemplatesCache = normalized;
+
   try {
-    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
     localStorage.setItem(TEMPLATE_RESET_VERSION_KEY, "true");
-    window.dispatchEvent(new CustomEvent("work-report-templates-updated", { detail: templates }));
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
-    console.error("saveLocalWorkReportTemplates error:", e);
+    console.warn("saveLocalWorkReportTemplates quota warning, stripping heavy base64:", e);
+    try {
+      // Free up localStorage space by stripping old base64 images from custom blocks
+      const cbRaw = localStorage.getItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY);
+      if (cbRaw) {
+        const cbParsed = JSON.parse(cbRaw);
+        if (Array.isArray(cbParsed)) {
+          const slimCb = cbParsed.map(({ imageDataUrl, ...rest }) => rest);
+          localStorage.setItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY, JSON.stringify(slimCb));
+        }
+      }
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(normalized));
+    } catch (retryErr) {
+      console.warn("saveLocalWorkReportTemplates retry warning (kept in memory):", retryErr);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("work-report-templates-updated", { detail: normalized }));
   }
 };
 
 // Firestore 실시간 구독 (로컬 저장본과 클라우드 문서 병합 유지)
 export const subscribeWorkReportTemplates = (callback) => {
+  // 즉시 현재 로컬/메모리 목록 먼저 전달
+  callback(getLocalWorkReportTemplates());
+
   try {
     const q = query(collection(db, COLLECTION_NAME));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const snapshotList = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-          isDatabaseBacked: true
-        }));
+        const snapshotList = snapshot.docs.map((docSnap) =>
+          normalizeTemplateDoc({
+            id: docSnap.id,
+            ...docSnap.data(),
+            isDatabaseBacked: true
+          })
+        );
 
         const localList = getLocalWorkReportTemplates();
         const tplMap = new Map();
         localList.forEach((tpl) => {
-          if (tpl && tpl.id) tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+          if (tpl && tpl.id) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
         });
         snapshotList.forEach((tpl) => {
-          if (tpl && tpl.id) tplMap.set(tpl.id, { ...tpl, isDatabaseBacked: true });
+          if (tpl && tpl.id) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
         });
 
         const merged = Array.from(tplMap.values()).sort(
@@ -199,6 +194,7 @@ export const subscribeWorkReportTemplates = (callback) => {
 
 // 전체 템플릿 일괄 삭제 (비우기)
 export const deleteAllWorkReportTemplates = async () => {
+  memoryTemplatesCache = [];
   saveLocalWorkReportTemplates([]);
   try {
     const snap = await getDocs(collection(db, COLLECTION_NAME));
@@ -213,27 +209,43 @@ export const deleteAllWorkReportTemplates = async () => {
 export const saveWorkReportTemplate = async (template) => {
   const tplId = template.id || `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
   const now = new Date().toISOString();
-  const payload = {
+  const payload = normalizeTemplateDoc({
     ...template,
     id: tplId,
     isDatabaseBacked: true,
+    legoConfigJson: template.legoConfig ? JSON.stringify(template.legoConfig) : undefined,
     updatedAt: now
-  };
+  });
 
-  // 1. 로컬 즉시 저장
+  // 1. 로컬 & 메모리 즉시 저장 및 이벤트 발송 (UI 0ms 즉시 반영)
   const currentList = getLocalWorkReportTemplates();
-  const existingIdx = currentList.findIndex((t) => t.id === tplId);
+  const existingIdx = currentList.findIndex(
+    (t) =>
+      t.id === tplId ||
+      (t.isLegoModular &&
+        payload.isLegoModular &&
+        t.title === payload.title &&
+        t.carModel === payload.carModel &&
+        t.processName === payload.processName &&
+        t.categoryId === payload.categoryId)
+  );
   let updatedList;
   if (existingIdx >= 0) {
-    updatedList = currentList.map((t) => (t.id === tplId ? payload : t));
+    const targetId = currentList[existingIdx].id || tplId;
+    payload.id = targetId;
+    updatedList = currentList.map((t, idx) => (idx === existingIdx ? payload : t));
   } else {
     updatedList = [payload, ...currentList];
   }
   saveLocalWorkReportTemplates(updatedList);
 
-  // 2. Firestore 비동기 저장
+  // 2. Firestore 비동기 저장 (중첩 배열 방어 및 타임아웃 적용)
   try {
-    await setDoc(doc(db, COLLECTION_NAME, tplId), sanitizeForFirestore(payload));
+    const firestoreData = sanitizeForFirestore(payload);
+    await Promise.race([
+      setDoc(doc(db, COLLECTION_NAME, payload.id), firestoreData),
+      new Promise((resolve) => setTimeout(resolve, 2500))
+    ]);
   } catch (e) {
     console.warn("Firestore save template offline:", e);
   }
@@ -279,40 +291,64 @@ export const cloneWorkReportTemplate = async (sourceTemplateId, newCarModel = ""
 export const CUSTOM_LEGO_BLOCKS_STORAGE_KEY = "oruk_custom_lego_blocks_v1";
 const CUSTOM_BLOCKS_COLLECTION = "lego_custom_blocks";
 
+const normalizeCustomBlock = (b) => {
+  if (!b) return b;
+  const copy = { ...b };
+  if (typeof copy.rowsJson === "string" && copy.rowsJson) {
+    try {
+      copy.rows = JSON.parse(copy.rowsJson);
+    } catch {}
+  } else if (Array.isArray(copy.rows)) {
+    copy.rows = copy.rows.map((r) => (Array.isArray(r) ? r : Array.isArray(r?.cells) ? r.cells : []));
+  }
+  return copy;
+};
+
 export const getLocalCustomLegoBlocks = () => {
   try {
+    if (Array.isArray(memoryCustomBlocksCache)) {
+      return memoryCustomBlocksCache.map(normalizeCustomBlock);
+    }
     const raw = localStorage.getItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    memoryCustomBlocksCache = (Array.isArray(parsed) ? parsed : []).map(normalizeCustomBlock);
+    return memoryCustomBlocksCache;
   } catch (e) {
     console.warn("Failed to load local custom lego blocks:", e);
-    return [];
+    return Array.isArray(memoryCustomBlocksCache) ? memoryCustomBlocksCache : [];
   }
 };
 
 export const saveLocalCustomLegoBlocks = (list) => {
+  const normalized = (Array.isArray(list) ? list : []).map(normalizeCustomBlock);
+  memoryCustomBlocksCache = normalized;
   try {
-    localStorage.setItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY, JSON.stringify(list));
+    // Strip heavy imageDataUrl before saving to localStorage so quota is never exceeded
+    const slimList = normalized.map(({ imageDataUrl, ...rest }) => rest);
+    localStorage.setItem(CUSTOM_LEGO_BLOCKS_STORAGE_KEY, JSON.stringify(slimList));
   } catch (e) {
     console.warn("Failed to save local custom lego blocks:", e);
   }
 };
 
 export const subscribeCustomLegoBlocks = (callback) => {
+  callback(getLocalCustomLegoBlocks());
   try {
     const q = query(collection(db, CUSTOM_BLOCKS_COLLECTION));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const snapshotList = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data()
-        }));
+        const snapshotList = snapshot.docs.map((d) =>
+          normalizeCustomBlock({
+            id: d.id,
+            ...d.data()
+          })
+        );
         const localList = getLocalCustomLegoBlocks();
         const blockMap = new Map();
-        localList.forEach((b) => blockMap.set(b.id || b.key, b));
-        snapshotList.forEach((b) => blockMap.set(b.id || b.key, b));
+        localList.forEach((b) => blockMap.set(b.id || b.key, normalizeCustomBlock(b)));
+        snapshotList.forEach((b) => blockMap.set(b.id || b.key, normalizeCustomBlock(b)));
         const merged = Array.from(blockMap.values()).sort(
           (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
@@ -335,14 +371,16 @@ export const subscribeCustomLegoBlocks = (callback) => {
 export const saveCustomLegoBlock = async (blockData) => {
   const now = new Date().toISOString();
   const blockId = blockData.id || blockData.key || `custom_block_${Date.now()}`;
-  const payload = {
-    ...blockData,
+  const { imageDataUrl, ...cleanBlockData } = blockData || {};
+  const payload = normalizeCustomBlock({
+    ...cleanBlockData,
     id: blockId,
     key: blockData.key || blockId,
+    rowsJson: JSON.stringify(blockData.rows || []),
     isCustomBlock: true,
     createdAt: blockData.createdAt || now,
     updatedAt: now
-  };
+  });
 
   const currentList = getLocalCustomLegoBlocks();
   const existingIdx = currentList.findIndex((b) => (b.id || b.key) === blockId);
@@ -354,13 +392,19 @@ export const saveCustomLegoBlock = async (blockData) => {
   }
   saveLocalCustomLegoBlocks(updatedList);
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
+  }
+
   try {
-    await setDoc(doc(db, CUSTOM_BLOCKS_COLLECTION, blockId), sanitizeForFirestore(payload));
+    await Promise.race([
+      setDoc(doc(db, CUSTOM_BLOCKS_COLLECTION, blockId), sanitizeForFirestore(payload)),
+      new Promise((resolve) => setTimeout(resolve, 2500))
+    ]);
   } catch (e) {
     console.warn("Firestore save custom lego block offline:", e);
   }
 
-  window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
   return payload;
 };
 
@@ -369,12 +413,13 @@ export const deleteCustomLegoBlock = async (blockId) => {
   const updatedList = currentList.filter((b) => (b.id || b.key) !== blockId);
   saveLocalCustomLegoBlocks(updatedList);
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
+  }
+
   try {
     await deleteDoc(doc(db, CUSTOM_BLOCKS_COLLECTION, blockId));
   } catch (e) {
     console.warn("Firestore delete custom lego block offline:", e);
   }
-
-  window.dispatchEvent(new CustomEvent("custom-lego-blocks-updated", { detail: updatedList }));
 };
-
