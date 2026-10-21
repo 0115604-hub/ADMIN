@@ -20,6 +20,7 @@ import {
   Scissors
 } from "lucide-react";
 import { getKSTDateString } from "../../utils/dateUtils";
+import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel";
 import {
   YUSEONG_PROJECTS,
   YUSEONG_PROCESSES,
@@ -242,6 +243,7 @@ export const YuseongWorkReportModal = ({
         bladeChangeTime,
         machineTrouble,
         downtimeMinutes: Number(downtimeMinutes) || 0,
+        downtimeEvents,
         notes,
         dimensions,
         production,
@@ -981,6 +983,19 @@ export const YuseongWorkReportModal = ({
                   <span>TPM 점검표 수정/확인</span>
                 </button>
               </div>
+
+              {/* ⏱️ 비가동 및 부적합품 발생내역 (유성 전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
+              <CommonDowntimeDefectPanel
+                title="④ 비가동 및 부적합품 발생내역"
+                plantLabel="유성"
+                unitLabel="부적합량(EA)"
+                events={downtimeEvents}
+                onChangeEvents={setDowntimeEvents}
+                onSyncSummary={({ totalMinutes, summaryText }) => {
+                  setDowntimeMinutes(totalMinutes);
+                  if (summaryText) setMachineTrouble(summaryText);
+                }}
+              />
 
               {/* 📝 8. 특이사항 및 설비 이상 조치 */}
               <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2.5">

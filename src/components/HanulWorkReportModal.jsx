@@ -53,6 +53,7 @@ import {
 } from "../services/hanulWorkReportService";
 import { getKSTDateString } from "../utils/dateUtils";
 import { useModalHistory } from "../utils/modalHistory";
+import CommonDowntimeDefectPanel from "./common/CommonDowntimeDefectPanel";
 
 // 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
 const isDimOk = (val, target, tol) => {
@@ -68,7 +69,8 @@ export const HanulWorkReportModal = ({
   initialProject = "9BQC",
   initialProcess = "소재준비",
   initialWorker = "",
-  editReport = null
+  editReport = null,
+  companyMode = "HANUL"
 }) => {
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
@@ -88,7 +90,8 @@ export const HanulWorkReportModal = ({
   const [jointType, setJointType] = useState("FRT"); // For "조인트": "FRT" | "FIXED_LH" | "FIXED_RH" | "RR"
   const [inspectionType, setInspectionType] = useState("LENGTH"); // For "검사": "LENGTH" | "SQUARE" | "FINAL_PAIR" | "FINAL_LH"
   const [bladeChangeTime, setBladeChangeTime] = useState(""); // 칼날교체시간 (정치절단 전용)
-  const [machineTrouble, setMachineTrouble] = useState(""); // 설비 이상 조치사항
+  const [machineTrouble, setMachineTrouble] = useState("");
+  const [downtimeEvents, setDowntimeEvents] = useState(() => Array.isArray(editReport?.downtimeEvents) ? editReport.downtimeEvents : []); // 설비 이상 조치사항
   const [jointGradeName, setJointGradeName] = useState("W60664$OS"); // 조인트 재료명
   const [jointGradeLot, setJointGradeLot] = useState(""); // 조인트 재료일자 / LOT
   const [subMaterialsLot, setSubMaterialsLot] = useState({
@@ -2905,6 +2908,18 @@ export const HanulWorkReportModal = ({
               </div>
             )}
           </div>
+
+          {/* ⏱️ 비가동 및 부적합품 발생내역 (한울·부림텍 전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
+          <CommonDowntimeDefectPanel
+            title="④ 비가동 및 부적합품 발생내역"
+            plantLabel={companyMode === "BURIM" ? "부림텍" : "한울 · 부림텍"}
+            unitLabel="부적합량(EA)"
+            events={downtimeEvents}
+            onChangeEvents={setDowntimeEvents}
+            onSyncSummary={({ summaryText }) => {
+              if (summaryText) setMachineTrouble(summaryText);
+            }}
+          />
 
           {/* F. 특기사항 및 설비 이상 조치 */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">

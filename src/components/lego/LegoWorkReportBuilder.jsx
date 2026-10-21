@@ -32,6 +32,7 @@ import {
 import { saveMachiningWorkReport } from "../../services/machiningWorkReportService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
 import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
+import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel.jsx";
 import {
   saveWorkReportTemplate,
   REPORT_MAJOR_CATEGORIES,
@@ -3120,6 +3121,24 @@ export const LegoWorkReportBuilder = ({
                 </React.Fragment>
               );
             })}
+
+            {/* ================================================================= */}
+            {/* ⏱️ 비가동 및 부적합품 발생내역 (전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
+            {/* ================================================================= */}
+            <div className="pt-2">
+              <CommonDowntimeDefectPanel
+                title="④ 비가동 및 부적합품 발생내역"
+                plantLabel={currentReport.companyName || "작업일보 공통"}
+                unitLabel="부적합량(EA/kg)"
+                events={currentReport.downtimeEvents || []}
+                onChangeEvents={(nextEvents) =>
+                  setCurrentReport((prev) => ({
+                    ...prev,
+                    downtimeEvents: nextEvents
+                  }))
+                }
+              />
+            </div>
 
             </div>
 

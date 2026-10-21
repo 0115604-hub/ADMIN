@@ -50,6 +50,7 @@ import {
 import { getKSTDateString } from "../../utils/dateUtils";
 import { useModalHistory } from "../../utils/modalHistory";
 import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
+import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel";
 
 // 치수 공차 실시간 판정 헬퍼
 const isDimOk = (val, target, tol) => {
@@ -95,6 +96,7 @@ export const MachiningWorkReportModal = ({
   const [bladeChangeTime, setBladeChangeTime] = useState("");
   const [machineTrouble, setMachineTrouble] = useState("");
   const [downtimeMinutes, setDowntimeMinutes] = useState(0);
+  const [downtimeEvents, setDowntimeEvents] = useState(() => Array.isArray(editReport?.downtimeEvents) ? editReport.downtimeEvents : []);
   const [notes, setNotes] = useState("");
 
   // Dimensions
@@ -1292,6 +1294,19 @@ export const MachiningWorkReportModal = ({
               <span>TPM 점검표 수정/확인</span>
             </button>
           </div>
+
+          {/* ⏱️ 비가동 및 부적합품 발생내역 (전 공정 공통 패널 - 조치전/조치후 사진 등록) */}
+          <CommonDowntimeDefectPanel
+            title="④ 비가동 및 부적합품 발생내역"
+            plantLabel="가공동"
+            unitLabel="부적합량(EA)"
+            events={downtimeEvents}
+            onChangeEvents={setDowntimeEvents}
+            onSyncSummary={({ totalMinutes, summaryText }) => {
+              setDowntimeMinutes(totalMinutes);
+              if (summaryText) setMachineTrouble(summaryText);
+            }}
+          />
 
           {/* 📝 9. 특이사항 및 설비 이상 조치 */}
           <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2.5">
