@@ -829,7 +829,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
   const [selectedPersonnelWorkerIndex, setSelectedPersonnelWorkerIndex] = useState(-1);
   const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
-  const [workerMgmtCompanyFilter, setWorkerMgmtCompanyFilter] = useState("전체");
+  const [workerMgmtCompanyFilter, setWorkerMgmtCompanyFilter] = useState("오륙");
   const [workerMgmtSearch, setWorkerMgmtSearch] = useState("");
   const [workerMgmtSkillFilter, setWorkerMgmtSkillFilter] = useState("ALL");
   const [workerMgmtMultiSkillOnly, setWorkerMgmtMultiSkillOnly] = useState(false);
@@ -903,7 +903,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState(() => {
     try {
       const saved = window.sessionStorage?.getItem("oryuk_selected_company_filter");
-      if (saved) {
+      if (saved && saved !== "전체") {
         window.sessionStorage?.removeItem("oryuk_selected_company_filter");
         return saved;
       }
@@ -912,8 +912,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
     return "오륙";
   });
-  const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
-  const [reportListFilter, setReportListFilter] = useState("전체");
+  const [matrixCompanyFilter, setMatrixCompanyFilter] = useState(() => selectedCompanyFilter || "오륙");
+  const [reportListFilter, setReportListFilter] = useState(() => selectedCompanyFilter || "오륙");
+
+  // 5개사 독립 모듈: 선택된 업체 변경 시 상세보기/인원관리/보고서 필터 동기화
+  useEffect(() => {
+    if (selectedCompanyFilter && COMPANIES.includes(selectedCompanyFilter)) {
+      setMatrixCompanyFilter(selectedCompanyFilter);
+      setWorkerMgmtCompanyFilter(selectedCompanyFilter);
+      setReportListFilter(selectedCompanyFilter);
+    }
+  }, [selectedCompanyFilter]);
   const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
   const [dateSortOrder, setDateSortOrder] = useState("DESC"); // "DESC" (가까운 날 / 최신순), "ASC" (과거순 1일->30일)
   const [reportListSearch, setReportListSearch] = useState("");
@@ -3326,7 +3335,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-cyan-600" />
                 <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  {currentMonthNum}월 {selectedDay}일 5개사 일일 종합 집계표
+                  {currentMonthNum}월 {selectedDay}일 협력사별 일일 근태 현황표
                 </h3>
               </div>
               <select
@@ -3476,19 +3485,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </>
                     );
                   })()}
-                  {/* Total Row */}
-                  <tr className="bg-slate-900 text-white font-black">
-                    <td className="p-3 text-cyan-400 font-bold">5개사 합계</td>
-                    <td className="p-3 text-center font-mono">{smartData.attendanceMatrix?.length || 0}명</td>
-                    <td className="p-3 text-center font-mono text-emerald-400">{dailySummary.totalAttended}명</td>
-                    <td className="p-3 text-center font-mono">{dailySummary.regularCount}명</td>
-                    <td className="p-3 text-center font-mono text-amber-300">{dailySummary.ot19Count}명</td>
-                    <td className="p-3 text-center font-mono text-orange-300">{dailySummary.ot21Count}명</td>
-                    <td className="p-3 text-center font-mono text-rose-300">{dailySummary.ot22Count}명</td>
-                    <td className="p-3 text-center font-mono text-purple-300">{dailySummary.specialNightCount}명</td>
-                    <td className="p-3 text-center font-mono text-amber-300">+{dailySummary.dayOtHours} H</td>
-                    <td className="p-3 text-center font-mono text-cyan-300">{dailySummary.dayTotalHours} M/H</td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -3577,8 +3573,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
                           {isPrevMonth
-                            ? `지난달(${prevYear}년 ${prevMonthNum}월) 5개 협력사의 전체 출근, 평일잔업, 주말특근, 총공수 실적 대장입니다. (총 ${matrixDaysInMonth}일)`
-                            : `당월(${currentYear}년 ${currentMonthNum}월) 5개 협력사의 실시간 근태 및 투입공수 현황입니다. (총 ${matrixDaysInMonth}일)`}
+                            ? `지난달(${prevYear}년 ${prevMonthNum}월) [${matrixCompanyFilter}] 독립 근태 모듈의 출근, 평일잔업, 주말특근, 총공수 실적 대장입니다. (총 ${matrixDaysInMonth}일)`
+                            : `당월(${currentYear}년 ${currentMonthNum}월) [${matrixCompanyFilter}] 독립 근태 모듈의 실시간 근태 및 투입공수 현황입니다. (총 ${matrixDaysInMonth}일)`}
                         </p>
                       </div>
                     </div>
@@ -3616,14 +3612,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </button>
                     </div>
 
-                    {/* Company Dropdown Select (공장별 그룹화) */}
+                    {/* Company Dropdown Select (공장별 그룹화 - 5개사 독립 모듈) */}
                     <div className="flex items-center gap-1.5">
                       <select
                         value={matrixCompanyFilter}
                         onChange={(e) => setMatrixCompanyFilter(e.target.value)}
                         className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-indigo-400 focus:border-indigo-300 rounded-xl px-3 py-1.5 cursor-pointer shadow-sm"
                       >
-                        <option value="전체" className="bg-slate-900 text-white font-bold">🏢 전체 (5개 협력사 통합)</option>
                         <optgroup label="🏭 삼랑진공장" className="bg-slate-950 text-amber-300 font-bold">
                           <option value="오륙" className="bg-slate-900 text-white font-bold">오륙</option>
                           <option value="유성" className="bg-slate-900 text-white font-bold">유성</option>
@@ -3638,21 +3633,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* Company Quick Filter Pills (삼랑진 & 한림 분리 체계) & Download */}
+                {/* Company Quick Filter Pills (삼랑진 & 한림 5개사 독립 분리 체계) & Download */}
                 <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setMatrixCompanyFilter("전체")}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                        matrixCompanyFilter === "전체"
-                          ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      전체 5개사
-                    </button>
-
                     {/* 삼랑진 그룹 */}
                     <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 border border-amber-600/50 rounded-xl">
                       <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 px-1.5 flex items-center gap-0.5">
@@ -4025,18 +4008,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <Filter className="w-3.5 h-3.5 text-purple-500" />
                 <span>업체:</span>
               </span>
-
-              <button
-                type="button"
-                onClick={() => setWorkerMgmtCompanyFilter("전체")}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  workerMgmtCompanyFilter === "전체"
-                    ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
-                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                }`}
-              >
-                전체 ({workerMgmtList.length}명)
-              </button>
 
               {/* 삼랑진 그룹 */}
               <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-amber-600/50 rounded-xl">
@@ -4482,19 +4453,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <Filter className="w-3.5 h-3.5 text-cyan-400" />
                       <span>소속:</span>
                     </span>
-
-                    {/* 전체 */}
-                    <button
-                      type="button"
-                      onClick={() => setReportListFilter("전체")}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        reportListFilter === "전체"
-                          ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
-                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      전체 ({filtered.length}건)
-                    </button>
 
                     {/* 삼랑진공장 그룹 */}
                     <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">

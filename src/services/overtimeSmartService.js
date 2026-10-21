@@ -1172,6 +1172,19 @@ export const ensureAllCompaniesPresent = (data) => {
   };
 };
 
+export const COMPANY_MODULE_SLUGS = {
+  "오륙": "oryuk",
+  "유성": "yuseong",
+  "조영": "joyoung",
+  "한울": "hanul",
+  "부림텍": "burimtech"
+};
+
+export const getCompanySlug = (company) => {
+  const clean = cleanCompanyName(company);
+  return COMPANY_MODULE_SLUGS[clean] || "oryuk";
+};
+
 export const getStorageKeyForMonth = (yearMonth = "2026-10") => {
   const clean = String(yearMonth || "2026-10").replace(/-/g, "_");
   return `oryuk_smart_overtime_data_${clean}`;
@@ -1180,6 +1193,19 @@ export const getStorageKeyForMonth = (yearMonth = "2026-10") => {
 export const getFirestoreDocIdForMonth = (yearMonth = "2026-10") => {
   const clean = String(yearMonth || "2026-10").replace(/-/g, "_");
   return `overtime_${clean}`;
+};
+
+// 🌟 5개사 완전 독립 스토리지 키 및 Firestore 문서 ID (업체 간 간섭/덮어쓰기 0% 원천 격리)
+export const getStorageKeyForCompanyMonth = (company, yearMonth = "2026-10") => {
+  const cleanYM = String(yearMonth || "2026-10").replace(/-/g, "_");
+  const slug = getCompanySlug(company);
+  return `oryuk_smart_overtime_comp_${slug}_${cleanYM}`;
+};
+
+export const getFirestoreDocIdForCompanyMonth = (company, yearMonth = "2026-10") => {
+  const cleanYM = String(yearMonth || "2026-10").replace(/-/g, "_");
+  const slug = getCompanySlug(company);
+  return `overtime_${cleanYM}_${slug}`;
 };
 
 // 당월(10월 등) 작성중인 빈 월간 근태 대장 템플릿 생성 (143명 마스터 전원 포함, 일자별 데이터는 신규 입력용)
@@ -1205,222 +1231,409 @@ export const createEmptySmartOvertimeData = (year = 2026, month = 10) => {
   };
 };
 
-// Sequential save queue & in-flight tracker to prevent Firestore getDoc/setDoc race conditions and stale onSnapshot overwrites
-let smartSaveQueue = Promise.resolve();
-let inFlightSmartSaves = 0;
-let lastLocalSaveEpoch = 0;
+// 업체별 빈 템플릿 생성 (단일 업체 소속 인원만 독립 추출)
+export const createEmptyCompanyOvertimeData = (company, year = 2026, month = 10) => {
+  const cleanComp = cleanCompanyName(company);
+  const initialCompWorkers = (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []).filter(
+    (w) => cleanCompanyName(w.company) === cleanComp
+  );
+  const master = initialCompWorkers.map((w, idx) => ({
+    ...w,
+    company: cleanComp,
+    companyNo: idx + 1,
+    no: idx + 1
+  }));
+  const matrix = initialCompWorkers.map((w, idx) => ({
+    no: idx + 1,
+    companyNo: idx + 1,
+    company: cleanComp,
+    dept: normalizeDept(w.dept),
+    line: w.line || normalizeDept(w.dept),
+    name: (w.name || "").trim(),
+    position: w.position || "사원",
+    daily: {}
+  }));
+  return {
+    company: cleanComp,
+    year: Number(year) || 2026,
+    month: Number(month) || 10,
+    masterWorkers: master,
+    attendanceMatrix: matrix,
+    companyApprovalStatus: {},
+    recentAuditLogs: []
+  };
+};
 
+// 업체별 독립 저장 큐 및 상태 추적기 (5개사 각각 독립 동작)
+const companySaveQueues = {
+  "오륙": Promise.resolve(),
+  "유성": Promise.resolve(),
+  "조영": Promise.resolve(),
+  "한울": Promise.resolve(),
+  "부림텍": Promise.resolve()
+};
+const inFlightCompanySaves = {
+  "오륙": 0,
+  "유성": 0,
+  "조영": 0,
+  "한울": 0,
+  "부림텍": 0
+};
+const lastCompanySaveEpoch = {
+  "오륙": 0,
+  "유성": 0,
+  "조영": 0,
+  "한울": 0,
+  "부림텍": 0
+};
+
+// 단일 업체의 로컬 데이터 로드 (독립 키 우선 조회 -> 없을 시 기존 통합 데이터에서 1회 자동 분리 마이그레이션)
+export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => {
+  const cleanComp = cleanCompanyName(company);
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
+  const ym = targetYearMonth || nowKst || "2026-10";
+  const compKey = getStorageKeyForCompanyMonth(cleanComp, ym);
+  const parts = ym.split("-").map(Number);
+  const year = parts[0] || 2026;
+  const month = parts[1] || 10;
+
+  try {
+    // 1. 독립된 업체 전용 스토리지 키 확인
+    const rawComp = localStorage.getItem(compKey);
+    if (rawComp) {
+      const parsed = JSON.parse(rawComp);
+      if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
+        const workers = parsed.attendanceMatrix
+          .filter((w) => cleanCompanyName(w.company) === cleanComp)
+          .map((w, idx) => ({
+            ...w,
+            company: cleanComp,
+            companyNo: idx + 1,
+            no: idx + 1,
+            daily: { ...(w.daily || {}) }
+          }));
+        if (workers.length > 0) {
+          return {
+            company: cleanComp,
+            year,
+            month,
+            masterWorkers: workers.map((w, idx) => ({
+              no: idx + 1,
+              companyNo: idx + 1,
+              company: cleanComp,
+              dept: normalizeDept(w.dept),
+              line: w.line || normalizeDept(w.dept),
+              name: w.name,
+              position: w.position || "사원",
+              employmentType: w.employmentType || "정규직",
+              status: w.status || "재직",
+              note: w.note || ""
+            })),
+            attendanceMatrix: workers,
+            companyApprovalStatus: parsed.companyApprovalStatus || {},
+            recentAuditLogs: parsed.recentAuditLogs || [],
+            updatedAt: parsed.updatedAt || null
+          };
+        }
+      }
+    }
+
+    // 2. 기존 통합 스토리지 키가 있다면 해당 업체 데이터만 추출하여 독립 키로 즉시 마이그레이션
+    const legacyKey = getStorageKeyForMonth(ym);
+    const rawLegacy = localStorage.getItem(legacyKey) || ((ym === "2026-09" || ym === "2026_09") ? localStorage.getItem(STORAGE_KEY) : null);
+    if (rawLegacy) {
+      const parsedLegacy = JSON.parse(rawLegacy);
+      if (parsedLegacy && Array.isArray(parsedLegacy.attendanceMatrix)) {
+        const normalizedLegacy = ensureAllCompaniesPresent(parsedLegacy);
+        const compWorkers = (normalizedLegacy.attendanceMatrix || [])
+          .filter((w) => cleanCompanyName(w.company) === cleanComp)
+          .map((w, idx) => ({
+            ...w,
+            company: cleanComp,
+            companyNo: idx + 1,
+            no: idx + 1,
+            daily: { ...(w.daily || {}) }
+          }));
+        const compApprovals = {};
+        Object.entries(normalizedLegacy.companyApprovalStatus || {}).forEach(([k, v]) => {
+          if (k.startsWith(`${cleanComp}_`) || cleanCompanyName(v?.company) === cleanComp) {
+            compApprovals[k] = v;
+          }
+        });
+        if (compWorkers.length > 0) {
+          const migrated = {
+            company: cleanComp,
+            year,
+            month,
+            masterWorkers: compWorkers.map((w, idx) => ({
+              no: idx + 1,
+              companyNo: idx + 1,
+              company: cleanComp,
+              dept: normalizeDept(w.dept),
+              line: w.line || normalizeDept(w.dept),
+              name: w.name,
+              position: w.position || "사원",
+              employmentType: w.employmentType || "정규직",
+              status: w.status || "재직",
+              note: w.note || ""
+            })),
+            attendanceMatrix: compWorkers,
+            companyApprovalStatus: compApprovals,
+            recentAuditLogs: (normalizedLegacy.recentAuditLogs || []).filter((l) => cleanCompanyName(l.company) === cleanComp),
+            updatedAt: normalizedLegacy.updatedAt || new Date().toISOString()
+          };
+          try {
+            localStorage.setItem(compKey, JSON.stringify(migrated));
+          } catch (e) {}
+          return migrated;
+        }
+      }
+    }
+
+    // 3. 9월 마감 데이터인 경우 마스터 초기 데이터에서 해당 업체만 추출
+    if (ym === "2026-09" || ym === "2026_09") {
+      const normSept = ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
+      const septWorkers = (normSept.attendanceMatrix || [])
+        .filter((w) => cleanCompanyName(w.company) === cleanComp)
+        .map((w, idx) => ({
+          ...w,
+          company: cleanComp,
+          companyNo: idx + 1,
+          no: idx + 1
+        }));
+      return {
+        company: cleanComp,
+        year: 2026,
+        month: 9,
+        masterWorkers: septWorkers,
+        attendanceMatrix: septWorkers,
+        companyApprovalStatus: {},
+        recentAuditLogs: []
+      };
+    }
+  } catch (err) {
+    console.warn(`[${cleanComp}] 독립 근태 데이터 로드 경고:`, err);
+  }
+
+  return createEmptyCompanyOvertimeData(cleanComp, year, month);
+};
+
+// 5개 독립 업체 모듈을 읽어 화면 표시용 객체로 조립 (물리적 저장은 5개사 완전 분리)
 export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
   try {
     const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
     const ym = targetYearMonth || nowKst || "2026-10";
-    const key = getStorageKeyForMonth(ym);
-
-    // 1. If requesting September (2026-09), return authoritative INITIAL_SMART_OVERTIME_DATA
-    if (ym === "2026-09" || ym === "2026_09") {
-      const raw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length >= 100) {
-          return ensureAllCompaniesPresent(parsed);
-        }
-      }
-      return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
-    }
-
-    // 2. Check month-specific key (e.g. 2026-10)
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        return ensureAllCompaniesPresent(parsed);
-      }
-    }
-
-    // 3. Fallback for new months (e.g. 10월): create fresh template with 143 workers
     const parts = ym.split("-").map(Number);
-    return createEmptySmartOvertimeData(parts[0] || 2026, parts[1] || 10);
-  } catch (err) {
-    console.warn("Failed to load local smart overtime data:", err);
-  }
-  return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
-};
+    const year = parts[0] || 2026;
+    const month = parts[1] || 10;
 
-export const saveSmartOvertimeData = async (data, targetYearMonth = null, options = {}) => {
-  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
-  const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : (nowKst || "2026-10"));
-  const key = getStorageKeyForMonth(ym);
-  const docId = getFirestoreDocIdForMonth(ym);
+    const allMatrix = [];
+    const allMaster = [];
+    let mergedApprovalStatus = {};
+    const allAuditLogs = [];
 
-  const targetComp = options.targetCompany ? cleanCompanyName(options.targetCompany) : null;
-  const isTargetAll = !targetComp || targetComp === "전체" || targetComp === "5개사 통합" || targetComp === "전사" || targetComp === "ALL";
-
-  const nowIso = new Date().toISOString();
-  lastLocalSaveEpoch = Date.now();
-
-  // 1. Immediately merge with any existing localStorage data so rapid consecutive saves never lose another company's local edits
-  let baseLocal = null;
-  try {
-    const rawExisting = localStorage.getItem(key);
-    if (rawExisting) {
-      baseLocal = JSON.parse(rawExisting);
-    }
-  } catch (e) {}
-
-  const incomingNormalized = ensureAllCompaniesPresent({
-    ...data,
-    updatedAt: nowIso
-  });
-
-  if (baseLocal && Array.isArray(baseLocal.attendanceMatrix) && !options.fullReplace) {
-    incomingNormalized.attendanceMatrix = incomingNormalized.attendanceMatrix.map((w) => {
-      const wComp = cleanCompanyName(w.company);
-      const isTargetWorker = isTargetAll || wComp === targetComp;
-      const prevW = baseLocal.attendanceMatrix.find(
-        (pw) => (pw.name || "").trim() === (w.name || "").trim() && cleanCompanyName(pw.company) === wComp
-      );
-      if (!prevW) return w;
-      const prevDaily = prevW.daily || {};
-      const nextDaily = w.daily || {};
-      const combinedDaily = isTargetWorker
-        ? { ...prevDaily, ...nextDaily }
-        : { ...nextDaily, ...prevDaily };
-
-      if (isTargetWorker && options.clearedDay) {
-        delete combinedDaily[options.clearedDay];
-        delete combinedDaily[String(options.clearedDay)];
-      }
-      if (isTargetWorker && options.targetDay !== undefined && options.targetDay !== null) {
-        const tDay = options.targetDay;
-        const tVal = nextDaily[tDay] ?? nextDaily[String(tDay)];
-        if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
-          delete combinedDaily[tDay];
-          delete combinedDaily[String(tDay)];
-        } else {
-          combinedDaily[tDay] = tVal;
-          combinedDaily[String(tDay)] = tVal;
-        }
-      }
-      return {
-        ...w,
-        daily: combinedDaily
+    COMPANIES.forEach((comp) => {
+      const compData = getLocalCompanyOvertimeData(comp, ym);
+      (compData.attendanceMatrix || []).forEach((w, idx) => {
+        allMatrix.push({
+          ...w,
+          company: comp,
+          companyNo: idx + 1,
+          no: idx + 1
+        });
+      });
+      (compData.masterWorkers || []).forEach((w, idx) => {
+        allMaster.push({
+          ...w,
+          company: comp,
+          companyNo: idx + 1,
+          no: idx + 1
+        });
+      });
+      mergedApprovalStatus = {
+        ...mergedApprovalStatus,
+        ...(compData.companyApprovalStatus || {})
       };
+      if (Array.isArray(compData.recentAuditLogs)) {
+        allAuditLogs.push(...compData.recentAuditLogs);
+      }
     });
 
-    const prevApprovals = { ...(baseLocal.companyApprovalStatus || {}) };
+    return {
+      year,
+      month,
+      masterWorkers: allMaster,
+      attendanceMatrix: allMatrix,
+      companyApprovalStatus: mergedApprovalStatus,
+      recentAuditLogs: allAuditLogs.slice(0, 100)
+    };
+  } catch (err) {
+    console.warn("Failed to assemble 5-company smart overtime data:", err);
+    return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
+  }
+};
+
+// 🌟 단일 업체 전용 독립 저장 함수 (오직 해당 업체의 localStorage 키와 Firestore 문서만 단독 업데이트)
+export const saveSingleCompanyOvertimeModule = async (company, data, ym, options = {}) => {
+  const cleanComp = cleanCompanyName(company);
+  const compKey = getStorageKeyForCompanyMonth(cleanComp, ym);
+  const compDocId = getFirestoreDocIdForCompanyMonth(cleanComp, ym);
+  const parts = String(ym || "2026-10").split("-").map(Number);
+  const year = parts[0] || 2026;
+  const month = parts[1] || 10;
+  const nowIso = new Date().toISOString();
+
+  lastCompanySaveEpoch[cleanComp] = Date.now();
+
+  // 1. 해당 업체 기존 로컬 데이터 로드
+  const existingCompLocal = getLocalCompanyOvertimeData(cleanComp, ym);
+  const incomingCompWorkers = (data?.attendanceMatrix || [])
+    .filter((w) => cleanCompanyName(w.company) === cleanComp)
+    .map((w, idx) => ({
+      ...w,
+      company: cleanComp,
+      companyNo: idx + 1,
+      no: idx + 1,
+      daily: { ...(w.daily || {}) }
+    }));
+
+  const mergedCompWorkers = (incomingCompWorkers.length > 0 ? incomingCompWorkers : existingCompLocal.attendanceMatrix).map((w, idx) => {
+    const prevW = (existingCompLocal.attendanceMatrix || []).find(
+      (pw) => (pw.name || "").trim() === (w.name || "").trim()
+    );
+    const prevDaily = prevW?.daily || {};
+    const nextDaily = w.daily || {};
+    const combinedDaily = options.fullReplace
+      ? { ...nextDaily }
+      : { ...prevDaily, ...nextDaily };
+
     if (options.clearedDay) {
-      if (isTargetAll) {
-        COMPANIES.forEach((c) => {
-          delete prevApprovals[`${cleanCompanyName(c)}_${options.clearedDay}`];
-        });
-      } else if (targetComp) {
-        delete prevApprovals[`${targetComp}_${options.clearedDay}`];
+      delete combinedDaily[options.clearedDay];
+      delete combinedDaily[String(options.clearedDay)];
+    }
+    if (options.targetDay !== undefined && options.targetDay !== null) {
+      const tDay = options.targetDay;
+      const tVal = nextDaily[tDay] ?? nextDaily[String(tDay)];
+      if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
+        delete combinedDaily[tDay];
+        delete combinedDaily[String(tDay)];
+      } else {
+        combinedDaily[tDay] = tVal;
+        combinedDaily[String(tDay)] = tVal;
       }
     }
-    incomingNormalized.companyApprovalStatus = {
-      ...prevApprovals,
-      ...(data?.companyApprovalStatus || {})
+
+    Object.keys(combinedDaily).forEach((d) => {
+      const val = combinedDaily[d];
+      if (val === "" || val === "미입력" || val === "undefined" || val === "null") {
+        delete combinedDaily[d];
+        delete combinedDaily[String(d)];
+      }
+    });
+
+    return {
+      ...w,
+      company: cleanComp,
+      companyNo: idx + 1,
+      no: idx + 1,
+      daily: combinedDaily
     };
+  });
+
+  const compApprovals = { ...(existingCompLocal.companyApprovalStatus || {}) };
+  Object.entries(data?.companyApprovalStatus || {}).forEach(([k, v]) => {
+    if (k.startsWith(`${cleanComp}_`) || cleanCompanyName(v?.company) === cleanComp) {
+      compApprovals[k] = v;
+    }
+  });
+  if (options.clearedDay) {
+    delete compApprovals[`${cleanComp}_${options.clearedDay}`];
   }
 
+  const nextCompPayload = {
+    company: cleanComp,
+    year,
+    month,
+    masterWorkers: mergedCompWorkers.map((w, idx) => ({
+      no: idx + 1,
+      companyNo: idx + 1,
+      company: cleanComp,
+      dept: normalizeDept(w.dept),
+      line: w.line || normalizeDept(w.dept),
+      name: w.name,
+      position: w.position || "사원",
+      employmentType: w.employmentType || "정규직",
+      status: w.status || "재직",
+      note: w.note || ""
+    })),
+    attendanceMatrix: mergedCompWorkers,
+    companyApprovalStatus: compApprovals,
+    recentAuditLogs: existingCompLocal.recentAuditLogs || [],
+    updatedAt: nowIso
+  };
+
+  // 즉시 해당 업체의 독립 로컬 스토리지 저장 및 화면 동기화 이벤트 발송
   try {
-    localStorage.setItem(key, JSON.stringify(incomingNormalized));
-    if (ym === "2026-09" || ym === "2026_09") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(incomingNormalized));
-    }
+    localStorage.setItem(compKey, JSON.stringify(nextCompPayload));
+    const assembledNow = getLocalSmartOvertimeData(ym);
+    localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembledNow));
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...incomingNormalized, yearMonth: ym } }));
+      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...assembledNow, yearMonth: ym, updatedCompany: cleanComp } }));
     }
-  } catch (localErr) {
-    console.warn("Local storage immediate save warning:", localErr);
+  } catch (e) {
+    console.warn(`[${cleanComp}] 로컬 스토리지 저장 경고:`, e);
   }
 
-  // 2. Queue Cloud Firestore sync sequentially so concurrent saves never overwrite each other
-  inFlightSmartSaves++;
-  const runCloudSync = async () => {
+  // 2. 해당 업체 전용 Firestore 문서(`overtime_YYYY_MM_slug`)에 순차 저장 (타 업체 문서와 100% 분리)
+  inFlightCompanySaves[cleanComp] = (inFlightCompanySaves[cleanComp] || 0) + 1;
+  const runCompanyCloudSync = async () => {
     try {
       if (!db) return true;
-      const ref = doc(db, "smart_overtime_ledger", docId);
-
-      // Always read the freshest localStorage state at the moment this queued job runs
-      let latestLocal = incomingNormalized;
-      try {
-        const rawLatest = localStorage.getItem(key);
-        if (rawLatest) {
-          const parsedLatest = JSON.parse(rawLatest);
-          if (parsedLatest && Array.isArray(parsedLatest.attendanceMatrix)) {
-            latestLocal = ensureAllCompaniesPresent(parsedLatest);
-          }
-        }
-      } catch (e) {}
-
-      let mergedMatrix = latestLocal.attendanceMatrix || [];
-      const changedAudits = [];
+      const compRef = doc(db, "smart_overtime_ledger", compDocId);
+      const latestCompLocal = getLocalCompanyOvertimeData(cleanComp, ym);
+      let finalCompMatrix = latestCompLocal.attendanceMatrix || [];
       let existingAuditLogs = [];
       let existingApprovalStatus = {};
+      const changedAudits = [];
 
       try {
-        const cloudSnap = await getDoc(ref);
-        if (cloudSnap.exists()) {
-          const cloudData = cloudSnap.data();
-          existingAuditLogs = Array.isArray(cloudData?.recentAuditLogs) ? cloudData.recentAuditLogs : [];
-          existingApprovalStatus = (cloudData && typeof cloudData.companyApprovalStatus === "object" && cloudData.companyApprovalStatus !== null)
-            ? { ...cloudData.companyApprovalStatus }
+        const snap = await getDoc(compRef);
+        if (snap.exists()) {
+          const cloudComp = snap.data();
+          existingAuditLogs = Array.isArray(cloudComp?.recentAuditLogs) ? cloudComp.recentAuditLogs : [];
+          existingApprovalStatus = (cloudComp && typeof cloudComp.companyApprovalStatus === "object" && cloudComp.companyApprovalStatus !== null)
+            ? { ...cloudComp.companyApprovalStatus }
             : {};
-
           if (options.clearedDay) {
-            if (isTargetAll) {
-              COMPANIES.forEach((c) => {
-                delete existingApprovalStatus[`${cleanCompanyName(c)}_${options.clearedDay}`];
-              });
-            } else if (targetComp) {
-              delete existingApprovalStatus[`${targetComp}_${options.clearedDay}`];
-            }
+            delete existingApprovalStatus[`${cleanComp}_${options.clearedDay}`];
           }
 
-          if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            mergedMatrix = mergedMatrix.map((localW) => {
-              const cloudW = cloudData.attendanceMatrix.find(
-                (cw) => (cw.name || "").trim() === (localW.name || "").trim() && cleanCompanyName(cw.company) === cleanCompanyName(localW.company)
+          if (cloudComp && Array.isArray(cloudComp.attendanceMatrix) && cloudComp.attendanceMatrix.length > 0) {
+            finalCompMatrix = finalCompMatrix.map((localW, idx) => {
+              const cloudW = cloudComp.attendanceMatrix.find(
+                (cw) => (cw.name || "").trim() === (localW.name || "").trim()
               );
               if (!cloudW) return localW;
               const cloudDaily = cloudW.daily || {};
               const localDaily = localW.daily || {};
-              const wComp = cleanCompanyName(localW.company);
-              const isTargetWorker = isTargetAll || wComp === targetComp;
+              const mergedDaily = options.fullReplace
+                ? { ...localDaily }
+                : { ...cloudDaily, ...localDaily };
 
-              let mergedDaily = {};
-
-              if (options.fullReplace || options.replaceCompanyDaily) {
-                mergedDaily = { ...localDaily };
-              } else {
-                // Start with cloudDaily, then overlay non-empty localDaily so neither cloud nor local unsynced edits are lost
-                mergedDaily = { ...cloudDaily };
-                Object.keys(localDaily).forEach((d) => {
-                  const val = localDaily[d];
-                  if (val !== undefined && val !== null && val !== "" && val !== "미입력" && val !== "undefined" && val !== "null") {
-                    mergedDaily[d] = val;
-                    mergedDaily[String(d)] = val;
-                  }
-                });
-
-                if (isTargetWorker) {
-                  if (options.targetDay !== undefined && options.targetDay !== null) {
-                    const tDay = options.targetDay;
-                    const tVal = localDaily[tDay] ?? localDaily[String(tDay)];
-                    if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
-                      delete mergedDaily[tDay];
-                      delete mergedDaily[String(tDay)];
-                    } else {
-                      mergedDaily[tDay] = tVal;
-                      mergedDaily[String(tDay)] = tVal;
-                    }
-                  }
-                  if (options.clearedDay) {
-                    delete mergedDaily[options.clearedDay];
-                    delete mergedDaily[String(options.clearedDay)];
-                  }
+              if (options.targetDay !== undefined && options.targetDay !== null) {
+                const tDay = options.targetDay;
+                const tVal = localDaily[tDay] ?? localDaily[String(tDay)];
+                if (!tVal || tVal === "미입력" || tVal === "undefined" || tVal === "null") {
+                  delete mergedDaily[tDay];
+                  delete mergedDaily[String(tDay)];
+                } else {
+                  mergedDaily[tDay] = tVal;
+                  mergedDaily[String(tDay)] = tVal;
                 }
+              }
+              if (options.clearedDay) {
+                delete mergedDaily[options.clearedDay];
+                delete mergedDaily[String(options.clearedDay)];
               }
 
               Object.keys(mergedDaily).forEach((d) => {
@@ -1431,96 +1644,102 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null, option
                 }
               });
 
-              if (isTargetWorker) {
-                const comparedDays = new Set([
-                  ...Object.keys(cloudDaily || {}),
-                  ...Object.keys(mergedDaily || {})
-                ]);
-                comparedDays.forEach((d) => {
-                  if (isNaN(Number(d))) return;
-                  const beforeVal = String(cloudDaily?.[d] || "").trim();
-                  const afterVal = String(mergedDaily?.[d] || "").trim();
-                  if (beforeVal !== afterVal) {
-                    changedAudits.push({
-                      worker: localW.name,
-                      company: cleanCompanyName(localW.company),
-                      day: Number(d),
-                      before: beforeVal || "(미등록)",
-                      after: afterVal || "(미등록)",
-                      operator: options.auditMeta?.operator || "현장관리자",
-                      source: options.auditMeta?.source || "USER_DIRECT_ACTION",
-                      reason: options.auditMeta?.reason || "",
-                      timestamp: new Date().toISOString()
-                    });
-                  }
-                });
-              }
+              const comparedDays = new Set([...Object.keys(cloudDaily), ...Object.keys(mergedDaily)]);
+              comparedDays.forEach((d) => {
+                if (isNaN(Number(d))) return;
+                const beforeVal = String(cloudDaily?.[d] || "").trim();
+                const afterVal = String(mergedDaily?.[d] || "").trim();
+                if (beforeVal !== afterVal) {
+                  changedAudits.push({
+                    worker: localW.name,
+                    company: cleanComp,
+                    day: Number(d),
+                    before: beforeVal || "(미등록)",
+                    after: afterVal || "(미등록)",
+                    operator: options.auditMeta?.operator || "현장관리자",
+                    source: options.auditMeta?.source || "USER_DIRECT_ACTION",
+                    reason: options.auditMeta?.reason || "",
+                    timestamp: new Date().toISOString()
+                  });
+                }
+              });
 
               return {
                 ...cloudW,
                 ...localW,
+                company: cleanComp,
+                companyNo: idx + 1,
+                no: idx + 1,
                 daily: mergedDaily
               };
             });
           }
         }
-      } catch (mergeErr) {
-        console.warn("Cloud merge fallback in saveSmartOvertimeData:", mergeErr);
-      }
-
-      if (changedAudits.length > 0) {
-        console.log(`📝 [근태 감사 로그] ${changedAudits.length}건 변경 기록:`, changedAudits);
+      } catch (readErr) {
+        console.warn(`[${cleanComp}] Firestore 개별 문서 조회 경고:`, readErr);
       }
 
       const updatedAuditLogs = [...changedAudits, ...existingAuditLogs].slice(0, 100);
       const mergedApprovalStatus = {
         ...existingApprovalStatus,
-        ...(latestLocal.companyApprovalStatus || {})
+        ...(latestCompLocal.companyApprovalStatus || {})
       };
       const finalUpdatedAt = new Date().toISOString();
 
-      await setDoc(
-        ref,
-        sanitizeForFirestore({
-          year: latestLocal.year || parseInt(ym.split("-")[0], 10) || 2026,
-          month: latestLocal.month || parseInt(ym.split("-")[1], 10) || 10,
-          masterWorkers: latestLocal.masterWorkers || [],
-          attendanceMatrix: mergedMatrix,
-          companyApprovalStatus: mergedApprovalStatus,
-          recentAuditLogs: updatedAuditLogs,
-          updatedAt: finalUpdatedAt
-        }),
-        { merge: true }
-      );
+      const cloudPayload = {
+        company: cleanComp,
+        year,
+        month,
+        masterWorkers: latestCompLocal.masterWorkers || [],
+        attendanceMatrix: finalCompMatrix,
+        companyApprovalStatus: mergedApprovalStatus,
+        recentAuditLogs: updatedAuditLogs,
+        updatedAt: finalUpdatedAt
+      };
 
-      // Only update localStorage with finalData if no newer local save happened while setDoc was running
-      if (inFlightSmartSaves <= 1) {
-        const finalData = {
-          ...latestLocal,
-          attendanceMatrix: mergedMatrix,
-          companyApprovalStatus: mergedApprovalStatus,
-          recentAuditLogs: updatedAuditLogs,
-          updatedAt: finalUpdatedAt
-        };
-        localStorage.setItem(key, JSON.stringify(finalData));
-        if (ym === "2026-09" || ym === "2026_09") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
-        }
+      await setDoc(compRef, sanitizeForFirestore(cloudPayload), { merge: true });
+
+      if ((inFlightCompanySaves[cleanComp] || 0) <= 1) {
+        localStorage.setItem(compKey, JSON.stringify(cloudPayload));
+        const assembled = getLocalSmartOvertimeData(ym);
+        localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembled));
         if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...finalData, yearMonth: ym } }));
+          window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...assembled, yearMonth: ym, updatedCompany: cleanComp } }));
         }
       }
       return true;
     } catch (err) {
-      console.error("Failed to save smart overtime data:", err);
+      console.error(`[${cleanComp}] 독립 근태 모듈 저장 실패:`, err);
       return false;
     } finally {
-      inFlightSmartSaves = Math.max(0, inFlightSmartSaves - 1);
+      inFlightCompanySaves[cleanComp] = Math.max(0, (inFlightCompanySaves[cleanComp] || 1) - 1);
     }
   };
 
-  smartSaveQueue = smartSaveQueue.then(runCloudSync, runCloudSync);
-  return smartSaveQueue;
+  companySaveQueues[cleanComp] = (companySaveQueues[cleanComp] || Promise.resolve()).then(
+    runCompanyCloudSync,
+    runCompanyCloudSync
+  );
+  return companySaveQueues[cleanComp];
+};
+
+export const saveSmartOvertimeData = async (data, targetYearMonth = null, options = {}) => {
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
+  const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : (nowKst || "2026-10"));
+
+  const targetComp = options.targetCompany ? cleanCompanyName(options.targetCompany) : null;
+  const isSingleCompany = targetComp && COMPANIES.includes(targetComp);
+
+  // 🌟 단일 업체 지정 시 오직 해당 업체의 독립 모듈만 저장 (다른 4개사 데이터는 건드리지 않음)
+  if (isSingleCompany) {
+    return saveSingleCompanyOvertimeModule(targetComp, data, ym, options);
+  }
+
+  // 전체 저장(엑셀 일괄 업로드 등)인 경우에도 5개사 개별 모듈로 각각 독립 분산 저장
+  await Promise.all(
+    COMPANIES.map((comp) => saveSingleCompanyOvertimeModule(comp, data, ym, options))
+  );
+  return true;
 };
 
 export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, day, statusData) => {
@@ -1540,7 +1759,7 @@ export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, d
     ...currentLedger,
     companyApprovalStatus: updatedStatusMap
   };
-  await saveSmartOvertimeData(updatedLedger, ym, {
+  await saveSingleCompanyOvertimeModule(cleanComp, updatedLedger, ym, {
     targetCompany: cleanComp,
     targetDay: day,
     auditMeta: {
@@ -1549,15 +1768,14 @@ export const saveCompanyDayApprovalStatus = async (currentLedger, ym, company, d
       reason: `${cleanComp} Day ${day} 결재 상태: ${statusData.status}`
     }
   });
-  return updatedLedger;
+  return getLocalSmartOvertimeData(ym);
 };
 
+// 🌟 5개사 독립 문서 실시간 구독 (각 회사가 자기 문서만 독립 수신하므로 타사 저장과 절대 충돌하지 않음)
 export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => {
   try {
     const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
     const ym = targetYearMonth || nowKst || "2026-10";
-    const key = getStorageKeyForMonth(ym);
-    const docId = getFirestoreDocIdForMonth(ym);
 
     const handleCustom = (e) => {
       if (e && e.detail) {
@@ -1579,75 +1797,123 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = null) => 
       };
     }
 
-    const ref = doc(db, "smart_overtime_ledger", docId);
-    const unsubscribe = onSnapshot(
-      ref,
-      (docSnap) => {
-        // 🔒 If a local save is currently in-flight or happened within the last 2.5 seconds,
-        // do NOT let a stale Firestore snapshot overwrite localStorage and revert UI to '작성전'!
-        if (inFlightSmartSaves > 0 || Date.now() - lastLocalSaveEpoch < 2500) {
-          callback(getLocalSmartOvertimeData(ym));
-          return;
-        }
+    // 최초 1회: 서버에 아직 개별 분리 문서가 없고 구 통합 문서(`overtime_YYYY_MM`)만 있는 경우 자동 분리 마이그레이션
+    const legacyRef = doc(db, "smart_overtime_ledger", getFirestoreDocIdForMonth(ym));
+    getDoc(legacyRef).then((legacySnap) => {
+      if (!legacySnap.exists()) return;
+      const legacyCloud = legacySnap.data();
+      if (!legacyCloud || !Array.isArray(legacyCloud.attendanceMatrix)) return;
+      const normalizedLegacy = ensureAllCompaniesPresent(legacyCloud);
 
-        if (docSnap.exists()) {
-          const cloudData = docSnap.data();
-          if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            const normalizedCloud = ensureAllCompaniesPresent(cloudData);
+      COMPANIES.forEach(async (comp) => {
+        const compDocId = getFirestoreDocIdForCompanyMonth(comp, ym);
+        const compRef = doc(db, "smart_overtime_ledger", compDocId);
+        try {
+          const cSnap = await getDoc(compRef);
+          if (!cSnap.exists()) {
+            const compWorkers = (normalizedLegacy.attendanceMatrix || [])
+              .filter((w) => cleanCompanyName(w.company) === comp)
+              .map((w, idx) => ({ ...w, company: comp, companyNo: idx + 1, no: idx + 1 }));
+            const compApprovals = {};
+            Object.entries(normalizedLegacy.companyApprovalStatus || {}).forEach(([k, v]) => {
+              if (k.startsWith(`${comp}_`) || cleanCompanyName(v?.company) === comp) {
+                compApprovals[k] = v;
+              }
+            });
+            const seedPayload = {
+              company: comp,
+              year: normalizedLegacy.year || 2026,
+              month: normalizedLegacy.month || 10,
+              masterWorkers: compWorkers,
+              attendanceMatrix: compWorkers,
+              companyApprovalStatus: compApprovals,
+              recentAuditLogs: [],
+              updatedAt: normalizedLegacy.updatedAt || new Date().toISOString()
+            };
+            await setDoc(compRef, sanitizeForFirestore(seedPayload), { merge: true });
+          }
+        } catch (e) {}
+      });
+    }).catch(() => {});
 
-            // Merge non-destructively with local storage if local storage has newer or unsynced entries
-            let localCurrent = null;
-            try {
-              const rawLocal = localStorage.getItem(key);
-              if (rawLocal) localCurrent = JSON.parse(rawLocal);
-            } catch (e) {}
+    // 5개 협력사 각각의 독립 Firestore 문서(`overtime_2026_10_oryuk` 등)를 개별로 구독
+    const unsubList = COMPANIES.map((comp) => {
+      const compKey = getStorageKeyForCompanyMonth(comp, ym);
+      const compDocId = getFirestoreDocIdForCompanyMonth(comp, ym);
+      const compRef = doc(db, "smart_overtime_ledger", compDocId);
 
-            const isLocalNewer = Boolean(
-              localCurrent?.updatedAt &&
-              (!cloudData.updatedAt || String(localCurrent.updatedAt) > String(cloudData.updatedAt))
-            );
-
-            if (localCurrent && Array.isArray(localCurrent.attendanceMatrix) && isLocalNewer) {
-              normalizedCloud.attendanceMatrix = normalizedCloud.attendanceMatrix.map((cw) => {
-                const lw = localCurrent.attendanceMatrix.find(
-                  (item) => (item.name || "").trim() === (cw.name || "").trim() && cleanCompanyName(item.company) === cleanCompanyName(cw.company)
-                );
-                if (!lw) return cw;
-                return {
-                  ...cw,
-                  daily: {
-                    ...(cw.daily || {}),
-                    ...(lw.daily || {})
-                  }
-                };
-              });
-              normalizedCloud.companyApprovalStatus = {
-                ...(normalizedCloud.companyApprovalStatus || {}),
-                ...(localCurrent.companyApprovalStatus || {})
-              };
-              normalizedCloud.updatedAt = localCurrent.updatedAt;
-            }
-
-            localStorage.setItem(key, JSON.stringify(normalizedCloud));
-            callback(normalizedCloud);
+      return onSnapshot(
+        compRef,
+        (docSnap) => {
+          // 해당 업체가 현재 로컬 저장 중이거나 저장 직후(2.5초 이내)이면 이전 스냅샷 무시
+          if ((inFlightCompanySaves[comp] || 0) > 0 || Date.now() - (lastCompanySaveEpoch[comp] || 0) < 2500) {
+            callback(getLocalSmartOvertimeData(ym));
             return;
           }
+
+          if (docSnap.exists()) {
+            const cloudComp = docSnap.data();
+            if (cloudComp && Array.isArray(cloudComp.attendanceMatrix) && cloudComp.attendanceMatrix.length > 0) {
+              const localComp = getLocalCompanyOvertimeData(comp, ym);
+              const isLocalNewer = Boolean(
+                localComp?.updatedAt &&
+                (!cloudComp.updatedAt || String(localComp.updatedAt) > String(cloudComp.updatedAt))
+              );
+
+              const mergedWorkers = cloudComp.attendanceMatrix.map((cw, idx) => {
+                const lw = (localComp.attendanceMatrix || []).find(
+                  (item) => (item.name || "").trim() === (cw.name || "").trim()
+                );
+                const daily = (lw && isLocalNewer)
+                  ? { ...(cw.daily || {}), ...(lw.daily || {}) }
+                  : { ...(cw.daily || {}) };
+                return {
+                  ...cw,
+                  company: comp,
+                  companyNo: idx + 1,
+                  no: idx + 1,
+                  daily
+                };
+              });
+
+              const mergedApprovals = isLocalNewer
+                ? { ...(cloudComp.companyApprovalStatus || {}), ...(localComp.companyApprovalStatus || {}) }
+                : { ...(cloudComp.companyApprovalStatus || {}) };
+
+              const updatedCompData = {
+                ...cloudComp,
+                company: comp,
+                attendanceMatrix: mergedWorkers,
+                companyApprovalStatus: mergedApprovals,
+                updatedAt: isLocalNewer ? localComp.updatedAt : cloudComp.updatedAt
+              };
+
+              localStorage.setItem(compKey, JSON.stringify(updatedCompData));
+              const assembled = getLocalSmartOvertimeData(ym);
+              localStorage.setItem(getStorageKeyForMonth(ym), JSON.stringify(assembled));
+              callback(assembled);
+              return;
+            }
+          }
+          callback(getLocalSmartOvertimeData(ym));
+        },
+        (err) => {
+          console.warn(`[${comp}] 독립 근태 구독 오류:`, err);
+          callback(getLocalSmartOvertimeData(ym));
         }
-        callback(getLocalSmartOvertimeData(ym));
-      },
-      (error) => {
-        console.warn("Firestore smart overtime listener error:", error);
-        callback(getLocalSmartOvertimeData(ym));
-      }
-    );
+      );
+    });
+
     return () => {
-      unsubscribe();
+      unsubList.forEach((unsub) => {
+        if (typeof unsub === "function") unsub();
+      });
       if (typeof window !== "undefined") {
         window.removeEventListener("oryuk_smart_overtime_updated", handleCustom);
       }
     };
   } catch (err) {
-    console.error("Failed to subscribe smart overtime data:", err);
+    console.error("Failed to subscribe 5-company smart overtime data:", err);
     callback(getLocalSmartOvertimeData(targetYearMonth));
     return () => {};
   }

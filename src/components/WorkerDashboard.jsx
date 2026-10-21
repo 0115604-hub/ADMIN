@@ -658,63 +658,33 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     const unwritten = (Array.isArray(companies) ? companies : []).filter((c) => !c.isWritten);
 
-    const totalWorkers = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.workers || 0), 0);
-    const totalAttended = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.attended || 0), 0);
-    const totalAbsent = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.absent || 0), 0);
-    const totalOtWorkers = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.otWorkers || 0), 0);
-    const totalOtHours = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.otHours || 0), 0);
-    const totalHours = (Array.isArray(companies) ? companies : []).reduce((acc, c) => acc + (c?.totalHours || 0), 0);
-
-    const totalItem = {
-      name: "전회사 TOTAL",
-      shortName: "전사",
-      isWritten: unwritten.length === 0,
-      statusBadgeText: unwritten.length === 0 ? "전사 완료" : `${5 - unwritten.length}/5 완료`,
-      statusBadgeClass: unwritten.length === 0
-        ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-        : "bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700",
-      workers: totalWorkers,
-      attended: totalAttended,
-      absent: totalAbsent,
-      otWorkers: totalOtWorkers,
-      otHours: totalOtHours,
-      totalHours: totalHours,
-      dot: "bg-rose-500",
-      borderHover: "hover:border-cyan-500 dark:hover:border-cyan-400 ring-1 ring-cyan-400/40 dark:ring-cyan-500/30",
-      badgeColor: "text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950 border-cyan-300 dark:border-cyan-800",
-      isTotal: true
-    };
-
     return {
-      companyOverviewStats: [totalItem, ...companies],
+      companyOverviewStats: companies,
       unwrittenCompanies: unwritten
     };
   }, [smartOvertimeData, overtimeReports]);
 
-  // 🌟 관리자별 맞춤 근태현황: 공통사항(전사 5개사 TOTAL) 표출 + 본인 소속사 우선 정렬
+  // 🌟 관리자별 맞춤 근태현황: 5개사 통합(TOTAL) 제거 및 5개 개별 회사(본인 소속사 우선 정렬)
   const filteredCompanyOverviewStats = useMemo(() => {
     if (!companyOverviewStats || companyOverviewStats.length === 0) return [];
 
-    // 한울 관리자: 전사 5개사 TOTAL 표출 + 한울 우선 배치
+    // 한울 관리자: 한울 우선 배치 + 나머지 개별사
     if (isHanulManager || isHanul) {
-      const total = companyOverviewStats.find((c) => c.isTotal);
-      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "한울" || c.shortName === "한울"));
-      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
-      return [total, myComp, ...others].filter(Boolean);
+      const myComp = companyOverviewStats.find((c) => c.name === "한울" || c.shortName === "한울");
+      const others = companyOverviewStats.filter((c) => c !== myComp);
+      return [myComp, ...others].filter(Boolean);
     }
-    // 부림텍 관리자: 전사 5개사 TOTAL 표출 + 부림텍 우선 배치
+    // 부림텍 관리자: 부림텍 우선 배치 + 나머지 개별사
     if (isBurimtechManager || isBurimtech) {
-      const total = companyOverviewStats.find((c) => c.isTotal);
-      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "부림텍" || c.shortName === "부림텍"));
-      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
-      return [total, myComp, ...others].filter(Boolean);
+      const myComp = companyOverviewStats.find((c) => c.name === "부림텍" || c.shortName === "부림텍");
+      const others = companyOverviewStats.filter((c) => c !== myComp);
+      return [myComp, ...others].filter(Boolean);
     }
-    // 유성 관리자: 전사 5개사 TOTAL 표출 + 유성 우선 배치
+    // 유성 관리자: 유성 우선 배치 + 나머지 개별사
     if (isYuseongManager) {
-      const total = companyOverviewStats.find((c) => c.isTotal);
-      const myComp = companyOverviewStats.find((c) => !c.isTotal && (c.name === "유성" || c.shortName === "유성"));
-      const others = companyOverviewStats.filter((c) => !c.isTotal && c !== myComp);
-      return [total, myComp, ...others].filter(Boolean);
+      const myComp = companyOverviewStats.find((c) => c.name === "유성" || c.shortName === "유성");
+      const others = companyOverviewStats.filter((c) => c !== myComp);
+      return [myComp, ...others].filter(Boolean);
     }
 
     return companyOverviewStats;

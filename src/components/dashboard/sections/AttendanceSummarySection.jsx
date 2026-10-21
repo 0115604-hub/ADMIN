@@ -21,22 +21,14 @@ export const AttendanceSummarySection = ({
           <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
             {todayFormattedLabel}
           </span>
-          {/* ⭐ 미작성 업체 표기 배지 */}
-          {unwrittenCompanies.length > 0 ? (
+          {/* ⭐ 미작성 업체 표기 배지 (통합 완료 뱃지 제거, 미작성 개별사만 안내) */}
+          {unwrittenCompanies.length > 0 && (
             <span
               className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-1"
               title="당일 근태대장 미작성 협력사 목록입니다."
             >
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping shrink-0" />
               <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
-            </span>
-          ) : (
-            <span
-              className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0 flex items-center gap-1"
-              title="5개 협력사 전원 작성 완료되었습니다."
-            >
-              <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-              <span>5개사 전원 작성완료</span>
             </span>
           )}
         </div>
@@ -51,7 +43,7 @@ export const AttendanceSummarySection = ({
               }, 50);
             }}
             className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/80 dark:hover:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-black border border-purple-300 dark:border-purple-700 shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-            title="전사 근로자 등록/삭제 및 인사카드 관리"
+            title="근로자 등록/삭제 및 인사카드 관리"
           >
             <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
             <span>👥 인원관리</span>
@@ -73,14 +65,14 @@ export const AttendanceSummarySection = ({
         </div>
       </div>
 
-      {/* 5 Company + TOTAL Today Overview Cards - Simple & Slim 2-Metric Design */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+      {/* 5 Independent Companies Today Overview Cards (오륙, 유성, 조영, 한울, 부림텍) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
         {companyOverviewStats.map((comp) => (
           <div
             key={comp.name}
             onClick={() => {
               if (onNavigateTab) {
-                if (!comp.isTotal && comp.name) {
+                if (comp.name) {
                   try {
                     window.sessionStorage?.setItem("oryuk_selected_company_filter", comp.name);
                   } catch {
@@ -90,44 +82,18 @@ export const AttendanceSummarySection = ({
                 onNavigateTab("overtime_status");
               }
             }}
-            className={`p-2 sm:p-2.5 rounded-xl ${
-              comp.isTotal
-                ? "bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-300/90 dark:border-cyan-700/80 shadow-xs"
-                : "bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800"
-            } ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
-            title={comp.isTotal ? "클릭 시 전회사 근태/잔업 상세대장으로 이동" : "클릭 시 5개사 근태/잔업 대장 상세관리로 이동"}
+            className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800 ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
+            title={`클릭 시 [${comp.name}] 개별 근태/잔업 관리로 이동`}
           >
             {/* Header: Company Name & 작성상태 미니 배지 */}
-            <div
-              className={`flex items-center justify-between gap-1 pb-1 border-b ${
-                comp.isTotal
-                  ? "border-cyan-200/80 dark:border-cyan-800/80"
-                  : "border-slate-200/70 dark:border-slate-800/80"
-              }`}
-            >
+            <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-200/70 dark:border-slate-800/80">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className={`w-2 h-2 rounded-full ${comp.dot} shrink-0`}></span>
-                <span
-                  className={`font-black text-xs sm:text-sm truncate transition-colors ${
-                    comp.isTotal
-                      ? "text-cyan-900 dark:text-cyan-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
-                      : "text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
-                  }`}
-                >
+                <span className="font-black text-xs sm:text-sm truncate transition-colors text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300">
                   {comp.name}
                 </span>
               </div>
-              {comp.isTotal ? (
-                <span
-                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 ${
-                    unwrittenCompanies.length === 0
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-                      : "bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
-                  }`}
-                >
-                  {unwrittenCompanies.length === 0 ? "전사 완료" : `${5 - unwrittenCompanies.length}/5 완료`}
-                </span>
-              ) : comp.approvalStatus === "APPROVED" ? (
+              {comp.approvalStatus === "APPROVED" ? (
                 <span
                   className="text-[9px] px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-400/50 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
                   title="관리자/대표 최종 승인 완료 (마감)"
