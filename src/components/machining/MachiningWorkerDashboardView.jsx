@@ -142,6 +142,10 @@ export const MachiningWorkerDashboardView = () => {
   const filteredQualityIssues = useMemo(() => {
     return qualityIssues.filter((it) => {
       if (!it) return false;
+      if (it.targetWorkerGroup && it.targetWorkerGroup !== "machining") return false;
+      const comp = String(it.company || "");
+      const auth = String(it.author || "");
+      if (comp.includes("조영") || comp.includes("부림") || auth.includes("김동욱") || auth.includes("부림")) return false;
       if (selectedStatusFilter !== "ALL") {
         if (it.status !== selectedStatusFilter) return false;
       }
@@ -162,7 +166,14 @@ export const MachiningWorkerDashboardView = () => {
   }, [qualityIssues, selectedStatusFilter, selectedProjectFilter, searchQuery]);
 
   const activeQualityCount = useMemo(() => {
-    return qualityIssues.filter((it) => it && it.status !== "RESOLVED").length;
+    return qualityIssues.filter((it) => {
+      if (!it || it.status === "RESOLVED") return false;
+      if (it.targetWorkerGroup && it.targetWorkerGroup !== "machining") return false;
+      const comp = String(it.company || "");
+      const auth = String(it.author || "");
+      if (comp.includes("조영") || comp.includes("부림") || auth.includes("김동욱") || auth.includes("부림")) return false;
+      return true;
+    }).length;
   }, [qualityIssues]);
 
   // Filtered Work Reports

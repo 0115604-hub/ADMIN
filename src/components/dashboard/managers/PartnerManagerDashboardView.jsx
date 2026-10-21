@@ -69,9 +69,11 @@ export const PartnerManagerDashboardView = ({
   // Disaster Bar
   SevereDisasterBar,
 
-  // 🌟 Partner Custom Props: Yuseong
+  // 🌟 Partner Custom Props: Yuseong & Burimtech Quality Issue Modal
   handleOpenYuseongReport,
   activeYuseongQualityCount = 0,
+  setIsHanulQualityIssueModalOpen,
+  activeHanulQualityCount = 0,
 
   // 🌟 Attendance Props (Full 5-company stats + partner priority)
   todayFormattedLabel,
@@ -201,6 +203,7 @@ export const PartnerManagerDashboardView = ({
           onNavigateTab={onNavigateTab}
           activeYuseongQualityCount={activeYuseongQualityCount}
           currentProfile={currentProfile}
+          setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
         />
       )}
 
@@ -214,6 +217,8 @@ export const PartnerManagerDashboardView = ({
           currentProfile={currentProfile}
           isWorkLogApproved={isWorkLogApproved}
           pushModalHistory={pushModalHistory}
+          setIsHanulQualityIssueModalOpen={setIsHanulQualityIssueModalOpen}
+          activeHanulQualityCount={activeHanulQualityCount}
         />
       )}
 

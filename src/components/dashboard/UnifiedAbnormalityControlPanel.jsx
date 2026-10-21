@@ -92,6 +92,7 @@ import {
   getLocalPersonnelCardsMap
 } from "../../services/personnelCardService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
 import * as XLSX from "xlsx";
 
 // Image compression helper for modal photo uploads
@@ -1434,6 +1435,38 @@ export const UnifiedAbnormalityControlPanel = ({
     }
   };
 
+  // 🌟 사내관리등록 상태 저장 (변동점등록 vs 사내관리등록 구분)
+  const [internalMgmtMap, setInternalMgmtMap] = useState(() => {
+    try {
+      const raw = localStorage.getItem("factory_internal_mgmt_registry_v1");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleRegisterAsInternalMgmt = async (item) => {
+    if (!item) return;
+    const rawId = item.raw?.id || "";
+    const isAlreadyIn4M = fourMLedgerRecords.some(
+      (r) =>
+        r.originalId === item.id ||
+        r.id === item.id ||
+        r.id === `ledger_${item.id}` ||
+        `ledger_${r.originalId}` === item.id ||
+        (rawId && (r.rawId === rawId || r.originalId === rawId || r.id === rawId || r.id === `ledger_${rawId}`))
+    );
+    if (isAlreadyIn4M) {
+      const updated = await unregisterFromFourMLedger(item);
+      setFourMLedgerRecords(updated || []);
+    }
+    const nextMap = { ...internalMgmtMap, [item.id]: true };
+    setInternalMgmtMap(nextMap);
+    try {
+      localStorage.setItem("factory_internal_mgmt_registry_v1", JSON.stringify(nextMap));
+    } catch {}
+  };
+
   // 🌟 공식 변동점 관리대장 등록 및 해제 (복사본 저장)
   const handleToggleLedger = async (item) => {
     if (!item) return;
@@ -1460,6 +1493,14 @@ export const UnifiedAbnormalityControlPanel = ({
           newItem,
           ...prev.filter((it) => it.id !== newItem.id && it.originalId !== newItem.originalId)
         ]);
+        if (internalMgmtMap[item.id]) {
+          const nextMap = { ...internalMgmtMap };
+          delete nextMap[item.id];
+          setInternalMgmtMap(nextMap);
+          try {
+            localStorage.setItem("factory_internal_mgmt_registry_v1", JSON.stringify(nextMap));
+          } catch {}
+        }
         alert(`[${item.title}]\n\n항목이 공식 변동점 관리대장에 복사본으로 저장되었습니다.`);
       }
     }
@@ -1707,6 +1748,14 @@ export const UnifiedAbnormalityControlPanel = ({
       )}
 
       {/* ========================================================================= */}
+      {/* 2.5. 작업일보내 부적합발생패널 및 부적합관리대장패널 (변동점등록 / 사내관리등록 구분) */}
+      {/* ========================================================================= */}
+      <WorkReportNonconformanceLedgerPanel
+        currentProfile={currentProfile}
+        titlePrefix="전사"
+      />
+
+      {/* ========================================================================= */}
       {/* 3. 1줄짜리 초간결 목록표 (High-Density 1-Line Table View) */}
       {/* ========================================================================= */}
       {viewMode === "table" ? (
@@ -1724,7 +1773,7 @@ export const UnifiedAbnormalityControlPanel = ({
                   <th className="py-2.5 px-2 text-center w-14">사진</th>
                   <th className="py-2.5 px-2 text-center w-20">진행상태</th>
                   <th className="py-2.5 px-2 text-center w-28">유효성검증</th>
-                  <th className="py-2.5 px-2 text-center w-24">변동점대장</th>
+                  <th className="py-2.5 px-2 text-center w-44">등록구분 (변동점 / 사내관리)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -1890,31 +1939,55 @@ export const UnifiedAbnormalityControlPanel = ({
                           </span>
                         </td>
 
-                        {/* 9. 변동점대장 */}
+                        {/* 9. 등록구분 (변동점등록 뱃지 / 사내관리등록 뱃지) */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          {item.isRegisteredInLedger ? (
+                          <div className="inline-flex items-center gap-1">
+                            {/* 변동점등록 뱃지 */}
+                            {item.isRegisteredInLedger ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleLedger(item)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-rose-600 text-white text-[10px] font-black transition-all shadow-2xs group/btn cursor-pointer"
+                                title="변동점관리대장 등록됨 (클릭 시 해제)"
+                              >
+                                <Check className="w-2.5 h-2.5 group-hover/btn:hidden" />
+                                <X className="w-2.5 h-2.5 hidden group-hover/btn:inline" />
+                                <span className="group-hover/btn:hidden">🔄 변동점등록됨</span>
+                                <span className="hidden group-hover/btn:inline">해제</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleLedger(item)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-emerald-600 text-indigo-700 dark:text-indigo-300 hover:text-white border border-indigo-300 dark:border-indigo-700 text-[10px] font-black transition-all cursor-pointer shadow-2xs"
+                                title="변동점등록 뱃지: 클릭 시 변동점관리대장에 동시 등록됩니다."
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                                <span>🔄 변동점등록</span>
+                              </button>
+                            )}
+
+                            {/* 사내관리등록 뱃지 */}
                             <button
                               type="button"
-                              onClick={() => handleToggleLedger(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-rose-600 text-white text-[10.5px] font-black transition-all shadow-2xs group/btn cursor-pointer"
-                              title="클릭 시 변동점 관리대장에서 등록 해제"
+                              onClick={() => handleRegisterAsInternalMgmt(item)}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-2xs border ${
+                                !item.isRegisteredInLedger && internalMgmtMap[item.id]
+                                  ? "bg-blue-600 text-white border-blue-500 ring-2 ring-blue-400/40"
+                                  : "bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 text-slate-600 dark:text-slate-300 hover:text-white border-slate-300 dark:border-slate-700"
+                              }`}
+                              title="사내관리등록 뱃지: 부적합관리대장 내 사내관리 항목으로 등록합니다."
                             >
-                              <Check className="w-3 h-3 group-hover/btn:hidden" />
-                              <X className="w-3 h-3 hidden group-hover/btn:inline" />
-                              <span className="group-hover/btn:hidden">대장등록됨</span>
-                              <span className="hidden group-hover/btn:inline">등록해제</span>
+                              {!item.isRegisteredInLedger && internalMgmtMap[item.id] ? (
+                                <>
+                                  <Check className="w-2.5 h-2.5" />
+                                  <span>🏢 사내관리됨</span>
+                                </>
+                              ) : (
+                                <span>🏢 사내관리등록</span>
+                              )}
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleLedger(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 text-indigo-700 dark:text-indigo-300 hover:text-white border border-indigo-300 dark:border-indigo-700 text-[10.5px] font-bold transition-all cursor-pointer shadow-2xs"
-                              title="클릭 시 상단 변동점 관리대장으로 복사본 저장"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>대장등록</span>
-                            </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     );

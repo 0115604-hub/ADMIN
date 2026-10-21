@@ -36,7 +36,25 @@ import {
   resolveMachiningQualityIssue,
   deleteMachiningQualityIssue
 } from "../../services/machiningQualityIssueService";
+import {
+  YUSEONG_QUALITY_PROJECTS,
+  YUSEONG_DEFECT_TYPES,
+  subscribeYuseongQualityIssues,
+  getLocalYuseongQualityIssues,
+  saveYuseongQualityIssue,
+  deleteYuseongQualityIssue
+} from "../../services/yuseongQualityIssueService";
+import {
+  EXTRUSION_LINES,
+  DEFECT_TYPES as EXTRUSION_DEFECT_TYPES,
+  subscribeExtrusionQualityIssues,
+  getLocalExtrusionQualityIssues,
+  saveExtrusionQualityIssue,
+  resolveExtrusionQualityIssue,
+  deleteExtrusionQualityIssue
+} from "../../services/extrusionQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
 
 const ORYUK_PROCESSES = [
   ...MACHINING_QUALITY_PROJECTS,
@@ -51,6 +69,13 @@ const JOYOUNG_PROCESSES = [
   { id: "lq2", name: "LQ2 (Hood Side)", badge: "LQ2", color: "purple" },
   { id: "lq2a", name: "LQ2a (Hood Side)", badge: "LQ2a", color: "pink" },
   { id: "burim", name: "부림텍 외주가공", badge: "부림텍", color: "emerald" }
+];
+
+const BURIMTECH_PROCESSES = [
+  { id: "lq2", name: "LQ2 (Hood Side)", badge: "LQ2", color: "emerald" },
+  { id: "9bqc", name: "9BQC (G/RUN)", badge: "9BQC", color: "teal" },
+  { id: "lq2a", name: "LQ2a (Hood Side)", badge: "LQ2a", color: "pink" },
+  { id: "burim_common", name: "부림텍 외주가공 (공통)", badge: "부림텍", color: "emerald" }
 ];
 
 // Client-side image compression
@@ -103,7 +128,7 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
 export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const { currentProfile } = useAuth();
 
-  // 🌟 접속 관리자별 등록 모드 자동 판별 (오륙: 이창엽·윤경수 / 조영: 김동욱 / 한울: 한울)
+  // 🌟 접속 관리자별 등록 모드 자동 판별 (오륙: 이창엽·윤경수 / 조영: 김동욱 / 유성: 유성 / 부림텍: 부림텍 / 압출동: 설유철 / 한울: 한울)
   const isOryukManager = Boolean(
     currentProfile?.name === "이창엽" ||
     currentProfile?.id === "sam_cy" ||
@@ -114,25 +139,90 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     currentProfile?.name === "김동욱" ||
     currentProfile?.id === "hal_dw"
   );
-  // 🌟 한울, 이창엽, 윤경수의 부적합경보등록 화면에서는 [첫화면 전사등록] 뱃지 생성 (김동욱 제외 또는 한울·이창엽·윤경수 전용)
+  const isYuseongManager = Boolean(
+    currentProfile?.name === "유성" ||
+    currentProfile?.id === "sam_ys" ||
+    String(currentProfile?.company || "").includes("유성")
+  );
+  const isBurimtechManager = Boolean(
+    currentProfile?.name === "부림텍" ||
+    currentProfile?.id === "hal_br" ||
+    String(currentProfile?.company || "").includes("부림")
+  );
+  const isSeolManager = Boolean(
+    currentProfile?.name === "설유철" ||
+    currentProfile?.id === "sam_yc"
+  );
+
+  // 🌟 전사부적합등록 뱃지 지원
   const canBroadcastToFirstScreen = !isJoyoungManager;
 
-  const companyLabel = isOryukManager ? "오륙" : isJoyoungManager ? "조영" : "한울";
+  const companyLabel = isOryukManager
+    ? "오륙"
+    : isJoyoungManager
+    ? "조영"
+    : isYuseongManager
+    ? "유성"
+    : isBurimtechManager
+    ? "부림텍"
+    : isSeolManager
+    ? "압출동"
+    : "한울";
+
+  const targetWorkerGroup = isOryukManager
+    ? "machining"
+    : isJoyoungManager
+    ? "joyoung"
+    : isYuseongManager
+    ? "yuseong"
+    : isBurimtechManager
+    ? "burimtech"
+    : isSeolManager
+    ? "extrusion"
+    : "hanul";
+
   const headerBadgeLabel = isOryukManager
-    ? "(주)오륙 삼랑진공장 전담"
+    ? "(주)오륙 가공동 전담"
     : isJoyoungManager
     ? "(주)조영 한림공장 전담"
+    : isYuseongManager
+    ? "(주)유성 외주가공 전담"
+    : isBurimtechManager
+    ? "부림텍 외주가공 전담"
+    : isSeolManager
+    ? "삼랑진 압출동 전담"
     : "한울 외주가공 전담";
+
   const processOptions = isOryukManager
     ? ORYUK_PROCESSES
     : isJoyoungManager
     ? JOYOUNG_PROCESSES
+    : isYuseongManager
+    ? YUSEONG_QUALITY_PROJECTS
+    : isBurimtechManager
+    ? BURIMTECH_PROCESSES
+    : isSeolManager
+    ? EXTRUSION_LINES
     : HANUL_PROCESSES;
-  const defectOptions = isOryukManager ? MACHINING_DEFECT_TYPES : HANUL_DEFECT_TYPES;
+
+  const defectOptions = isOryukManager
+    ? MACHINING_DEFECT_TYPES
+    : isYuseongManager
+    ? YUSEONG_DEFECT_TYPES
+    : isSeolManager
+    ? EXTRUSION_DEFECT_TYPES
+    : HANUL_DEFECT_TYPES;
+
   const defaultLineName = processOptions[0]?.name || "9BQC (G/RUN)";
 
   const [issues, setIssues] = useState(() =>
-    isOryukManager ? getLocalMachiningQualityIssues() : getLocalHanulQualityIssues()
+    isOryukManager
+      ? getLocalMachiningQualityIssues()
+      : isYuseongManager
+      ? getLocalYuseongQualityIssues()
+      : isSeolManager
+      ? getLocalExtrusionQualityIssues()
+      : getLocalHanulQualityIssues()
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingCauseImages, setIsProcessingCauseImages] = useState(false);
@@ -177,11 +267,23 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
   const actionFileInputRef = useRef(null);
   const modalBodyRef = useRef(null);
 
-  // Real-time Cloud Sync (오륙: machiningQualityIssues / 한울·조영: hanulQualityIssues)
+  // Real-time Cloud Sync (오륙: machining / 유성: yuseong / 압출동: extrusion / 한울·부림텍·조영: hanul)
   useEffect(() => {
     if (isOryukManager) {
       setIssues(getLocalMachiningQualityIssues());
       const unsub = subscribeMachiningQualityIssues((list) => {
+        setIssues(list);
+      });
+      return () => unsub();
+    } else if (isYuseongManager) {
+      setIssues(getLocalYuseongQualityIssues());
+      const unsub = subscribeYuseongQualityIssues((list) => {
+        setIssues(list);
+      });
+      return () => unsub();
+    } else if (isSeolManager) {
+      setIssues(getLocalExtrusionQualityIssues());
+      const unsub = subscribeExtrusionQualityIssues((list) => {
         setIssues(list);
       });
       return () => unsub();
@@ -192,7 +294,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
       });
       return () => unsub();
     }
-  }, [isOryukManager]);
+  }, [isOryukManager, isYuseongManager, isSeolManager]);
 
   // Close on Escape key
   useEffect(() => {
@@ -292,7 +394,8 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
       const payload = {
         ...form,
         company: companyLabel,
-        plant: isOryukManager ? "삼랑진공장" : "한림공장",
+        targetWorkerGroup,
+        plant: isOryukManager || isYuseongManager || isSeolManager ? "삼랑진공장" : "한림공장",
         author: authorName,
         authorTitle,
         status: "ACTIVE",
@@ -307,6 +410,10 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
       if (isOryukManager) {
         await saveMachiningQualityIssue(payload);
+      } else if (isYuseongManager) {
+        await saveYuseongQualityIssue(payload);
+      } else if (isSeolManager) {
+        await saveExtrusionQualityIssue(payload);
       } else {
         await saveHanulQualityIssue(payload);
       }
@@ -387,6 +494,15 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     try {
       if (isOryukManager) {
         await resolveMachiningQualityIssue(issue.id, note, currentProfile?.name || companyLabel);
+      } else if (isYuseongManager) {
+        await saveYuseongQualityIssue({
+          ...issue,
+          status: "RESOLVED",
+          actionResult: note || issue.actionResult || "현장 조치 및 품질 확인 완료",
+          resolvedBy: currentProfile?.name || companyLabel
+        });
+      } else if (isSeolManager) {
+        await resolveExtrusionQualityIssue(issue.id, note, currentProfile?.name || companyLabel);
       } else {
         await resolveHanulQualityIssue(issue.id, note, currentProfile?.name || companyLabel);
       }
@@ -403,6 +519,10 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     try {
       if (isOryukManager) {
         await deleteMachiningQualityIssue(id);
+      } else if (isYuseongManager) {
+        await deleteYuseongQualityIssue(id);
+      } else if (isSeolManager) {
+        await deleteExtrusionQualityIssue(id);
       } else {
         await deleteHanulQualityIssue(id);
       }
@@ -419,12 +539,29 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     }
   };
 
-  // 🌟 아래 목록표는 '현장내전파등록'(isFirstScreenBroadcast !== true && isFirstScreenOrigin !== true)에 한해 목록화
+  // 🌟 아래 목록표는 '현장내전파등록'(isFirstScreenBroadcast !== true && isFirstScreenOrigin !== true)에 한해 소속 회사별로 목록화
   const siteOnlyIssues = useMemo(() => {
-    return issues.filter(
-      (it) => it && !it.isFirstScreenBroadcast && !it.isFirstScreenOrigin
-    );
-  }, [issues]);
+    return issues.filter((it) => {
+      if (!it || it.isFirstScreenBroadcast || it.isFirstScreenOrigin) return false;
+      if (isOryukManager || isYuseongManager || isSeolManager) return true;
+      const itemComp = String(it.company || "한울").trim();
+      const itemAuthor = String(it.author || "").trim();
+      if (isBurimtechManager) {
+        return itemComp === "부림텍" || itemAuthor.includes("부림") || it.targetWorkerGroup === "burimtech";
+      }
+      if (isJoyoungManager) {
+        return itemComp === "조영" || itemAuthor === "김동욱" || it.targetWorkerGroup === "joyoung";
+      }
+      // 한울 관리자 (기본)
+      return (
+        (itemComp === "한울" || !it.company) &&
+        itemComp !== "부림텍" &&
+        itemComp !== "조영" &&
+        itemAuthor !== "김동욱" &&
+        !itemAuthor.includes("부림")
+      );
+    });
+  }, [issues, isOryukManager, isYuseongManager, isSeolManager, isBurimtechManager, isJoyoungManager]);
 
   // Filtered Issues (현장내전파등록 항목만 대상)
   const filteredIssues = useMemo(() => {
@@ -1113,6 +1250,15 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
               </div>
             )}
           </div>
+
+          {/* ========================================================================= */}
+          {/* 3-2. 작업일보내 부적합발생패널 (현장내전파 목록 아래 별도 관리) */}
+          {/* ========================================================================= */}
+          <WorkReportNonconformanceLedgerPanel
+            filterCompany={companyLabel}
+            currentProfile={currentProfile}
+            titlePrefix={companyLabel}
+          />
         </div>
       </div>
 

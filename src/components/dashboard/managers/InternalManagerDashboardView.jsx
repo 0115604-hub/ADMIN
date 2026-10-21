@@ -128,7 +128,7 @@ export const InternalManagerDashboardView = ({
   activeHanulQualityCount = 0,
   activeMachiningQualityCount = 0
 }) => {
-  // 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) 판별
+  // 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) & 설유철 (압출동 부적합경보 등록) 판별
   const isOryukQualityManager = Boolean(
     currentProfile?.name === "이창엽" ||
     currentProfile?.id === "sam_cy" ||
@@ -139,6 +139,10 @@ export const InternalManagerDashboardView = ({
     isDongwook ||
     currentProfile?.name === "김동욱" ||
     currentProfile?.id === "hal_dw"
+  );
+  const isSeolQualityManager = Boolean(
+    currentProfile?.name === "설유철" ||
+    currentProfile?.id === "sam_yc"
   );
 
   return (
@@ -239,14 +243,16 @@ export const InternalManagerDashboardView = ({
         />
       )}
 
-      {/* 🌟 이창엽·윤경수 (오륙 부적합경보 등록) & 김동욱 (조영 부적합경보 등록) 전용 한줄 패널 */}
-      {(isOryukQualityManager || isJoyoungQualityManager) && setIsHanulQualityIssueModalOpen && (
+      {/* 🌟 이창엽·윤경수 (오륙) & 김동욱 (조영) & 설유철 (압출동) 부적합경보 등록 전용 한줄 패널 */}
+      {(isOryukQualityManager || isJoyoungQualityManager || isSeolQualityManager) && setIsHanulQualityIssueModalOpen && (
         <div
           onClick={() => setIsHanulQualityIssueModalOpen(true)}
           className="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/90 text-white rounded-xl sm:rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 border-2 border-indigo-500/50 shadow-md shadow-slate-950/40 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0 max-w-full animate-fadeIn cursor-pointer group"
           title={
             isOryukQualityManager
               ? "오륙 부적합경보 및 품질이슈 등록/관리"
+              : isSeolQualityManager
+              ? "압출동 부적합경보 및 품질이슈 등록/관리"
               : "조영 부적합경보 및 품질이슈 등록/관리"
           }
         >
@@ -256,7 +262,11 @@ export const InternalManagerDashboardView = ({
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <span className="font-black text-xs sm:text-sm text-white tracking-tight group-hover:text-rose-300 transition-colors">
-                {isOryukQualityManager ? "오륙 부적합경보 등록" : "조영 부적합경보 등록"}
+                {isOryukQualityManager
+                  ? "오륙 부적합경보 등록"
+                  : isSeolQualityManager
+                  ? "압출동 부적합경보 등록"
+                  : "조영 부적합경보 등록"}
               </span>
             </div>
           </div>

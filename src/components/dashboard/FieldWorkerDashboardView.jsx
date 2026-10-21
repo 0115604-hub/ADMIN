@@ -1,4 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ShieldAlert, Check } from "lucide-react";
+import {
+  subscribeMachiningQualityIssues,
+  getLocalMachiningQualityIssues,
+  acknowledgeMachiningQualityIssue
+} from "../../services/machiningQualityIssueService";
 import {
   Factory,
   ClipboardList,
@@ -50,6 +56,36 @@ export default function FieldWorkerDashboardView({
       workerFullName === "최현영"
     );
   }, [currentProfile, workerFullName]);
+
+  const isJoyoungWorker = useMemo(() => {
+    return (
+      currentProfile?.company === "조영" ||
+      currentProfile?.portalType === "joyoung" ||
+      String(currentProfile?.id || "").startsWith("jy_")
+    );
+  }, [currentProfile]);
+
+  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
+
+  useEffect(() => {
+    const unsub = subscribeMachiningQualityIssues((list) => {
+      setMachiningQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
+  const targetQualityIssues = useMemo(() => {
+    return (machiningQualityIssues || []).filter((it) => {
+      if (!it || it.status === "RESOLVED") return false;
+      if (isBurimtech) {
+        return it.targetWorkerGroup === "burimtech" || it.company === "부림텍" || it.author === "부림텍";
+      }
+      if (isJoyoungWorker) {
+        return it.targetWorkerGroup === "joyoung" || it.company === "조영" || it.author === "김동욱";
+      }
+      return false;
+    });
+  }, [machiningQualityIssues, isBurimtech, isJoyoungWorker]);
 
   const displayTitle = currentProfile?.title || currentProfile?.position || (
     isBurimtech && (currentProfile?.name === "최현영" || workerFullName === "최현영") ? "반장" :
@@ -144,6 +180,66 @@ export default function FieldWorkerDashboardView({
           >
             압출 작업일보 바로가기 ➡️
           </button>
+        </div>
+      )}
+
+      {/* 🌟 부림텍 / 조영 전용 부적합경보 공유판 */}
+      {(isBurimtech || isJoyoungWorker) && (
+        <div className="bg-slate-900 rounded-2xl border-2 border-rose-500/50 p-3.5 sm:p-4 text-white space-y-2.5 shadow-lg">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-400 animate-pulse" />
+              <h3 className="text-sm font-black text-white">
+                {isBurimtech ? "🚨 부림텍 관리자 부적합품 경보 전파" : "🚨 김동욱 관리자(조영) 부적합품 경보 전파"}
+              </h3>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-600 text-white">
+              전파중 {targetQualityIssues.length}건
+            </span>
+          </div>
+
+          {targetQualityIssues.length === 0 ? (
+            <div className="py-4 text-center rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-emerald-400 font-bold">
+              ✓ 현재 등록된 부적합품 경보가 없습니다. 표준 작업수칙을 준수하세요.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {targetQualityIssues.map((it) => {
+                const ackList = Array.isArray(it.acknowledgedBy) ? it.acknowledgedBy : [];
+                const isAcked = currentProfile?.name ? ackList.some((a) => a.name === currentProfile.name) : false;
+                return (
+                  <div key={it.id} className="p-3 rounded-xl bg-slate-950/80 border border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-black">{it.line || "전 라인"}</span>
+                        {it.defectType && <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700 text-[10px] font-bold">⚠️ {it.defectType}</span>}
+                        <span className="text-[11px] text-slate-400 font-mono">{it.occurredDate}</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-black text-white">{it.title}</p>
+                      {it.content && <p className="text-xs text-slate-300">{it.content}</p>}
+                      {it.actionResult && <p className="text-xs text-emerald-300 font-bold">👉 조치지침: {it.actionResult}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentProfile?.name) {
+                          acknowledgeMachiningQualityIssue(it.id, currentProfile.name);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 cursor-pointer transition-all flex items-center gap-1 ${
+                        isAcked
+                          ? "bg-emerald-950 text-emerald-300 border border-emerald-500/60"
+                          : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isAcked ? `숙지완료 (${ackList.length}명)` : `숙지 확인 (${ackList.length}명)`}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

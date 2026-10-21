@@ -497,6 +497,7 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       : (Array.isArray(raw.tpmIssueReport?.photos) ? raw.tpmIssueReport.photos : (raw.tpmIssuePhoto ? [raw.tpmIssuePhoto] : [])),
     downtimeEvents: Array.isArray(raw.downtimeEvents) && raw.downtimeEvents.length > 0
       ? raw.downtimeEvents.map((e, eIdx) => ({
+          ...e,
           id: String(e.id || `dt_${eIdx + 1}`),
           type: String(e.type || "비가동").trim(),
           startTime: String(e.startTime || "").trim(),
@@ -504,7 +505,9 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
           minutes: Math.max(0, Number(e.minutes) || 0),
           category: String(e.category || "압개시").trim(),
           detail: String(e.detail || "").trim(),
-          scrapKg: e.scrapKg !== undefined && e.scrapKg !== "" ? Number(e.scrapKg) : 0
+          scrapKg: e.scrapKg !== undefined && e.scrapKg !== "" ? Number(e.scrapKg) : 0,
+          beforePhoto: e.beforePhoto || null,
+          afterPhoto: e.afterPhoto || null
         }))
       : (downtimeMinutes > 0 || raw.downtimeDetail
           ? [{

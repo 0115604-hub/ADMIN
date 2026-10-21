@@ -36,6 +36,7 @@ import {
   deleteExtrusionQualityIssue
 } from "../../services/extrusionQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
 
 // Client-side instant image compression
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -942,6 +943,15 @@ export const ExtrusionQualityIssueTab = () => {
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3-2. 작업일보내 부적합발생패널 (현장내전파 목록 아래 별도 관리) */}
+      {/* ========================================================================= */}
+      <WorkReportNonconformanceLedgerPanel
+        filterCompany="압출동"
+        currentProfile={currentProfile}
+        titlePrefix="압출동"
+      />
 
       {/* ========================================================================= */}
       {/* 4. Detail Modal (When user clicks a 1-line item) */}

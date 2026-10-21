@@ -118,6 +118,7 @@ export const AuthModal = () => {
   const [isHanulModalOpen, setIsHanulModalOpen] = useState(false);
   const [isBulimtechModalOpen, setIsBulimtechModalOpen] = useState(false);
   const [isYuseongModalOpen, setIsYuseongModalOpen] = useState(false);
+  const [isJoyoungModalOpen, setIsJoyoungModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [isSqLevelUpModalOpen, setIsSqLevelUpModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
@@ -409,6 +410,13 @@ export const AuthModal = () => {
   const yuseongWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
       (w) => w.company?.includes("유성") && w.status !== "퇴사" && w.name !== "유성"
+    );
+  }, []);
+
+  // Joyoung master workers list (한림공장 조영 현장작업자)
+  const joyoungWorkers = useMemo(() => {
+    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
+      (w) => w.company?.includes("조영") && w.status !== "퇴사" && w.name !== "김동욱" && w.name !== "권태형"
     );
   }, []);
 
@@ -2215,6 +2223,7 @@ export const AuthModal = () => {
   useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "hanulWorkReportModal");
   useModalHistory(isBulimtechModalOpen, () => setIsBulimtechModalOpen(false), "bulimtechModal");
   useModalHistory(isYuseongModalOpen, () => setIsYuseongModalOpen(false), "yuseongModal");
+  useModalHistory(isJoyoungModalOpen, () => setIsJoyoungModalOpen(false), "joyoungModal");
   useModalHistory(isSqLevelUpModalOpen, () => setIsSqLevelUpModalOpen(false), "sqLevelUpModal");
 
   return (
@@ -2353,6 +2362,19 @@ export const AuthModal = () => {
                 <span>유성</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-900/80 text-blue-100 hidden sm:inline">
                   {yuseongWorkers.length}명
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsJoyoungModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 hover:from-emerald-700 hover:to-green-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-emerald-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-emerald-400/30"
+                title={`한림공장 (주)조영 현장작업자 전용 포털 (${joyoungWorkers.length}명)`}
+              >
+                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200 animate-pulse" />
+                <span>조영</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-900/80 text-emerald-100 hidden sm:inline">
+                  {joyoungWorkers.length}명
                 </span>
               </button>
             </div>
@@ -3058,6 +3080,101 @@ export const AuthModal = () => {
                       {displayPos && (
                         <div className={`w-[50%] flex items-center justify-center text-center px-1 py-0.5 ${
                           isLeader ? "bg-blue-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                        }`}>
+                          <span className="text-[10px] font-bold truncate">{displayPos}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏭 한림공장 (주)조영 현장작업자 전용 팝업 선택 모달 */}
+      {isJoyoungModalOpen && (
+        <div
+          onClick={() => setIsJoyoungModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border-2 border-emerald-400 dark:border-emerald-600 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative max-h-[90vh] flex flex-col text-left"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
+                  <Factory className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                    <span>한림공장 (주)조영 현장작업자</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                      총원 {joyoungWorkers.length}명
+                    </span>
+                  </h3>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    안전·품질 확인 후 한림공장 조영 생산관리 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsJoyoungModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
+              본인 이름을 터치하시면 안전알림판과 김동욱 책임의 품질이슈/긴급공지를 확인하신 후 생산관리 화면으로 바로 연결됩니다.
+            </p>
+
+            <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                {joyoungWorkers.map((worker, idx) => {
+                  const isLeader = worker.position === "반장" || worker.position === "조장" || worker.position === "기사";
+                  const displayPos = worker.position || "사원";
+                  return (
+                    <button
+                      key={worker.no || idx}
+                      type="button"
+                      onClick={() => {
+                        setIsJoyoungModalOpen(false);
+                        handleUserClick({
+                          id: `jy_${worker.no || idx}`,
+                          name: worker.name,
+                          title: displayPos,
+                          position: displayPos,
+                          line: worker.line,
+                          assignedProcess: worker.line ? `${worker.line} 가공` : "한림공장 조영",
+                          plant: "한림공장",
+                          company: "조영",
+                          portalType: "joyoung",
+                          pin: "11",
+                          isFieldWorker: true,
+                          isPartner: false
+                        });
+                      }}
+                      className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
+                        isLeader
+                          ? "border-emerald-400 bg-emerald-700 text-white shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-emerald-400"
+                      }`}
+                    >
+                      <div className={`${displayPos ? "w-[50%]" : "w-full"} flex items-center justify-center px-1 text-center shrink-0 ${
+                        isLeader ? "bg-emerald-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      }`}>
+                        <span className="font-black text-xs tracking-tight truncate">
+                          {worker.name}
+                        </span>
+                      </div>
+                      {displayPos && (
+                        <div className={`w-[50%] flex items-center justify-center text-center px-1 py-0.5 ${
+                          isLeader ? "bg-emerald-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                         }`}>
                           <span className="text-[10px] font-bold truncate">{displayPos}</span>
                         </div>
