@@ -268,20 +268,26 @@ export default function Absence4MModal({
     return combined;
   }, [logsMap, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, modalDay, searchTerm, personnelCardsMap]);
 
-  // 통계 요약 KPIs
+  // 통계 요약 KPIs (선택된 협력사 독립 기준)
   const metrics = useMemo(() => {
-    const totalAbsent = detectedAbsentWorkers.length;
-    const completedSubs = Object.values(logsMap).filter((l) => l.date === dateStr && l.substituteWorker?.name).length;
-    const firstPieceDone = Object.values(logsMap).filter((l) => l.date === dateStr && l.checkpoints?.firstPieceCheck).length;
-    const highRisks = Object.values(logsMap).filter((l) => l.date === dateStr && l.riskLevel === "HIGH").length;
+    const cleanTab = cleanCompanyName(selectedCompanyTab || "오륙");
+    const compAbsent = detectedAbsentWorkers.filter(
+      (w) => cleanCompanyName(w.company) === cleanTab
+    ).length;
+    const compLogs = Object.values(logsMap).filter(
+      (l) => l.date === dateStr && cleanCompanyName(l.company) === cleanTab
+    );
+    const completedSubs = compLogs.filter((l) => l.substituteWorker?.name).length;
+    const firstPieceDone = compLogs.filter((l) => l.checkpoints?.firstPieceCheck).length;
+    const highRisks = compLogs.filter((l) => l.riskLevel === "HIGH").length;
 
     return {
-      totalAbsent,
+      totalAbsent: compAbsent,
       completedSubs,
       firstPieceDone,
       highRisks
     };
-  }, [detectedAbsentWorkers, logsMap, dateStr]);
+  }, [detectedAbsentWorkers, logsMap, dateStr, selectedCompanyTab]);
 
   // 개별 4M 변경점 저장 및 변동점 MAN 동기화 핸들러
   const handleSaveEntry = async (entry) => {
@@ -423,23 +429,11 @@ export default function Absence4MModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* 🏢 회사별 탭 네비게이션 & 통계 요약 바 */}
+        {/* 🏢 회사별 탭 네비게이션 (5개사 독립 모듈) & 통계 요약 바 */}
         {/* ========================================================================= */}
         <div className="bg-slate-900/90 p-3 sm:p-4 border-b border-slate-800 space-y-3">
-          {/* 회사 선택 필터 탭 */}
+          {/* 회사 선택 필터 탭 (5개사 개별 독립 운용) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <button
-              type="button"
-              onClick={() => setSelectedCompanyTab("전체")}
-              className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                selectedCompanyTab === "전체"
-                  ? "bg-white text-slate-950 shadow-md"
-                  : "bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-700/80"
-              }`}
-            >
-              <span>5개사 전체 ({detectedAbsentWorkers.length}명 결근)</span>
-            </button>
-
             {COMPANIES.map((comp) => {
               const compAbsentCount = detectedAbsentWorkers.filter((w) => cleanCompanyName(w.company) === comp).length;
               const isSelected = selectedCompanyTab === comp;

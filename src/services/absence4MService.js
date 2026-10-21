@@ -18,6 +18,17 @@ import {
 } from "./fourMChangePointService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_4m_absence_logs_v1";
+const COMPANY_SLUG_MAP = {
+  "오륙": "oryuk",
+  "유성": "yuseong",
+  "조영": "joyoung",
+  "한울": "hanul",
+  "부림텍": "burimtech"
+};
+const getCompany4MStorageKey = (comp) => {
+  const c = cleanCompanyName(comp);
+  return `oryuk_4m_absence_logs_comp_${COMPANY_SLUG_MAP[c] || "oryuk"}`;
+};
 
 // ⭐ 표준 결근 사유 목록
 export const ABSENCE_REASONS = [
@@ -167,10 +178,22 @@ export const getLocal4MAbsenceLogsMap = () => {
   return {};
 };
 
-// 로컬 스토리지에 4M 결근/대체 로그 저장
+// 로컬 스토리지에 4M 결근/대체 로그 저장 (5개사 독립 로컬 키 동시 분리 보관)
 export const saveLocal4MAbsenceLogsMap = (logsMap) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(logsMap || {}));
+    const safeMap = logsMap || {};
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(safeMap));
+    // 5개사 독립 로컬 스토리지 키로 각각 분리 저장
+    const byComp = { "오륙": {}, "유성": {}, "조영": {}, "한울": {}, "부림텍": {} };
+    Object.entries(safeMap).forEach(([id, entry]) => {
+      if (!entry) return;
+      const c = cleanCompanyName(entry.company || "오륙");
+      if (!byComp[c]) byComp[c] = {};
+      byComp[c][id] = entry;
+    });
+    Object.entries(byComp).forEach(([comp, compMap]) => {
+      localStorage.setItem(getCompany4MStorageKey(comp), JSON.stringify(compMap));
+    });
   } catch (e) {
     console.warn("Failed to save local 4M absence logs map:", e);
   }

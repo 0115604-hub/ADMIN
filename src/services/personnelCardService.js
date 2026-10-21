@@ -12,6 +12,17 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils.js";
 import { cleanCompanyName } from "./overtimeSmartService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_personnel_cards_v1";
+const COMPANY_SLUG_MAP = {
+  "오륙": "oryuk",
+  "유성": "yuseong",
+  "조영": "joyoung",
+  "한울": "hanul",
+  "부림텍": "burimtech"
+};
+const getCompanyCardsStorageKey = (comp) => {
+  const c = cleanCompanyName(comp);
+  return `oryuk_personnel_cards_comp_${COMPANY_SLUG_MAP[c] || "oryuk"}`;
+};
 
 // ⭐ 표준 7대 제조 및 관리 공정 목록 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
 export const STANDARD_PROCESS_LIST = [
@@ -672,10 +683,21 @@ export const getLocalPersonnelCardsMap = () => {
   return {};
 };
 
-// 로컬 스토리지에 인사카드 맵 저장
+// 로컬 스토리지에 인사카드 맵 저장 (5개사 독립 로컬 키 동시 분리 보관)
 export const saveLocalPersonnelCardsMap = (cardsMap) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cardsMap));
+    const safeMap = cardsMap || {};
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(safeMap));
+    const byComp = { "오륙": {}, "유성": {}, "조영": {}, "한울": {}, "부림텍": {} };
+    Object.entries(safeMap).forEach(([key, card]) => {
+      if (!card || !card.name) return;
+      const c = cleanCompanyName(card.company || key.split("_")[0] || "오륙");
+      if (!byComp[c]) byComp[c] = {};
+      byComp[c][`${c}_${card.name}`] = card;
+    });
+    Object.entries(byComp).forEach(([comp, compMap]) => {
+      localStorage.setItem(getCompanyCardsStorageKey(comp), JSON.stringify(compMap));
+    });
   } catch (e) {
     console.warn("Failed to save local personnel cards map:", e);
   }

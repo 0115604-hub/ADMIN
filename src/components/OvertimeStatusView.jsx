@@ -1045,8 +1045,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const currentCompanyApproval = smartData?.companyApprovalStatus?.[currentCompanyDayKey];
   const isDayLocked = currentCompanyApproval?.status === "APPROVED" && !isDayUnlockedForEdit;
 
-  // Sync state to local/cloud (Explicit Save Action)
-  const handleSaveLedger = async (updatedData, targetYM = null) => {
+  // Sync state to local/cloud (Explicit Save Action - 5개사 독립 모듈 기준)
+  const handleSaveLedger = async (updatedData, targetYM = null, explicitCompany = null) => {
     setIsSaving(true);
     try {
       const ym = targetYM || selectedMonth || "2026-10";
@@ -1056,11 +1056,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         setPrevMonthData(updatedData);
       }
       await saveSmartOvertimeData(updatedData, ym, {
-        targetCompany: selectedCompanyFilter,
+        targetCompany: explicitCompany || selectedCompanyFilter,
         auditMeta: {
           operator: currentProfile?.name || "관리자",
           source: "MANUAL_SAVE_BUTTON",
-          reason: "관리자 전체 원장 수동 저장"
+          reason: "관리자 업체별 원장 수동 저장"
         }
       });
       
@@ -1800,7 +1800,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     };
 
     setSmartData(updatedData);
-    await handleSaveLedger(updatedData);
+    await handleSaveLedger(updatedData, null, cleanCompanyName(company));
 
     // ⭐ [인원관리 마스터 기준] 신규 근로자 기본 인사카드 자동 생성 및 클라우드 동기화
     try {
@@ -1908,7 +1908,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       };
 
       setSmartData(updatedData);
-      await handleSaveLedger(updatedData);
+      await handleSaveLedger(updatedData, null, cleanCompanyName(company));
 
       // 4. 로컬 personnelCardsMap 상태 동기화
       setPersonnelCardsMap((prev) => {
@@ -2120,17 +2120,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
   }, [smartData.attendanceMatrix, personnelCardsMap, workerMgmtCompanyFilter, workerMgmtSkillFilter, workerMgmtMultiSkillOnly, workerMgmtSearch]);
 
-  // ⭐ 인원관리 KPI 통계 요약
+  // ⭐ 인원관리 KPI 통계 요약 (선택된 협력사 독립 모듈 기준)
   const workerMgmtStats = useMemo(() => {
-    const matrix = smartData.attendanceMatrix || [];
-    const total = matrix.length;
+    const list = workerMgmtList || [];
+    const total = list.length;
     let masterCount = 0;
     let multiSkillCount = 0;
-    matrix.forEach((w, idx) => {
-      const c = cleanCompanyName(w.company);
-      const cardKey = `${c}_${w.name}`;
-      const saved = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
-      const card = saved ? getWorkerPersonnelCard({ ...w, personnelCard: saved }, idx + 1) : getWorkerPersonnelCard(w, idx + 1);
+    list.forEach((w) => {
+      const card = w.card || w.personnelCard || {};
       if (card.skillLevel >= 4) masterCount++;
       if (card.isMultiSkill) multiSkillCount++;
     });
@@ -2140,7 +2137,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       multiSkillCount,
       cardCompleteRate: "100%"
     };
-  }, [smartData.attendanceMatrix, personnelCardsMap]);
+  }, [workerMgmtList]);
 
   // Filtered workers for selectedCompanyManageWorkers modal
   const manageCompanyWorkers = useMemo(() => {
@@ -3322,7 +3319,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <Users className="w-3.5 h-3.5" />
               <span>👥 인원관리 & 인사카드</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono font-bold">
-                {smartData.attendanceMatrix?.length || 0}명
+                {workerMgmtStats.total}명
               </span>
             </button>
           </div>
