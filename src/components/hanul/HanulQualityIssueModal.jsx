@@ -272,11 +272,10 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     }));
   };
 
-  // Submit Form (Register or Update Issue)
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Submit Form (Register or Update Issue) with explicit broadcast mode ('GLOBAL' = 전사부적합등록, 'SITE_ONLY' = 현장내전파등록)
+  const handleRegisterWithMode = async (mode) => {
     if (!form.title.trim()) {
-      alert("품질이슈 제목(불량 현상)을 입력해 주세요.");
+      alert("품질경보 제목(불량 현상)을 입력해 주세요.");
       return;
     }
     if (!form.content.trim()) {
@@ -288,7 +287,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     try {
       const authorName = currentProfile?.name || companyLabel;
       const authorTitle = currentProfile?.title || "책임";
-      const isBroadcast = canBroadcastToFirstScreen ? Boolean(form.isFirstScreenBroadcast) : false;
+      const isBroadcast = mode === "GLOBAL";
 
       const payload = {
         ...form,
@@ -297,6 +296,7 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
         author: authorName,
         authorTitle,
         status: "ACTIVE",
+        broadcastScope: isBroadcast ? "GLOBAL" : "SITE_ONLY",
         isFirstScreenBroadcast: isBroadcast,
         isFirstScreenOrigin: isBroadcast
       };
@@ -332,8 +332,8 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
         isEdit
           ? `🎉 ${companyLabel} 부적합경보가 성공적으로 수정되었습니다.`
           : isBroadcast
-          ? `🚨 ${companyLabel} 부적합경보가 [현장 작업자 접속 팝업] 및 [첫화면 부적합품 경보]에 전사 등록되었습니다!`
-          : `🚨 ${companyLabel} 부적합경보가 등록되었으며 현장 작업자 접속 시 즉시 노출됩니다! (첫화면 부적합경보 미노출)`
+          ? `🌐 [전사부적합등록 완료] 첫화면 부적합품 경보 게시 및 현장 작업자 접속 팝업에 동시 전파되었습니다!`
+          : `📢 [현장내전파등록 완료] 현장 작업자 접속 팝업에 전파되었으며 아래 현장내전파 목록표에 등록되었습니다! (첫화면 미게시)`
       );
     } catch (err) {
       console.error("Submit error:", err);
@@ -341,6 +341,11 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleRegisterWithMode(form.isFirstScreenBroadcast ? "GLOBAL" : "SITE_ONLY");
   };
 
   // Load Issue into form for editing
@@ -414,9 +419,16 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     }
   };
 
-  // Filtered Issues
+  // 🌟 아래 목록표는 '현장내전파등록'(isFirstScreenBroadcast !== true && isFirstScreenOrigin !== true)에 한해 목록화
+  const siteOnlyIssues = useMemo(() => {
+    return issues.filter(
+      (it) => it && !it.isFirstScreenBroadcast && !it.isFirstScreenOrigin
+    );
+  }, [issues]);
+
+  // Filtered Issues (현장내전파등록 항목만 대상)
   const filteredIssues = useMemo(() => {
-    return issues.filter((it) => {
+    return siteOnlyIssues.filter((it) => {
       if (!it) return false;
 
       // Status filter
@@ -454,15 +466,15 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
 
       return true;
     });
-  }, [issues, selectedStatusFilter, selectedLineFilter, searchQuery]);
+  }, [siteOnlyIssues, selectedStatusFilter, selectedLineFilter, searchQuery]);
 
-  // Summary Metrics
+  // Summary Metrics (현장내전파등록 항목 기준)
   const stats = useMemo(() => {
-    const total = issues.length;
-    const active = issues.filter((it) => it.status === "ACTIVE").length;
-    const resolved = issues.filter((it) => it.status === "RESOLVED").length;
+    const total = siteOnlyIssues.length;
+    const active = siteOnlyIssues.filter((it) => it.status === "ACTIVE").length;
+    const resolved = siteOnlyIssues.filter((it) => it.status === "RESOLVED").length;
     return { total, active, resolved };
-  }, [issues]);
+  }, [siteOnlyIssues]);
 
   if (!isOpen) return null;
 
@@ -554,38 +566,12 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                     {editingIssueId ? `${companyLabel} 부적합경보 수정` : `${companyLabel} 부적합경보 등록 및 현장전파`}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    기본 등록 시 현장 작업자 접속 시에만 노출됩니다. {canBroadcastToFirstScreen ? "우측 [첫화면 전사등록] 뱃지 선택 시 첫화면 부적합경보에도 함께 등록됩니다." : ""}
+                    하단 [전사부적합등록] 클릭 시 첫화면 게시 및 작업자전파가 동시에 수행되며, [현장내전파등록] 클릭 시 작업자전파만 수행되고 아래 목록표에 기록됩니다.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* 🌟 한울 / 이창엽 / 윤경수 전용: [첫화면 전사등록] 선택 뱃지 */}
-                {canBroadcastToFirstScreen && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        isFirstScreenBroadcast: !prev.isFirstScreenBroadcast
-                      }))
-                    }
-                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer border-2 shadow-sm active:scale-95 ${
-                      form.isFirstScreenBroadcast
-                        ? "bg-gradient-to-r from-rose-600 via-amber-500 to-rose-600 text-white border-amber-300 ring-2 ring-rose-500/40 shadow-rose-500/30 animate-pulse"
-                        : "bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
-                    }`}
-                    title="선택 시 첫화면 부적합품 경보에 동시에 등록됩니다 (미선택 시 현장 작업자 접속 팝업에만 노출)"
-                  >
-                    <ShieldAlert className={`w-3.5 h-3.5 ${form.isFirstScreenBroadcast ? "text-white" : "text-rose-500"}`} />
-                    <span>
-                      {form.isFirstScreenBroadcast
-                        ? "🌐 첫화면 전사등록 선택됨 (첫화면 부적합경보 노출 ✓)"
-                        : "🌐 첫화면 전사등록 (클릭 시 첫화면 부적합경보 등록)"}
-                    </span>
-                  </button>
-                )}
-
                 {editingIssueId && (
                   <button
                     type="button"
@@ -848,8 +834,8 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+              {/* Submit Badges (2개 등록뱃지: 전사부적합등록 / 현장내전파등록) */}
+              <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
                 <span className="text-[11px] text-slate-500 font-bold flex items-center gap-1">
                   <User className="w-3.5 h-3.5 text-purple-600" />
                   <span>
@@ -857,24 +843,43 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   </span>
                 </span>
 
-                <button
-                  type="submit"
-                  disabled={isProcessing}
-                  className={`px-5 sm:px-6 py-2.5 rounded-xl font-black text-white text-xs sm:text-sm shadow-md flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
-                    editingIssueId
-                      ? "bg-gradient-to-r from-teal-600 to-cyan-600 shadow-teal-500/25 hover:from-teal-700 hover:to-cyan-700"
-                      : "bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 shadow-purple-500/25 hover:from-rose-700 hover:to-indigo-700"
-                  }`}
-                >
-                  {editingIssueId ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                  <span>{editingIssueId ? "품질이슈 수정 완료" : "🚨 품질이슈 등록 및 현장전파"}</span>
-                </button>
+                <div className="flex items-center gap-2.5 flex-wrap justify-end">
+                  {/* 1. 전사부적합등록 뱃지 (첫화면게시 및 작업자전파) */}
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleRegisterWithMode("GLOBAL")}
+                    className="px-4 sm:px-5 py-2.5 rounded-xl font-black text-white text-xs sm:text-sm shadow-lg flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 hover:from-rose-500 hover:to-amber-500 border border-amber-300/60 shadow-rose-600/25 disabled:opacity-50"
+                    title="첫화면 부적합품 경보에 게시하고 동시에 현장 작업자 접속 팝업에도 전파합니다."
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-200" />
+                    <span>{editingIssueId ? "🌐 전사부적합 수정등록" : "🌐 전사부적합등록"}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-amber-100 hidden md:inline">
+                      첫화면게시+작업자전파
+                    </span>
+                  </button>
+
+                  {/* 2. 현장내전파등록 뱃지 (작업자전파만 + 아래 목록표 기록) */}
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleRegisterWithMode("SITE_ONLY")}
+                    className="px-4 sm:px-5 py-2.5 rounded-xl font-black text-white text-xs sm:text-sm shadow-lg flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 border border-indigo-400/50 shadow-indigo-600/25 disabled:opacity-50"
+                    title="첫화면에는 게시하지 않고 현장 작업자 접속 팝업에만 전파하며 아래 목록표에 기록합니다."
+                  >
+                    <Send className="w-4 h-4 text-cyan-200" />
+                    <span>{editingIssueId ? "📢 현장내전파 수정등록" : "📢 현장내전파등록"}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-cyan-100 hidden md:inline">
+                      작업자전파 전용
+                    </span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
 
           {/* ========================================================================= */}
-          {/* 3. Bottom Section: 1-Line Table View for Hanul Issues (압출동과 동일) */}
+          {/* 3. Bottom Section: 1-Line Table View (현장내전파등록 전용 목록표) */}
           {/* ========================================================================= */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -883,11 +888,16 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    {companyLabel} 부적합경보 및 품질이슈 목록
-                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                      {companyLabel} 현장내전파 부적합경보 목록
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
+                      📢 현장내전파등록 전용 목록
+                    </span>
+                  </div>
                   <p className="text-[11px] text-slate-400">
-                    총 {issues.length}건 등록됨 (현재 조건: {filteredIssues.length}건)
+                    현장내전파등록 총 {siteOnlyIssues.length}건 등록됨 (현재 조건: {filteredIssues.length}건 · 전사부적합등록은 첫화면에서 관리)
                   </p>
                 </div>
               </div>
