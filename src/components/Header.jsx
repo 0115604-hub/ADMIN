@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import {
   LogOut,
   Calendar,
   ArrowLeft,
   Menu,
   Plus,
-  Barcode
+  Barcode,
+  QrCode
 } from "lucide-react";
 import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile, isSeolProfile } from "../context/AuthContext";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
@@ -17,6 +18,8 @@ import {
   subscribeTelegramConfig,
   toggleTelegramEnabled
 } from "../services/telegramService";
+
+const MobileQrModal = lazy(() => import("./common/MobileQrModal").then(m => ({ default: m.MobileQrModal || m.default })));
 
 export const Header = ({
   title,
@@ -30,6 +33,7 @@ export const Header = ({
   const { isOperator, isAdmin, currentProfile, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
   const [telegramConfig, setTelegramConfig] = useState(() => getLocalTelegramConfig());
+  const [isMobileQrModalOpen, setIsMobileQrModalOpen] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeTelegramConfig((cfg) => {
@@ -280,6 +284,17 @@ export const Header = ({
           )}
         </div>
 
+        {/* Mobile QR Button */}
+        <button
+          type="button"
+          onClick={() => setIsMobileQrModalOpen(true)}
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-300/80 dark:border-indigo-800 text-[11px] sm:text-xs font-black transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer shrink-0"
+          title="현장 스마트폰 모바일 접속 QR코드 열기 / 인쇄"
+        >
+          <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span className="font-black hidden sm:inline">모바일 QR</span>
+        </button>
+
         {/* Logout / Switch User Button */}
         <button
           onClick={logout}
@@ -290,6 +305,16 @@ export const Header = ({
           <span className="font-black">{isAdmin ? "로그아웃" : "작업자 변경"}</span>
         </button>
       </div>
+
+      {/* 📱 모바일 접속 QR코드 안내 및 인쇄 모달 */}
+      {isMobileQrModalOpen && (
+        <Suspense fallback={null}>
+          <MobileQrModal
+            isOpen={isMobileQrModalOpen}
+            onClose={() => setIsMobileQrModalOpen(false)}
+          />
+        </Suspense>
+      )}
     </header>
   );
 };

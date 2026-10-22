@@ -62,7 +62,8 @@ import {
   Sparkles,
   Plus,
   Save,
-  X
+  X,
+  QrCode
 } from "lucide-react";
 
 // Lazy-loaded On-Demand Sub-Modals
@@ -73,6 +74,7 @@ const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m =
 const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
 const SqLevelUpView = lazy(() => import("./sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
+const MobileQrModal = lazy(() => import("./common/MobileQrModal").then(m => ({ default: m.MobileQrModal || m.default })));
 import { SqStatusBannerCard } from "./sq/SqStatusBannerCard";
 
 export const AuthModal = () => {
@@ -93,6 +95,7 @@ export const AuthModal = () => {
   const [isYuseongModalOpen, setIsYuseongModalOpen] = useState(false);
   const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
   const [isSqLevelUpModalOpen, setIsSqLevelUpModalOpen] = useState(false);
+  const [isMobileQrModalOpen, setIsMobileQrModalOpen] = useState(false);
   const [hanulWorkReportProject, setHanulWorkReportProject] = useState("9BQC");
   const [hanulWorkReportWorker, setHanulWorkReportWorker] = useState("박종미");
   const [firstPageToast, setFirstPageToast] = useState("");
@@ -1639,6 +1642,16 @@ export const AuthModal = () => {
                   {yuseongWorkers.length}명
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileQrModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-blue-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-blue-400/30"
+                title="스마트폰 모바일 접속 QR코드 열기 및 A4 인쇄"
+              >
+                <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-200" />
+                <span>모바일 QR</span>
+              </button>
             </div>
           </div>
 
@@ -2425,6 +2438,16 @@ export const AuthModal = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 📱 모바일 접속 QR코드 안내 및 인쇄 모달 */}
+      {isMobileQrModalOpen && (
+        <Suspense fallback={null}>
+          <MobileQrModal
+            isOpen={isMobileQrModalOpen}
+            onClose={() => setIsMobileQrModalOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
