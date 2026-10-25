@@ -1779,11 +1779,15 @@ export const WorkerPinModal = ({
       <div
         ref={overlayRef}
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-3 md:p-4 animate-fadeIn overflow-hidden sm:overflow-y-auto"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex justify-center items-center p-0 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden relative flex flex-col m-0 sm:mt-4 sm:mb-6 sm:mx-auto text-left"
+          className={`bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl ${
+            isPinVerified
+              ? "h-[100dvh] sm:h-[88vh] sm:max-h-[88vh]"
+              : "h-auto max-h-[92dvh]"
+          } rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden relative flex flex-col m-0 sm:m-auto text-left`}
         >
           {/* Top Decorative Accent Line */}
           <div
@@ -1897,7 +1901,7 @@ export const WorkerPinModal = ({
           </div>
 
           {/* 🌟 2. Body: 핀번호 입력 전/후 뷰 */}
-          <div ref={bodyRef} className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-3 sm:p-5 md:p-6 space-y-4">
+          <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain p-3 sm:p-5 md:p-6 space-y-4">
             {!isPinVerified ? (
               /* 🔒 PIN 입력 전 화면 */
               <div className="py-16 sm:py-20 px-4 text-center flex flex-col items-center justify-center space-y-4 max-w-lg mx-auto animate-fadeIn">
@@ -2360,7 +2364,7 @@ export const WorkerPinModal = ({
                                     <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 shrink-0">
                                       {schedule.target || "공통"}
                                     </span>
-                                    <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                    <span className="font-bold text-slate-900 dark:text-white text-xs break-words">
                                       {schedule.title}
                                     </span>
                                     {commentCount > 0 && (
@@ -2495,7 +2499,7 @@ export const WorkerPinModal = ({
 
           {/* 🌟 3. Footer: 핀 인증 완료 후(isPinVerified) 작업자별 일보작성 바로가기 & 관리자 확인완료 뱃지 제공 */}
           {isPinVerified && (
-            <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
+            <div className="p-3 sm:p-4 md:px-6 md:py-3.5 border-t-2 border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shrink-0 shadow-[0_-6px_20px_rgba(0,0,0,0.06)] z-20">
               {isExtrusionWorker ? (
                 /* 압출동 작업자: 압출 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
                 <button
