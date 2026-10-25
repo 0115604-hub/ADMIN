@@ -2035,19 +2035,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         return rComp === cleanComp;
       });
       if (hasReport) return false;
+
+      // 2. 전자결재 승인/상신 상태 확인
       const approvalKey = `${cleanComp}_${d}`;
       const approvalEntry = smartData?.companyApprovalStatus?.[approvalKey];
       const approvalStatus = approvalEntry?.status || "DRAFT";
-      if (approvalStatus === "APPROVED" || approvalStatus === "SUBMITTED") return false;
-      if (approvalEntry && approvalStatus === "DRAFT") return true;
+      if (approvalStatus === "APPROVED" || approvalStatus === "SUBMITTED" || (approvalEntry?.attendedCount > 0)) {
+        return false;
+      }
+
+      // 3. 당일 원장 상의 근태 입력 인원수 (1명 이상 입력 시 작성후로 판정)
       const compWorkers = (effectiveMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp);
       if (compWorkers.length === 0) return true;
+
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)];
         const str = String(v ?? "").trim();
-        return str !== "" && str !== "미입력" && str !== "undefined" && str !== "null";
+        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
-      return enteredCount < compWorkers.length;
+
+      // ⭐ 작성후 판정: 1명 이상 입력 시 작성후(isWritten)이므로 미작성 목록(unwritten)에서 제외(false)
+      const isWritten = enteredCount > 0;
+      return !isWritten;
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
   }, [effectiveMatrix, smartData?.companyApprovalStatus, legacyReports, selectedDay, currentYear, currentMonthNum]);
 
@@ -2178,11 +2187,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 유성, 조영, 한울, 부림텍) - 탭하면 즉시 각 사 근태선택 테이블 표시 */}
         {/* ========================================================================= */}
         <div className="pt-1">
-          <div className="flex items-center justify-between pb-2">
-            <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>5개 협력사별 근태 현황 ({currentMonthNum}월 {selectedDay}일 기준)</span>
-            </h3>
+          <div className="flex items-center justify-between pb-2 flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-cyan-400" />
+                <span>5개 협력사별 근태 현황 ({currentMonthNum}월 {selectedDay}일 기준)</span>
+              </h3>
+              {unwrittenCompanies.length > 0 && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 flex items-center gap-1"
+                  title="당일 근태대장 미작성 협력사 목록입니다."
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 animate-ping" />
+                  <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
+                </span>
+              )}
+            </div>
             <span className="text-[11px] font-bold text-slate-400">
               전체 총원: <strong className="text-white font-mono">{smartData.attendanceMatrix?.length || 0}명</strong>
             </span>
@@ -2238,13 +2258,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       const isWritten = !isUnwritten;
                       if (isWritten) {
                         return (
-                          <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
-                            <span>✅</span>
+                          <span
+                            className="text-[9.5px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 font-black flex items-center gap-1 shrink-0 shadow-2xs"
+                            title="당일 근태 등록 완료 (작성후)"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                            <span>작성후</span>
                           </span>
                         );
                       }
                       return (
-                        <span className="text-[9.5px] px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 bg-amber-500/20 text-amber-300 border-amber-400/50 font-bold" title="작성전">
+                        <span
+                          className="text-[9.5px] px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-400/50 font-bold flex items-center gap-1 shrink-0 shadow-2xs"
+                          title="당일 근태 미작성 (작성전)"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
                           <span>작성전</span>
                         </span>
                       );

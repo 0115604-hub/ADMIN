@@ -602,12 +602,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const approvalInfo = smartOvertimeData?.companyApprovalStatus?.[approvalKey] || {};
       const approvalStatus = approvalInfo.status || "DRAFT";
 
+      const hasReport = (overtimeReports || []).some((r) => {
+        if (!r) return false;
+        const rDateKey = getReportDateSortKey(r);
+        if (rDateKey !== todayStr) return false;
+        return cleanCompanyName(r.company || "") === cleanCompName;
+      });
+
+      // ⭐ 작성전/후 2단계 단일화 로직 (1명 이상 입력 or 승인/상신 or 일보보고서 등록 -> 작성후)
       const hasAnyAttendance = enteredCount > 0;
       const isApproved = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "APPROVED";
       const isSubmitted = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "SUBMITTED";
-      const isFullyEntered = compWorkers.length > 0 && enteredCount >= compWorkers.length;
-      const isWritten = hasAnyAttendance || isApproved || isSubmitted;
-      const isPartiallyWritten = hasAnyAttendance && !isFullyEntered && !isApproved && !isSubmitted;
+      const isWritten = hasAnyAttendance || isApproved || isSubmitted || (approvalInfo.attendedCount > 0) || hasReport;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
@@ -617,22 +623,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const otHours = b && b.otHours !== undefined ? b.otHours : 0;
       const totalHours = b && b.totalHours !== undefined ? b.totalHours : (attended * 8 + otHours);
 
-      let statusBadgeText = "작성전";
-      let statusBadgeClass = "bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold";
-
-      if (isApproved) {
-        statusBadgeText = "승인(마감)";
-        statusBadgeClass = "bg-purple-100 dark:bg-purple-950/90 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700 font-black";
-      } else if (isSubmitted) {
-        statusBadgeText = "마감상신";
-        statusBadgeClass = "bg-blue-100 dark:bg-blue-950/90 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-black";
-      } else if (isWritten) {
-        statusBadgeText = "작성완료";
-        statusBadgeClass = "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700";
-      } else if (isPartiallyWritten) {
-        statusBadgeText = `작성중(${enteredCount}/${compWorkers.length})`;
-        statusBadgeClass = "bg-cyan-100 dark:bg-cyan-950/90 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700 font-bold";
-      }
+      // ⭐ 작성전 / 작성후 2단계 표현 통일
+      const statusBadgeText = isWritten ? "작성후" : "작성전";
+      const statusBadgeClass = isWritten
+        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/50 font-black"
+        : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-400/50 font-bold";
 
       return {
         name,

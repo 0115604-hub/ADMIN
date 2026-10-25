@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { CheckCircle2, ArrowRight, Users } from "lucide-react";
 
 export const AttendanceSummarySection = ({
@@ -93,32 +93,21 @@ export const AttendanceSummarySection = ({
                   {comp.name}
                 </span>
               </div>
-              {comp.approvalStatus === "APPROVED" ? (
+              {comp.isWritten ? (
                 <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-400/50 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
-                  title="관리자/대표 최종 승인 완료 (마감)"
+                  className="text-[9.5px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/50 font-black flex items-center gap-1 shrink-0 shadow-2xs"
+                  title="당일 근태 등록 완료 (작성후)"
                 >
-                  <span>🔒 승인</span>
-                </span>
-              ) : comp.approvalStatus === "SUBMITTED" ? (
-                <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-400/50 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
-                  title="현장 마감 상신 완료 (승인 대기)"
-                >
-                  <span>📤 상신</span>
-                </span>
-              ) : comp.isWritten ? (
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs"
-                  title="당일 근태 작성완료"
-                >
-                  <span>✅</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span>작성후</span>
                 </span>
               ) : (
                 <span
-                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${comp.statusBadgeClass}`}
+                  className="text-[9.5px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-400/50 font-bold flex items-center gap-1 shrink-0 shadow-2xs"
+                  title="당일 근태 미작성 (작성전)"
                 >
-                  <span>{comp.statusBadgeText}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                  <span>작성전</span>
                 </span>
               )}
             </div>
