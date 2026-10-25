@@ -20,6 +20,7 @@ import {
 } from "./telegramService";
 import { getKSTTimeInfo, getKSTDateString } from "../utils/dateUtils";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
+import { syncQualityAlertToFourMLedger, unregisterFromFourMLedger } from "./fourMChangePointService";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
@@ -108,7 +109,14 @@ export const isMeetingExpired = (item, graceHours = 0) => {
  */
 export const isLegacyDismissedQualityAlert = (item) => {
   if (!item || typeof item !== "object") return false;
-  if (item.isManuallyRestored === true || item.raw?.isManuallyRestored === true) return false;
+  if (
+    item.isManuallyRestored === true ||
+    item.raw?.isManuallyRestored === true ||
+    item.isClosedByAdmin === false ||
+    item.raw?.isClosedByAdmin === false
+  ) {
+    return false;
+  }
 
   const cat = String(item.category || "").trim();
   const isQualityAlert =
@@ -119,15 +127,21 @@ export const isLegacyDismissedQualityAlert = (item) => {
     cat.includes("부적합경보");
   if (!isQualityAlert) return false;
 
-  // 2026-10-21 09:05 KST (timestamp 1792541000000) 이후 신규 등록 건은 정상 활성 노출
+  // 기존 등록 건 중 NE1a D/SIDE W사양 엠보불량발생(issue_1792119149332) 건은 첫 화면 유지
   const idStr = String(item.id || item.rawId || item._docId || "");
-  const tsMatch = idStr.match(/(\d{13})/);
-  if (tsMatch && Number(tsMatch[1]) > 1792541000000) return false;
-
-  // 기존 등록 건 중 NE1a D/SIDE W사양 엠보불량발생(issue_1792119149332) 건만 첫 화면 유지, 나머지 기존 부적합경보(LQ2, 9BQC 등)는 이미 권한자가 첫화면 삭제 처리 완료
   if (idStr.includes("1792119149332")) return false;
   const combined = `${item.title || ""} ${item.content || ""} ${item.raw?.title || ""} ${item.raw?.content || ""}`.toLowerCase();
   if (combined.includes("엠보불량") || combined.includes("ne1a d/side w사양")) return false;
+
+  // 실제 브라우저 시간대(1776700000000 ~ 1789999999999) 및 1792541000000 이후 신규 등록 건은 정상 활성 노출
+  const tsMatch = idStr.match(/(\d{13})/);
+  if (tsMatch) {
+    const ts = Number(tsMatch[1]);
+    if (ts > 1792541000000 || (ts >= 1776700000000 && ts < 1790000000000)) {
+      return false;
+    }
+  }
+
   return true;
 };
 
@@ -444,9 +458,10 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",
     replies: Array.isArray(issueData.replies) ? issueData.replies : [],
-    isResolved: issueData.isResolved !== undefined ? Boolean(issueData.isResolved) : Boolean(issueData.actionResult && issueData.actionResult.trim()),
+    isResolved: issueData.isResolved !== undefined ? Boolean(issueData.isResolved) : Boolean((issueData.actionResult && issueData.actionResult.trim()) || (Array.isArray(issueData.actionImages) && issueData.actionImages.length > 0)),
     isDeleted: Boolean(issueData.isDeleted === true),
-    isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : false,
+    isClosedByAdmin: issueData.isClosedByAdmin !== undefined ? Boolean(issueData.isClosedByAdmin) : Boolean(issueData.isDeleted === true),
+    isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : Boolean(existingIdx >= 0 && current[existingIdx]?.isManuallyRestored),
     deletedAt: issueData.deletedAt || "",
     deletedBy: issueData.deletedBy || "",
     createdAt: issueData.createdAt || nowStr,
@@ -558,7 +573,6 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
 
   if (isQualAlert) {
     try {
-      const { syncQualityAlertToFourMLedger } = await import("./fourMChangePointService");
       await syncQualityAlertToFourMLedger(fullItem);
     } catch (e) {
       console.warn("syncQualityAlertToFourMLedger in saveUrgentIssue warning:", e);
@@ -569,17 +583,21 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
 };
 
 // Add a Reply / Attendance Response (회신란 / 조치결과 등록)
-export const addIssueReply = async (issueId, replyData) => {
+export const addIssueReply = async (issueId, replyData, fallbackIssue = null) => {
   const current = getLocalUrgentIssues();
   let target = current.find(
-    (i) => i.id === issueId || (i._docId && i._docId === issueId) || (i.customId && i.customId === issueId)
+    (i) => String(i.id) === String(issueId) || (i._docId && String(i._docId) === String(issueId)) || (i.customId && String(i.customId) === String(issueId))
   );
+
+  if (!target && fallbackIssue) {
+    target = fallbackIssue;
+  }
 
   if (!target) {
     try {
       const snap = await getDocs(collection(db, COLLECTION_NAME));
       snap.forEach((d) => {
-        if (d.id === issueId || d.data()?.id === issueId) {
+        if (d.id === issueId || String(d.data()?.id) === String(issueId)) {
           target = sanitizeUrgentIssueItem({ id: d.id, _docId: d.id, ...d.data() });
         }
       });
@@ -612,7 +630,7 @@ export const addIssueReply = async (issueId, replyData) => {
   };
 
   const updatedReplies = [...(target.replies || []), newReply];
-  const isQuality = target.category === "품질경보" || target.category === "부적합경보";
+  const isQuality = target.category === "품질경보" || target.category === "부적합경보" || String(target.category || "").includes("경보");
 
   const updatedItem = {
     ...target,
@@ -621,12 +639,14 @@ export const addIssueReply = async (issueId, replyData) => {
       ? {
           actionResult: newReply.content,
           actionAuthor: newReply.author,
-          actionImages: newReply.files || [],
+          actionImages: (newReply.files && newReply.files.length > 0) ? newReply.files : (target.actionImages || []),
           actionAt: newReply.actionDate || nowStr,
+          status: "RESOLVED",
           isResolved: true,
           // 🔒 관리자가 이미 삭제/종결한 건은 삭제 상태(isDeleted: true)를 온전히 유지하여 첫화면 재공지 방지
           isDeleted: target.isDeleted === true ? true : false,
-          isManuallyRestored: false
+          isClosedByAdmin: target.isDeleted === true ? true : false,
+          isManuallyRestored: target.isDeleted === true ? Boolean(target.isManuallyRestored) : true
         }
       : {})
   };
@@ -816,7 +836,6 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
 
     // 영구삭제 시 4M 관리대장에서도 영구 제거
     try {
-      const { unregisterFromFourMLedger } = await import("./fourMChangePointService");
       await unregisterFromFourMLedger(strId);
     } catch (e) {
       console.warn("unregisterFromFourMLedger on hard delete warning:", e);
@@ -1010,26 +1029,59 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
   }).replace(/\. /g, "-").replace(/\./g, "");
 
   const trimmed = actionResult ? actionResult.trim() : "";
+  const effectiveImages = actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []);
+  const hasActionData = Boolean(trimmed || effectiveImages.length > 0);
+  const finalActionResult = trimmed || (effectiveImages.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : "");
+  const effectiveAuthor = actionAuthor || target.actionAuthor || target.author || "현장담당자";
+
+  // 기존 replies와 조치결과 동기화 (카드 및 상세모달에서 조치결과가 즉시 일치하도록 보장)
+  const existingReplies = Array.isArray(target.replies) ? [...target.replies] : [];
+  if (hasActionData) {
+    const lastRep = existingReplies[existingReplies.length - 1];
+    if (!lastRep || lastRep.content !== finalActionResult) {
+      existingReplies.push({
+        id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        author: effectiveAuthor,
+        authorTitle: target.authorTitle || "책임",
+        plant: target.plant || "삼랑진공장",
+        attendanceStatus: "확인",
+        actionDate: nowStr.slice(0, 10),
+        content: finalActionResult,
+        files: effectiveImages,
+        createdAt: nowStr
+      });
+    }
+  }
+
   const updatedTarget = {
     ...target,
+    ...(fallbackIssue ? {
+      title: fallbackIssue.title || target.title,
+      content: fallbackIssue.content !== undefined ? fallbackIssue.content : target.content,
+      expireDate: fallbackIssue.expireDate || target.expireDate,
+      meetingTime: fallbackIssue.meetingTime || target.meetingTime,
+      meetingLocation: fallbackIssue.meetingLocation || target.meetingLocation
+    } : {}),
     id: target.id || id,
-    actionResult: trimmed,
-    actionAuthor: actionAuthor || target.actionAuthor || target.author || "현장담당자",
-    actionImages: actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []),
-    actionAt: trimmed ? nowStr : "",
-    isResolved: Boolean(trimmed),
-    status: Boolean(trimmed) ? "RESOLVED" : (target.status || "ACTIVE"),
+    actionResult: finalActionResult,
+    actionAuthor: effectiveAuthor,
+    actionImages: effectiveImages,
+    actionAt: hasActionData ? nowStr : "",
+    replies: existingReplies,
+    isResolved: hasActionData,
+    status: hasActionData ? "RESOLVED" : (target.status || "ACTIVE"),
     isDeleted: target.isDeleted === true ? true : false,
-    isManuallyRestored: false
+    isClosedByAdmin: target.isDeleted === true ? true : false,
+    isManuallyRestored: target.isDeleted === true ? Boolean(target.isManuallyRestored) : true
   };
 
   const saved = await saveUrgentIssue(updatedTarget, { isNew: false, skipTelegram: true });
 
   // Trigger real-time Telegram notification ONLY for 품질경보/부적합경보 조치완료 (사내공지/회의일정은 등록시만 발송)
-  if (trimmed && (updatedTarget.category === "품질경보" || updatedTarget.category === "부적합경보")) {
+  if (hasActionData && (updatedTarget.category === "품질경보" || updatedTarget.category === "부적합경보" || String(updatedTarget.category || "").includes("경보"))) {
     sendQualityActionTelegram(updatedTarget, {
       actionAuthor: updatedTarget.actionAuthor,
-      actionContent: trimmed,
+      actionContent: finalActionResult,
       actionRate: 100,
       images: updatedTarget.actionImages
     }).catch((err) => {

@@ -1,4 +1,4 @@
-export { CommonScheduleBar } from "./CommonScheduleBar";
+﻿export { CommonScheduleBar } from "./CommonScheduleBar";
 export { WorkerScheduleCalendarSection } from "./WorkerScheduleCalendarSection";
 export { HanulAndSevereDisasterSection } from "./HanulAndSevereDisasterSection";
 export { SalesPurchaseSummarySection } from "./SalesPurchaseSummarySection";
@@ -10,3 +10,4 @@ export { AdminAccessAndIncidentSection } from "./AdminAccessAndIncidentSection";
 export { YuseongCustomSection } from "./YuseongCustomSection";
 export { BurimtechCustomSection } from "./BurimtechCustomSection";
 export { LegoWorkReportBuilderBar } from "./LegoWorkReportBuilderBar";
+export { TelegramLiveLoungePanel } from "./TelegramLiveLoungePanel";

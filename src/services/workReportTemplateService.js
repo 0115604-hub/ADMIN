@@ -692,7 +692,7 @@ export const deleteCustomLegoBlock = async (blockId) => {
 };
 
 // ===========================================================================
-// ⚙️ [한울 9BQC / LQ2a 작업일보 양식 설정 저장소 (관리자 설정 ➔ 작업자 화면 연동)]
+// ⚙️ [작업일보 양식 공정별 매핑 저장소 (한울, 가공동 HR/JA/NX5a, 유성 JK1/CE1/DT 등 통합 지원)]
 // ===========================================================================
 export const HANUL_TEMPLATE_ASSIGN_KEY = "oruk_hanul_template_assignments_v1";
 const HANUL_ASSIGN_DOC_PATH = ["system_config", "hanul_template_assignments"];
@@ -700,7 +700,14 @@ const HANUL_ASSIGN_DOC_PATH = ["system_config", "hanul_template_assignments"];
 export const normalizeHanulProjectKey = (proj) => {
   const p = String(proj || "").toUpperCase().trim();
   if (p.includes("LQ2")) return "LQ2A";
-  return "9BQC";
+  if (p.includes("9BQC")) return "9BQC";
+  if (p.includes("NX5") || p.includes("NX4")) return "NX5A";
+  if (p.includes("HR")) return "HR";
+  if (p.includes("JA")) return "JA";
+  if (p.includes("JK1")) return "JK1";
+  if (p.includes("CE1")) return "CE1";
+  if (p.includes("DT")) return "DT";
+  return p || "9BQC";
 };
 
 export const buildHanulProcessSlotKey = (project, processId, subSlot = "MAIN") => {
@@ -717,8 +724,15 @@ export const getLocalHanulTemplateAssignments = () => {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
         return {
+          ...parsed,
           "9BQC": Array.isArray(parsed["9BQC"]) ? parsed["9BQC"] : [],
           "LQ2A": Array.isArray(parsed["LQ2A"]) ? parsed["LQ2A"] : [],
+          "HR": Array.isArray(parsed["HR"]) ? parsed["HR"] : [],
+          "JA": Array.isArray(parsed["JA"]) ? parsed["JA"] : [],
+          "NX5A": Array.isArray(parsed["NX5A"]) ? parsed["NX5A"] : [],
+          "JK1": Array.isArray(parsed["JK1"]) ? parsed["JK1"] : [],
+          "CE1": Array.isArray(parsed["CE1"]) ? parsed["CE1"] : [],
+          "DT": Array.isArray(parsed["DT"]) ? parsed["DT"] : [],
           processSlots:
             parsed.processSlots && typeof parsed.processSlots === "object"
               ? parsed.processSlots
@@ -727,13 +741,20 @@ export const getLocalHanulTemplateAssignments = () => {
       }
     }
   } catch (e) {}
-  return { "9BQC": [], "LQ2A": [], processSlots: {} };
+  return { "9BQC": [], "LQ2A": [], "HR": [], "JA": [], "NX5A": [], "JK1": [], "CE1": [], "DT": [], processSlots: {} };
 };
 
 export const saveLocalHanulTemplateAssignments = (assignments) => {
   const clean = {
+    ...(assignments || {}),
     "9BQC": Array.isArray(assignments?.["9BQC"]) ? assignments["9BQC"] : [],
     "LQ2A": Array.isArray(assignments?.["LQ2A"]) ? assignments["LQ2A"] : [],
+    "HR": Array.isArray(assignments?.["HR"]) ? assignments["HR"] : [],
+    "JA": Array.isArray(assignments?.["JA"]) ? assignments["JA"] : [],
+    "NX5A": Array.isArray(assignments?.["NX5A"]) ? assignments["NX5A"] : [],
+    "JK1": Array.isArray(assignments?.["JK1"]) ? assignments["JK1"] : [],
+    "CE1": Array.isArray(assignments?.["CE1"]) ? assignments["CE1"] : [],
+    "DT": Array.isArray(assignments?.["DT"]) ? assignments["DT"] : [],
     processSlots:
       assignments?.processSlots && typeof assignments.processSlots === "object"
         ? assignments.processSlots
@@ -793,8 +814,15 @@ export const subscribeHanulTemplateAssignments = (callback) => {
         if (snap.exists()) {
           const data = snap.data();
           const clean = saveLocalHanulTemplateAssignments({
+            ...data,
             "9BQC": Array.isArray(data?.["9BQC"]) ? data["9BQC"] : [],
             "LQ2A": Array.isArray(data?.["LQ2A"]) ? data["LQ2A"] : [],
+            "HR": Array.isArray(data?.["HR"]) ? data["HR"] : [],
+            "JA": Array.isArray(data?.["JA"]) ? data["JA"] : [],
+            "NX5A": Array.isArray(data?.["NX5A"]) ? data["NX5A"] : [],
+            "JK1": Array.isArray(data?.["JK1"]) ? data["JK1"] : [],
+            "CE1": Array.isArray(data?.["CE1"]) ? data["CE1"] : [],
+            "DT": Array.isArray(data?.["DT"]) ? data["DT"] : [],
             processSlots:
               data?.processSlots && typeof data.processSlots === "object"
                 ? data.processSlots

@@ -206,11 +206,17 @@ export const ExtrusionQualityIssueTab = () => {
       const authorName = currentProfile?.name || "설유철";
       const authorTitle = currentProfile?.title || "책임";
 
+      const hasAction = Boolean(
+        (form.actionResult && form.actionResult.trim().length > 0) ||
+        (Array.isArray(form.actionImages) && form.actionImages.length > 0)
+      );
       const payload = {
         ...form,
         author: authorName,
         authorTitle,
-        status: "ACTIVE"
+        status: hasAction ? "RESOLVED" : "ACTIVE",
+        isResolved: hasAction,
+        actionAuthor: hasAction ? authorName : ""
       };
 
       if (editingIssueId) {

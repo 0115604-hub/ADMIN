@@ -1338,8 +1338,9 @@ export const UnifiedAbnormalityControlPanel = ({
   // 조치 내용 및 사진 저장 핸들러
   const handleSaveActionResult = async () => {
     if (!selectedItemForDetail) return;
-    if (!actionInputText.trim()) {
-      alert("조치 내용을 입력해 주세요.");
+    const newActionImages = actionPhotos.map((p) => p.dataUrl || p);
+    if (!actionInputText.trim() && newActionImages.length === 0) {
+      alert("조치 내용 또는 첨부 사진을 입력해 주세요.");
       return;
     }
 
@@ -1354,75 +1355,109 @@ export const UnifiedAbnormalityControlPanel = ({
     }).replace(/\. /g, "-").replace(/\./g, "");
 
     try {
-      const newActionImages = actionPhotos.map((p) => p.dataUrl || p);
-      if (selectedItemForDetail.sourceType === "QUALITY_ALERT") {
-        const rawIssue = selectedItemForDetail.raw;
-        if (rawIssue && rawIssue.id) {
-          const idStr = String(selectedItemForDetail.id);
-          const effectiveAuthor = actionAuthorInput || currentProfile?.name || "관리자";
-          if (idStr.startsWith("urg_")) {
-            await updateUrgentIssueActionResult(
-              rawIssue.id,
-              actionInputText.trim(),
-              effectiveAuthor,
-              newActionImages
-            );
-            await addIssueReply(rawIssue.id, {
-              author: effectiveAuthor,
-              content: `[4M 조치등록] ${actionInputText.trim()}`,
-              files: newActionImages,
-              actionDate: nowStr
-            }).catch(() => {});
-            await syncQualityAlertToFourMLedger({
-              ...rawIssue,
-              actionResult: actionInputText.trim(),
-              actionAuthor: effectiveAuthor,
-              actionImages: newActionImages,
-              status: "RESOLVED",
-              isResolved: true
-            }).catch(() => {});
-          } else if (idStr.startsWith("ext_q_")) {
-            await saveExtrusionQualityIssue({
-              ...rawIssue,
-              actionResult: actionInputText.trim(),
-              actionAuthor: effectiveAuthor,
-              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
-              status: "RESOLVED"
-            });
-          } else if (idStr.startsWith("hanul_q_")) {
-            await saveHanulQualityIssue({
-              ...rawIssue,
-              actionResult: actionInputText.trim(),
-              actionAuthor: effectiveAuthor,
-              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
-              status: "RESOLVED"
-            });
-          } else if (idStr.startsWith("ys_q_")) {
-            await saveYuseongQualityIssue({
-              ...rawIssue,
-              actionResult: actionInputText.trim(),
-              actionAuthor: effectiveAuthor,
-              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
-              status: "RESOLVED"
-            });
-          } else if (idStr.startsWith("mach_q_")) {
-            await saveMachiningQualityIssue({
-              ...rawIssue,
-              actionResult: actionInputText.trim(),
-              actionAuthor: effectiveAuthor,
-              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
-              status: "RESOLVED"
-            });
-          }
-        }
+      const effectiveAuthor = actionAuthorInput || currentProfile?.name || "관리자";
+      const actionText = actionInputText.trim() || "조치 사진 첨부 완료";
+      const idStr = String(selectedItemForDetail.id || "");
+      const rawIssue = selectedItemForDetail.raw || {};
+      const originStr = String(selectedItemForDetail.origin || rawIssue.origin || "");
+      const coreId = getCore4MId(rawIssue.id || idStr);
+
+      if (idStr.startsWith("ext_q_") || originStr === "EXTRUSION_QUALITY") {
+        const targetId = rawIssue.id && !String(rawIssue.id).startsWith("ledger_") ? rawIssue.id : coreId;
+        await saveExtrusionQualityIssue({
+          ...rawIssue,
+          id: targetId,
+          actionResult: actionText,
+          actionAuthor: effectiveAuthor,
+          actionAt: nowStr,
+          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
+          status: "RESOLVED",
+          isResolved: true
+        });
+      } else if (idStr.startsWith("hanul_q_") || originStr === "HANUL_QUALITY") {
+        const targetId = rawIssue.id && !String(rawIssue.id).startsWith("ledger_") ? rawIssue.id : coreId;
+        await saveHanulQualityIssue({
+          ...rawIssue,
+          id: targetId,
+          actionResult: actionText,
+          actionAuthor: effectiveAuthor,
+          actionAt: nowStr,
+          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
+          status: "RESOLVED",
+          isResolved: true
+        });
+      } else if (idStr.startsWith("ys_q_") || originStr === "YUSEONG_QUALITY") {
+        const targetId = rawIssue.id && !String(rawIssue.id).startsWith("ledger_") ? rawIssue.id : coreId;
+        await saveYuseongQualityIssue({
+          ...rawIssue,
+          id: targetId,
+          actionResult: actionText,
+          actionAuthor: effectiveAuthor,
+          actionAt: nowStr,
+          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
+          status: "RESOLVED",
+          isResolved: true
+        });
+      } else if (idStr.startsWith("mach_q_") || originStr === "MACHINING_QUALITY") {
+        const targetId = rawIssue.id && !String(rawIssue.id).startsWith("ledger_") ? rawIssue.id : coreId;
+        await saveMachiningQualityIssue({
+          ...rawIssue,
+          id: targetId,
+          actionResult: actionText,
+          actionAuthor: effectiveAuthor,
+          actionAt: nowStr,
+          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
+          status: "RESOLVED",
+          isResolved: true
+        });
+      } else if (
+        idStr.startsWith("urg_") ||
+        originStr === "URGENT_ISSUE" ||
+        selectedItemForDetail.sourceType === "QUALITY_ALERT" ||
+        String(coreId).startsWith("issue_")
+      ) {
+        const targetId = rawIssue.id && !String(rawIssue.id).startsWith("ledger_") ? rawIssue.id : coreId;
+        await updateUrgentIssueActionResult(
+          targetId,
+          actionText,
+          effectiveAuthor,
+          newActionImages,
+          rawIssue
+        );
+        await syncQualityAlertToFourMLedger({
+          ...rawIssue,
+          id: targetId,
+          title: selectedItemForDetail.title || rawIssue.title,
+          content: selectedItemForDetail.content || rawIssue.content,
+          actionResult: actionText,
+          actionAuthor: effectiveAuthor,
+          actionAt: nowStr,
+          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
+          status: "RESOLVED",
+          isResolved: true
+        }).catch(() => {});
+      }
+
+      if (selectedItemForDetail.isRegisteredInLedger || selectedItemForDetail.sourceType === "OFFICIAL_LEDGER" || idStr.startsWith("ledger_")) {
+        await registerToFourMLedger(
+          {
+            ...selectedItemForDetail,
+            actionResult: actionText,
+            actionAuthor: effectiveAuthor,
+            actionAt: nowStr,
+            actionImages: Array.from(new Set([...(selectedItemForDetail.actionImages || []), ...newActionImages])),
+            isResolved: true
+          },
+          effectiveAuthor
+        ).catch(() => {});
       }
 
       setSelectedItemForDetail((prev) => ({
         ...prev,
-        actionResult: actionInputText.trim(),
-        actionAuthor: actionAuthorInput || currentProfile?.name || "관리자",
+        actionResult: actionText,
+        actionAuthor: effectiveAuthor,
         actionAt: nowStr,
-        actionImages: [...(prev.actionImages || []), ...newActionImages],
+        actionImages: Array.from(new Set([...(prev.actionImages || []), ...newActionImages])),
         isResolved: true
       }));
 

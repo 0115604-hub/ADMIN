@@ -114,10 +114,31 @@ export const mergeUnified4MRecords = (existing, incoming) => {
     ? existing.fourM
     : incoming.fourM || existing.fourM;
 
+  const preferredSourceType =
+    existing.sourceType === "QUALITY_ALERT" || incoming.sourceType === "QUALITY_ALERT"
+      ? "QUALITY_ALERT"
+      : (existing.sourceType || incoming.sourceType);
+  const preferredRaw =
+    existing.sourceType === "QUALITY_ALERT" && existing.raw
+      ? existing.raw
+      : incoming.sourceType === "QUALITY_ALERT" && incoming.raw
+      ? incoming.raw
+      : (existing.raw || incoming.raw);
+  const preferredOrigin =
+    existing.sourceType === "QUALITY_ALERT" && existing.origin
+      ? existing.origin
+      : incoming.sourceType === "QUALITY_ALERT" && incoming.origin
+      ? incoming.origin
+      : (existing.origin || incoming.origin);
+
   return {
     ...existing,
     ...incoming,
     id: existing.id || incoming.id,
+    sourceType: preferredSourceType,
+    origin: preferredOrigin,
+    raw: preferredRaw,
+    ledgerRaw: incoming.isOfficialLedger ? incoming.raw : (existing.isOfficialLedger ? existing.raw : undefined),
     fourM,
     isManualFourM,
     badgeColor: incoming.badgeColor || existing.badgeColor,

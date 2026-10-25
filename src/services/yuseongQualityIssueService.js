@@ -126,14 +126,27 @@ export const saveYuseongQualityIssue = async (issueData) => {
     issueData.createdAt ||
     now;
 
+  const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : (existing?.actionImages || []);
+  const resolvedActionText =
+    issueData.actionResult !== undefined
+      ? String(issueData.actionResult || "").trim()
+      : String(existing?.actionResult || "").trim();
+  const hasActionData = Boolean(resolvedActionText || actionImgs.length > 0);
+  const cleanIssueData = { ...issueData };
+  delete cleanIssueData.raw;
+
   const record = {
-    ...issueData,
+    ...cleanIssueData,
     id,
     date: finalDate,
     company: "유성",
+    actionResult: resolvedActionText || (actionImgs.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : ""),
+    actionImages: actionImgs,
+    replies: Array.isArray(issueData.replies) ? issueData.replies : (existing?.replies || []),
     updatedAt: now,
     createdAt: finalCreatedAt,
-    status: issueData.status || existing?.status || "ACTIVE", // ACTIVE (진행중) | RESOLVED (조치완료)
+    status: hasActionData ? "RESOLVED" : (issueData.status || existing?.status || "ACTIVE"), // ACTIVE (진행중) | RESOLVED (조치완료)
+    isResolved: hasActionData || issueData.status === "RESOLVED" || Boolean(issueData.isResolved),
     acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : (existing?.acknowledgedBy || [])
   };
 

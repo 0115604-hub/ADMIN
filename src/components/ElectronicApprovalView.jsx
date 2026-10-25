@@ -364,15 +364,22 @@ export const ElectronicApprovalView = () => {
     }));
   };
 
-  // 🌟 서류 구분별 통계 집계 (특근보고서 vs 일반결재서류)
+  // 🌟 서류 구분별 통계 집계 (특근보고서 vs 일반결재서류, 공장 필터 연동)
   const categoryCounts = useMemo(() => {
-    const total = approvalDocs.length;
-    const overtimeList = approvalDocs.filter(isOvertimeApprovalDoc);
-    const generalList = approvalDocs.filter(isGeneralApprovalDoc);
+    const plantScoped = approvalDocs.filter((doc) => {
+      if (!doc) return false;
+      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+        return false;
+      }
+      return true;
+    });
+    const total = plantScoped.length;
+    const overtimeList = plantScoped.filter(isOvertimeApprovalDoc);
+    const generalList = plantScoped.filter(isGeneralApprovalDoc);
     const overtime = overtimeList.length;
     const general = generalList.length;
-    const overtimePending = overtimeList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const overtimePending = overtimeList.filter((d) => isApprovalDocPending(d)).length;
+    const generalPending = generalList.filter((d) => isApprovalDocPending(d)).length;
     return {
       total,
       overtime,
@@ -380,7 +387,7 @@ export const ElectronicApprovalView = () => {
       overtimePending,
       generalPending
     };
-  }, [approvalDocs, currentProfile, isAdmin]);
+  }, [approvalDocs, selectedPlant]);
 
   // Scoped documents according to selected category
   const categoryScopedDocs = useMemo(() => {
@@ -431,16 +438,23 @@ export const ElectronicApprovalView = () => {
     return list;
   }, [categoryScopedDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
 
-  // Statistics (100% unified with current category scope)
+  // Statistics (100% unified with current category and plant scope)
   const stats = useMemo(() => {
-    const total = categoryScopedDocs.length;
-    const pending = categoryScopedDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const hold = categoryScopedDocs.filter(isApprovalDocHold).length;
-    const approved = categoryScopedDocs.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
-    const rejected = categoryScopedDocs.filter(isApprovalDocRejected).length;
-    const myDrafts = categoryScopedDocs.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
+    const plantScoped = categoryScopedDocs.filter((doc) => {
+      if (!doc) return false;
+      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+        return false;
+      }
+      return true;
+    });
+    const total = plantScoped.length;
+    const pending = plantScoped.filter((d) => isApprovalDocPending(d)).length;
+    const hold = plantScoped.filter(isApprovalDocHold).length;
+    const approved = plantScoped.filter((d) => isApprovalDocApproved(d)).length;
+    const rejected = plantScoped.filter(isApprovalDocRejected).length;
+    const myDrafts = plantScoped.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
     return { total, pending, hold, approved, rejected, myDrafts };
-  }, [categoryScopedDocs, currentProfile, isAdmin]);
+  }, [categoryScopedDocs, selectedPlant, currentProfile, isAdmin]);
 
   // Permission evaluation for currently opened document
   const currentPermission = useMemo(() => {
@@ -829,22 +843,47 @@ export const ElectronicApprovalView = () => {
 
         {/* 5 KPI Summary Status Cards (시인성 극대화 및 컴팩트 최소화) */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
-          <div
-            onClick={() => setSelectedTab("PENDING")}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer ${
-              selectedTab === "PENDING"
-                ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                <span>미결 (결재대기)</span>
+          <div className="flex flex-col gap-1">
+            {/* 위쪽: 일반결재 미결 */}
+            <div
+              onClick={() => {
+                setSelectedTab("PENDING");
+                setDocCategoryFilter("GENERAL");
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                selectedTab === "PENDING" && (docCategoryFilter === "GENERAL" || docCategoryFilter === "ALL")
+                  ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 ring-1 ring-rose-500/30 shadow-xs"
+                  : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
+              }`}
+            >
+              <span className="font-bold text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 shrink-0" />
+                <span>미결 (일반결재)</span>
+              </span>
+              <span className="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400 font-mono">
+                {categoryCounts.generalPending}건
               </span>
             </div>
-            <div className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">
-              {stats.pending}건
+
+            {/* 아래쪽: 특근보고서 미결 */}
+            <div
+              onClick={() => {
+                setSelectedTab("PENDING");
+                setDocCategoryFilter("OVERTIME");
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                selectedTab === "PENDING" && (docCategoryFilter === "OVERTIME" || docCategoryFilter === "ALL")
+                  ? "bg-purple-50 dark:bg-purple-950/40 border-purple-400 dark:border-purple-700 ring-1 ring-purple-500/30 shadow-xs"
+                  : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
+              }`}
+            >
+              <span className="font-bold text-[11px] text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 shrink-0" />
+                <span>미결 (특근보고서)</span>
+              </span>
+              <span className="text-xs sm:text-sm font-black text-purple-600 dark:text-purple-400 font-mono">
+                {categoryCounts.overtimePending}건
+              </span>
             </div>
           </div>
 
@@ -906,9 +945,12 @@ export const ElectronicApprovalView = () => {
           </div>
 
           <div
-            onClick={() => setSelectedTab("ALL")}
+            onClick={() => {
+              setSelectedTab("ALL");
+              setDocCategoryFilter("ALL");
+            }}
             className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer col-span-2 sm:col-span-1 ${
-              selectedTab === "ALL"
+              selectedTab === "ALL" && docCategoryFilter === "ALL"
                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
@@ -1159,7 +1201,7 @@ export const ElectronicApprovalView = () => {
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         {isApproved ? (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                            ✓ {doc.status === "APPROVED" ? "결재완료" : "내 결재완료"}
+                            ✓ 결재완료
                           </span>
                         ) : isHold ? (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
@@ -1169,15 +1211,10 @@ export const ElectronicApprovalView = () => {
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
                             ✕ 반려됨
                           </span>
-                        ) : isSignedByMe ? (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 flex items-center justify-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-blue-500" />
-                            <span>승인완료 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "다음"} 대기)</span>
-                          </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
                             <Clock className="w-3 h-3 text-rose-500 animate-pulse" />
-                            <span>결재대기 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "책임"})</span>
+                            <span>미결 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "대표"} 대기)</span>
                           </span>
                         )}
                       </td>

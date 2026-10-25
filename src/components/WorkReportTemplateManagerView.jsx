@@ -95,7 +95,7 @@ const getOrderedBlocksForTemplate = (tpl) => {
 export const WorkReportTemplateManagerView = () => {
   const [managerViewMode, setManagerViewMode] = useState("LEGO_BUILDER"); // 'LEGO_BUILDER' | 'CATALOG'
   const [templates, setTemplates] = useState(() => getLocalWorkReportTemplates());
-  const [selectedCategory, setSelectedCategory] = useState("MATERIAL_PREP");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -129,18 +129,9 @@ export const WorkReportTemplateManagerView = () => {
     setTimeout(() => setToastMsg(""), 2500);
   };
 
-  // Auto-switch to a non-empty category if current selectedCategory has 0 templates while others have templates
-  useEffect(() => {
-    if (templates.length > 0 && !templates.some((t) => t.categoryId === selectedCategory)) {
-      const firstAvailable = templates[0]?.categoryId;
-      if (firstAvailable) {
-        setSelectedCategory(firstAvailable);
-      }
-    }
-  }, [templates, selectedCategory]);
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {
-      const matchCat = t.categoryId === selectedCategory;
+      const matchCat = selectedCategory === "ALL" || t.categoryId === selectedCategory;
       const matchSearch =
         !searchTerm ||
         (t.title && t.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -153,7 +144,7 @@ export const WorkReportTemplateManagerView = () => {
 
   // Counts by category
   const categoryCounts = useMemo(() => {
-    const counts = {};
+    const counts = { ALL: templates.length };
     REPORT_MAJOR_CATEGORIES.forEach((c) => {
       counts[c.id] = templates.filter((t) => t.categoryId === c.id).length;
     });
@@ -162,12 +153,13 @@ export const WorkReportTemplateManagerView = () => {
 
   // Open Editor for New Template
   const handleAddNew = () => {
-    const curCat = REPORT_MAJOR_CATEGORIES.find((c) => c.id === selectedCategory);
+    const targetCatId = selectedCategory === "ALL" ? "MATERIAL_PREP" : selectedCategory;
+    const curCat = REPORT_MAJOR_CATEGORIES.find((c) => c.id === targetCatId);
     setEditingTemplate({
       id: "",
-      categoryId: selectedCategory,
+      categoryId: targetCatId,
       categoryName: curCat?.name || "소재준비일보",
-      title: selectedCategory === "MATERIAL_PREP" ? "소재준비작업일보" : `${curCat?.name.replace("일보", "") || "작업"}작업일보`,
+      title: targetCatId === "MATERIAL_PREP" ? "소재준비작업일보" : `${curCat?.name.replace("일보", "") || "작업"}작업일보`,
       subTitle: "",
       formNo: "705-02(REV.4)",
       companyName: "(주)오륙",
@@ -300,9 +292,7 @@ export const WorkReportTemplateManagerView = () => {
     } else {
       setTemplates(localList);
     }
-    if (savedTpl && savedTpl.categoryId) {
-      setSelectedCategory(savedTpl.categoryId);
-    }
+    setSelectedCategory("ALL");
     showToast(`✅ [${savedTpl?.title || "양식"}] 5대 공정 양식 보관함에 등록되었습니다!`);
   };
 
@@ -400,9 +390,33 @@ export const WorkReportTemplateManagerView = () => {
           </div>
 
       {/* ======================================================== */}
-      {/* 5 Major Categories Switcher Tabs */}
+      {/* All + 5 Major Categories Switcher Tabs */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <button
+          onClick={() => setSelectedCategory("ALL")}
+          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer text-left flex flex-col justify-between gap-2 shadow-sm ${
+            selectedCategory === "ALL"
+              ? "bg-white dark:bg-slate-900 border-cyan-500 ring-2 ring-cyan-500/30 scale-[1.02]"
+              : "bg-white/70 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xl sm:text-2xl">🗂️</span>
+            <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-cyan-500 text-slate-950">
+              총 {templates.length}개 전체
+            </span>
+          </div>
+          <div>
+            <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+              전체 양식 보기
+            </h4>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+              DB에 저장된 모든 작업일보 한눈에 보기
+            </p>
+          </div>
+        </button>
+
         {REPORT_MAJOR_CATEGORIES.map((cat) => {
           const isActive = selectedCategory === cat.id;
           const count = categoryCounts[cat.id] || 0;
@@ -410,7 +424,7 @@ export const WorkReportTemplateManagerView = () => {
           return (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => setSelectedCategory(isActive ? "ALL" : cat.id)}
               className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer text-left flex flex-col justify-between gap-2 shadow-sm ${
                 isActive
                   ? "bg-white dark:bg-slate-900 border-indigo-600 dark:border-indigo-500 ring-2 ring-indigo-500/30 scale-[1.02]"

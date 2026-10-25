@@ -55,7 +55,8 @@ export default function PersonnelCardModal({
   onClose,
   worker,
   workerIndex,
-  onSave
+  onSave,
+  onDelete
 }) {
   useModalHistory(isOpen, onClose, "personnelCardModal");
 
@@ -179,18 +180,9 @@ export default function PersonnelCardModal({
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
-      // 소속 업체 변경 시: 협력업체(유성/한울/부림텍)는 부서를 업체명, 직급을 대표이사로 자동 설정
       if (field === "company") {
-        if (isPartnerCompany(value)) {
-          next.dept = value;
-          next.position = "대표이사";
-        } else {
-          if (isPartnerCompany(next.dept)) {
-            next.dept = "생산팀";
-          }
-          if (next.position === "대표이사") {
-            next.position = "사원";
-          }
+        if (!DEPARTMENTS_LIST.includes(next.dept)) {
+          next.dept = "생산팀";
         }
       }
       // 입사일 변경 시 근속기간 및 공정년차 동시 자동 계산
@@ -1037,14 +1029,29 @@ export default function PersonnelCardModal({
         {/* ========================================================================= */}
         {/* 3. Modal Footer Actions */}
         {/* ========================================================================= */}
-        <div className="px-4 sm:px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
-          >
-            취소
-          </button>
+        <div className="px-4 sm:px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+            >
+              닫기
+            </button>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDelete(worker, workerIndex);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>인원 영구 삭제</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button

@@ -330,11 +330,11 @@ const createDailySnapshot = async (todayStr) => {
       }
     };
 
-    // Save latest snapshot to LocalStorage
+    // Purge obsolete local backup copy to prevent localStorage 5MB quota exhaustion
     try {
-      localStorage.setItem(DAILY_BACKUP_STORAGE_KEY, JSON.stringify(snapshot));
+      localStorage.removeItem(DAILY_BACKUP_STORAGE_KEY);
     } catch (e) {
-      console.warn("Local backup save warning (storage full?):", e);
+      console.warn("Local backup key cleanup warning:", e);
     }
 
     // Save snapshot document to Firestore: system_daily_backups/backup_YYYYMMDD

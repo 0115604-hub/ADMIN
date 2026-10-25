@@ -21,7 +21,6 @@ import {
   ShieldAlert
 } from "lucide-react";
 import ExtrusionProductionTab from "./extrusion/ExtrusionProductionTab";
-import { ExtrusionQualityIssueTab } from "./extrusion/ExtrusionQualityIssueTab";
 import { ExtrusionQualityAlertModal } from "./extrusion/ExtrusionQualityAlertModal";
 import {
   subscribeToExtrusionReports,
@@ -31,10 +30,6 @@ import {
   EXTRUSION_LINE_OPTIONS,
   DOWNTIME_CATEGORIES
 } from "../services/extrusionProductionService";
-import {
-  subscribeExtrusionQualityIssues,
-  getLocalExtrusionQualityIssues
-} from "../services/extrusionQualityIssueService";
 import { useAuth } from "../context/AuthContext";
 
 export const LINE_PRESETS = [
@@ -56,15 +51,7 @@ const PERIOD_OPTIONS = [
 export const ExtrusionDowntimeView = () => {
   const { currentProfile, isAdmin } = useAuth();
 
-  // ⭐ 설유철 화면 판별 (설유철 책임 및 ADMIN)
-  const isSeolOrAdmin =
-    currentProfile?.name === "설유철" ||
-    currentProfile?.name?.includes("설유철") ||
-    currentProfile?.id === "sam_yc" ||
-    currentProfile?.role === "ADMIN" ||
-    isAdmin;
-
-  // SubTab state: "production" (작업일보 관리대장), "downtime" (비가동 상세분석), "quality_issue" (압출품질이슈)
+  // SubTab state: "production" (작업일보 관리대장), "downtime" (비가동 상세분석)
   const [activeSubTab, setActiveSubTab] = useState(() => {
     try {
       const saved = localStorage.getItem("factory_extrusion_active_subtab");
@@ -72,17 +59,6 @@ export const ExtrusionDowntimeView = () => {
     } catch (e) {}
     return "production";
   });
-
-  // Quality Issues for badge count
-  const [qualityIssues, setQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
-  useEffect(() => {
-    const unsub = subscribeExtrusionQualityIssues(setQualityIssues);
-    return () => unsub();
-  }, []);
-
-  const activeQualityCount = useMemo(() => {
-    return qualityIssues.filter((it) => it && it.status === "ACTIVE").length;
-  }, [qualityIssues]);
 
   // Selected line filter: "all", "pcm1", "pcm3", "pvc", "tpe"
   const [selectedLine, setSelectedLine] = useState(() => {
@@ -320,38 +296,10 @@ export const ExtrusionDowntimeView = () => {
           <span className="whitespace-nowrap">비가동 상세분석</span>
         </button>
 
-        {/* ⭐ 설유철 화면 (또는 Admin) 전용 3번째 뱃지: [압출품질이슈] */}
-        {false && isSeolOrAdmin && (
-          <button
-            type="button"
-            onClick={() => setActiveSubTab("quality_issue")}
-            className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
-              activeSubTab === "quality_issue"
-                ? "bg-rose-600 text-white shadow-md shadow-rose-500/25"
-                : "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60"
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span className="whitespace-nowrap">압출품질이슈</span>
-            {activeQualityCount > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  activeSubTab === "quality_issue"
-                    ? "bg-white text-rose-600"
-                    : "bg-rose-600 text-white animate-pulse"
-                }`}
-              >
-                {activeQualityCount}
-              </span>
-            )}
-          </button>
-        )}
       </div>
 
       {activeSubTab === "production" ? (
         <ExtrusionProductionTab />
-      ) : false && activeSubTab === "quality_issue" && isSeolOrAdmin ? (
-        <ExtrusionQualityIssueTab />
       ) : (
         <div className="space-y-3.5">
           {/* ========================================================================= */}

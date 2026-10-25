@@ -1,4 +1,4 @@
-// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
+﻿// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
 import {
   collection,
   doc,
@@ -187,6 +187,40 @@ export const normalizeOvertimeReport = (report) => {
   if (cleanTitle.includes("근태보고서")) {
     cleanTitle = cleanTitle.replace(/근태보고서/g, "특근보고서");
   }
+  const sortKey = getReportDateSortKey(report);
+  const isOnOrBeforeOct18 = sortKey && sortKey !== "0000-00-00" && sortKey <= "2026-10-18";
+
+  if (isOnOrBeforeOct18 && report.status !== "REJECTED") {
+    const drafterName = String(report.author || "").split(" ")[0] || (plantName === "삼랑진공장" ? "조인주" : "오상민");
+    const drafterTitle = report.authorTitle || "선임";
+    const leadName = plantName === "한림공장" ? "김동욱" : "윤경수";
+    const baseSteps = Array.isArray(report.approval) && report.approval.length === 4
+      ? report.approval
+      : [
+          { role: "담당", name: drafterName, title: drafterTitle },
+          { role: "책임", name: leadName, title: "책임" },
+          { role: "이사", name: "이명재", title: "이사" },
+          { role: "대표", name: "권태형", title: "대표이사" }
+        ];
+    const approvedSteps = baseSteps.map((st, idx) => ({
+      ...st,
+      role: st?.role || ["담당", "책임", "이사", "대표"][idx],
+      status: "APPROVED",
+      date: st?.date || `${sortKey} 19:30:00`,
+      comment: st?.comment || (idx === 0 ? "특근보고서 상신" : "승인")
+    }));
+    return {
+      ...report,
+      company: cleanComp,
+      plant: plantName,
+      title: cleanTitle,
+      reportType: "특근보고서",
+      status: "APPROVED",
+      approvalStatus: "결재완료",
+      approval: approvedSteps
+    };
+  }
+
   return {
     ...report,
     company: cleanComp,

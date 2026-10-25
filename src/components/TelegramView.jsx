@@ -898,7 +898,7 @@ export const TelegramView = () => {
     }
     setSendingUnified(true);
     try {
-      const targetChat = telegramConfig.chatId || "-4186792536";
+      const targetChat = (!telegramConfig.chatId || telegramConfig.chatId === "-4186792536") ? "-1004367600406" : telegramConfig.chatId;
       const res = await sendTelegramMessage(editableUnifiedText, {
         ...telegramConfig,
         chatId: targetChat

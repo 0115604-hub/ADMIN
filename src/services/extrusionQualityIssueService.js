@@ -46,13 +46,16 @@ export const INITIAL_EXTRUSION_QUALITY_ISSUES = [];
 
 const sanitizeExtrusionAlert = (item) => {
   if (!item || typeof item !== "object") return item;
-  if (item.isManuallyRestored === true) return item;
+  if (item.isManuallyRestored === true || item.isClosedByAdmin === false) return item;
   const idStr = String(item.id || "");
   const tsMatch = idStr.match(/(\d{13})/);
-  if (!tsMatch || Number(tsMatch[1]) <= 1792541000000) {
-    return { ...item, isClosedByAdmin: true };
+  if (tsMatch) {
+    const ts = Number(tsMatch[1]);
+    if (ts > 1792541000000 || (ts >= 1776700000000 && ts < 1790000000000)) {
+      return item;
+    }
   }
-  return item;
+  return { ...item, isClosedByAdmin: true };
 };
 
 // Helper: Read local storage
@@ -149,8 +152,15 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     ? issueData.causeImages
     : Array.isArray(issueData.images)
     ? issueData.images
-    : [];
-  const actionImages = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
+    : (existing?.causeImages || []);
+  const actionImages = Array.isArray(issueData.actionImages) ? issueData.actionImages : (existing?.actionImages || []);
+  const resolvedActionText =
+    issueData.actionResult !== undefined
+      ? String(issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || "").trim()
+      : String(existing?.actionResult || "").trim();
+  const hasActionData = Boolean(resolvedActionText || actionImages.length > 0);
+  const cleanIssueData = { ...issueData };
+  delete cleanIssueData.raw;
 
   // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
   const finalDate =
@@ -170,7 +180,7 @@ export const saveExtrusionQualityIssue = async (issueData) => {
       : Boolean(existing?.isFirstScreenBroadcast);
 
   const fullItem = {
-    ...issueData,
+    ...cleanIssueData,
     id,
     company: issueData.company || existing?.company || "압출동",
     targetWorkerGroup: issueData.targetWorkerGroup || existing?.targetWorkerGroup || "extrusion",
@@ -182,17 +192,21 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     title: issueData.title || existing?.title || "압출동 부적합경보",
     defectType: issueData.defectType || existing?.defectType || "외관 스크래치 / 찍힘",
     severity: issueData.severity || existing?.severity || "CRITICAL",
-    status: issueData.status || existing?.status || "ACTIVE",
+    status: hasActionData ? "RESOLVED" : (issueData.status || existing?.status || "ACTIVE"),
+    isResolved: hasActionData || issueData.status === "RESOLVED" || Boolean(issueData.isResolved),
     content: issueData.content !== undefined ? issueData.content : (existing?.content || ""),
-    actionResult: issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || existing?.actionResult || "",
+    actionResult: resolvedActionText || (actionImages.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : ""),
+    actionAuthor: issueData.actionAuthor || existing?.actionAuthor || issueData.author || existing?.author || "설유철",
+    actionAt: hasActionData ? (issueData.actionAt || nowStr) : (existing?.actionAt || ""),
     causeImages,
     actionImages,
     images: [...causeImages, ...actionImages],
+    replies: Array.isArray(issueData.replies) ? issueData.replies : (existing?.replies || []),
     author: issueData.author || existing?.author || "설유철",
     authorTitle: issueData.authorTitle || existing?.authorTitle || "책임",
     isFirstScreenBroadcast: isBroadcast,
     isFirstScreenOrigin: isBroadcast,
-    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
+    ...(isBroadcast ? { isClosedByAdmin: Boolean(issueData.isClosedByAdmin), isManuallyRestored: true } : {}),
     createdAt: finalCreatedAt,
     updatedAt: nowStr,
     acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : (existing?.acknowledgedBy || [])

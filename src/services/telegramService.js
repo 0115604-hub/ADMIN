@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
+﻿import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { db } from "../firebase";
 import { PLANTS } from "../context/AuthContext";
 import { getLocalAnnualLeaves } from "./annualLeaveService";
@@ -67,10 +67,16 @@ export const isDuplicateMessage = (fingerprint, ttlMs = 60000) => {
   return false;
 };
 
+export const normalizeOryukChatId = (id) => {
+  const s = String(id || "").trim();
+  if (!s || s === "-4186792536") return "-1004367600406";
+  return s;
+};
+
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보/오픈이슈/회의/공지 알림, 07:30 일일 모닝브리핑, 17:30 일일마감브리핑)
+  chatId: "-1004367600406", // '오륙 통합방' 단톡방 (품질경보/오픈이슈/회의/공지 알림, 07:30 일일 모닝브리핑, 17:30 일일마감브리핑)
   pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (07:30 매출 & 일정공유 P&L 결산 브리핑, 공통일정 의견 알림 전용 - ※ 모닝브리핑 제외)
   ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
@@ -91,7 +97,7 @@ export const getLocalTelegramConfig = () => {
       cachedConfig = {
         ...DEFAULT_TELEGRAM_CONFIG,
         ...parsed,
-        chatId: parsed.chatId || "-4186792536",
+        chatId: normalizeOryukChatId(parsed.chatId),
         pnlChatId: parsed.pnlChatId || "-1003939516875",
         ceoChatId: parsed.ceoChatId || "290615483"
       };
@@ -108,7 +114,7 @@ export const saveTelegramConfig = async (config) => {
   cachedConfig = {
     ...DEFAULT_TELEGRAM_CONFIG,
     ...config,
-    chatId: config.chatId || "-4186792536",
+    chatId: normalizeOryukChatId(config.chatId),
     pnlChatId: config.pnlChatId || "-1003939516875",
     ceoChatId: config.ceoChatId || "290615483"
   };
@@ -156,7 +162,7 @@ export const subscribeTelegramConfig = (onUpdate) => {
           const merged = {
             ...DEFAULT_TELEGRAM_CONFIG,
             ...data,
-            chatId: data.chatId || "-4186792536",
+            chatId: normalizeOryukChatId(data.chatId),
             pnlChatId: data.pnlChatId || "-1003939516875",
             ceoChatId: data.ceoChatId || "290615483"
           };
@@ -328,7 +334,7 @@ export const sendTelegramMessage = async (text, customConfig = null, retryCount 
     sanitizedText = sanitizedText.slice(0, 3900) + "\n\n... <i>(내용이 길어 일부 생략됨 - 시스템에서 전체 확인 가능)</i>";
   }
   const token = config.botToken.trim();
-  const chatId = String(config.chatId).trim();
+  const chatId = normalizeOryukChatId(config.chatId);
 
   // 🔒 1회 발송 원칙: 동일 수신처 & 완전 동일 본문 4초 이내 중복 클릭/연타만 차단
   const msgFingerprint = `msg_${chatId}_${sanitizedText.trim()}`;
@@ -415,7 +421,7 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
 
   const sanitizedCaption = sanitizeTelegramMessageText(caption);
   const token = config.botToken.trim();
-  const chatId = String(config.chatId).trim();
+  const chatId = normalizeOryukChatId(config.chatId);
 
   // 🔒 1회 발송 원칙: 동일 사진/캡션 4초 이내 연타 차단
   const photoFingerprint = `photo_${chatId}_${sanitizedCaption.trim()}_${photoDataUrl.slice(0, 100)}`;
@@ -510,7 +516,7 @@ export const sendTelegramMediaGroup = async (images = [], caption = "", customCo
   }
 
   const token = config.botToken.trim();
-  const chatId = String(config.chatId).trim();
+  const chatId = normalizeOryukChatId(config.chatId);
   const endpoint = `https://api.telegram.org/bot${token}/sendMediaGroup`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -592,7 +598,7 @@ export const dispatchToTelegramRooms = async (message, images = [], customConfig
   }
 
   // 🔒 1회 발송 원칙: 오륙 통합방 단톡방(-4186792536)으로만 단 1회 발송 (경영방 중복 발송 완전 차단)
-  const targetChatId = config.chatId || "-4186792536";
+  const targetChatId = normalizeOryukChatId(config.chatId);
   const cfg = { ...config, chatId: targetChatId };
 
   if (images && images.length > 0) {
@@ -1027,7 +1033,7 @@ export const completeBriefingLock = async (briefingType, todayStr, isSuccess, er
  */
 export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, targetChatId = null, force = false) => {
   const config = getLocalTelegramConfig();
-  const destChatId = targetChatId || config.chatId || "-4186792536";
+  const destChatId = normalizeOryukChatId(targetChatId || config.chatId);
   const todayStr = targetDateStr || getKSTDateString();
   const clientId = getClientInstanceId();
 
@@ -1645,7 +1651,7 @@ ${openIssueLines}
  */
 export const sendDailyClosingBriefingTelegram = async (targetDateStr = null, targetChatId = null, force = false) => {
   const config = getLocalTelegramConfig();
-  const destChatId = targetChatId || config.chatId || "-4186792536";
+  const destChatId = normalizeOryukChatId(targetChatId || config.chatId);
   const todayStr = targetDateStr || getKSTDateString();
   const clientId = getClientInstanceId();
 

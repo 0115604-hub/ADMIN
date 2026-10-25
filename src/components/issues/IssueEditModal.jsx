@@ -558,6 +558,9 @@ export const IssueEditModal = ({
                       }`}
                     >
                       <option value="">-- 작성자 직접 선택 (필수) --</option>
+                      {actionOpinionForm.author && !(allWorkers || []).some((w) => w.name === actionOpinionForm.author) && (
+                        <option value={actionOpinionForm.author}>현장 • {actionOpinionForm.author}</option>
+                      )}
                       <optgroup label="👑 본사 임원진">
                         {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
                           <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
@@ -830,7 +833,6 @@ export const IssueEditModal = ({
                 </label>
                 <select
                   value={newIssueForm.author || ""}
-                  required
                   onChange={(e) => {
                     const found = allWorkers?.find((w) => w.name === e.target.value);
                     setNewIssueForm({
@@ -847,6 +849,9 @@ export const IssueEditModal = ({
                   }`}
                 >
                   <option value="">-- 작성자 직접 선택 (필수) --</option>
+                  {newIssueForm.author && !(allWorkers || []).some((w) => w.name === newIssueForm.author) && (
+                    <option value={newIssueForm.author}>현장 • {newIssueForm.author}</option>
+                  )}
                   <optgroup label="👑 본사 임원진">
                     {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
                       <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
@@ -1214,6 +1219,9 @@ export const IssueEditModal = ({
                           }`}
                         >
                           <option value="">-- 작성자 직접 선택 (필수) --</option>
+                          {actionOpinionForm.author && !(allWorkers || []).some((w) => w.name === actionOpinionForm.author) && (
+                            <option value={actionOpinionForm.author}>현장 • {actionOpinionForm.author}</option>
+                          )}
                           <optgroup label="👑 본사 임원진">
                             {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
                               <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
@@ -2033,6 +2041,9 @@ export const IssueEditModal = ({
                       }`}
                     >
                       <option value="">-- {newIssueForm.category === "회의일정" ? "작성자 / 보고자" : "조치자"} 직접 선택 --</option>
+                      {newIssueForm.actionAuthor && !(allWorkers || []).some((w) => w.name === newIssueForm.actionAuthor) && (
+                        <option value={newIssueForm.actionAuthor}>현장 • {newIssueForm.actionAuthor}</option>
+                      )}
                       <optgroup label="👑 본사 임원진">
                         {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
                           <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>

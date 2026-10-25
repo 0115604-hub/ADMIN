@@ -1,4 +1,4 @@
-// Machining (가공동) JA, NX4, NX4a, HR G/RUN Work Report Service
+﻿// Machining (가공동) JA, NX4, NX4a, HR G/RUN Work Report Service
 // Real-time Firestore Sync + LocalStorage Multi-Device Persistence
 import {
   collection,
@@ -19,10 +19,10 @@ const COLLECTION_NAME = "machining_work_reports";
 
 // 🌟 가공동 4대 G/RUN 차종 프로젝트 정의
 export const MACHINING_PROJECTS = [
+  { id: "HR", name: "HR G/RUN", carModel: "HR", partName: "G/RUN (포터)", icon: "🚚", color: "amber" },
   { id: "JA", name: "JA G/RUN", carModel: "JA", partName: "G/RUN (모닝/레이)", icon: "🚗", color: "indigo" },
-  { id: "NX4", name: "NX4 G/RUN", carModel: "NX4", partName: "G/RUN (투싼)", icon: "🚙", color: "blue" },
-  { id: "NX4A", name: "NX4a G/RUN", carModel: "NX4a", partName: "G/RUN (투싼 PE)", icon: "⚡", color: "teal" },
-  { id: "HR", name: "HR G/RUN", carModel: "HR", partName: "G/RUN (포터)", icon: "🚚", color: "amber" }
+  { id: "NX5A", name: "NX5a G/RUN", carModel: "NX5a", partName: "G/RUN (투싼 PE)", icon: "⚡", color: "teal" },
+  { id: "NX4", name: "NX4 G/RUN", carModel: "NX4", partName: "G/RUN (투싼)", icon: "🚙", color: "blue" }
 ];
 
 // 🌟 한울과 100% 동일하게 표준화된 4대 핵심 가공 공정 분류
@@ -34,6 +34,12 @@ export const MACHINING_PROCESSES = {
     { id: "검사", name: "검사", subTitle: "완제품 치수, 단면 확인 및 최종검사" }
   ],
   NX4: [
+    { id: "소재준비", name: "소재준비", subTitle: "정치절단, 단컷팅" },
+    { id: "조인트", name: "조인트", subTitle: "FRT, RR, LH/RH 코너 사출" },
+    { id: "본드로봇", name: "본드로봇", subTitle: "로봇 본딩 및 도포 작업" },
+    { id: "검사", name: "검사", subTitle: "완제품 치수, 단면 확인 및 최종검사" }
+  ],
+  NX5A: [
     { id: "소재준비", name: "소재준비", subTitle: "정치절단, 단컷팅" },
     { id: "조인트", name: "조인트", subTitle: "FRT, RR, LH/RH 코너 사출" },
     { id: "본드로봇", name: "본드로봇", subTitle: "로봇 본딩 및 도포 작업" },

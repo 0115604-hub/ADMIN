@@ -71,7 +71,6 @@ import { WorkerLoginSection } from "./auth/WorkerLoginSection";
 import { RealtimeIssueBoard } from "./issues/RealtimeIssueBoard";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { SevereDisasterModal } from "./common/SevereDisasterModal";
-import { ExtrusionWorkReportModal } from "./extrusion/ExtrusionWorkReportModal";
 import { saveExtrusionReport } from "../services/extrusionProductionService";
 import {
   ShieldAlert,
@@ -99,6 +98,7 @@ const IssueEditModal = lazy(() => import("./issues/IssueEditModal").then(m => ({
 const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m => ({ default: m.IssueActionModal || m.default })));
 const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
 const HanulWorkReportModal = lazy(() => import("./HanulWorkReportModal").then(m => ({ default: m.HanulWorkReportModal || m.default })));
+const ExtrusionWorkReportModal = lazy(() => import("./extrusion/ExtrusionWorkReportModal").then(m => ({ default: m.ExtrusionWorkReportModal || m.default })));
 const SqLevelUpView = lazy(() => import("./sq/SqLevelUpView").then(m => ({ default: m.SqLevelUpView || m.default })));
 import { SqStatusBannerCard } from "./sq/SqStatusBannerCard";
 
@@ -729,18 +729,19 @@ export const AuthModal = () => {
   // 🌟 전 공정 부적합경보 전체 (관리목록 대장용 - 최신순 정렬)
   const allQualityAlerts = useMemo(() => {
     const list = [];
-    const seenKeys = new Set();
+    const keyToIdx = new Map();
 
     // 1. 4개 공정/협력사 부적합경보 (압출, 한울, 유성, 가공동)
     (externalQualityAlerts || []).forEach((item) => {
+      const idx = list.length;
       const key = `${(item.title || "").trim().toLowerCase()}_${item.startDate || item.date || ""}`;
-      seenKeys.add(key);
+      keyToIdx.set(key, idx);
       if (item.rawId) {
-        seenKeys.add(item.rawId);
+        keyToIdx.set(String(item.rawId), idx);
         const tsMatch = String(item.rawId).match(/(\d{13})/);
-        if (tsMatch) seenKeys.add(`ts_${tsMatch[1]}`);
+        if (tsMatch) keyToIdx.set(`ts_${tsMatch[1]}`, idx);
       }
-      if (item.id) seenKeys.add(item.id);
+      if (item.id) keyToIdx.set(String(item.id), idx);
       list.push(item);
     });
 
@@ -754,7 +755,51 @@ export const AuthModal = () => {
       const cleanId = String(item.id || item._docId || "");
       const tsMatch = cleanId.match(/(\d{13})/);
       const tsKey = tsMatch ? `ts_${tsMatch[1]}` : "";
-      if (seenKeys.has(key) || seenKeys.has(cleanId) || (tsKey && seenKeys.has(tsKey))) return;
+
+      const matchedIdx =
+        keyToIdx.get(cleanId) ??
+        (tsKey ? keyToIdx.get(tsKey) : undefined) ??
+        keyToIdx.get(key);
+
+      if (matchedIdx !== undefined && list[matchedIdx]) {
+        const existing = list[matchedIdx];
+        const hasIncomingAction = Boolean(
+          (item.actionResult && String(item.actionResult).trim().length > 0) ||
+          (Array.isArray(item.actionImages) && item.actionImages.length > 0) ||
+          (Array.isArray(item.replies) && item.replies.length > 0)
+        );
+        const hasExistingAction = Boolean(
+          (existing.actionResult && String(existing.actionResult).trim().length > 0) ||
+          (Array.isArray(existing.actionImages) && existing.actionImages.length > 0) ||
+          (Array.isArray(existing.replies) && existing.replies.length > 0)
+        );
+        if (hasIncomingAction && !hasExistingAction) {
+          list[matchedIdx] = {
+            ...existing,
+            actionResult: item.actionResult || existing.actionResult || "",
+            actionAuthor: item.actionAuthor || existing.actionAuthor || "",
+            actionAt: item.actionAt || existing.actionAt || "",
+            actionImages: Array.from(new Set([...(existing.actionImages || []), ...(item.actionImages || [])])),
+            replies: Array.isArray(item.replies) && item.replies.length > 0 ? item.replies : (existing.replies || []),
+            isResolved: Boolean(existing.isResolved || item.isResolved || item.actionResult),
+            status: "RESOLVED"
+          };
+        } else if (hasIncomingAction && hasExistingAction) {
+          list[matchedIdx] = {
+            ...existing,
+            actionResult: existing.actionResult || item.actionResult || "",
+            actionAuthor: existing.actionAuthor || item.actionAuthor || "",
+            actionAt: existing.actionAt || item.actionAt || "",
+            actionImages: Array.from(new Set([...(existing.actionImages || []), ...(item.actionImages || [])])),
+            replies: [...(existing.replies || []), ...(item.replies || [])].filter(
+              (r, i, arr) => arr.findIndex((o) => o.id === r.id || (o.content === r.content && o.author === r.author)) === i
+            ),
+            isResolved: true,
+            status: "RESOLVED"
+          };
+        }
+        return;
+      }
 
       list.push({
         ...item,
@@ -1042,12 +1087,13 @@ export const AuthModal = () => {
 
   const handleOpenEditIssue = (issue, e, fromList = false, isDetail = false) => {
     if (e) e.stopPropagation();
-    const cat = issue.category === "사내공지" ? "공지사항" : (issue.category || "품질경보");
     const issueDate = issue.date || issue.startDate || (issue.createdAt ? issue.createdAt.slice(0, 10) : "") || issue.expireDate || todayDateStr;
+    const defaultAuthor = issue.author || currentProfile?.name || "현장담당자";
+    const defaultActionAuthor = issue.actionAuthor || currentProfile?.name || issue.author || "현장담당자";
     const issueData = {
       category: issue.category || "품질경보",
       plant: issue.plant || "삼랑진공장",
-      author: issue.author || "",
+      author: defaultAuthor,
       authorTitle: issue.authorTitle || "",
       date: issueDate,
       startDate: issue.startDate || issueDate,
@@ -1062,11 +1108,17 @@ export const AuthModal = () => {
       content: issue.content || "",
       images: issue.images || [],
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor || "",
+      actionAuthor: defaultActionAuthor,
       actionImages: issue.actionImages || [],
       isResolved: Boolean(issue.isResolved),
       replies: issue.replies || []
     };
+
+    setActionOpinionForm((prev) => ({
+      ...prev,
+      author: prev.author || defaultActionAuthor,
+      actionDate: prev.actionDate || todayDateStr
+    }));
 
     setOpenedEditFromListModal(fromList);
     setNewIssueForm(issueData);
@@ -1089,7 +1141,13 @@ export const AuthModal = () => {
   const handleSaveNewIssue = async (e) => {
     if (e) e.preventDefault();
     if (isSavingIssue) return;
-    if (!newIssueForm.author || !newIssueForm.author.trim()) {
+    const resolvedAuthor =
+      (newIssueForm.author && newIssueForm.author.trim()) ||
+      (editingIssue?.author && String(editingIssue.author).trim()) ||
+      (newIssueForm.actionAuthor && newIssueForm.actionAuthor.trim()) ||
+      (currentProfile?.name && currentProfile.name.trim()) ||
+      "";
+    if (!resolvedAuthor) {
       alert("작성자를 직접 선택해 주세요.");
       return;
     }
@@ -1108,63 +1166,125 @@ export const AuthModal = () => {
         editingIssue?.raw?.date ||
         (editingIssue?.createdAt ? editingIssue.createdAt.slice(0, 10) : todayDateStr);
 
+      const hasActionResult = Boolean(
+        (newIssueForm.actionResult && newIssueForm.actionResult.trim().length > 0) ||
+        (Array.isArray(newIssueForm.actionImages) && newIssueForm.actionImages.length > 0)
+      );
+      const effectiveActionAuthor =
+        (newIssueForm.actionAuthor && newIssueForm.actionAuthor.trim()) ||
+        (editingIssue?.actionAuthor && String(editingIssue.actionAuthor).trim()) ||
+        (currentProfile?.name && currentProfile.name.trim()) ||
+        resolvedAuthor;
+      const nowTimeStr = new Date().toLocaleString("ko-KR", {
+        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false
+      }).replace(/\. /g, "-").replace(/\./g, "");
+
+      const isQualityCat =
+        newIssueForm.category === "부적합경보" ||
+        newIssueForm.category === "품질경보" ||
+        editingIssue?.category === "부적합경보" ||
+        editingIssue?.category === "품질경보";
+      const hadPreviousAction = Boolean(
+        editingIssue?.actionResult && String(editingIssue.actionResult).trim().length > 0
+      );
+
+      let syncedReplies = Array.isArray(newIssueForm.replies) ? [...newIssueForm.replies] : (Array.isArray(editingIssue?.replies) ? [...editingIssue.replies] : []);
+      if (hasActionResult && newIssueForm.actionResult && newIssueForm.actionResult.trim()) {
+        const trimmedRes = newIssueForm.actionResult.trim();
+        const alreadyInReplies = syncedReplies.some((r) => (r.content || "").trim() === trimmedRes);
+        if (!alreadyInReplies) {
+          syncedReplies.push({
+            id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            author: effectiveActionAuthor,
+            authorTitle: currentProfile?.title || "책임",
+            plant: newIssueForm.plant || editingIssue?.plant || "삼랑진공장",
+            attendanceStatus: "확인",
+            actionDate: todayDateStr,
+            content: trimmedRes,
+            files: newIssueForm.actionImages || [],
+            createdAt: nowTimeStr
+          });
+        }
+      }
+
+      const normalizedForm = {
+        ...newIssueForm,
+        author: resolvedAuthor,
+        actionAuthor: hasActionResult ? effectiveActionAuthor : (newIssueForm.actionAuthor || ""),
+        actionAt: hasActionResult ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
+        isResolved: hasActionResult ? true : Boolean(newIssueForm.isResolved),
+        status: hasActionResult ? "RESOLVED" : (editingIssue?.status || "ACTIVE"),
+        replies: syncedReplies
+      };
+
       if (idStr.startsWith("ext_q_")) {
         const targetId = editingIssue.rawId || idStr.replace("ext_q_", "");
+        const { raw: _ignoreRaw, ...restEditing } = editingIssue || {};
         const upObj = {
           ...(editingIssue.raw || {}),
-          ...newIssueForm,
+          ...restEditing,
+          ...normalizedForm,
           id: targetId,
           date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveExtrusionQualityIssue(upObj);
-        setExtrusionQualityAlerts((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+        setExtrusionQualityAlerts((prev) => prev.map((a) => (String(a.id) === String(targetId) ? upObj : a)));
       } else if (idStr.startsWith("hanul_q_")) {
         const targetId = editingIssue.rawId || idStr.replace("hanul_q_", "");
+        const { raw: _ignoreRaw, ...restEditing } = editingIssue || {};
         const upObj = {
           ...(editingIssue.raw || {}),
-          ...newIssueForm,
+          ...restEditing,
+          ...normalizedForm,
           id: targetId,
           date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveHanulQualityIssue(upObj);
-        setHanulQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+        setHanulQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? upObj : a)));
       } else if (idStr.startsWith("ys_q_")) {
         const targetId = editingIssue.rawId || idStr.replace("ys_q_", "");
+        const { raw: _ignoreRaw, ...restEditing } = editingIssue || {};
         const upObj = {
           ...(editingIssue.raw || {}),
-          ...newIssueForm,
+          ...restEditing,
+          ...normalizedForm,
           id: targetId,
           date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveYuseongQualityIssue(upObj);
-        setYuseongQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+        setYuseongQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? upObj : a)));
       } else if (idStr.startsWith("mach_q_")) {
         const targetId = editingIssue.rawId || idStr.replace("mach_q_", "");
+        const { raw: _ignoreRaw, ...restEditing } = editingIssue || {};
         const upObj = {
           ...(editingIssue.raw || {}),
-          ...newIssueForm,
+          ...restEditing,
+          ...normalizedForm,
           id: targetId,
           date: explicitDate,
           updatedAt: new Date().toISOString()
         };
         await saveMachiningQualityIssue(upObj);
-        setMachiningQualityIssues((prev) => prev.map((a) => (a.id === targetId ? upObj : a)));
+        setMachiningQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? upObj : a)));
       } else {
         const itemToSave = {
           ...(editingIssue || {}),
-          ...newIssueForm,
+          ...normalizedForm,
           id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
-          category: newIssueForm.category || editingIssue?.category || "오픈이슈",
+          category: normalizedForm.category || editingIssue?.category || "오픈이슈",
           isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
+          isClosedByAdmin: false,
           deletedBy: "",
           deletedAt: "",
-          isManuallyRestored: Boolean(editingIssue?.isManuallyRestored),
           isFirstScreenOrigin: true, // 🌟 첫 화면에서 등록된 공식 이슈임을 명시
           origin: "FIRST_SCREEN"
         };
+        if (editingIssue?.isManuallyRestored !== undefined) {
+          itemToSave.isManuallyRestored = Boolean(editingIssue.isManuallyRestored);
+        }
         if (editingIssue?.createdAt) {
           itemToSave.createdAt = editingIssue.createdAt;
         } else if (!itemToSave.createdAt) {
@@ -1187,6 +1307,19 @@ export const AuthModal = () => {
         }
       }
 
+      if (isQualityCat && hasActionResult && !hadPreviousAction) {
+        sendQualityActionTelegram(
+          { ...(editingIssue || {}), ...normalizedForm, category: "부적합경보" },
+          {
+            actionAuthor: effectiveActionAuthor,
+            actionContent: normalizedForm.actionResult || "조치 사진 첨부 완료",
+            images: normalizedForm.actionImages || []
+          }
+        ).catch((err) => {
+          console.warn("Telegram action notification error:", err);
+        });
+      }
+
       // Modal close handling: close both edit and list modal so the user sees the updated item immediately on the first screen
       setIsIssueModalOpen(false);
       setEditingIssue(null);
@@ -1194,7 +1327,13 @@ export const AuthModal = () => {
       setIsListModalOpen(false);
       setOpenedEditFromListModal(false);
 
-      setRestoreToast(editingIssue ? "✅ 항목이 성공적으로 수정되었습니다." : "✅ 새로운 항목이 등록되었습니다.");
+      setRestoreToast(
+        hasActionResult && isQualityCat
+          ? "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다."
+          : editingIssue
+          ? "✅ 항목이 성공적으로 수정되었습니다."
+          : "✅ 새로운 항목이 등록되었습니다."
+      );
       setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Save issue error:", err);
@@ -1777,9 +1916,127 @@ export const AuthModal = () => {
       || "현장담당자";
     const authorObj = allWorkers.find((w) => w.name === authorName);
     const targetDate = actionOpinionForm.actionDate || todayDateStr;
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
 
     if (editingIssue?.id) {
       try {
+        const idStr = String(editingIssue.id);
+        const newReplyObj = {
+          id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          author: authorName,
+          authorTitle: authorObj?.title || "선임",
+          plant: authorObj?.plantName || editingIssue.plant || "삼랑진공장",
+          attendanceStatus: "확인",
+          actionDate: targetDate,
+          content: content || "파일이 첨부되었습니다.",
+          files: opinionFiles,
+          createdAt: nowStr
+        };
+        const nextReplies = [...(editingIssue.replies || []), newReplyObj];
+        const nextActionImages = Array.from(new Set([...(editingIssue.actionImages || []), ...opinionFiles]));
+        const nextActionResult = content || editingIssue.actionResult || "조치 사진 첨부 완료";
+
+        if (idStr.startsWith("ext_q_") || idStr.startsWith("hanul_q_") || idStr.startsWith("ys_q_") || idStr.startsWith("mach_q_")) {
+          const { raw: _ignoreRaw, ...restEditing } = editingIssue;
+          const baseRaw = editingIssue.raw || {};
+          if (idStr.startsWith("ext_q_")) {
+            const targetId = editingIssue.rawId || idStr.replace("ext_q_", "");
+            const updatedObj = {
+              ...baseRaw,
+              ...restEditing,
+              id: targetId,
+              actionResult: nextActionResult,
+              actionAuthor: authorName,
+              actionAt: nowStr,
+              actionImages: nextActionImages,
+              replies: nextReplies,
+              status: "RESOLVED",
+              isResolved: true,
+              updatedAt: new Date().toISOString()
+            };
+            await saveExtrusionQualityIssue(updatedObj);
+            setExtrusionQualityAlerts((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+            setEditingIssue({ ...editingIssue, ...updatedObj, id: idStr, rawId: targetId, raw: updatedObj });
+          } else if (idStr.startsWith("hanul_q_")) {
+            const targetId = editingIssue.rawId || idStr.replace("hanul_q_", "");
+            const updatedObj = {
+              ...baseRaw,
+              ...restEditing,
+              id: targetId,
+              actionResult: nextActionResult,
+              actionAuthor: authorName,
+              actionAt: nowStr,
+              actionImages: nextActionImages,
+              replies: nextReplies,
+              status: "RESOLVED",
+              isResolved: true,
+              updatedAt: new Date().toISOString()
+            };
+            await saveHanulQualityIssue(updatedObj);
+            setHanulQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+            setEditingIssue({ ...editingIssue, ...updatedObj, id: idStr, rawId: targetId, raw: updatedObj });
+          } else if (idStr.startsWith("ys_q_")) {
+            const targetId = editingIssue.rawId || idStr.replace("ys_q_", "");
+            const updatedObj = {
+              ...baseRaw,
+              ...restEditing,
+              id: targetId,
+              actionResult: nextActionResult,
+              actionAuthor: authorName,
+              actionAt: nowStr,
+              actionImages: nextActionImages,
+              replies: nextReplies,
+              status: "RESOLVED",
+              isResolved: true,
+              updatedAt: new Date().toISOString()
+            };
+            await saveYuseongQualityIssue(updatedObj);
+            setYuseongQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+            setEditingIssue({ ...editingIssue, ...updatedObj, id: idStr, rawId: targetId, raw: updatedObj });
+          } else if (idStr.startsWith("mach_q_")) {
+            const targetId = editingIssue.rawId || idStr.replace("mach_q_", "");
+            const updatedObj = {
+              ...baseRaw,
+              ...restEditing,
+              id: targetId,
+              actionResult: nextActionResult,
+              actionAuthor: authorName,
+              actionAt: nowStr,
+              actionImages: nextActionImages,
+              replies: nextReplies,
+              status: "RESOLVED",
+              isResolved: true,
+              updatedAt: new Date().toISOString()
+            };
+            await saveMachiningQualityIssue(updatedObj);
+            setMachiningQualityIssues((prev) => prev.map((a) => (String(a.id) === String(targetId) ? updatedObj : a)));
+            setEditingIssue({ ...editingIssue, ...updatedObj, id: idStr, rawId: targetId, raw: updatedObj });
+          }
+
+          sendQualityActionTelegram({ ...editingIssue, category: "부적합경보" }, {
+            actionAuthor: authorName,
+            actionContent: nextActionResult,
+            images: nextActionImages
+          }).catch((err) => {
+            console.warn("Telegram action notification error:", err);
+          });
+
+          setNewIssueForm((prev) => ({
+            ...prev,
+            replies: nextReplies,
+            isResolved: true,
+            actionResult: nextActionResult,
+            actionAuthor: authorName,
+            actionImages: nextActionImages
+          }));
+          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
+          setRestoreToast("✅ 부적합경보 조치결과가 성공적으로 등록되었습니다.");
+          setTimeout(() => setRestoreToast(""), 3500);
+          return;
+        }
+
         const updated = await addIssueReply(editingIssue.id, {
           author: authorName,
           authorTitle: authorObj?.title || "선임",
@@ -1788,12 +2045,24 @@ export const AuthModal = () => {
           actionDate: targetDate,
           content: content || "파일이 첨부되었습니다.",
           files: opinionFiles
-        });
+        }, editingIssue);
         if (updated) {
-          setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+          setUrgentIssues((prev) => {
+            const hasMatch = prev.some((it) => String(it.id) === String(editingIssue.id) || (it._docId && String(it._docId) === String(editingIssue.id)));
+            return hasMatch
+              ? prev.map((it) => (String(it.id) === String(editingIssue.id) || (it._docId && String(it._docId) === String(editingIssue.id)) ? updated : it))
+              : [updated, ...prev];
+          });
           setEditingIssue(updated);
-          setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
-          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [], author: "" }));
+          setNewIssueForm((prev) => ({
+            ...prev,
+            replies: updated.replies || [],
+            isResolved: updated.isResolved,
+            actionResult: updated.actionResult,
+            actionAuthor: updated.actionAuthor || prev.actionAuthor,
+            actionImages: updated.actionImages || prev.actionImages
+          }));
+          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
           setRestoreToast(isQualityAlert ? "✅ 부적합경보 조치결과가 성공적으로 등록되었습니다." : "✅ 의견이 성공적으로 등록되었습니다.");
           setTimeout(() => setRestoreToast(""), 3500);
         }
@@ -1802,9 +2071,6 @@ export const AuthModal = () => {
         alert(isQualityAlert ? "조치결과 등록 중 오류가 발생했습니다." : "의견 등록 중 오류가 발생했습니다.");
       }
     } else {
-      const nowStr = new Date().toLocaleString("ko-KR", {
-        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false
-      }).replace(/\. /g, "-").replace(/\./g, "");
 
       const newOp = {
         id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -3199,11 +3465,13 @@ export const AuthModal = () => {
 
       {/* 🏭 압출 작업일보 신규 작성 모달 */}
       {isExtrusionReportModalOpen && (
-        <ExtrusionWorkReportModal
-          isOpen={isExtrusionReportModalOpen}
-          onClose={() => setIsExtrusionReportModalOpen(false)}
-          onSave={handleSaveExtrusionReport}
-        />
+        <Suspense fallback={null}>
+          <ExtrusionWorkReportModal
+            isOpen={isExtrusionReportModalOpen}
+            onClose={() => setIsExtrusionReportModalOpen(false)}
+            onSave={handleSaveExtrusionReport}
+          />
+        </Suspense>
       )}
 
       {/* 📋 한울 외주가공 작업일보 신규 작성 모달 (9BQC / LQ2a) */}

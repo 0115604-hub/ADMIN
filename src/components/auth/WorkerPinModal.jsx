@@ -100,7 +100,7 @@ import {
 } from "../../services/urgentIssueService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
-import HanulWorkReportModal from "../HanulWorkReportModal";
+const HanulWorkReportModal = lazy(() => import("../HanulWorkReportModal"));
 import { isExcludedFromWorkReport } from "../../services/hanulWorkReportService";
 import { isExcludedFromMachiningWorkReport } from "../../services/machiningWorkReportService";
 const MachiningWorkReportModal = lazy(() => import("../machining/MachiningWorkReportModal"));
@@ -2808,16 +2808,18 @@ export const WorkerPinModal = ({
 
       {/* 📋 한울 외주가공 작업일보 모달 (9BQC G/RUN / LQ2a Hood Side) */}
       {isHanulWorkReportOpen && (
-        <HanulWorkReportModal
-          isOpen={isHanulWorkReportOpen}
-          onClose={() => setIsHanulWorkReportOpen(false)}
-          initialProject={hanulReportProject}
-          initialWorker={
-            selectedUser?.name && !isExcludedFromWorkReport(selectedUser.name)
-              ? selectedUser.name
-              : "박종미"
-          }
-        />
+        <Suspense fallback={null}>
+          <HanulWorkReportModal
+            isOpen={isHanulWorkReportOpen}
+            onClose={() => setIsHanulWorkReportOpen(false)}
+            initialProject={hanulReportProject}
+            initialWorker={
+              selectedUser?.name && !isExcludedFromWorkReport(selectedUser.name)
+                ? selectedUser.name
+                : "박종미"
+            }
+          />
+        </Suspense>
       )}
 
       {/* 📋 삼랑진공장 가공동 작업일보 모달 (JA / NX4 / NX4a / HR G/RUN) */}

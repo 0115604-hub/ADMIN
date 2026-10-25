@@ -391,6 +391,10 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
       const authorTitle = currentProfile?.title || "책임";
       const isBroadcast = mode === "GLOBAL";
 
+      const hasAction = Boolean(
+        (form.actionResult && form.actionResult.trim().length > 0) ||
+        (Array.isArray(form.actionImages) && form.actionImages.length > 0)
+      );
       const payload = {
         ...form,
         company: companyLabel,
@@ -398,7 +402,9 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
         plant: isOryukManager || isYuseongManager || isSeolManager ? "삼랑진공장" : "한림공장",
         author: authorName,
         authorTitle,
-        status: "ACTIVE",
+        status: hasAction ? "RESOLVED" : "ACTIVE",
+        isResolved: hasAction,
+        actionAuthor: hasAction ? authorName : "",
         broadcastScope: isBroadcast ? "GLOBAL" : "SITE_ONLY",
         isFirstScreenBroadcast: isBroadcast,
         isFirstScreenOrigin: isBroadcast

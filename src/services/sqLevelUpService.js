@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+﻿import { db } from "../firebase";
 import { collection, doc, setDoc, getDocs, onSnapshot } from "firebase/firestore";
 import * as XLSX from "xlsx";
 import { SQ_LEVEL_UP_METADATA, SQ_LEVEL_UP_ITEMS } from "../data/sqLevelUpMasterData";

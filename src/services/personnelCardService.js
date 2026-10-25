@@ -318,15 +318,10 @@ export const normalizeStandardCompany = (comp) => {
   return str;
 };
 
-// 부서 정규화 헬퍼 (협력업체인 경우 업체명 반환, 그 외 생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 물류팀, 관리팀 7개로 표준화)
+// 부서 정규화 헬퍼 (생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 물류팀, 관리팀 7개로 표준화)
 export const normalizeStandardDept = (dept, comp) => {
-  const normComp = comp ? normalizeStandardCompany(comp) : "";
-  if (normComp && isPartnerCompany(normComp)) {
-    return normComp;
-  }
   if (!dept) return "생산팀";
   const str = String(dept).trim();
-  if (isPartnerCompany(str)) return normalizeStandardCompany(str);
   if (DEPARTMENTS_LIST.includes(str)) return str;
   if (str === "물류팀" || str === "물류" || str.includes("물류") || str.includes("출하") || str.includes("창고") || str.includes("자재")) return "물류팀";
   if (str === "설비보전팀" || str === "설비보전" || str === "설비팀" || str === "보전팀" || str === "공무팀" || str.includes("설비") || str.includes("보전") || str.includes("공무")) return "설비보전팀";
@@ -335,6 +330,7 @@ export const normalizeStandardDept = (dept, comp) => {
   if (str === "압출관리팀" || str === "압출동" || (str.includes("압출") && !str.includes("생산"))) return "압출관리팀";
   if (str === "가공관리팀" || str === "가공동" || str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
   if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("기술") || str.includes("총괄")) return "관리팀";
+  if (isPartnerCompany(str)) return "생산팀";
   if (str.includes("생산")) return "생산팀";
   return "생산팀";
 };
@@ -342,8 +338,7 @@ export const normalizeStandardDept = (dept, comp) => {
 // 직책/직위 정규화 헬퍼 (사원, 반장, 대리, 선임, 책임, 이사, 대표이사)
 export const normalizeStandardPosition = (pos, comp) => {
   if (!pos) {
-    const normComp = comp ? normalizeStandardCompany(comp) : "";
-    return isPartnerCompany(normComp) ? "대표이사" : "사원";
+    return "사원";
   }
   const str = String(pos).trim();
   if (POSITIONS_LIST.includes(str)) return str;
@@ -558,26 +553,26 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   }
 
   const merged = { ...worker, ...existingCard, ...(localSavedCard || {}) };
-  const isPartner = isPartnerCompany(company) || isPartnerCompany(name);
 
-  // 부서 우선순위: 저장된 카드(merged.dept) > worker.dept > (협력업체는 업체명, 그 외는 생산팀)
+  // 부서 우선순위: 저장된 카드(merged.dept) > worker.dept > 생산팀
   const dept = merged.dept
     ? normalizeStandardDept(merged.dept, company)
-    : (isPartner ? company : normalizeStandardDept(worker.dept || "생산팀", company));
+    : normalizeStandardDept(worker.dept || "생산팀", company);
 
-  // ⭐ 직위/직급 우선순위: 저장된 카드(merged.position) > worker.position > (협력업체 대표는 대표이사, 그 외는 사원)
-  // 사용자가 인사카드에서 직급(사원, 선임, 책임, 이사, 대표이사)을 선택/수정 저장한 경우 그 직급이 최우선 적용됨
+  // ⭐ 직위/직급 우선순위: 저장된 카드(merged.position) > worker.position > 기본 사원
   const position = merged.position
     ? normalizeStandardPosition(merged.position, company)
     : (worker.position
         ? normalizeStandardPosition(worker.position, company)
-        : (isPartner && !worker.isFieldWorker ? "대표이사" : (name === "공영국" ? "선임" : ["심임대", "이상은", "박종미", "최현영"].includes(name) ? "선임" : "사원")));
+        : (name === "공영국" ? "선임" : ["심임대", "이상은", "박종미", "최현영"].includes(name) ? "선임" : "사원"));
 
   // 기본 주공정 추정 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
   // ⭐ 인사카드에 관리자가 선택되어 있지 않으면 무조건 일반작업자 제조공정 배정
   let defaultMainProcess = merged.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
-    if (isWorkerManagerRole(merged)) {
+    if (worker.line && STANDARD_PROCESS_LIST.includes(String(worker.line).trim())) {
+      defaultMainProcess = String(worker.line).trim();
+    } else if (isWorkerManagerRole(merged)) {
       defaultMainProcess = "관리자";
     } else {
       const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
@@ -670,12 +665,23 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   };
 };
 
+// 인메모리 인사카드 캐시 및 삭제된 카드 키 추적기
+let memoryPersonnelCardsMap = null;
+const deletedPersonnelCardKeys = new Set();
+
 // 로컬 스토리지에서 전체 인사카드 맵 로드
 export const getLocalPersonnelCardsMap = () => {
+  if (memoryPersonnelCardsMap && typeof memoryPersonnelCardsMap === "object") {
+    return { ...memoryPersonnelCardsMap };
+  }
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        memoryPersonnelCardsMap = parsed;
+        return { ...parsed };
+      }
     }
   } catch (e) {
     console.warn("Failed to load local personnel cards map:", e);
@@ -683,21 +689,40 @@ export const getLocalPersonnelCardsMap = () => {
   return {};
 };
 
-// 로컬 스토리지에 인사카드 맵 저장 (5개사 독립 로컬 키 동시 분리 보관)
+// 로컬 스토리지에 인사카드 맵 저장 (중복 키 제거로 용량 최적화 및 QuotaExceeded 원천 방지)
 export const saveLocalPersonnelCardsMap = (cardsMap) => {
   try {
     const safeMap = cardsMap || {};
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(safeMap));
-    const byComp = { "오륙": {}, "유성": {}, "조영": {}, "한울": {}, "부림텍": {} };
+    const canonicalMap = {};
     Object.entries(safeMap).forEach(([key, card]) => {
       if (!card || !card.name) return;
-      const c = cleanCompanyName(card.company || key.split("_")[0] || "오륙");
-      if (!byComp[c]) byComp[c] = {};
-      byComp[c][`${c}_${card.name}`] = card;
+      const cleanComp = cleanCompanyName(card.company || key.split("_")[0] || "오륙");
+      const cleanName = String(card.name).trim();
+      const canonicalKey = `${cleanComp}_${cleanName}`;
+      if (deletedPersonnelCardKeys.has(canonicalKey)) return;
+      canonicalMap[canonicalKey] = card;
     });
-    Object.entries(byComp).forEach(([comp, compMap]) => {
-      localStorage.setItem(getCompanyCardsStorageKey(comp), JSON.stringify(compMap));
+    memoryPersonnelCardsMap = canonicalMap;
+
+    // 불필요한 중복 업체별 카드 스토리지 키 영구 정리 (용량 확보)
+    ["오륙", "유성", "조영", "한울", "부림텍"].forEach((comp) => {
+      try {
+        localStorage.removeItem(getCompanyCardsStorageKey(comp));
+      } catch (e) {}
     });
+
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(canonicalMap));
+    } catch (quotaErr) {
+      // 용량 초과 시 사진(photoUrl) 제외한 경량 메타데이터만 로컬 스토리지에 보관하고 인메모리에는 원본 유지
+      const lightMap = {};
+      Object.entries(canonicalMap).forEach(([k, v]) => {
+        const copy = { ...v };
+        delete copy.photoUrl;
+        lightMap[k] = copy;
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lightMap));
+    }
   } catch (e) {
     console.warn("Failed to save local personnel cards map:", e);
   }
@@ -706,17 +731,21 @@ export const saveLocalPersonnelCardsMap = (cardsMap) => {
 // 개별 근로자 인사카드 저장 (Firestore & LocalStorage)
 export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
   try {
-    const cardKey = String(workerIdOrKey || `${cardData.company}_${cardData.name}`).trim();
+    const normComp = normalizeStandardCompany(cardData.company);
+    const cleanComp = cleanCompanyName(normComp);
+    const cleanName = String(cardData.name || "").trim();
+    const canonicalKey = `${cleanComp}_${cleanName}`;
+    deletedPersonnelCardKeys.delete(canonicalKey);
+
     const tenure = calculateTenureFromJoinDate(cardData.joinDate);
     const processYear = calculateProcessYearFromJoinDate(cardData.joinDate);
 
-    const normComp = normalizeStandardCompany(cardData.company);
-    const isPartner = isPartnerCompany(normComp);
     const cleanData = {
       ...cardData,
+      name: cleanName,
       company: normComp,
-      dept: cardData.dept ? normalizeStandardDept(cardData.dept, normComp) : (isPartner ? normComp : "생산팀"),
-      position: cardData.position ? normalizeStandardPosition(cardData.position, normComp) : (isPartner ? "대표이사" : "사원"),
+      dept: normalizeStandardDept(cardData.dept || "생산팀", normComp),
+      position: normalizeStandardPosition(cardData.position || "사원", normComp),
       nationality: cardData.nationality || "대한민국",
       nationalityOther: cardData.nationality === "기타" ? (cardData.nationalityOther || "") : "",
       skillGrade: getSkillMeta(cardData.skillLevel).grade,
@@ -727,26 +756,19 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. LocalStorage Map 업데이트
+    // 1. LocalStorage & 인메모리 Map 업데이트
     const map = getLocalPersonnelCardsMap();
-    map[cardKey] = cleanData;
-    const cleanComp = cleanCompanyName(normComp);
-    map[`${cleanComp}_${cleanData.name}`] = cleanData;
-    map[`${normComp}_${cleanData.name}`] = cleanData;
-    if (cardData.company) {
-      map[`${cardData.company}_${cleanData.name}`] = cleanData;
-      map[`${cleanCompanyName(cardData.company)}_${cleanData.name}`] = cleanData;
-    }
+    map[canonicalKey] = cleanData;
     saveLocalPersonnelCardsMap(map);
 
     // 2. Custom Window Event
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_personnel_card_updated", { detail: { cardKey, cardData: cleanData } }));
+      window.dispatchEvent(new CustomEvent("oryuk_personnel_card_updated", { detail: { cardKey: canonicalKey, cardData: cleanData } }));
     }
 
     // 3. Firestore 저장 (personnel_cards collection)
     if (db) {
-      const sanitizedDocId = cardKey.replace(/[^\w가-힣]/g, "_");
+      const sanitizedDocId = canonicalKey.replace(/[^\w가-힣]/g, "_");
       const ref = doc(db, "personnel_cards", sanitizedDocId);
       await setDoc(ref, sanitizeForFirestore(cleanData), { merge: true });
     }
@@ -769,16 +791,15 @@ export const subscribePersonnelCards = (callback) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        const cardsMap = {};
+        const cardsMap = { ...getLocalPersonnelCardsMap() };
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data && data.name) {
             const cleanComp = cleanCompanyName(data.company);
-            const rawComp = data.company || "";
-            cardsMap[`${cleanComp}_${data.name}`] = data;
-            if (rawComp) {
-              cardsMap[`${rawComp}_${data.name}`] = data;
-            }
+            const cleanName = String(data.name).trim();
+            const canonicalKey = `${cleanComp}_${cleanName}`;
+            if (deletedPersonnelCardKeys.has(canonicalKey)) return;
+            cardsMap[canonicalKey] = data;
           }
         });
         saveLocalPersonnelCardsMap(cardsMap);
@@ -797,24 +818,51 @@ export const subscribePersonnelCards = (callback) => {
   }
 };
 
-// 개별 근로자 인사카드 영구 삭제 (Firestore & LocalStorage)
+// 개별 근로자 인사카드 영구 삭제 (Firestore & LocalStorage - 모든 변형 키 일괄 영구 삭제)
 export const deleteWorkerPersonnelCard = async (companyName, workerName) => {
   try {
     const cleanComp = cleanCompanyName(companyName);
+    const normComp = normalizeStandardCompany(companyName);
     const rawComp = String(companyName || "").trim();
-    const cardKey = `${cleanComp}_${workerName}`;
+    const cleanName = String(workerName || "").trim();
+    const canonicalKey = `${cleanComp}_${cleanName}`;
+
+    deletedPersonnelCardKeys.add(canonicalKey);
+
+    const candidateKeys = Array.from(new Set([
+      canonicalKey,
+      `${normComp}_${cleanName}`,
+      `${rawComp}_${cleanName}`,
+      `주_${cleanComp}_${cleanName}`,
+      `_주_${cleanComp}_${cleanName}`,
+      `(주)${cleanComp}_${cleanName}`,
+      `주)${cleanComp}_${cleanName}`
+    ]));
+
     const map = getLocalPersonnelCardsMap();
-    delete map[cardKey];
-    delete map[`${rawComp}_${workerName}`];
+    candidateKeys.forEach((k) => {
+      delete map[k];
+    });
+    if (memoryPersonnelCardsMap) {
+      candidateKeys.forEach((k) => {
+        delete memoryPersonnelCardsMap[k];
+      });
+    }
     saveLocalPersonnelCardsMap(map);
 
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_personnel_card_updated", { detail: { cardKey, deleted: true } }));
+      window.dispatchEvent(new CustomEvent("oryuk_personnel_card_updated", { detail: { cardKey: canonicalKey, company: cleanComp, name: cleanName, deleted: true } }));
     }
 
     if (db) {
-      const sanitizedDocId = cardKey.replace(/[^\w가-힣]/g, "_");
-      await deleteDoc(doc(db, "personnel_cards", sanitizedDocId));
+      const docIdsToDelete = Array.from(new Set(
+        candidateKeys.map((k) => k.replace(/[^\w가-힣]/g, "_")).filter(Boolean)
+      ));
+      await Promise.all(
+        docIdsToDelete.map((docId) =>
+          deleteDoc(doc(db, "personnel_cards", docId)).catch(() => {})
+        )
+      );
     }
     return true;
   } catch (err) {

@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+﻿import { db } from "../firebase";
 import { collection, doc, setDoc, onSnapshot } from "firebase/firestore";
 
 const INSPECTION_COLLECTION = "sq_digital_inspections";

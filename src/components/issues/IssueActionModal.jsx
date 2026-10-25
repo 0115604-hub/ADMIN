@@ -49,6 +49,8 @@ export const IssueActionModal = ({
     }
   }, [issue]);
 
+  const lastSubmitTimeRef = useRef(0);
+
   if (!actionModalData?.isOpen || !issue || typeof document === "undefined") {
     return null;
   }
@@ -63,8 +65,6 @@ export const IssueActionModal = ({
     : Array.isArray(issue.causeImages) && issue.causeImages.length > 0
     ? issue.causeImages
     : [];
-
-  const lastSubmitTimeRef = useRef(0);
 
   const getEffectiveSubmissionData = () => {
     return {

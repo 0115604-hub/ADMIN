@@ -24,7 +24,8 @@ export const PANEL_KEYS = {
   EXTRUSION_DOWNTIME: "extrusion_downtime",
   WORK_LOGS: "work_logs",
   ABNORMALITY_4M: "abnormality_4m",
-  WORK_REPORT_TEMPLATES: "work_report_templates"
+  WORK_REPORT_TEMPLATES: "work_report_templates",
+  TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge"
 };
 
 // 기본 사내 일반 관리자 패널 목록 (전체 기본 풀 세트)
@@ -70,17 +71,19 @@ export const MANAGER_PANEL_CONFIG = {
   "hal_test": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
     PANEL_KEYS.WORK_REPORT_TEMPLATES
   ],
   "TEST": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
     PANEL_KEYS.WORK_REPORT_TEMPLATES
   ]
 };
 
 // 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
-export const PANEL_CONFIG_VERSION = "20261020_v3";
+export const PANEL_CONFIG_VERSION = "20261022_v4";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

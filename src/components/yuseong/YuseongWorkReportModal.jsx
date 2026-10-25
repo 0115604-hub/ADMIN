@@ -86,6 +86,7 @@ export const YuseongWorkReportModal = ({
   // Downtime & Notes
   const [downtimeMinutes, setDowntimeMinutes] = useState("");
   const [machineTrouble, setMachineTrouble] = useState("");
+  const [downtimeEvents, setDowntimeEvents] = useState(() => Array.isArray(editReport?.downtimeEvents) ? editReport.downtimeEvents : []);
   const [notes, setNotes] = useState("");
 
   // UI State
@@ -116,6 +117,7 @@ export const YuseongWorkReportModal = ({
       setTpmActionNote(editReport.tpmActionNote || "");
       setDowntimeMinutes(editReport.downtimeMinutes || "");
       setMachineTrouble(editReport.machineTrouble || "");
+      setDowntimeEvents(Array.isArray(editReport.downtimeEvents) ? editReport.downtimeEvents : []);
       setNotes(editReport.notes || "");
       setCurrentStep("report"); // Editing starts at report
     } else {
@@ -125,6 +127,7 @@ export const YuseongWorkReportModal = ({
       setCurrentStep("tpm"); // New report always starts with Step 4 TPM
       setTpmChecks(createDefaultYuseongTpmChecks());
       setTpmActionNote("");
+      setDowntimeEvents([]);
     }
   }, [editReport, initialProject, initialWorker, isOpen]);
 

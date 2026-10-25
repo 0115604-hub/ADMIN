@@ -130,16 +130,14 @@ export const parseSafeTimestamp = (val) => {
   if (!isNaN(t) && t > 0) return t;
 
   // Replace dots: "2026. 10. 02. 07:50" -> "2026-10-02T07:50:00"
-  const clean = str.replace(/\. /g, "-").replace(/\./g, "-").replace(/\s+/, "T");
-  t = new Date(clean).getTime();
-  if (!isNaN(t) && t > 0) return t;
-
-  const m = str.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  const m = str.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})(?:[.\s일]*(\d{1,2}):(\d{1,2}))?/);
   if (m) {
     const y = parseInt(m[1], 10);
     const mon = parseInt(m[2], 10) - 1;
     const d = parseInt(m[3], 10);
-    return new Date(y, mon, d, 12, 0, 0).getTime();
+    const hr = m[4] ? parseInt(m[4], 10) : 12;
+    const min = m[5] ? parseInt(m[5], 10) : 0;
+    return new Date(y, mon, d, hr, min, 0).getTime();
   }
 
   const idMatch = str.match(/2026\d{4}|\d{10,13}/);
@@ -298,8 +296,70 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
   ];
 }
 
+// ⭐ 2026년 10월 18일 이하(<= 2026-10-18) 전자결재 문서 판별 헬퍼
+export const APPROVAL_AUTO_COMPLETE_CUTOFF_DATE = "2026-10-18";
+export const APPROVAL_AUTO_COMPLETE_CUTOFF_TS = new Date(2026, 9, 18, 23, 59, 59, 999).getTime();
+
+export function isApprovalDocOnOrBeforeOct18(d) {
+  if (!d || typeof d !== "object") return false;
+
+  // 1. 명시적 workDate 확인 (예: "2026-10-18", "2026. 10. 17.", "2026-09-28")
+  if (d.workDate && typeof d.workDate === "string") {
+    const m = d.workDate.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
+    if (m) {
+      const ymd = `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, "0")}-${String(parseInt(m[3], 10)).padStart(2, "0")}`;
+      return ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE;
+    }
+  }
+
+  // 1-b. createdAt 문자열 직접 날짜 추출 확인 (예: "2026. 10. 15. 14:30")
+  if (d.createdAt && typeof d.createdAt === "string") {
+    const cm = d.createdAt.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
+    if (cm) {
+      const ymd = `${cm[1]}-${String(parseInt(cm[2], 10)).padStart(2, "0")}-${String(parseInt(cm[3], 10)).padStart(2, "0")}`;
+      if (ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return true;
+    }
+  }
+
+  // 2. 문서 ID 내 날짜(2026MMDD) 확인 (예: appr_ot_oryuk_20261018)
+  if (d.id && typeof d.id === "string") {
+    const idDateMatch = d.id.match(/(2026\d{4})/);
+    if (idDateMatch) {
+      return Number(idDateMatch[1]) <= 20261018;
+    }
+  }
+
+  // 3. 제목 내 날짜("10월 18일", "9월 20일" 등) 확인
+  if (d.title && typeof d.title === "string") {
+    const titleDateMatch = d.title.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+    if (titleDateMatch) {
+      const y = titleDateMatch[1] ? parseInt(titleDateMatch[1], 10) : 2026;
+      const mon = parseInt(titleDateMatch[2], 10);
+      const day = parseInt(titleDateMatch[3], 10);
+      const ymd = `${y}-${String(mon).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      if (ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return true;
+      if (d.id?.startsWith("appr_ot_") && ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
+    }
+  }
+
+  // 4. 기안일시(createdAt) 또는 정렬 타임스탬프 기준 확인 (2026-10-18 23:59:59 이하)
+  if (d.createdAt) {
+    const tCreated = parseSafeTimestamp(d.createdAt);
+    if (tCreated > 0 && tCreated <= APPROVAL_AUTO_COMPLETE_CUTOFF_TS) {
+      return true;
+    }
+  }
+
+  const sortTs = getApprovalDocSortTimestamp(d);
+  if (sortTs > 0 && sortTs <= APPROVAL_AUTO_COMPLETE_CUTOFF_TS) {
+    return true;
+  }
+
+  return false;
+}
+
 // Clean and Normalize Document: calculate true step statuses without altering user document data
-// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장
+// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장 (단, 10월 18일까지의 문서는 모두 결재완료 4/4 보장)
 export function normalizeApprovalDoc(d) {
   if (!d || typeof d !== "object") return d;
   const isHanlim = d.plant === "한림공장";
@@ -370,17 +430,15 @@ export function normalizeApprovalDoc(d) {
     return st;
   });
 
-  // ⭐ 과거 9월 특근보고서 (완료된 과거 특근 내역) 결재완료(4/4) 보장
-  const isPastSeptemberReport = (
-    (d.workDate && typeof d.workDate === "string" && d.workDate < "2026-10-01") ||
-    (d.id && typeof d.id === "string" && d.id.startsWith("appr_ot_") && d.id.includes("202609")) ||
-    (d.title && typeof d.title === "string" && d.title.includes("9월") && (d.title.includes("특근") || d.title.includes("근태") || d.typeName?.includes("특근")))
-  ) && d.status !== "REJECTED" && d.status !== "HOLD";
+  // ⭐ 10월 18일까지(<= 2026-10-18)의 모든 전자결재문서 결재완료(4/4) 보장
+  const isOnOrBeforeOct18 = isApprovalDocOnOrBeforeOct18(d) && d.status !== "REJECTED";
 
-  if (isPastSeptemberReport) {
-    const docDate = d.workDate ? `${d.workDate} 18:00:00` : (d.createdAt || "2026-09-30 18:00:00");
-    const pastSteps = fixedSteps.map((st, idx) => ({
+  if (isOnOrBeforeOct18) {
+    const docDate = d.workDate ? `${d.workDate} 18:00` : (d.createdAt || "2026-10-18 18:00");
+    const completedSteps = fixedSteps.map((st, idx) => ({
       ...st,
+      name: idx === 2 && st.name?.includes("이명재") ? "이명재" : (idx === 3 && (!st.name || st.name === "대표이사") ? "권태형" : st.name),
+      title: idx === 2 ? (st.name === "최미영" ? "전무" : "이사") : (idx === 3 ? (st.name === "최미영" ? "전무" : "대표이사") : st.title),
       status: "APPROVED",
       date: st.date || docDate,
       comment: st.comment || (idx === 0 ? "기안 상신" : idx === 3 ? "대표이사 최종 승인" : "승인")
@@ -390,7 +448,9 @@ export function normalizeApprovalDoc(d) {
       ...d,
       currentStep: 4,
       status: "APPROVED",
-      steps: pastSteps
+      holdReason: "",
+      rejectReason: "",
+      steps: completedSteps
     };
   }
 
@@ -422,30 +482,15 @@ export function normalizeApprovalDoc(d) {
 }
 
 // Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
+export function isApprovalDocPending(doc) {
   if (!doc) return false;
+  if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
   const s = doc.status || "IN_PROGRESS";
-  if (s === "APPROVED" || s === "REJECTED" || s === "HOLD") return false;
-
-  // Personalized check if user profile is provided
-  if (currentProfile) {
-    const userName = currentProfile.name || "";
-    // 1. If user already approved a step in this doc, it is NO LONGER pending for this user!
-    if (userName && Array.isArray(doc.steps)) {
-      const alreadyApproved = doc.steps.some(
-        (st) => st && st.status === "APPROVED" && (st.name === userName || (isAdmin && (st.name === "권태형" || st.name === "최미영" || st.title?.includes("대표"))))
-      );
-      if (alreadyApproved) {
-        return false;
-      }
-    }
-
-    // 2. Check if this user can approve the currently active step
-    const perm = checkApprovalPermission(doc, currentProfile, isAdmin);
-    return Boolean(perm.canApprove);
+  if (s === "APPROVED" || s === "완료" || s === "결재완료") return false;
+  if (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every((st) => st && st.status === "APPROVED")) {
+    return false;
   }
-
-  return s === "IN_PROGRESS" || s === "PENDING" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "PENDING"));
+  return true;
 }
 
 export function isApprovalDocHold(doc) {
@@ -454,23 +499,12 @@ export function isApprovalDocHold(doc) {
   return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "HOLD"));
 }
 
-export function isApprovalDocApproved(doc, currentProfile = null, isAdmin = false) {
+export function isApprovalDocApproved(doc) {
   if (!doc) return false;
+  if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
   const s = doc.status;
-  if (s === "APPROVED" || s === "완료") return true;
+  if (s === "APPROVED" || s === "완료" || s === "결재완료") return true;
   if (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st && st.status === "APPROVED")) return true;
-
-  // If user profile is provided and this is an intermediate approver who already approved their step:
-  if (currentProfile && !isAdmin) {
-    const userName = currentProfile.name || "";
-    if (userName && Array.isArray(doc.steps)) {
-      const stepApproved = doc.steps.some(
-        (st) => st && st.status === "APPROVED" && st.name === userName
-      );
-      if (stepApproved) return true;
-    }
-  }
-
   return false;
 }
 
@@ -610,6 +644,13 @@ export function subscribeApprovalDocs(onUpdate) {
               const normalized = normalizeApprovalDoc(rawDoc);
               if (normalized && normalized.id) {
                 remoteDocs.push(normalized);
+                if (
+                  isApprovalDocOnOrBeforeOct18(rawDoc) &&
+                  rawDoc.status !== "REJECTED" &&
+                  (rawDoc.status !== "APPROVED" || Number(rawDoc.currentStep) < 4)
+                ) {
+                  setDoc(doc(db, COLLECTION_NAME, normalized.id), sanitizeForFirestore(normalized)).catch(() => {});
+                }
               }
             } catch (e) {
               if (rawDoc.id) remoteDocs.push(rawDoc);
@@ -1409,7 +1450,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const department = `${targetPlant} (${targetComp})`;
       const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetComp}] 특근보고서\n\n1. 특근 요약\n• 소속: ${targetPlant} - ${targetComp}\n• 특근 투입: ${workerCount}명 (${workerHours} M/H) | 예상 노무비: ₩${workerCost.toLocaleString()}\n\n2. 투입 작업자 명단\n• ${workerNames.join(", ") || "특근 투입 인원"}\n\n3. 주요 작업 내용\n• 현대/기아 납품 물량 대응 및 ${targetComp} 주말/공휴일 특근 가동`;
 
-      const isPastOvertime = (workDateStr && workDateStr < "2026-10-01") || existingDoc?.status === "APPROVED";
+      const isPastOvertime = (workDateStr && workDateStr <= "2026-10-18") || existingDoc?.status === "APPROVED";
       const isAlreadyFullyApproved = existingDoc?.status === "APPROVED" || (Array.isArray(priorSteps) && priorSteps.length === 4 && priorSteps.every((s) => s && s.status === "APPROVED"));
 
       const step0 = {

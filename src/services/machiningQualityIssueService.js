@@ -123,8 +123,19 @@ export const saveMachiningQualityIssue = async (issueData) => {
   }).replace(/\. /g, "-").replace(/\./g, "");
 
   const todayStr = getKSTDateString();
-  const causeImgs = Array.isArray(issueData.causeImages) ? issueData.causeImages : [];
-  const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
+  const causeImgs = Array.isArray(issueData.causeImages)
+    ? issueData.causeImages
+    : Array.isArray(issueData.images)
+    ? issueData.images
+    : (existing?.causeImages || []);
+  const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : (existing?.actionImages || []);
+  const resolvedActionText =
+    issueData.actionResult !== undefined
+      ? String(issueData.actionResult || "").trim()
+      : String(existing?.actionResult || "").trim();
+  const hasActionData = Boolean(resolvedActionText || actionImgs.length > 0);
+  const cleanIssueData = { ...issueData };
+  delete cleanIssueData.raw;
 
   // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
   const finalDate =
@@ -144,7 +155,7 @@ export const saveMachiningQualityIssue = async (issueData) => {
       : Boolean(existing?.isFirstScreenBroadcast);
 
   const fullItem = {
-    ...issueData,
+    ...cleanIssueData,
     id,
     company: issueData.company || existing?.company || "오륙",
     plant: "삼랑진공장",
@@ -154,15 +165,19 @@ export const saveMachiningQualityIssue = async (issueData) => {
     severity: issueData.severity || existing?.severity || "CRITICAL",
     title: issueData.title || existing?.title || "",
     content: issueData.content || existing?.content || "",
-    actionResult: issueData.actionResult || existing?.actionResult || "",
+    actionResult: resolvedActionText || (actionImgs.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : ""),
+    actionAuthor: issueData.actionAuthor || existing?.actionAuthor || issueData.author || existing?.author || "가공동",
+    actionAt: hasActionData ? (issueData.actionAt || nowKst) : (existing?.actionAt || ""),
     causeImages: causeImgs,
     actionImages: actionImgs,
+    replies: Array.isArray(issueData.replies) ? issueData.replies : (existing?.replies || []),
     author: issueData.author || existing?.author || "가공동",
     authorTitle: issueData.authorTitle || existing?.authorTitle || "사원",
-    status: issueData.status || existing?.status || "ACTIVE",
+    status: hasActionData ? "RESOLVED" : (issueData.status || existing?.status || "ACTIVE"),
+    isResolved: hasActionData || issueData.status === "RESOLVED" || Boolean(issueData.isResolved),
     isFirstScreenBroadcast: isBroadcast,
     isFirstScreenOrigin: isBroadcast,
-    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
+    ...(isBroadcast ? { isClosedByAdmin: Boolean(issueData.isClosedByAdmin), isManuallyRestored: true } : {}),
     date: finalDate,
     createdAt: finalCreatedAt,
     updatedAt: nowKst

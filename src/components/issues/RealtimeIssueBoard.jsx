@@ -236,7 +236,8 @@ export const RealtimeIssueBoard = ({
                 : "");
 
             const hasReplies = Array.isArray(item.replies) && item.replies.length > 0;
-            const hasAction = hasReplies || (typeof item.actionResult === "string" && item.actionResult.trim().length > 0);
+            const hasActionImages = Array.isArray(item.actionImages) && item.actionImages.length > 0;
+            const hasAction = hasReplies || hasActionImages || (typeof item.actionResult === "string" && item.actionResult.trim().length > 0);
 
             // 최신 의견이 위쪽으로 오도록 역순 정렬 후 최대 3건 추출
             const recentReplies = hasReplies ? [...item.replies].reverse().slice(0, 3) : [];
@@ -400,7 +401,23 @@ export const RealtimeIssueBoard = ({
                       )}
                     </div>
 
-                    {/* 의견 목록 (최신순 3건) */}
+                    {/* 조치결과 본문 및 의견 목록 */}
+                    {isQualityAlert && actionContent && (!hasReplies || recentReplies[0]?.content?.trim() !== actionContent) && (
+                      <div className="p-2 rounded-lg bg-white/95 dark:bg-slate-900/90 border border-emerald-200 dark:border-emerald-800 space-y-1 shadow-2xs">
+                        {(actionAuthor || actionDate) && (
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                              👤 {actionAuthor || "조치담당자"}
+                            </span>
+                            <span className="font-mono text-[9.5px]">{actionDate}</span>
+                          </div>
+                        )}
+                        <div className="text-xs font-semibold text-slate-900 dark:text-white whitespace-pre-wrap break-words leading-relaxed">
+                          {actionContent}
+                        </div>
+                      </div>
+                    )}
+
                     {hasReplies ? (
                       <div className="space-y-1.5">
                         {recentReplies.map((rep, rIdx) => (
@@ -422,7 +439,7 @@ export const RealtimeIssueBoard = ({
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : !isQualityAlert ? (
                       <div className="p-2 rounded-lg bg-white/95 dark:bg-slate-900/90 border border-slate-200/70 dark:border-slate-800 space-y-1 shadow-2xs">
                         {(actionAuthor || actionDate) && (
                           <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
@@ -436,7 +453,7 @@ export const RealtimeIssueBoard = ({
                           {actionContent}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>

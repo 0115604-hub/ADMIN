@@ -556,9 +556,23 @@ export const LegoWorkReportBuilder = ({
 }) => {
   // Current active report configuration
   const [currentReport, setCurrentReport] = useState(() => {
+    // 🌟 작업자 기록 모드(isWorkerRecordingMode)이고 initialTemplateData가 제공된 경우:
+    // 전역 브라우저 캐시("oruk_custom_lego_report_v2") 대신 전달된 작업자의 지정 템플릿/이전 작성 데이터를 최우선 로드하여
+    // 다른 작업자의 이전 입력 내용과 섞이지 않도록 방지합니다.
+    if (isWorkerRecordingMode && initialTemplateData?.legoConfig) {
+      const cfg = JSON.parse(JSON.stringify(initialTemplateData.legoConfig));
+      if (initialWorkerName) cfg.workerName = initialWorkerName;
+      if (initialWorkDate) cfg.workDate = initialWorkDate;
+      if (initialTemplateData.title) cfg.title = initialTemplateData.title;
+      if (initialTemplateData.carModel) cfg.carModel = initialTemplateData.carModel;
+      if (initialTemplateData.partName) cfg.partName = initialTemplateData.partName;
+      if (initialTemplateData.processName) cfg.processName = initialTemplateData.processName;
+      return cfg;
+    }
+
     try {
       const saved = localStorage.getItem("oruk_custom_lego_report_v2");
-      if (saved) {
+      if (saved && !isWorkerRecordingMode) {
         const parsed = JSON.parse(saved);
         if (initialWorkerName) parsed.workerName = initialWorkerName;
         if (initialWorkDate) parsed.workDate = initialWorkDate;

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { CheckCircle2, ArrowRight, Users } from "lucide-react";
 
 export const AttendanceSummarySection = ({

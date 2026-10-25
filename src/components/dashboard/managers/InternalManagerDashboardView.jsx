@@ -8,9 +8,12 @@ import {
   QualityStatusSection,
   ExtrusionDowntimeSection,
   DailyWorkLogTableSection,
-  LegoWorkReportBuilderBar
+  LegoWorkReportBuilderBar,
+  TelegramLiveLoungePanel
 } from "../sections";
 import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
+import { MachiningWorkReportTable } from "../../machining/MachiningWorkReportTable";
+import { SeolExtrusionWorkReportTable } from "../../extrusion/SeolExtrusionWorkReportTable";
 import { isPanelVisible, PANEL_KEYS } from "../../../config/dashboardPanelConfig";
 
 export const InternalManagerDashboardView = ({
@@ -142,6 +145,19 @@ export const InternalManagerDashboardView = ({
     currentProfile?.id === "hal_dw"
   );
   const isSeolQualityManager = Boolean(
+    currentProfile?.name === "설유철" ||
+    currentProfile?.id === "sam_yc"
+  );
+  // 🌟 [양인나, 윤경수] 가공동 관리자 판별 (HR, JA, NX5a 작업일보 현황 프로세스 전담)
+  const isMachiningManager = Boolean(
+    currentProfile?.name === "윤경수" ||
+    currentProfile?.id === "sam_ks" ||
+    currentProfile?.name === "양인나" ||
+    currentProfile?.id === "sam_in" ||
+    currentProfile?.assignedProcess === "가공동 관리"
+  );
+  // 🌟 [설유철] 삼랑진 압출동 총괄 책임자 판별 (압출 작업일보 현황 패널)
+  const isSeolManager = Boolean(
     currentProfile?.name === "설유철" ||
     currentProfile?.id === "sam_yc"
   );
@@ -364,6 +380,30 @@ export const InternalManagerDashboardView = ({
         />
       )}
 
+      {/* 🌟 [양인나, 윤경수 관리자] 가공동 HR, JA, NX5a 작업일보 실시간 현황 및 5대 공정 양식 설정 패널 */}
+      {(isMachiningManager || isAdmin) && (
+        <MachiningWorkReportTable
+          onOpenReportModal={(proj, proc, rep) => {
+            if (onNavigateTab) {
+              onNavigateTab("machining");
+            }
+          }}
+          currentWorkerName={currentProfile?.name || ""}
+        />
+      )}
+
+      {/* 🌟 [설유철 책임자] 압출동 작업일보 실시간 현황 패널 */}
+      {(isSeolManager || isAdmin) && (
+        <SeolExtrusionWorkReportTable
+          onOpenReportModal={(report) => {
+            if (onNavigateTab) {
+              onNavigateTab("extrusion");
+            }
+          }}
+          currentWorkerName={currentProfile?.name || "설유철"}
+        />
+      )}
+
       {/* 5. 일일업무일지 현황 (이명재, 김동욱 결재 배너 연동) */}
       {isPanelVisible(PANEL_KEYS.WORK_LOGS, currentProfile) && (
         <DailyWorkLogTableSection
@@ -391,6 +431,11 @@ export const InternalManagerDashboardView = ({
           totalLogPages={totalLogPages}
           handleOpenWorkLogModal={handleOpenWorkLogModal}
         />
+      )}
+
+      {/* ✈️ 실시간 현장 소통 & 텔레그램 양방향 라운지 패널 (TEST 뱃지 전용 시범운영) */}
+      {isPanelVisible(PANEL_KEYS.TELEGRAM_LIVE_LOUNGE, currentProfile) && (
+        <TelegramLiveLoungePanel currentProfile={currentProfile} />
       )}
 
       {/* 🧩 레고블록 작업일보 빌더 한줄짜리 단순 패널 (TEST 관리자 전담) */}

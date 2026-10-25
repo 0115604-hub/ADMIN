@@ -43,13 +43,16 @@ export const HANUL_SEVERITY_LEVELS = [
 
 const sanitizeHanulAlert = (item) => {
   if (!item || typeof item !== "object") return item;
-  if (item.isManuallyRestored === true) return item;
+  if (item.isManuallyRestored === true || item.isClosedByAdmin === false) return item;
   const idStr = String(item.id || "");
   const tsMatch = idStr.match(/(\d{13})/);
-  if (!tsMatch || Number(tsMatch[1]) <= 1792541000000) {
-    return { ...item, isClosedByAdmin: true };
+  if (tsMatch) {
+    const ts = Number(tsMatch[1]);
+    if (ts > 1792541000000 || (ts >= 1776700000000 && ts < 1790000000000)) {
+      return item;
+    }
   }
-  return item;
+  return { ...item, isClosedByAdmin: true };
 };
 
 // Helper: Read local storage
@@ -140,8 +143,19 @@ export const saveHanulQualityIssue = async (issueData) => {
 
   const todayStr = getKSTDateString();
 
-  const causeImgs = Array.isArray(issueData.causeImages) ? issueData.causeImages : [];
-  const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
+  const causeImgs = Array.isArray(issueData.causeImages)
+    ? issueData.causeImages
+    : Array.isArray(issueData.images)
+    ? issueData.images
+    : (existing?.causeImages || []);
+  const actionImgs = Array.isArray(issueData.actionImages) ? issueData.actionImages : (existing?.actionImages || []);
+  const resolvedActionText =
+    issueData.actionResult !== undefined
+      ? String(issueData.actionResult || "").trim()
+      : String(existing?.actionResult || "").trim();
+  const hasActionData = Boolean(resolvedActionText || actionImgs.length > 0);
+  const cleanIssueData = { ...issueData };
+  delete cleanIssueData.raw;
 
   // 🔒 등록일자/발생일자 및 등록시점(createdAt) 절대 보존: 기존 등록 건 수정 시 날짜 변조 원천 차단
   const finalDate =
@@ -161,7 +175,7 @@ export const saveHanulQualityIssue = async (issueData) => {
       : Boolean(existing?.isFirstScreenBroadcast);
 
   const fullItem = {
-    ...issueData,
+    ...cleanIssueData,
     id,
     company: issueData.company || existing?.company || "한울",
     plant: issueData.plant || existing?.plant || "한림공장",
@@ -170,15 +184,19 @@ export const saveHanulQualityIssue = async (issueData) => {
     severity: issueData.severity || existing?.severity || "CRITICAL",
     title: issueData.title || existing?.title || "",
     content: issueData.content !== undefined ? issueData.content : (existing?.content || ""),
-    actionResult: issueData.actionResult || existing?.actionResult || "",
+    actionResult: resolvedActionText || (actionImgs.length > 0 ? "조치 후 사진 등록 완료 (현장 조치 완료)" : ""),
+    actionAuthor: issueData.actionAuthor || existing?.actionAuthor || issueData.author || existing?.author || "한울",
+    actionAt: hasActionData ? (issueData.actionAt || nowKst) : (existing?.actionAt || ""),
     causeImages: causeImgs,
     actionImages: actionImgs,
+    replies: Array.isArray(issueData.replies) ? issueData.replies : (existing?.replies || []),
     author: issueData.author || existing?.author || "한울",
     authorTitle: issueData.authorTitle || existing?.authorTitle || "사원",
-    status: issueData.status || existing?.status || "ACTIVE", // ACTIVE | RESOLVED
+    status: hasActionData ? "RESOLVED" : (issueData.status || existing?.status || "ACTIVE"), // ACTIVE | RESOLVED
+    isResolved: hasActionData || issueData.status === "RESOLVED" || Boolean(issueData.isResolved),
     isFirstScreenBroadcast: isBroadcast,
     isFirstScreenOrigin: isBroadcast,
-    ...(isBroadcast ? { isClosedByAdmin: false, isManuallyRestored: true } : {}),
+    ...(isBroadcast ? { isClosedByAdmin: Boolean(issueData.isClosedByAdmin), isManuallyRestored: true } : {}),
     date: finalDate,
     createdAt: finalCreatedAt,
     updatedAt: nowKst

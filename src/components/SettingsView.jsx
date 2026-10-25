@@ -68,16 +68,45 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
   const handleDownloadDailyBackup = () => {
     try {
-      const raw = localStorage.getItem("oryuk_daily_backup_latest_v1");
-      if (!raw) {
-        alert("저장된 일일 백업 파일이 없습니다. [지금 즉시 점검 & 백업 실행]을 먼저 눌러주세요.");
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(parsed, null, 2));
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const workLogsRaw = localStorage.getItem("factory_daily_work_logs_v17_pure_sync");
+      const overtimeRaw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
+      const qualityRaw = localStorage.getItem("factory_daily_quality_records_v4_exact");
+      const issuesRaw = localStorage.getItem("oryuk_urgent_issues_v2");
+      const personnelRaw = localStorage.getItem("oryuk_personnel_cards_v1");
+      const schedulesRaw = localStorage.getItem("oryuk_common_schedules_v1");
+      const approvalsRaw = localStorage.getItem("oryuk_approval_documents_v9_master");
+      const extrusionRaw = localStorage.getItem("factory_extrusion_production_records_v1");
+
+      const snapshot = {
+        backupDate: todayStr,
+        createdAt: new Date().toISOString(),
+        version: "v6_ondemand",
+        counts: {
+          approvals: approvalsRaw ? (JSON.parse(approvalsRaw) || []).length : 0,
+          workLogs: workLogsRaw ? (JSON.parse(workLogsRaw) || []).length : 0,
+          overtimeReports: overtimeRaw ? (JSON.parse(overtimeRaw) || []).length : 0,
+          qualityRecords: qualityRaw ? (JSON.parse(qualityRaw) || []).length : 0,
+          urgentIssues: issuesRaw ? (JSON.parse(issuesRaw) || []).length : 0,
+          personnelCards: personnelRaw ? Object.keys(JSON.parse(personnelRaw) || {}).length : 0,
+          commonSchedules: schedulesRaw ? (JSON.parse(schedulesRaw) || []).length : 0
+        },
+        data: {
+          extrusion: extrusionRaw ? JSON.parse(extrusionRaw) : {},
+          approvals: approvalsRaw ? JSON.parse(approvalsRaw) : [],
+          workLogs: workLogsRaw ? JSON.parse(workLogsRaw) : [],
+          overtimeReports: overtimeRaw ? JSON.parse(overtimeRaw) : [],
+          qualityRecords: qualityRaw ? JSON.parse(qualityRaw) : [],
+          urgentIssues: issuesRaw ? JSON.parse(issuesRaw) : [],
+          personnelCards: personnelRaw ? JSON.parse(personnelRaw) : {},
+          commonSchedules: schedulesRaw ? JSON.parse(schedulesRaw) : []
+        }
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snapshot, null, 2));
       const downloadAnchor = document.createElement("a");
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `oryuk_factory_daily_backup_${parsed.backupDate || "latest"}.json`);
+      downloadAnchor.setAttribute("download", `oryuk_factory_daily_backup_${todayStr}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();

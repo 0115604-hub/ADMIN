@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { AlertTriangle, RefreshCw, Home, RotateCcw, Copy, Check, Camera, User, Smartphone, Layers } from "lucide-react";
 import { OryukLogo } from "./OryukLogo";
 import { captureStateSnapshot, autoReportRuntimeIncident } from "../services/errorSnapshotService";

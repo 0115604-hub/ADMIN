@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+﻿import React, { Suspense, lazy } from "react";
 import WorkLogDetailModal from "./modals/WorkLogDetailModal";
 import WorkLogEditModal from "./modals/WorkLogEditModal";
 import WorkerLogListModal from "./modals/WorkerLogListModal";

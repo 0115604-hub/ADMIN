@@ -1,4 +1,4 @@
-// ⭐ SQ LEVEL-UP Master Data (2026-10-06 ~ 2026-10-31)
+﻿// ⭐ SQ LEVEL-UP Master Data (2026-10-06 ~ 2026-10-31)
 // Extracted and synchronized directly from "261001_[오륙]_SQ레벨업_추진판_고도화.xlsx"
 // Total: 160 items (OPEN: 124, CLOSE: 28, 해당없음: 8)
 

@@ -1,4 +1,4 @@
-// Access Log Service for Tracking Worker & Staff Login/Access History
+﻿// Access Log Service for Tracking Worker & Staff Login/Access History
 import { collection, doc, setDoc, onSnapshot, getDocs, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
 

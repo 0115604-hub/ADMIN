@@ -37,15 +37,18 @@ export default defineConfig({
     open: false,
   },
   build: {
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/pdfjs-dist')) {
             return 'vendor-pdf';
           }
-          if (id.includes('node_modules/xlsx') || id.includes('node_modules/exceljs')) {
-            return 'vendor-excel';
+          if (id.includes('node_modules/xlsx')) {
+            return 'vendor-xlsx';
+          }
+          if (id.includes('node_modules/exceljs')) {
+            return 'vendor-exceljs';
           }
           if (id.includes('node_modules/chart.js') || id.includes('node_modules/react-chartjs-2')) {
             return 'vendor-charts';

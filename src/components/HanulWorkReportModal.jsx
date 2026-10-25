@@ -54,6 +54,14 @@ import {
 import { getKSTDateString } from "../utils/dateUtils";
 import { useModalHistory } from "../utils/modalHistory";
 import CommonDowntimeDefectPanel from "./common/CommonDowntimeDefectPanel";
+import LegoWorkReportBuilder from "./lego/LegoWorkReportBuilder";
+import {
+  subscribeWorkReportTemplates,
+  getLocalWorkReportTemplates,
+  subscribeHanulTemplateAssignments,
+  getLocalHanulTemplateAssignments,
+  buildHanulProcessSlotKey
+} from "../services/workReportTemplateService";
 
 // 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
 const isDimOk = (val, target, tol) => {
@@ -75,6 +83,24 @@ export const HanulWorkReportModal = ({
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
   const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
+
+  // 🌟 관리자 지정 5대 공정 양식 연동 상태 (공정표 위치별 매핑)
+  const [allCatalogTemplates, setAllCatalogTemplates] = useState(() => getLocalWorkReportTemplates());
+  const [templateAssignments, setTemplateAssignments] = useState(() => getLocalHanulTemplateAssignments());
+  const [forceLegacyMode, setForceLegacyMode] = useState(false);
+
+  useEffect(() => {
+    const unsubTpl = subscribeWorkReportTemplates((list) => {
+      if (Array.isArray(list)) setAllCatalogTemplates(list);
+    });
+    const unsubAssign = subscribeHanulTemplateAssignments((map) => {
+      if (map) setTemplateAssignments(map);
+    });
+    return () => {
+      unsubTpl();
+      unsubAssign();
+    };
+  }, []);
   const [cuttingPart, setCuttingPart] = useState("FRT"); // 정치절단 전용: "FRT" (A/B/C) | "RR" (A/B)
   const [cuttingLot, setCuttingLot] = useState({
     FRT: {
@@ -350,6 +376,74 @@ export const HanulWorkReportModal = ({
   const [tpmChecks, setTpmChecks] = useState(() => createDefaultHanulTpmChecks());
   const [tpmActionNote, setTpmActionNote] = useState("");
   const [isHanulTpmDone, setIsHanulTpmDone] = useState(false);
+
+  // 🌟 공정표에서 현재 선택된 공정/단계 위치(Slot)의 지정 양식 매칭
+  const activeSubSlot = useMemo(() => {
+    const normProj = String(project || "").toUpperCase() === "LQ2A" ? "LQ2A" : "9BQC";
+    if (processId === "소재준비") {
+      if (currentStep === "tpm") return "TPM";
+      return normProj === "9BQC" ? subProcess : "작업일보";
+    }
+    if (processId === "조인트") return jointType || "FRT";
+    if (processId === "검사") return inspectionType || "LENGTH";
+    return "MAIN";
+  }, [project, processId, currentStep, subProcess, jointType, inspectionType]);
+
+  const activeSlotKey = useMemo(() => {
+    return buildHanulProcessSlotKey(project, processId, activeSubSlot);
+  }, [project, processId, activeSubSlot]);
+
+  // 🌟 [개개인별 작업일보 & 초/중/종물 3회 이상 분할 기록 지원]
+  // 현재 선택된 작업자(worker) + 날짜(date) + 공정(activeSlotKey)으로 이미 저장된 일보가 있는지 조회
+  const effectiveWorkerName = (customWorker.trim() || worker || "").trim();
+
+  const existingWorkerReport = useMemo(() => {
+    if (editReport) return editReport;
+    if (!effectiveWorkerName || !date || !allReports || allReports.length === 0) return null;
+    return allReports.find((r) => {
+      if (!r) return false;
+      const matchWorker = String(r.worker || "").trim() === effectiveWorkerName;
+      const matchDate = r.date === date;
+      const matchProj = String(r.project || "").toUpperCase() === String(project || "").toUpperCase();
+      const matchProc = r.processId === processId;
+      if (!matchWorker || !matchDate || !matchProj || !matchProc) return false;
+
+      // 공정별 세부 슬롯 매칭
+      if (processId === "소재준비") {
+        return (r.subProcess || "정치절단") === (subProcess || "정치절단");
+      }
+      if (processId === "조인트") {
+        return (r.jointType || "FRT") === (jointType || "FRT");
+      }
+      if (processId === "검사") {
+        return (r.inspectionType || "LENGTH") === (inspectionType || "LENGTH");
+      }
+      return true;
+    }) || null;
+  }, [editReport, effectiveWorkerName, date, allReports, project, processId, subProcess, jointType, inspectionType]);
+
+  const activeAssignedTemplate = useMemo(() => {
+    // 1순위: 현재 작업자가 오늘 해당 공정에서 이미 작성 중이거나 저장한 일보가 있으면 그 데이터를 로드 (초/중/종 연속 기록)
+    if (existingWorkerReport?.legoConfig) {
+      return {
+        id: existingWorkerReport.assignedTemplateId || existingWorkerReport.id || "edit_lego_tpl",
+        reportDocId: existingWorkerReport.id,
+        title: existingWorkerReport.processName || existingWorkerReport.title || "작업일보",
+        carModel: existingWorkerReport.carModel || project,
+        partName: existingWorkerReport.partName || "G/RUN",
+        processName: existingWorkerReport.processId || processId || "외주가공",
+        legoConfig: existingWorkerReport.legoConfig,
+        isExistingDraft: true
+      };
+    }
+    // 2순위: 관리자가 지정한 슬롯 템플릿
+    const slots = templateAssignments?.processSlots || {};
+    const tplId = slots[activeSlotKey];
+    if (!tplId) return null;
+    return (allCatalogTemplates || []).find((t) => t.id === tplId) || null;
+  }, [existingWorkerReport, templateAssignments, activeSlotKey, allCatalogTemplates, project, processId]);
+
+  const isAssignedTemplateMode = Boolean(activeAssignedTemplate) && !forceLegacyMode;
 
   useEffect(() => {
     const unsub = subscribeHanulWorkReports((list) => {
@@ -860,6 +954,70 @@ export const HanulWorkReportModal = ({
     }
   };
 
+  // 🌟 관리자 지정 5대 공정 양식에서 작업자가 기록·저장할 때 호출되는 핸들러
+  // 같은 날짜/공정이라도 작업자(worker)별로 개별 문서를 유지하며, 초/중/종물 작성 시 기존 일보에 이어서 덮어쓰기 저장
+  const handleSaveLegoAssignedReport = async (legoPayload) => {
+    const effectiveWorker = String(legoPayload?.workerName || customWorker.trim() || worker || "작업자").trim();
+    if (isExcludedFromWorkReport(effectiveWorker)) {
+      alert(`⚠️ 관리자(${effectiveWorker})는 작업일보 작성 대상이 아니므로 실적에 등록할 수 없습니다. 현장 작업자를 입력해 주세요.`);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const targetDocId =
+        editReport?.id ||
+        activeAssignedTemplate?.reportDocId ||
+        existingWorkerReport?.id ||
+        `hwr_${project}_${legoPayload?.workDate || date}_${processId}_${activeSubSlot}_${effectiveWorker}`.replace(/[\s/]/g, "_");
+
+      const hanulPayload = {
+        id: targetDocId,
+        project,
+        projectName: currentProjectObj.name,
+        carModel: legoPayload?.carModel || currentProjectObj.carModel,
+        partName: legoPayload?.partName || currentProjectObj.partName,
+        processId: processId || legoPayload?.processName || activeAssignedTemplate?.processName || "소재준비",
+        processName: activeAssignedTemplate?.title || currentProcessObj?.name || legoPayload?.title || "지정양식",
+        subProcess: processId === "소재준비" ? subProcess : "",
+        jointType: processId === "조인트" ? jointType : "",
+        inspectionType: processId === "검사" ? inspectionType : "",
+        date: legoPayload?.workDate || date,
+        shift: legoPayload?.shift || shift,
+        worker: effectiveWorker,
+        startTime: legoPayload?.startTime || startTime,
+        endTime: legoPayload?.finishTime || endTime,
+        totals: legoPayload?.totals || {
+          genuine: 0,
+          bad: 0,
+          rework: 0,
+          gross: 0,
+          yieldRate: "100.0",
+          defectRate: "0.0"
+        },
+        notes: legoPayload?.remarks || "",
+        downtimeEvents: legoPayload?.downtimeEvents || [],
+        legoConfig: legoPayload?.legoConfig || null,
+        assignedTemplateId: activeAssignedTemplate?.id || null,
+        assignedSlotKey: activeSlotKey,
+        createdAt: editReport?.createdAt || existingWorkerReport?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveHanulWorkReport(hanulPayload);
+
+      setToastMessage(`✅ [${hanulPayload.worker} 작업자] ${hanulPayload.processName} 작업일보가 저장되었습니다! (초/중/종물 갱신)`);
+      setTimeout(() => {
+        setToastMessage("");
+        onClose();
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      alert("지정 양식 일보 저장 중 오류가 발생했습니다: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleExcelExport = () => {
     const effectiveWorker = customWorker.trim() || worker;
     const effectiveMeasurements = (lotEntries[0]?.measurements && Object.keys(lotEntries[0].measurements).length > 0)
@@ -1022,8 +1180,7 @@ export const HanulWorkReportModal = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* ========================================================================= */}
-        {/* 🌟 2. Process Tabs (공정 선택 탭) + 소재준비 세부일보 드롭다운 */}
+        {/* 🌟 2. 상단 공정표 (공정선택 탭 바 — 항상 표시) */}
         {/* ========================================================================= */}
         <div className="px-2.5 sm:px-5 py-1.5 sm:py-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0 overflow-x-auto custom-scrollbar">
           <div className="flex items-center justify-between gap-2 sm:gap-3 min-w-max">
@@ -1034,11 +1191,19 @@ export const HanulWorkReportModal = ({
               </span>
               {(HANUL_PROCESSES[project] || []).map((proc, idx) => {
                 const isSelected = processId === proc.id;
+                const normProj = String(project || "").toUpperCase() === "LQ2A" ? "LQ2A" : "9BQC";
+                const procPrefix = `${normProj}__${proc.id}__`;
+                const hasAssignedForProc = Object.entries(templateAssignments?.processSlots || {}).some(
+                  ([k, v]) => k.startsWith(procPrefix) && Boolean(v)
+                );
                 return (
                   <button
                     key={proc.id}
                     type="button"
-                    onClick={() => setProcessId(proc.id)}
+                    onClick={() => {
+                      setProcessId(proc.id);
+                      setForceLegacyMode(false);
+                    }}
                     className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 sm:gap-1.5 ${
                       isSelected
                         ? "bg-indigo-600 text-white shadow-xs scale-102"
@@ -1047,65 +1212,96 @@ export const HanulWorkReportModal = ({
                   >
                     <span className="opacity-70 text-[9px] sm:text-[10px]">{idx + 1}.</span>
                     <span>{proc.id}</span>
+                    {hasAssignedForProc && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950">
+                        양식적용
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* 🌟 조인트 공정일 때 드롭다운 선택기 (4가지 조인트 일보) */}
-            {processId === "조인트" && (
-              <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/90 px-3 py-1 rounded-xl border-2 border-purple-500 shadow-xs animate-fadeIn">
-                <span className="text-[11px] font-black text-purple-700 dark:text-purple-300 flex items-center gap-1 shrink-0">
-                  <span>📄 조인트 일보:</span>
-                </span>
-                <div className="relative">
-                  <select
-                    value={jointType}
-                    onChange={(e) => setJointType(e.target.value)}
-                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-purple-600 text-purple-950 dark:text-purple-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+            <div className="flex items-center gap-2">
+              {activeAssignedTemplate && (
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-[11px] font-black">
+                    ✓ 적용양식: {activeAssignedTemplate.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setForceLegacyMode((prev) => !prev)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-pointer shrink-0"
                   >
-                    <option value="FRT">1. G/RUN FRT (2/3호기)</option>
-                    <option value="FIXED_LH">2. G/RUN FIXED LH (부자재)</option>
-                    <option value="FIXED_RH">3. G/RUN FIXED RH (부자재)</option>
-                    <option value="RR">4. G/RUN RR (2/3호기)</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-purple-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {forceLegacyMode ? "✓ 설정양식 보기" : "기본양식 보기"}
+                  </button>
                 </div>
-              </div>
-            )}
-            {/* 🌟 검사 공정일 때 드롭다운 선택기 (4가지 검사 일보) */}
-            {processId === "검사" && (
-              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/90 px-3 py-1 rounded-xl border-2 border-emerald-500 shadow-xs animate-fadeIn">
-                <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1 shrink-0">
-                  <span>📄 검사 일보:</span>
-                </span>
-                <div className="relative">
-                  <select
-                    value={inspectionType}
-                    onChange={(e) => setInspectionType(e.target.value)}
-                    className="appearance-none bg-white dark:bg-slate-900 border-2 border-emerald-600 text-emerald-950 dark:text-emerald-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-                  >
-                    <option value="LENGTH">1. 길이검사 일보</option>
-                    <option value="SQUARE">2. 직각검사 일보</option>
-                    <option value="FINAL_PAIR">3. 최종검사 일보 (LH / RH)</option>
-                    <option value="FINAL_LH">4. 최종검사 일보 (LH 전용)</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-emerald-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+
+              {/* 🌟 조인트 공정일 때 드롭다운 선택기 (4가지 조인트 일보) */}
+              {processId === "조인트" && (
+                <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/90 px-3 py-1 rounded-xl border-2 border-purple-500 shadow-xs animate-fadeIn">
+                  <span className="text-[11px] font-black text-purple-700 dark:text-purple-300 flex items-center gap-1 shrink-0">
+                    <span>📄 조인트 일보:</span>
+                  </span>
+                  <div className="relative">
+                    <select
+                      value={jointType}
+                      onChange={(e) => {
+                        setJointType(e.target.value);
+                        setForceLegacyMode(false);
+                      }}
+                      className="appearance-none bg-white dark:bg-slate-900 border-2 border-purple-600 text-purple-950 dark:text-purple-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+                    >
+                      <option value="FRT">1. G/RUN FRT (2/3호기)</option>
+                      <option value="FIXED_LH">2. G/RUN FIXED LH (부자재)</option>
+                      <option value="FIXED_RH">3. G/RUN FIXED RH (부자재)</option>
+                      <option value="RR">4. G/RUN RR (2/3호기)</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-purple-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {/* 🌟 검사 공정일 때 드롭다운 선택기 (4가지 검사 일보) */}
+              {processId === "검사" && (
+                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/90 px-3 py-1 rounded-xl border-2 border-emerald-500 shadow-xs animate-fadeIn">
+                  <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1 shrink-0">
+                    <span>📄 검사 일보:</span>
+                  </span>
+                  <div className="relative">
+                    <select
+                      value={inspectionType}
+                      onChange={(e) => {
+                        setInspectionType(e.target.value);
+                        setForceLegacyMode(false);
+                      }}
+                      className="appearance-none bg-white dark:bg-slate-900 border-2 border-emerald-600 text-emerald-950 dark:text-emerald-100 font-black text-xs rounded-lg pl-3 pr-7 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                    >
+                      <option value="LENGTH">1. 길이검사 일보</option>
+                      <option value="SQUARE">2. 직각검사 일보</option>
+                      <option value="FINAL_PAIR">3. 최종검사 일보 (LH / RH)</option>
+                      <option value="FINAL_LH">4. 최종검사 일보 (LH 전용)</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-emerald-600 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* 🌟 2-1. 소재준비 공정일 때: TPM 점검 ➔ 작업일보 2단계 진행 탭 바 (압출과 동일) */}
+        {/* 🌟 2-1. 소재준비 공정일 때: TPM 점검 ➔ 작업일보 2단계 진행 탭 바 (항상 표시) */}
         {/* ========================================================================= */}
         {processId === "소재준비" && (
           <div className="bg-slate-100 dark:bg-slate-800/90 px-3 sm:px-5 py-2 border-b border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => setCurrentStep("tpm")}
+                onClick={() => {
+                  setCurrentStep("tpm");
+                  setForceLegacyMode(false);
+                }}
                 className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
                   currentStep === "tpm"
                     ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
@@ -1121,18 +1317,58 @@ export const HanulWorkReportModal = ({
                 )}
               </button>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              <button
-                type="button"
-                onClick={() => setCurrentStep("report")}
-                className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
-                  currentStep === "report"
-                    ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
-                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>2단계: 작업일보 작성 ({subProcess})</span>
-              </button>
+              {project === "9BQC" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep("report");
+                      setSubProcess("정치절단");
+                      setForceLegacyMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                      currentStep === "report" && subProcess === "정치절단"
+                        ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                        : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>2단계: 작업일보 작성 (정치절단)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep("report");
+                      setSubProcess("단컷팅");
+                      setForceLegacyMode(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                      currentStep === "report" && subProcess === "단컷팅"
+                        ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                        : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                    }`}
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>2단계: 작업일보 작성 (단컷팅)</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep("report");
+                    setForceLegacyMode(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                    currentStep === "report"
+                      ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>2단계: 작업일보 작성 (소재준비)</span>
+                </button>
+              )}
             </div>
 
             {currentStep === "tpm" ? (
@@ -1165,6 +1401,87 @@ export const HanulWorkReportModal = ({
         {/* 🌟 3. Scrollable Form Body */}
         {/* ========================================================================= */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar p-2.5 sm:p-5 space-y-3 sm:space-y-4 mobile-pan-free">
+          {isAssignedTemplateMode ? (
+            <div className="space-y-3">
+              {/* 🌟 [개개인별 작업일보 및 초/중/종물 분할접속 알림 바] */}
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-700/60 text-white shadow-md flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white shrink-0 shadow-xs">
+                    👤
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-black text-white">
+                        작업자: <span className="text-emerald-300 font-extrabold">{effectiveWorkerName || "미선택"}</span>
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-800/80 text-indigo-200 border border-indigo-600/50">
+                        {date} ({shift})
+                      </span>
+                      {existingWorkerReport ? (
+                        <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 font-black animate-pulse flex items-center gap-1">
+                          <span>🔄 작성 중인 일보 불러옴</span>
+                          <span className="text-[9.5px] text-emerald-200">(초·중·종물 이어서 입력 가능)</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 font-black">
+                          ✨ 개별 신규 일보 작성
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      💡 같은 공정이라도 작업자 개개인별로 독립된 일보가 기록되며, 초물·중물·종물 측정 시 하루 3회 이상 접속하여도 이전 측정값이 보존됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* 작업자 빠른 변경 */}
+                  <select
+                    value={worker}
+                    onChange={(e) => {
+                      setWorker(e.target.value);
+                      if (e.target.value !== "직접입력") setCustomWorker("");
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-xs font-black text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                  >
+                    <optgroup label="9BQC 전담 작업자">
+                      {HANUL_WORKERS_MASTER.filter((w) => w.line !== "LQ2").map((w) => (
+                        <option key={w.no} value={w.name}>
+                          {w.name} ({w.position})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="LQ2 전담 작업자">
+                      {HANUL_WORKERS_MASTER.filter((w) => w.line === "LQ2").map((w) => (
+                        <option key={w.no} value={w.name}>
+                          {w.name} ({w.position})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <option value="직접입력">✏️ 직접 입력</option>
+                  </select>
+
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-xs font-mono font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              </div>
+
+              <LegoWorkReportBuilder
+                key={`${activeSlotKey}_${existingWorkerReport?.id || activeAssignedTemplate?.id || project}_${effectiveWorkerName}_${date}`}
+                isEmbedded={true}
+                isWorkerRecordingMode={true}
+                initialTemplateData={activeAssignedTemplate}
+                initialWorkerName={effectiveWorkerName}
+                initialWorkDate={date}
+                onSaveWorkReport={handleSaveLegoAssignedReport}
+              />
+            </div>
+          ) : (
+          <>
           {/* ========================================================================= */}
           {/* 🌟 STEP 1: 설비일상 점검 시트 (TPM 자주보전 7대 항목 × 6대 설비 점검) */}
           {/* ========================================================================= */}
@@ -3143,11 +3460,14 @@ export const HanulWorkReportModal = ({
           </div>
           </>
           )}
+          </>
+          )}
         </div>
 
         {/* ========================================================================= */}
         {/* 🌟 4. Modal Footer: Save, Excel, and Close Actions */}
         {/* ========================================================================= */}
+        {!isAssignedTemplateMode && (
         <div className="p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2">
             {toastMessage && (
@@ -3204,6 +3524,7 @@ export const HanulWorkReportModal = ({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
