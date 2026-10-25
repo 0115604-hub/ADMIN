@@ -19,6 +19,15 @@ import {
   deleteExtrusionReport,
   exportExtrusionReportsToExcel
 } from "../../services/extrusionProductionService";
+import { MajorProcessTemplateSelectModal } from "../common/MajorProcessTemplateSelectModal";
+
+const SEOL_EXTRUSION_SLOTS = [
+  { id: "ALL", name: "압출 표준", sub: "전체 라인 공통" },
+  { id: "pcm1", name: "PCM 1호", sub: "PCM #1 라인" },
+  { id: "pcm3", name: "PCM 3호", sub: "PCM #3 라인" },
+  { id: "pvc", name: "PVC LINE", sub: "PVC 압출 라인" },
+  { id: "tpe", name: "TPE LINE", sub: "TPE 압출 라인" }
+];
 
 export const SeolExtrusionWorkReportTable = ({
   onOpenReportModal,
@@ -29,6 +38,7 @@ export const SeolExtrusionWorkReportTable = ({
   const [searchDate, setSearchDate] = useState("");
   const [lineFilter, setLineFilter] = useState("all");
   const [isDeleting, setIsDeleting] = useState(null);
+  const [isTemplateSettingOpen, setIsTemplateSettingOpen] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToExtrusionReports((list) => {
@@ -117,9 +127,9 @@ export const SeolExtrusionWorkReportTable = ({
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            onClick={() => alert("압출 공정별 5대 표준 양식 설정 패널이 준비되었습니다.")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-            title="압출 5대 공정 양식 설정"
+            onClick={() => setIsTemplateSettingOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            title="탭하면 압출 1~4호 라인에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>⚙️ 양식설정</span>
@@ -293,6 +303,23 @@ export const SeolExtrusionWorkReportTable = ({
           </tbody>
         </table>
       </div>
+
+      {/* 🌟 5대 공정 양식 설정 모달 (설유철 책임 전용 압출 라인별 양식 매핑) */}
+      <MajorProcessTemplateSelectModal
+        isOpen={isTemplateSettingOpen}
+        onClose={() => setIsTemplateSettingOpen(false)}
+        title="삼랑진공장 압출동 5대 공정 작업일보 양식 설정"
+        subtitle="압출 1~4호 라인별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
+        companyKey="EXTRUSION"
+        companyName="설유철 압출동"
+        slots={SEOL_EXTRUSION_SLOTS}
+        defaultCategoryId="EXTRUSION"
+        onApplyAndOpenReport={(tpl, slotId) => {
+          if (onOpenReportModal) {
+            onOpenReportModal({ templateId: tpl?.id, line: slotId });
+          }
+        }}
+      />
     </div>
   );
 };

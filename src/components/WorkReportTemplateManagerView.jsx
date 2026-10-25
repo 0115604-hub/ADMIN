@@ -1867,7 +1867,7 @@ export const MaterialPrepStandardA4Sheet = ({ template, showBlockBadges = false 
 // ============================================================================
 // Lego Template Editor Modal (Lego Blocks + Real-time live A4 Sheet)
 // ============================================================================
-const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
+export const LegoTemplateEditorModal = ({ template, onClose, onSave, onApply }) => {
   const [formData, setFormData] = useState(template);
   const hasLegoConfig = Boolean(formData?.legoConfig?.activeBlocks);
   const orderedBlocks = useMemo(() => getOrderedBlocksForTemplate(formData), [formData]);

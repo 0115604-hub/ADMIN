@@ -707,6 +707,8 @@ export const normalizeHanulProjectKey = (proj) => {
   if (p.includes("JK1")) return "JK1";
   if (p.includes("CE1")) return "CE1";
   if (p.includes("DT")) return "DT";
+  if (p.includes("SEOL") || p.includes("EXTRUSION") || p.includes("압출")) return "EXTRUSION";
+  if (p.includes("BURIM") || p.includes("부림")) return "BURIMTECH";
   return p || "9BQC";
 };
 
@@ -733,6 +735,8 @@ export const getLocalHanulTemplateAssignments = () => {
           "JK1": Array.isArray(parsed["JK1"]) ? parsed["JK1"] : [],
           "CE1": Array.isArray(parsed["CE1"]) ? parsed["CE1"] : [],
           "DT": Array.isArray(parsed["DT"]) ? parsed["DT"] : [],
+          "EXTRUSION": Array.isArray(parsed["EXTRUSION"]) ? parsed["EXTRUSION"] : [],
+          "BURIMTECH": Array.isArray(parsed["BURIMTECH"]) ? parsed["BURIMTECH"] : [],
           processSlots:
             parsed.processSlots && typeof parsed.processSlots === "object"
               ? parsed.processSlots
@@ -741,7 +745,7 @@ export const getLocalHanulTemplateAssignments = () => {
       }
     }
   } catch (e) {}
-  return { "9BQC": [], "LQ2A": [], "HR": [], "JA": [], "NX5A": [], "JK1": [], "CE1": [], "DT": [], processSlots: {} };
+  return { "9BQC": [], "LQ2A": [], "HR": [], "JA": [], "NX5A": [], "JK1": [], "CE1": [], "DT": [], "EXTRUSION": [], "BURIMTECH": [], processSlots: {} };
 };
 
 export const saveLocalHanulTemplateAssignments = (assignments) => {
@@ -755,6 +759,8 @@ export const saveLocalHanulTemplateAssignments = (assignments) => {
     "JK1": Array.isArray(assignments?.["JK1"]) ? assignments["JK1"] : [],
     "CE1": Array.isArray(assignments?.["CE1"]) ? assignments["CE1"] : [],
     "DT": Array.isArray(assignments?.["DT"]) ? assignments["DT"] : [],
+    "EXTRUSION": Array.isArray(assignments?.["EXTRUSION"]) ? assignments["EXTRUSION"] : [],
+    "BURIMTECH": Array.isArray(assignments?.["BURIMTECH"]) ? assignments["BURIMTECH"] : [],
     processSlots:
       assignments?.processSlots && typeof assignments.processSlots === "object"
         ? assignments.processSlots

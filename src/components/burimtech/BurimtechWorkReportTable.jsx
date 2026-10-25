@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   FileSpreadsheet,
   Plus,
@@ -14,6 +14,15 @@ import {
   Camera,
   CheckCircle2
 } from "lucide-react";
+import { MajorProcessTemplateSelectModal } from "../common/MajorProcessTemplateSelectModal";
+
+const BURIMTECH_SLOTS = [
+  { id: "STANDARD", name: "부림텍 표준", sub: "전 공정 공통" },
+  { id: "소재준비", name: "소재준비", sub: "정치절단 및 컷팅" },
+  { id: "가류_조인트", name: "가류/조인트", sub: "사출 및 프레스 가류" },
+  { id: "후가공", name: "후가공", sub: "본드로봇 및 부자재" },
+  { id: "검사_포장", name: "검사/포장", sub: "치수 및 외관 검사" }
+];
 
 export const BurimtechWorkReportTable = ({
   handleOpenWorkLogModal,
@@ -23,6 +32,7 @@ export const BurimtechWorkReportTable = ({
   currentProfile,
   isWorkLogApproved
 }) => {
+  const [isTemplateSettingOpen, setIsTemplateSettingOpen] = useState(false);
   // Filter logs for Burimtech
   const burimLogs = useMemo(() => {
     return (workLogs || []).filter((l) => {
@@ -75,9 +85,9 @@ export const BurimtechWorkReportTable = ({
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            onClick={() => alert("부림텍 맞춤형 작업일보 공정표 양식이 준비 중입니다.")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-            title="부림텍 공정 양식 설정"
+            onClick={() => setIsTemplateSettingOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            title="탭하면 부림텍 외주가공에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>⚙️ 양식설정</span>
@@ -213,6 +223,27 @@ export const BurimtechWorkReportTable = ({
           </tbody>
         </table>
       </div>
+
+      {/* 🌟 5대 공정 양식 설정 모달 (부림텍 외주가공 공정별 양식 매핑) */}
+      <MajorProcessTemplateSelectModal
+        isOpen={isTemplateSettingOpen}
+        onClose={() => setIsTemplateSettingOpen(false)}
+        title="(주)부림텍 외주가공 5대 공정 작업일보 양식 설정"
+        subtitle="부림텍 외주가공 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
+        companyKey="BURIMTECH"
+        companyName="(주)부림텍"
+        slots={BURIMTECH_SLOTS}
+        defaultCategoryId="MATERIAL_PREP"
+        onApplyAndOpenReport={(tpl, slotId) => {
+          if (handleOpenWorkLogModal) {
+            handleOpenWorkLogModal({
+              company: "부림텍",
+              assignedProcess: slotId === "STANDARD" ? "외주가공" : slotId,
+              templateId: tpl?.id
+            });
+          }
+        }}
+      />
     </div>
   );
 };
