@@ -90,7 +90,7 @@ export const BurimtechWorkReportTable = ({
             title="탭하면 부림텍 외주가공에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>⚙️ 양식설정</span>
+            <span>⚙️ 부림텍일보설정</span>
           </button>
           {handleOpenWorkLogModal && (
             <button

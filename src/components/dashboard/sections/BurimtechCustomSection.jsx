@@ -1,6 +1,15 @@
-import React, { useMemo } from "react";
-import { ShieldAlert, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { ShieldAlert, Settings } from "lucide-react";
 import { BurimtechWorkReportTable } from "../../burimtech/BurimtechWorkReportTable";
+import { MajorProcessTemplateSelectModal } from "../../common/MajorProcessTemplateSelectModal";
+
+const BURIMTECH_SLOTS = [
+  { id: "STANDARD", name: "부림텍 표준", sub: "전 공정 공통" },
+  { id: "소재준비", name: "소재준비", sub: "정치절단 및 컷팅" },
+  { id: "가류_조인트", name: "가류/조인트", sub: "사출 및 프레스 가류" },
+  { id: "후가공", name: "후가공", sub: "본드로봇 및 부자재" },
+  { id: "검사_포장", name: "검사/포장", sub: "치수 및 외관 검사" }
+];
 
 export const BurimtechCustomSection = ({
   handleOpenWorkLogModal,
@@ -13,6 +22,7 @@ export const BurimtechCustomSection = ({
   setIsHanulQualityIssueModalOpen,
   activeHanulQualityCount = 0
 }) => {
+  const [isTemplateSettingOpen, setIsTemplateSettingOpen] = useState(false);
   return (
     <div className="space-y-3">
       {/* 🌟 부림텍 전용 외주가공 부적합경보 & 작업일보 배너 */}
@@ -59,17 +69,16 @@ export const BurimtechCustomSection = ({
             )}
           </button>
 
-          {/* 📝 부림텍 작업일보 작성 버튼 */}
-          {handleOpenWorkLogModal && (
-            <button
-              type="button"
-              onClick={() => handleOpenWorkLogModal()}
-              className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>📝 부림텍 일보 작성</span>
-            </button>
-          )}
+          {/* ⚙️ 부림텍일보설정 버튼 (5대 양식 리스트 선택 및 매핑) */}
+          <button
+            type="button"
+            onClick={() => setIsTemplateSettingOpen(true)}
+            className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="탭하면 부림텍 5대 공정 작업일보 양식 리스트를 열어 설정합니다"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>⚙️ 부림텍일보설정</span>
+          </button>
         </div>
       </div>
 
@@ -81,6 +90,27 @@ export const BurimtechCustomSection = ({
         workLogs={workLogs}
         currentProfile={currentProfile}
         isWorkLogApproved={isWorkLogApproved}
+      />
+
+      {/* 🌟 부림텍 5대 공정 양식 설정 모달 (부림텍 공정별 양식 매핑 및 선택) */}
+      <MajorProcessTemplateSelectModal
+        isOpen={isTemplateSettingOpen}
+        onClose={() => setIsTemplateSettingOpen(false)}
+        title="(주)부림텍 외주가공 5대 공정 작업일보 양식 설정"
+        subtitle="부림텍 외주가공 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
+        companyKey="BURIMTECH"
+        companyName="(주)부림텍"
+        slots={BURIMTECH_SLOTS}
+        defaultCategoryId="MATERIAL_PREP"
+        onApplyAndOpenReport={(tpl, slotId) => {
+          if (handleOpenWorkLogModal) {
+            handleOpenWorkLogModal({
+              company: "부림텍",
+              assignedProcess: slotId === "STANDARD" ? "외주가공" : slotId,
+              templateId: tpl?.id
+            });
+          }
+        }}
       />
     </div>
   );
