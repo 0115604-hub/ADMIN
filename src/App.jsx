@@ -99,19 +99,6 @@ export const App = () => {
   useEffect(() => {
     const unsub = initVersionWatcher((newVer) => {
       setUpdateAvailable(true);
-      // 모바일 및 다른 기기에서 모달 작업 중이 아닐 때는 자동으로 최신 캐시 갱신
-      try {
-        const isEditing = Boolean(
-          modalOpenRef.current ||
-          excelModalOpenRef.current ||
-          editingItemRef.current
-        );
-        if (!isEditing) {
-          setTimeout(() => {
-            forceHardReload();
-          }, 1500);
-        }
-      } catch (e) {}
     });
     return () => unsub();
   }, []);
@@ -488,7 +475,10 @@ export const App = () => {
                   )}
                   {activeTab === "electronic_approval" && (
                     <ErrorBoundary inline title="전자결재">
-                      <ElectronicApprovalView />
+                      <ElectronicApprovalView
+                        onNavigateTab={(tabId) => setActiveTab(tabId)}
+                        onBack={() => setActiveTab("worker_dashboard")}
+                      />
                     </ErrorBoundary>
                   )}
                   {(activeTab === "vehicle_sales" || activeTab === "sales_purchase_analysis") && (
@@ -554,7 +544,10 @@ export const App = () => {
 
                   {activeTab === "electronic_approval" && (
                     <ErrorBoundary inline title="전자결재">
-                      <ElectronicApprovalView />
+                      <ElectronicApprovalView
+                        onNavigateTab={(tabId) => setActiveTab(tabId)}
+                        onBack={() => setActiveTab("worker_dashboard")}
+                      />
                     </ErrorBoundary>
                   )}
 

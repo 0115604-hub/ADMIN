@@ -188,51 +188,43 @@ export const UnifiedAbnormalityControlPanel = ({
     // 1. Urgent Issues (품질경보 실시간 수신)
     const unsubIssues = subscribeUrgentIssues((issues) => {
       setUrgentIssues(issues || []);
-      setLastRefreshedAt(new Date());
       setIsLoading(false);
     });
 
     // 2. Extrusion Reports (압출 작업일보, TPM 이상신고, 비가동/불량)
     const unsubExt = subscribeToExtrusionReports((reports) => {
       setExtrusionReports(reports || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 3. Extrusion Quality Issues (압출 부적합경보 실시간 수신)
     const unsubExtQuality = subscribeExtrusionQualityIssues((alerts) => {
       setExtrusionQualityAlerts(alerts || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 3-B. Hanul Quality Issues (한울 부적합경보 실시간 수신)
     const unsubHanulQuality = subscribeHanulQualityIssues((alerts) => {
       setHanulQualityIssues(alerts || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 3-C. Yuseong Quality Issues (유성 부적합경보 실시간 수신)
     const unsubYuseongQuality = subscribeYuseongQualityIssues((alerts) => {
       setYuseongQualityIssues(alerts || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 3-D. Machining Quality Issues (가공동 부적합경보 실시간 수신)
     const unsubMachQuality = subscribeMachiningQualityIssues((alerts) => {
       setMachiningQualityIssues(alerts || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 4. Official 4M Change Point Ledger (공식 변동점 관리대장 실시간 수신)
     const unsubLedger = subscribeFourMChangePoints((ledgerList) => {
       setFourMLedgerRecords(ledgerList || []);
-      setLastRefreshedAt(new Date());
     });
 
     // 5. Smart Overtime & 5 Companies Attendance Data
     const unsubSmartOt = subscribeSmartOvertimeData((data) => {
       if (data) {
         setSmartOvertimeData(data);
-        setLastRefreshedAt(new Date());
       }
     });
 
@@ -240,7 +232,6 @@ export const UnifiedAbnormalityControlPanel = ({
     const unsubAbsenceLogs = subscribe4MAbsenceLogs((logs) => {
       if (logs) {
         setAbsenceLogsMap(logs);
-        setLastRefreshedAt(new Date());
       }
     });
 
@@ -248,7 +239,6 @@ export const UnifiedAbnormalityControlPanel = ({
     const unsubCards = subscribePersonnelCards((cards) => {
       if (cards) {
         setPersonnelCardsMap(cards);
-        setLastRefreshedAt(new Date());
       }
     });
 
@@ -261,13 +251,11 @@ export const UnifiedAbnormalityControlPanel = ({
           [`${cleanCompanyName(cardData.company)}_${cardData.name}`]: cardData,
           [`${cardData.company}_${cardData.name}`]: cardData
         }));
-        setLastRefreshedAt(new Date());
       }
     };
     const handleFourMOverrideEvent = () => {
       setFourMLedgerRecords(getLocalFourMChangePoints());
       setFourMRevision((r) => r + 1);
-      setLastRefreshedAt(new Date());
     };
     window.addEventListener("oryuk_personnel_card_updated", handleCardEvent);
     window.addEventListener("fourM_override_updated", handleFourMOverrideEvent);

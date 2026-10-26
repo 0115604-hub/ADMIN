@@ -640,6 +640,9 @@ export default function Step3QualityControlPanel({
       }
 
       setCapaModalItem(null);
+      sessionStorage.setItem("approval_return_to_tab", "worker_dashboard");
+      sessionStorage.setItem("approval_external_direct_open", "true");
+      localStorage.setItem("approval_return_to_tab", "worker_dashboard");
       localStorage.setItem("active_approval_doc_id", docId);
 
       alert(`✅ [4M 변동점 상신 완료]\n\n• 공장: ${plant}\n• 최종 결재자: ${approverRole}\n\n전자결재 문서함으로 이동합니다.`);

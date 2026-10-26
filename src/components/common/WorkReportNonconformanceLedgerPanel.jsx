@@ -320,8 +320,12 @@ export default function WorkReportNonconformanceLedgerPanel({
                 overrides: data?.overrides || {},
                 manualItems: Array.isArray(data?.manualItems) ? data.manualItems : []
               };
-              localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(nextState));
-              setLedgerState(nextState);
+              const newStr = JSON.stringify(nextState);
+              const oldStr = localStorage.getItem(WORK_REPORT_NC_STORAGE_KEY);
+              if (newStr !== oldStr) {
+                localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, newStr);
+                setLedgerState(nextState);
+              }
             }
           }
         );

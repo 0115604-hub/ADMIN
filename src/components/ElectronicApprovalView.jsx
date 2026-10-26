@@ -36,7 +36,8 @@ import {
   Edit3,
   RotateCcw,
   Layers,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -145,7 +146,10 @@ export const formatConciseApprovalTitle = (rawTitle) => {
   return str;
 };
 
-export const ElectronicApprovalView = () => {
+export const ElectronicApprovalView = ({
+  onNavigateTab = null,
+  onBack = null
+}) => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, GENERAL
@@ -163,21 +167,46 @@ export const ElectronicApprovalView = () => {
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
 
+  // 🌟 Document Detail Modal Close Handler (외부에서 진입 시 전 화면으로 즉시 복귀)
+  const handleCloseDocModal = () => {
+    setSelectedDoc(null);
+    setActionType("APPROVE");
+
+    const returnTab = sessionStorage.getItem("approval_return_to_tab") || localStorage.getItem("approval_return_to_tab");
+    const wasExternalDirectOpen =
+      sessionStorage.getItem("approval_external_direct_open") === "true" ||
+      localStorage.getItem("approval_external_direct_open") === "true";
+
+    if (wasExternalDirectOpen || returnTab) {
+      sessionStorage.removeItem("approval_return_to_tab");
+      localStorage.removeItem("approval_return_to_tab");
+      sessionStorage.removeItem("approval_external_direct_open");
+      localStorage.removeItem("approval_external_direct_open");
+
+      if (typeof onNavigateTab === "function") {
+        onNavigateTab(returnTab || "worker_dashboard");
+        return;
+      }
+      if (typeof onBack === "function") {
+        onBack();
+        return;
+      }
+    }
+  };
+
   // 🌟 Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
-      setSelectedDoc(null);
+      handleCloseDocModal();
       setIsDraftModalOpen(false);
       setEditingDocId(null);
       setPreviewImageModal(null);
-      setActionType("APPROVE");
     });
     return () => unsub();
   }, []);
 
   useModalHistory(Boolean(selectedDoc), () => {
-    setSelectedDoc(null);
-    setActionType("APPROVE");
+    handleCloseDocModal();
   }, "approval_doc_detail");
 
   useModalHistory(Boolean(isDraftModalOpen), () => {
@@ -302,13 +331,17 @@ export const ElectronicApprovalView = () => {
       setApprovalDocs(docs);
       if (selectedDocRef.current) {
         const found = docs.find((d) => d.id === selectedDocRef.current.id);
-        if (found) setSelectedDoc(found);
+        if (found && (found.updatedAt !== selectedDocRef.current.updatedAt || found.status !== selectedDocRef.current.status)) {
+          setSelectedDoc(found);
+        }
       } else {
         const activeDocId = localStorage.getItem("active_approval_doc_id");
         if (activeDocId) {
           const target = (docs || []).find((d) => d.id === activeDocId);
           if (target) {
             setSelectedDoc(target);
+            sessionStorage.setItem("approval_external_direct_open", "true");
+            sessionStorage.setItem("approval_return_to_tab", "worker_dashboard");
             localStorage.removeItem("active_approval_doc_id");
           }
         }
@@ -320,13 +353,17 @@ export const ElectronicApprovalView = () => {
       setApprovalDocs(latest);
       if (selectedDocRef.current) {
         const found = latest.find((d) => d.id === selectedDocRef.current.id);
-        if (found) setSelectedDoc(found);
+        if (found && (found.updatedAt !== selectedDocRef.current.updatedAt || found.status !== selectedDocRef.current.status)) {
+          setSelectedDoc(found);
+        }
       } else {
         const activeDocId = localStorage.getItem("active_approval_doc_id");
         if (activeDocId) {
           const target = (latest || []).find((d) => d.id === activeDocId);
           if (target) {
             setSelectedDoc(target);
+            sessionStorage.setItem("approval_external_direct_open", "true");
+            sessionStorage.setItem("approval_return_to_tab", "worker_dashboard");
             localStorage.removeItem("active_approval_doc_id");
           }
         }
@@ -837,6 +874,24 @@ export const ElectronicApprovalView = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                const returnTab = sessionStorage.getItem("approval_return_to_tab") || localStorage.getItem("approval_return_to_tab");
+                sessionStorage.removeItem("approval_return_to_tab");
+                localStorage.removeItem("approval_return_to_tab");
+                if (typeof onNavigateTab === "function") {
+                  onNavigateTab(returnTab || "worker_dashboard");
+                } else if (typeof onBack === "function") {
+                  onBack();
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer border border-slate-300 dark:border-slate-700 transition shadow-2xs"
+              title="전 화면(대시보드)으로 돌아가기"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>전 화면으로 돌아가기</span>
+            </button>
             {isAdmin && stats.pending > 0 && (
               <button
                 type="button"
@@ -1286,10 +1341,7 @@ export const ElectronicApprovalView = () => {
       {/* ========================================================================= */}
       {selectedDoc && (
         <div
-          onClick={() => {
-            setSelectedDoc(null);
-            setActionType("APPROVE");
-          }}
+          onClick={handleCloseDocModal}
           className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -1398,10 +1450,7 @@ export const ElectronicApprovalView = () => {
                       )}
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedDoc(null);
-                          setActionType("APPROVE");
-                        }}
+                        onClick={handleCloseDocModal}
                         className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-black"
                       >
                         ✕
@@ -1800,10 +1849,7 @@ export const ElectronicApprovalView = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDoc(null);
-                  setActionType("APPROVE");
-                }}
+                onClick={handleCloseDocModal}
                 className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto cursor-pointer"
               >
                 닫기

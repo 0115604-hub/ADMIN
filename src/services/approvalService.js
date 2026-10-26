@@ -644,13 +644,6 @@ export function subscribeApprovalDocs(onUpdate) {
               const normalized = normalizeApprovalDoc(rawDoc);
               if (normalized && normalized.id) {
                 remoteDocs.push(normalized);
-                if (
-                  isApprovalDocOnOrBeforeOct18(rawDoc) &&
-                  rawDoc.status !== "REJECTED" &&
-                  (rawDoc.status !== "APPROVED" || Number(rawDoc.currentStep) < 4)
-                ) {
-                  setDoc(doc(db, COLLECTION_NAME, normalized.id), sanitizeForFirestore(normalized)).catch(() => {});
-                }
               }
             } catch (e) {
               if (rawDoc.id) remoteDocs.push(rawDoc);
