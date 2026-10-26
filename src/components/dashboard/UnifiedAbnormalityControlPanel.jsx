@@ -1788,24 +1788,83 @@ export const UnifiedAbnormalityControlPanel = ({
       {/* ========================================================================= */}
       {/* 2.5. 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자 vs 2단계 생산관리자) */}
       {/* ========================================================================= */}
-      {currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj" || currentProfile?.name === "권태형" || currentProfile?.id === "admin_kwon" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.role === "ADMIN" ? (
-        <Step4ExecutiveApprovalPanel
-          currentProfile={currentProfile}
-          onOpenIssueModal={onOpenIssueModal}
-          onNavigateTab={onNavigateTab}
-        />
-      ) : currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy" ? (
-        <Step3QualityControlPanel
-          currentProfile={currentProfile}
-          onOpenIssueModal={onOpenIssueModal}
-          onNavigateTab={onNavigateTab}
-        />
-      ) : (
-        <WorkReportNonconformanceLedgerPanel
-          currentProfile={currentProfile}
-          titlePrefix="전사"
-        />
-      )}
+      {(() => {
+        const isExecutiveUser = Boolean(
+          currentProfile?.name === "이명재" ||
+          currentProfile?.id === "sam_mj" ||
+          currentProfile?.name === "김동욱" ||
+          currentProfile?.id === "hal_dw" ||
+          currentProfile?.name === "권태형" ||
+          currentProfile?.id === "admin_kwon" ||
+          currentProfile?.name === "최미영" ||
+          currentProfile?.id === "admin_choi" ||
+          currentProfile?.title === "이사" ||
+          currentProfile?.title === "대표이사" ||
+          currentProfile?.title === "전무" ||
+          currentProfile?.title === "대표(전무)" ||
+          currentProfile?.role === "ADMIN"
+        );
+
+        const isQualityUser = Boolean(
+          currentProfile?.name === "이창엽" ||
+          currentProfile?.id === "sam_cy" ||
+          currentProfile?.name === "이상기" ||
+          currentProfile?.id === "sam_sg" ||
+          currentProfile?.assignedProcess === "품질관리" ||
+          currentProfile?.department === "품질보증팀"
+        );
+
+        let managerCompanyFilter = "";
+        let managerTitlePrefix = "전사";
+        const name = currentProfile?.name || "";
+        const process = currentProfile?.assignedProcess || "";
+        const plant = currentProfile?.plant || "";
+
+        if (name === "설유철" || process.includes("압출")) {
+          managerCompanyFilter = "압출동";
+          managerTitlePrefix = "삼랑진 압출동";
+        } else if (name === "윤경수" || name === "양인나" || name === "유동길" || (plant === "삼랑진공장" && process.includes("가공"))) {
+          managerCompanyFilter = "오륙";
+          managerTitlePrefix = "삼랑진 가공동";
+        } else if (name === "오상민" || (plant === "한림공장" && process.includes("가공"))) {
+          managerCompanyFilter = "한림공장";
+          managerTitlePrefix = "한림 가공동";
+        } else if (name === "전재율" || process.includes("보전")) {
+          managerCompanyFilter = "";
+          managerTitlePrefix = "설비보전";
+        } else if (currentProfile?.company) {
+          managerCompanyFilter = currentProfile.company;
+          managerTitlePrefix = currentProfile.company;
+        }
+
+        if (isExecutiveUser) {
+          return (
+            <Step4ExecutiveApprovalPanel
+              currentProfile={currentProfile}
+              onOpenIssueModal={onOpenIssueModal}
+              onNavigateTab={onNavigateTab}
+            />
+          );
+        }
+
+        if (isQualityUser) {
+          return (
+            <Step3QualityControlPanel
+              currentProfile={currentProfile}
+              onOpenIssueModal={onOpenIssueModal}
+              onNavigateTab={onNavigateTab}
+            />
+          );
+        }
+
+        return (
+          <WorkReportNonconformanceLedgerPanel
+            currentProfile={currentProfile}
+            filterCompany={managerCompanyFilter}
+            titlePrefix={managerTitlePrefix}
+          />
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 3. 1줄짜리 초간결 목록표 (High-Density 1-Line Table View) */}

@@ -28,25 +28,19 @@ export const PANEL_KEYS = {
   TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge"
 };
 
-// 기본 사내 일반 관리자 패널 목록 (전체 기본 풀 세트)
+// 기본 사내 일반 관리자 패널 목록 (5개사 뱃지/중대재해/비가동 중복 제거, 1~4단계 통합 이상발생 및 4M 관제 패널 기본 배치)
 export const DEFAULT_INTERNAL_MANAGER_PANELS = [
   PANEL_KEYS.COMMON_SCHEDULE,
   PANEL_KEYS.CALENDAR_SCHEDULE,
-  PANEL_KEYS.SEVERE_DISASTER,
   PANEL_KEYS.SALES_PURCHASE,
-  PANEL_KEYS.ATTENDANCE,
   PANEL_KEYS.QUALITY_SUMMARY,
-  PANEL_KEYS.EXTRUSION_DOWNTIME,
+  PANEL_KEYS.ABNORMALITY_4M,
   PANEL_KEYS.WORK_LOGS
 ];
 
 // 관리자(ID 또는 이름)별 맞춤 패널 커스텀 설정표
 export const MANAGER_PANEL_CONFIG = {
-  // ⭐ [이창엽 책임 - 품질관리] 맞춤 대시보드 레이아웃
-  // 1. 중대재해 한줄짜리 패널 삭제
-  // 2. 근태현황 및 관리 패널 삭제
-  // 3. 압출동 주간 비가동내역 패널 삭제
-  // 4. 중요ITEM 품질현황 바로 아래에 4M 변동점 패널(UnifiedAbnormalityControlPanel) 배치하여 총괄 관리
+  // ⭐ [3단계 품질관리자: 이창엽 책임 / 이상기 기사]
   "sam_cy": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
@@ -63,13 +57,28 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
   ],
+  "sam_sg": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "이상기": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
 
-  // 👑 [이명재 이사 - 삼랑진 총괄] 4단계 경영진 최종점검 및 변동점 대장 승인 대시보드
+  // 👑 [4단계 삼랑진공장 총괄: 이명재 대표이사] 5개사 뱃지 삭제, 4M 및 전자결재 승인 대시보드
   "sam_mj": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
@@ -78,18 +87,34 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
   ],
 
-  // 👑 [권태형 대표이사] 전사 4단계 경영진 최종 승인 및 관제 대시보드
+  // 👑 [4단계 한림공장 총괄: 김동욱 대표(전무)] 5개사 뱃지 삭제, 4M 및 전자결재 승인 대시보드
+  "hal_dw": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "김동욱": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 👑 [4단계 본사 경영진: 권태형 대표이사 / 최미영 전무]
   "admin_kwon": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
@@ -98,16 +123,126 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "admin_choi": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "최미영": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
   ],
 
-  // 🛡️ [한림공장 TEST 관리자] 맞춤 대시보드 레이아웃
-  // 요청사항: 
-  // 1. 1, 2, 3, 5 패널 삭제 (매입매출, 근태현황, 중요ITEM품질, 일일업무일지)
-  // 2. ADMIN에서 관리하던 일보양식관리를 옮겨서 TEST가 전담 관리
+  // ⚙️ [2단계 공정관리자: 설유철 책임(압출동), 윤경수 책임(가공동), 오상민 선임(한림 가공)]
+  "sam_yc": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "설유철": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "sam_ks": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "윤경수": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "sam_in": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "양인나": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "sam_dg": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "유동길": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "hal_sm": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "오상민": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "sam_jy": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "전재율": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 🛡️ [한림공장 TEST 관리자]
   "hal_test": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
@@ -123,7 +258,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
-export const PANEL_CONFIG_VERSION = "20261026_v6";
+export const PANEL_CONFIG_VERSION = "20261026_v9";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회
@@ -138,16 +273,12 @@ export const getPanelsForUser = (profile) => {
     const cachedVer = localStorage.getItem("dashboard_panels_version");
     if (cachedVer !== PANEL_CONFIG_VERSION) {
       localStorage.setItem("dashboard_panels_version", PANEL_CONFIG_VERSION);
-      if (id) localStorage.removeItem(`dashboard_panels_${id}`);
-      if (name) localStorage.removeItem(`dashboard_panels_${name}`);
-      localStorage.removeItem("dashboard_panels_hal_test");
-      localStorage.removeItem("dashboard_panels_TEST");
-      localStorage.removeItem("dashboard_panels_sam_cy");
-      localStorage.removeItem("dashboard_panels_이창엽");
-      localStorage.removeItem("dashboard_panels_sam_mj");
-      localStorage.removeItem("dashboard_panels_이명재");
-      localStorage.removeItem("dashboard_panels_admin_kwon");
-      localStorage.removeItem("dashboard_panels_권태형");
+      // Remove all custom dashboard panel cached keys
+      Object.keys(localStorage).forEach((k) => {
+        if (k.startsWith("dashboard_panels_")) {
+          localStorage.removeItem(k);
+        }
+      });
     }
   } catch (e) {}
 
