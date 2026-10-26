@@ -22,8 +22,10 @@ import {
   Database,
   ShieldCheck,
   FileText,
-  Scissors
+  Scissors,
+  Eye
 } from "lucide-react";
+import TemplateAppliedPreviewModal from "./common/TemplateAppliedPreviewModal";
 import {
   subscribeHanulWorkReports,
   deleteHanulWorkReport,
@@ -66,6 +68,7 @@ export const HanulWorkReportTable = ({
   const [draftProcessSlots, setDraftProcessSlots] = useState({});
   const [isSavingAssign, setIsSavingAssign] = useState(false);
   const [assignToast, setAssignToast] = useState("");
+  const [previewTemplate, setPreviewTemplate] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeHanulWorkReports((list) => {
@@ -989,12 +992,36 @@ export const HanulWorkReportTable = ({
                           </p>
                         </div>
 
-                        <div className={`px-2.5 py-1.5 rounded-xl flex items-center justify-center shrink-0 text-xs font-black transition ${
-                          isChecked
-                            ? "bg-emerald-500 text-slate-950 shadow-md"
-                            : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-indigo-600 hover:text-white"
-                        }`}>
-                          {isChecked ? "✓ 적용됨" : "이 공정에 적용"}
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* 👁️ 미리보기 뱃지 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewTemplate(tpl);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 hover:text-white text-indigo-300 border border-indigo-500/30 text-xs font-black transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
+                            title="이 양식이 현장 작업자 일보에 적용된 실물 서식을 미리 확인합니다"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>미리보기</span>
+                          </button>
+
+                          {/* 이 공정에 적용 / 적용됨 뱃지 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTemplateSelect(tpl.id);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl flex items-center justify-center text-xs font-black transition active:scale-95 cursor-pointer ${
+                              isChecked
+                                ? "bg-emerald-500 text-slate-950 shadow-md font-black"
+                                : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-emerald-600 hover:text-white"
+                            }`}
+                          >
+                            {isChecked ? "✓ 적용됨" : "이 공정에 적용"}
+                          </button>
                         </div>
                       </div>
                     );
@@ -1037,6 +1064,18 @@ export const HanulWorkReportTable = ({
               </div>
             </div>
           </div>
+
+          {/* 🌟 5대 공정 적용 실물 서식 미리보기 모달 */}
+          {previewTemplate && (
+            <TemplateAppliedPreviewModal
+              isOpen={Boolean(previewTemplate)}
+              template={previewTemplate}
+              slotName={`${settingProcessId || "공정"} • ${settingSubSlot || "세부"}`}
+              isApplied={currentSlotTemplateId === previewTemplate.id}
+              onApply={(tpl) => handleToggleTemplateSelect(tpl.id)}
+              onClose={() => setPreviewTemplate(null)}
+            />
+          )}
         </div>
       )}
     </div>

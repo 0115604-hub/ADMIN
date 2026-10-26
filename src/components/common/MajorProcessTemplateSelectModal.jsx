@@ -23,6 +23,7 @@ import {
   saveWorkReportTemplate
 } from "../../services/workReportTemplateService";
 import { LegoTemplateEditorModal } from "../WorkReportTemplateManagerView";
+import TemplateAppliedPreviewModal from "./TemplateAppliedPreviewModal";
 
 /**
  * 🌟 5대 공정 양식 선택 및 매핑 공용 모달
@@ -48,6 +49,7 @@ export const MajorProcessTemplateSelectModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [viewingTemplate, setViewingTemplate] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
 
   // Sync templates & assignments
   useEffect(() => {
@@ -379,15 +381,18 @@ export const MajorProcessTemplateSelectModal = ({
 
                       {/* Card Action Buttons (전체보기 / 공정선택) */}
                       <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                        {/* 🌟 전체보기 뱃지 (클릭 시 템플릿 열람/수정 및 수정등록 지원) */}
+                        {/* 🌟 미리보기 뱃지 (클릭 시 1:1 실물 서식 레이아웃 확인 및 공정 적용) */}
                         <button
                           type="button"
-                          onClick={() => setViewingTemplate(tpl)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 hover:text-white text-indigo-300 text-xs font-black transition cursor-pointer flex items-center gap-1 active:scale-95"
-                          title="양식 템플릿 상세 블록을 확인하고 실물 A4 양식 수정등록도 가능합니다."
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewTemplate(tpl);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 hover:text-white text-indigo-300 border border-indigo-500/30 text-xs font-black transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
+                          title="이 양식이 현장 작업자 일보에 적용된 실물 서식을 미리 확인합니다"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>전체보기</span>
+                          <span>미리보기</span>
                         </button>
 
                         {/* 공정 선택 뱃지 */}
@@ -475,6 +480,18 @@ export const MajorProcessTemplateSelectModal = ({
             setToastMessage(`✅ [${appliedTpl.carModel || appliedTpl.title}] 양식이 현재 슬롯에 선택 적용되었습니다!`);
             setTimeout(() => setToastMessage(""), 3500);
           }}
+        />
+      )}
+
+      {/* 🌟 TemplateAppliedPreviewModal (적용 모습 실물 서식 미리보기) */}
+      {previewTemplate && (
+        <TemplateAppliedPreviewModal
+          isOpen={Boolean(previewTemplate)}
+          template={previewTemplate}
+          slotName={`${companyName} • ${activeSlotObj?.name || selectedSlotId}`}
+          isApplied={currentSlotTemplateId === previewTemplate.id}
+          onApply={(tpl) => handleToggleTemplateSelect(tpl.id)}
+          onClose={() => setPreviewTemplate(null)}
         />
       )}
     </div>

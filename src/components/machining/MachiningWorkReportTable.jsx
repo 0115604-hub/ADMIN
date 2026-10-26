@@ -13,8 +13,10 @@ import {
   Settings,
   Check,
   X,
-  FileText
+  FileText,
+  Eye
 } from "lucide-react";
+import TemplateAppliedPreviewModal from "../common/TemplateAppliedPreviewModal";
 import {
   subscribeMachiningWorkReports,
   deleteMachiningWorkReport,
@@ -54,6 +56,7 @@ export const MachiningWorkReportTable = ({
   const [draftProcessSlots, setDraftProcessSlots] = useState({});
   const [isSavingAssign, setIsSavingAssign] = useState(false);
   const [assignToast, setAssignToast] = useState("");
+  const [previewTemplate, setPreviewTemplate] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeMachiningWorkReports((list) => {
@@ -708,7 +711,21 @@ export const MachiningWorkReportTable = ({
                         <h4 className="font-black text-xs text-white mt-1 truncate">{tpl.title}</h4>
                         <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
                           <span>{tpl.processName || tpl.carModel || "-"}</span>
-                          <span className="font-mono text-slate-500">{tpl.formNo || ""}</span>
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewTemplate(tpl);
+                              }}
+                              className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-indigo-600 hover:text-white text-indigo-300 font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                              title="이 양식이 현장 작업자 일보에 적용된 실물 서식을 미리 확인합니다"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>미리보기</span>
+                            </button>
+                            <span className="font-mono text-slate-500">{tpl.formNo || ""}</span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -736,6 +753,18 @@ export const MachiningWorkReportTable = ({
               </button>
             </div>
           </div>
+
+          {/* 🌟 5대 공정 적용 실물 서식 미리보기 모달 */}
+          {previewTemplate && (
+            <TemplateAppliedPreviewModal
+              isOpen={Boolean(previewTemplate)}
+              template={previewTemplate}
+              slotName={`${settingProject || "가공동"} • ${settingProcessId || "공정"}`}
+              isApplied={currentSlotTemplateId === previewTemplate.id}
+              onApply={(tpl) => handleToggleTemplateSelect(tpl.id)}
+              onClose={() => setPreviewTemplate(null)}
+            />
+          )}
         </div>
       )}
     </div>
