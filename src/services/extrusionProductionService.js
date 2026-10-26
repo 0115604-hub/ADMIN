@@ -577,52 +577,97 @@ export const saveLocalExtrusionReports = (reports) => {
   }
 };
 
+// ⚡ Singleton Multiplexed Real-time Listener (Single-Flight Pattern)
+// Eliminates duplicate Firestore network connections, redundant sorting, and memory waste
+let activeExtrusionUnsub = null;
+let extrusionCache = null;
+const extrusionSubscribers = new Set();
+let extrusionCleanupTimer = null;
+
 /**
- * Subscribe to real-time updates from Firestore with local fallback
+ * Subscribe to real-time updates from Firestore with local fallback (Multi-Subscriber Shared)
  */
 export const subscribeToExtrusionReports = (onDataCallback) => {
-  // 1. Initial push from local storage
-  const localInitial = getLocalExtrusionReports();
-  onDataCallback(localInitial);
+  if (typeof onDataCallback !== "function") return () => {};
 
-  // 2. Real-time Firestore sync
-  try {
-    const q = collection(db, COLLECTION_NAME);
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          const list = [];
-          snapshot.forEach((docSnap) => {
-            if (String(docSnap.id || "").startsWith("epr_seed_")) {
-              // Permanently delete dummy mock seed doc from Firestore
-              deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)).catch(() => {});
-            } else {
-              list.push({ id: docSnap.id, ...docSnap.data() });
-            }
-          });
-          // Sort by date DESC, then createdAt DESC
-          list.sort((a, b) => {
-            if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
-            return (b.createdAt || "").localeCompare(a.createdAt || "");
-          });
-          const sanitizedList = list.map((r, i) => sanitizeExtrusionReport(r, i));
-          saveLocalExtrusionReports(sanitizedList);
-          onDataCallback(sanitizedList);
-        } else {
-          onDataCallback([]);
-        }
-      },
-      (error) => {
-        console.warn("Firestore extrusion reports subscription fallback:", error);
-        onDataCallback(getLocalExtrusionReports());
-      }
-    );
-    return unsub;
-  } catch (e) {
-    console.warn("Error establishing extrusion reports listener:", e);
-    return () => {};
+  extrusionSubscribers.add(onDataCallback);
+
+  // 1. Immediately serve cached data (zero-latency initial render)
+  if (extrusionCache) {
+    onDataCallback(extrusionCache);
+  } else {
+    extrusionCache = getLocalExtrusionReports();
+    onDataCallback(extrusionCache);
   }
+
+  // Cancel any pending teardown timer
+  if (extrusionCleanupTimer) {
+    clearTimeout(extrusionCleanupTimer);
+    extrusionCleanupTimer = null;
+  }
+
+  // 2. Open single Firestore stream if not already active
+  if (!activeExtrusionUnsub && db) {
+    try {
+      const q = collection(db, COLLECTION_NAME);
+      activeExtrusionUnsub = onSnapshot(
+        q,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list = [];
+            snapshot.forEach((docSnap) => {
+              if (String(docSnap.id || "").startsWith("epr_seed_")) {
+                deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)).catch(() => {});
+              } else {
+                list.push({ id: docSnap.id, ...docSnap.data() });
+              }
+            });
+            // Sort by date DESC, then createdAt DESC (single computation for all listeners)
+            list.sort((a, b) => {
+              if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
+              return (b.createdAt || "").localeCompare(a.createdAt || "");
+            });
+            const sanitizedList = list.map((r, i) => sanitizeExtrusionReport(r, i));
+            extrusionCache = sanitizedList;
+            saveLocalExtrusionReports(sanitizedList);
+
+            // Dispatch to all subscribers
+            extrusionSubscribers.forEach((cb) => {
+              try {
+                cb(sanitizedList);
+              } catch (err) {
+                console.error("Extrusion subscriber callback error:", err);
+              }
+            });
+          } else {
+            extrusionCache = [];
+            extrusionSubscribers.forEach((cb) => cb([]));
+          }
+        },
+        (error) => {
+          console.warn("Firestore extrusion reports subscription fallback:", error);
+          const fallback = getLocalExtrusionReports();
+          extrusionSubscribers.forEach((cb) => cb(fallback));
+        }
+      );
+    } catch (e) {
+      console.warn("Error establishing extrusion reports listener:", e);
+    }
+  }
+
+  // Return unsubscribe for this specific subscriber
+  return () => {
+    extrusionSubscribers.delete(onDataCallback);
+    // Debounced teardown after 5 seconds of zero subscribers
+    if (extrusionSubscribers.size === 0 && activeExtrusionUnsub) {
+      extrusionCleanupTimer = setTimeout(() => {
+        if (extrusionSubscribers.size === 0 && activeExtrusionUnsub) {
+          activeExtrusionUnsub();
+          activeExtrusionUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 /**

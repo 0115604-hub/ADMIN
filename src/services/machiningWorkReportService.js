@@ -1,4 +1,4 @@
-﻿// Machining (가공동) JA, NX4, NX4a, HR G/RUN Work Report Service
+// Machining (가공동) JA, NX4, NX4a, HR G/RUN Work Report Service
 // Real-time Firestore Sync + LocalStorage Multi-Device Persistence
 import {
   collection,
@@ -361,37 +361,83 @@ export const saveLocalMachiningWorkReports = (reports) => {
   }
 };
 
-// Subscribe to Firestore collection with real-time updates
+// ⚡ Singleton Multiplexed Real-time Listener (Single-Flight Pattern)
+// Eliminates duplicate Firestore network connections, redundant sorting, and memory waste
+let activeMachiningUnsub = null;
+let machiningCache = null;
+const machiningSubscribers = new Set();
+let machiningCleanupTimer = null;
+
+// Subscribe to Firestore collection with real-time updates (Multi-Subscriber Shared)
 export const subscribeMachiningWorkReports = (callback) => {
-  if (!db) {
-    callback(getLocalMachiningWorkReports());
-    return () => {};
+  if (typeof callback !== "function") return () => {};
+
+  machiningSubscribers.add(callback);
+
+  // Immediately serve cached data (zero-latency initial render)
+  if (machiningCache) {
+    callback(machiningCache);
+  } else {
+    machiningCache = getLocalMachiningWorkReports();
+    callback(machiningCache);
   }
 
-  const q = query(collection(db, COLLECTION_NAME));
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
-      const reports = [];
-      snapshot.forEach((docSnap) => {
-        reports.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      // Sort descending by date and createdAt
-      reports.sort((a, b) => {
-        const da = `${a.date || ""} ${a.createdAt || ""}`;
-        const db_ = `${b.date || ""} ${b.createdAt || ""}`;
-        return db_.localeCompare(da);
-      });
-      saveLocalMachiningWorkReports(reports);
-      callback(reports);
-    },
-    (error) => {
-      console.warn("Firestore Machining subscribe error, fallback to local:", error);
-      callback(getLocalMachiningWorkReports());
-    }
-  );
+  // Cancel any pending teardown timer
+  if (machiningCleanupTimer) {
+    clearTimeout(machiningCleanupTimer);
+    machiningCleanupTimer = null;
+  }
 
-  return unsubscribe;
+  // Open single Firestore stream if not already active
+  if (!activeMachiningUnsub && db) {
+    const q = query(collection(db, COLLECTION_NAME));
+    activeMachiningUnsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const reports = [];
+        snapshot.forEach((docSnap) => {
+          reports.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        // Sort descending by date and createdAt (single computation for all listeners)
+        reports.sort((a, b) => {
+          const da = `${a.date || ""} ${a.createdAt || ""}`;
+          const db_ = `${b.date || ""} ${b.createdAt || ""}`;
+          return db_.localeCompare(da);
+        });
+
+        machiningCache = reports;
+        saveLocalMachiningWorkReports(reports); // Only 1 localStorage write
+
+        // Dispatch to all subscribers
+        machiningSubscribers.forEach((cb) => {
+          try {
+            cb(reports);
+          } catch (err) {
+            console.error("Machining subscriber callback error:", err);
+          }
+        });
+      },
+      (error) => {
+        console.warn("Firestore Machining subscribe error, fallback to local:", error);
+        const fallback = getLocalMachiningWorkReports();
+        machiningSubscribers.forEach((cb) => cb(fallback));
+      }
+    );
+  }
+
+  // Return unsubscribe for this specific subscriber
+  return () => {
+    machiningSubscribers.delete(callback);
+    // Debounced teardown after 5 seconds of zero subscribers
+    if (machiningSubscribers.size === 0 && activeMachiningUnsub) {
+      machiningCleanupTimer = setTimeout(() => {
+        if (machiningSubscribers.size === 0 && activeMachiningUnsub) {
+          activeMachiningUnsub();
+          activeMachiningUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 // Save Machining Work Report (Create or Update)

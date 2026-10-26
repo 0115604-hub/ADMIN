@@ -41,6 +41,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('bundledCustomTemplates.json') || id.includes('multiMonthMasterData.json') || id.includes('sqLevelUpMasterData.js')) {
+            return 'data-large-dataset';
+          }
           if (id.includes('node_modules/pdfjs-dist')) {
             return 'vendor-pdf';
           }

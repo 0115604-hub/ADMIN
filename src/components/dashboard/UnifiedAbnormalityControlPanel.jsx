@@ -277,15 +277,19 @@ export const UnifiedAbnormalityControlPanel = ({
     };
   }, []);
 
-  // 🌟 전 공정 부적합경보를 공식 4M 변동점 관리대장에 자동 동기화
+  // 🌟 전 공정 부적합경보를 공식 4M 변동점 관리대장에 자동 동기화 (디바운스 적용으로 불필요한 연속 호출 방지)
   useEffect(() => {
-    autoSyncAllQualityIssuesToFourMLedger({
-      extrusionIssues: extrusionQualityAlerts,
-      yuseongIssues: yuseongQualityIssues,
-      hanulIssues: hanulQualityIssues,
-      machiningIssues: machiningQualityIssues,
-      urgentIssues: urgentIssues
-    }).catch(() => {});
+    const timer = setTimeout(() => {
+      autoSyncAllQualityIssuesToFourMLedger({
+        extrusionIssues: extrusionQualityAlerts,
+        yuseongIssues: yuseongQualityIssues,
+        hanulIssues: hanulQualityIssues,
+        machiningIssues: machiningQualityIssues,
+        urgentIssues: urgentIssues
+      }).catch(() => {});
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [extrusionQualityAlerts, yuseongQualityIssues, hanulQualityIssues, machiningQualityIssues, urgentIssues]);
 
   const handleManualRefresh = () => {
@@ -928,6 +932,16 @@ export const UnifiedAbnormalityControlPanel = ({
     // 5-2. 5개사 근태/연장근무 매트릭스 결근 발생분 (스마트 연장근무 출근부 연동)
     const ym = smartOvertimeData?.yearMonth || todayStr.slice(0, 7);
     const matrix = smartOvertimeData?.attendanceMatrix || [];
+
+    // ⚡ 성능 최적화: 31일 주말/공휴일 판정을 작업자 루프 외부에서 1회만 사전 계산 (4,600+ 회 Date 객체 생성 제거)
+    const weekendDaysSet = new Set();
+    for (let d = 1; d <= 31; d++) {
+      const dStr = String(d).padStart(2, "0");
+      if (isWeekendByDate(`${ym}-${dStr}`)) {
+        weekendDaysSet.add(d);
+      }
+    }
+
     matrix.forEach((w) => {
       if (!w || !w.name) return;
       const rawComp = w.company || "오륙";
@@ -943,35 +957,26 @@ export const UnifiedAbnormalityControlPanel = ({
       const resolvedSkill = card?.skillLevel || 3;
       const resolvedMainProc = card?.mainProcess || w.line || "압출";
       const photoUrl = card?.photoUrl || w.photoUrl || "";
+      const plant = (resolvedComp === "오륙" || resolvedComp === "유성") ? "삼랑진공장" : "한림공장";
+      const line = `${resolvedMainProc} 공정`;
+      const dailyObj = w.daily || w;
 
       // Check days 1 to 31 (주말 및 법정 휴무일은 특근일이므로 결근 이상발생 건에서 제외)
       for (let d = 1; d <= 31; d++) {
-        const dStr = String(d).padStart(2, "0");
-        const dateStr = `${ym}-${dStr}`;
-        if (isWeekendByDate(dateStr)) continue;
+        if (weekendDaysSet.has(d)) continue;
 
-        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) || w[d] || w[String(d)];
+        const val = dailyObj[d] !== undefined ? dailyObj[d] : dailyObj[String(d)];
         if (!val) continue;
-        const strVal = String(val).trim();
+        const strVal = typeof val === "string" ? val.trim() : String(val).trim();
         if (strVal === "결근" || strVal === "무단결근" || strVal === "휴가" || strVal === "연차" || strVal === "반차" || strVal.includes("결근")) {
+          const dStr = String(d).padStart(2, "0");
+          const dateStr = `${ym}-${dStr}`;
           const key = `${resolvedComp}_${workerName}_${dateStr}`;
           if (registeredAbsenceKeys.has(key)) continue; // avoid duplication with detailed log
           registeredAbsenceKeys.add(key);
 
-          const plant = (resolvedComp === "오륙" || resolvedComp === "유성") ? "삼랑진공장" : "한림공장";
-          const line = `${resolvedMainProc} 공정`;
-
           const title = `[${resolvedComp}] ${workerName}(${resolvedPos}, ${resolvedDept}) 결근 발생 (${line})`;
-          const content = [
-            `[4M Man 인원변동 결근내역]`,
-            `• 소속업체: ${resolvedComp}`,
-            `• 소속부서: ${resolvedDept}`,
-            `• 결근근로자: ${workerName} (${resolvedPos}, Lv.${resolvedSkill})`,
-            `• 담당공정: ${line}`,
-            `• 발생일자: ${dateStr}`,
-            `• 근태구분: ${strVal}`,
-            `• 조치내용: 4M Man 작업자 결근에 따른 대체인원 투입 점검, 특별교육 및 공정 초물검사 실시`
-          ].join("\n");
+          const content = `[4M Man 인원변동 결근내역]\n• 소속업체: ${resolvedComp}\n• 소속부서: ${resolvedDept}\n• 결근근로자: ${workerName} (${resolvedPos}, Lv.${resolvedSkill})\n• 담당공정: ${line}\n• 발생일자: ${dateStr}\n• 근태구분: ${strVal}\n• 조치내용: 4M Man 작업자 결근에 따른 대체인원 투입 점검, 특별교육 및 공정 초물검사 실시`;
 
           unified.push({
             id: `man_matrix_${resolvedComp}_${workerName}_${dateStr}`,
@@ -1219,45 +1224,56 @@ export const UnifiedAbnormalityControlPanel = ({
 
   // =========================================================================
   // 📊 4M 통계 집계 (변동점 관리대장 / Machine / Man / Method / Material)
+  // ⚡ 성능 최적화: 단일 루프 순회로 O(N) 처리 및 중간 임시 배열 생성(GC 부하) 제거
   // =========================================================================
   const stats = useMemo(() => {
-    const totalCount = allUnifiedRecords.length;
-    const officialLedgerCount = fourMLedgerRecords.length;
+    let machineCount = 0;
+    let repairCount = 0;
+    let downtimeCount = 0;
+    let tpmCount = 0;
+    let totalDowntimeMin = 0;
+    let manCount = 0;
+    let methodCount = 0;
+    let methodPending = 0;
+    let materialCount = 0;
+    let totalScrapKg = 0;
+    let totalPhotos = 0;
 
-    // 1. Machine: 설비수리 + 비가동 + TPM
-    const machineRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MACHINE");
-    const repairCount = machineRecords.filter((r) => r.origin === "설비수리").length;
-    const downtimeCount = machineRecords.filter((r) => r.origin === "비가동").length;
-    const tpmCount = machineRecords.filter((r) => r.origin === "TPM 이상신고").length;
-    const totalDowntimeMin = (Array.isArray(machineRecords) ? machineRecords : []).reduce((acc, r) => acc + (r.downtimeMinutes || 0), 0);
-
-    // 2. Man: 작업자 변동 / 교대 / 지원
-    const manRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MAN");
-    const manCount = manRecords.length;
-
-    // 3. Method: 품질경보
-    const methodRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "METHOD");
-    const methodPending = methodRecords.filter((r) => !r.isResolved).length;
-
-    // 4. Material: 불량손실
-    const materialRecords = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).filter((r) => r.fourM?.toUpperCase() === "MATERIAL");
-    const totalScrapKg = Number((Array.isArray(materialRecords) ? materialRecords : []).reduce((acc, r) => acc + (r.scrapKg || 0), 0).toFixed(1));
-
-    // 사진 총 건수
-    const totalPhotos = (Array.isArray(allUnifiedRecords) ? allUnifiedRecords : []).reduce((acc, r) => acc + (r.images?.length || 0) + (r.actionImages?.length || 0), 0);
+    const list = Array.isArray(allUnifiedRecords) ? allUnifiedRecords : [];
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      if (!r) continue;
+      const fourM = (r.fourM || "").toUpperCase();
+      if (fourM === "MACHINE") {
+        machineCount++;
+        if (r.origin === "설비수리") repairCount++;
+        else if (r.origin === "비가동") downtimeCount++;
+        else if (r.origin === "TPM 이상신고") tpmCount++;
+        totalDowntimeMin += (r.downtimeMinutes || 0);
+      } else if (fourM === "MAN") {
+        manCount++;
+      } else if (fourM === "METHOD") {
+        methodCount++;
+        if (!r.isResolved) methodPending++;
+      } else if (fourM === "MATERIAL") {
+        materialCount++;
+        totalScrapKg += (r.scrapKg || 0);
+      }
+      totalPhotos += (r.images?.length || 0) + (r.actionImages?.length || 0);
+    }
 
     return {
-      totalCount,
-      officialLedgerCount,
-      machineCount: machineRecords.length,
+      totalCount: list.length,
+      officialLedgerCount: fourMLedgerRecords?.length || 0,
+      machineCount,
       repairCount,
       downtimeCount,
       tpmCount,
       totalDowntimeMin,
       manCount,
-      materialCount: materialRecords.length,
-      totalScrapKg,
-      methodCount: methodRecords.length,
+      materialCount,
+      totalScrapKg: Number(totalScrapKg.toFixed(1)),
+      methodCount,
       methodPending,
       totalPhotos
     };

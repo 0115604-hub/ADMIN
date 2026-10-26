@@ -727,16 +727,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return false;
   };
 
-  // Access Logs State for ADMIN
+  // Access Logs State for ADMIN (Only active when worker access logs modal is open to eliminate idle re-render storms)
   const [selectedWorkerForLogs, setSelectedWorkerForLogs] = useState(null);
   const [accessLogs, setAccessLogs] = useState(() => getLocalAccessLogs());
 
   useEffect(() => {
+    if (!selectedWorkerForLogs) return;
     const unsub = subscribeAccessLogs((logs) => {
       setAccessLogs(logs);
     });
     return () => unsub();
-  }, []);
+  }, [selectedWorkerForLogs]);
 
   const handleOpenWorkerLogs = (worker) => {
     pushModalHistory("worker_access_logs");

@@ -385,50 +385,102 @@ export const sortIssuesByCustomPriority = (list = []) => {
 };
 
 // Real-time Cloud Synchronization (종결/삭제된 항목도 실시간 동기화하여 '종결삭제관리'에서 확인 및 복구 가능)
+// ⚡ 성능 최적화: 싱글톤 멀티플렉싱 리스너(Single-Flight) 및 인메모리 캐시 공유
+let activeUrgentIssuesUnsub = null;
+const urgentIssuesSubscribers = new Set();
+let cachedUrgentIssues = null;
+let urgentIssuesTeardownTimer = null;
+
 export const subscribeUrgentIssues = (onUpdate) => {
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        if (snapshot.empty) {
-          onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
-          return;
-        }
-        const list = [];
-        snapshot.forEach((d) => {
-          const data = d.data();
-          if (!data) return;
-          // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 Firestore 삭제
-          if (isHanulManagedIssue({ id: d.id, ...data })) {
-            deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+  if (typeof onUpdate !== "function") return () => {};
+
+  // 1. 이미 메모리에 캐시가 있거나 로컬스토리지 데이터가 있으면 즉시 전달 (UI 지연 제로)
+  if (cachedUrgentIssues) {
+    onUpdate(cachedUrgentIssues);
+  } else {
+    const local = sortIssuesByCustomPriority(getLocalUrgentIssues());
+    if (local && local.length > 0) {
+      cachedUrgentIssues = local;
+      onUpdate(local);
+    }
+  }
+
+  urgentIssuesSubscribers.add(onUpdate);
+
+  if (urgentIssuesTeardownTimer) {
+    clearTimeout(urgentIssuesTeardownTimer);
+    urgentIssuesTeardownTimer = null;
+  }
+
+  // 2. 단 하나의 공유 Firestore 리스너만 연결 (다중 컴포넌트 마운트 시 중복 쿼리/네트워크 차단)
+  if (!activeUrgentIssuesUnsub) {
+    try {
+      const colRef = collection(db, COLLECTION_NAME);
+      activeUrgentIssuesUnsub = onSnapshot(
+        colRef,
+        (snapshot) => {
+          if (snapshot.empty) {
+            const emptyList = sortIssuesByCustomPriority(getLocalUrgentIssues());
+            cachedUrgentIssues = emptyList;
+            urgentIssuesSubscribers.forEach((cb) => {
+              try { cb(emptyList); } catch (e) { console.error("UrgentIssues listener cb error:", e); }
+            });
             return;
           }
-          const sanitized = sanitizeUrgentIssueItem({ ...data, id: d.id, _docId: d.id, customId: data.id });
-          const isDel = Boolean(
-            data.isDeleted === true ||
-            data.deleted === true ||
-            data.isDeleted === "true" ||
-            data.deleted === "true" ||
-            isLegacyDismissedQualityAlert(sanitized)
-          );
-          list.push({ ...sanitized, isDeleted: isDel, isClosedByAdmin: isDel ? true : Boolean(data.isClosedByAdmin) });
-        });
-        const sorted = sortIssuesByCustomPriority(list);
-        saveLocalUrgentIssues(sorted);
-        onUpdate(sorted);
-      },
-      (error) => {
-        console.warn("Firestore urgent_issues sync warning (offline/rule):", error);
-        onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
-      }
-    );
-    return unsubscribe;
-  } catch (e) {
-    console.error("subscribeUrgentIssues error:", e);
-    onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
-    return () => {};
+          const list = [];
+          snapshot.forEach((d) => {
+            const data = d.data();
+            if (!data) return;
+            // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 Firestore 삭제
+            if (isHanulManagedIssue({ id: d.id, ...data })) {
+              deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+              return;
+            }
+            const sanitized = sanitizeUrgentIssueItem({ ...data, id: d.id, _docId: d.id, customId: data.id });
+            const isDel = Boolean(
+              data.isDeleted === true ||
+              data.deleted === true ||
+              data.isDeleted === "true" ||
+              data.deleted === "true" ||
+              isLegacyDismissedQualityAlert(sanitized)
+            );
+            list.push({ ...sanitized, isDeleted: isDel, isClosedByAdmin: isDel ? true : Boolean(data.isClosedByAdmin) });
+          });
+          const sorted = sortIssuesByCustomPriority(list);
+          cachedUrgentIssues = sorted;
+          saveLocalUrgentIssues(sorted);
+          urgentIssuesSubscribers.forEach((cb) => {
+            try { cb(sorted); } catch (e) { console.error("UrgentIssues listener cb error:", e); }
+          });
+        },
+        (error) => {
+          console.warn("Firestore urgent_issues sync warning (offline/rule):", error);
+          const fallback = sortIssuesByCustomPriority(getLocalUrgentIssues());
+          cachedUrgentIssues = fallback;
+          urgentIssuesSubscribers.forEach((cb) => {
+            try { cb(fallback); } catch (e) { console.error("UrgentIssues listener cb error:", e); }
+          });
+        }
+      );
+    } catch (e) {
+      console.error("subscribeUrgentIssues error:", e);
+      const fallback = sortIssuesByCustomPriority(getLocalUrgentIssues());
+      onUpdate(fallback);
+    }
   }
+
+  // 3. 디바운스된 리스너 해제 (탭 이동 등 빠른 언마운트/마운트 시 불필요한 재연결 방지)
+  return () => {
+    urgentIssuesSubscribers.delete(onUpdate);
+    if (urgentIssuesSubscribers.size === 0) {
+      urgentIssuesTeardownTimer = setTimeout(() => {
+        if (urgentIssuesSubscribers.size === 0 && activeUrgentIssuesUnsub) {
+          activeUrgentIssuesUnsub();
+          activeUrgentIssuesUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 // Add or update an urgent issue

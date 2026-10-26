@@ -1,4 +1,4 @@
-﻿// Access Log Service for Tracking Worker & Staff Login/Access History
+// Access Log Service for Tracking Worker & Staff Login/Access History
 import { collection, doc, setDoc, onSnapshot, getDocs, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -87,7 +87,8 @@ export const recordUserAccess = async (user) => {
 
   const allLogs = getLocalAccessLogs();
   const userLogs = allLogs[user.id] || [];
-  const updatedUserLogs = [newEntry, ...userLogs.slice(0, 49)];
+  // Keep lean history (latest 20 entries) to prevent memory bloating and LocalStorage quota exceeded errors
+  const updatedUserLogs = [newEntry, ...userLogs.slice(0, 19)];
   const updatedAllLogs = { ...allLogs, [user.id]: updatedUserLogs };
 
   saveLocalAccessLogs(updatedAllLogs);

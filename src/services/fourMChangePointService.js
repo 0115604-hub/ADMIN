@@ -183,39 +183,88 @@ export const saveLocalFourMChangePoints = (items) => {
   }
 };
 
-// Real-time Cloud Synchronization (Firestore authoritative stream)
+// ⚡ Singleton Multiplexed Real-time Listener (Single-Flight Pattern)
+let activeFourMUnsub = null;
+let fourMCache = null;
+const fourMSubscribers = new Set();
+let fourMCleanupTimer = null;
+
+// Real-time Cloud Synchronization (Firestore authoritative stream, Multi-Subscriber Shared)
 export const subscribeFourMChangePoints = (onUpdate) => {
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        const remoteList = [];
-        if (!snapshot.empty) {
-          snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
-          });
-        }
+  if (typeof onUpdate !== "function") return () => {};
 
-        remoteList.sort((a, b) => {
-          if (b.registeredAt !== a.registeredAt) return (b.registeredAt || "").localeCompare(a.registeredAt || "");
-          return (b.date || "").localeCompare(a.date || "");
-        });
+  fourMSubscribers.add(onUpdate);
 
-        saveLocalFourMChangePoints(remoteList);
-        if (onUpdate) onUpdate(remoteList);
-      },
-      (error) => {
-        console.warn("Firestore four_m_change_points sync warning:", error);
-        if (onUpdate) onUpdate(getLocalFourMChangePoints());
-      }
-    );
-    return unsubscribe;
-  } catch (e) {
-    console.error("subscribeFourMChangePoints error:", e);
-    if (onUpdate) onUpdate(getLocalFourMChangePoints());
-    return () => {};
+  // Immediately serve cached data (zero-latency initial render)
+  if (fourMCache) {
+    onUpdate(fourMCache);
+  } else {
+    fourMCache = getLocalFourMChangePoints();
+    onUpdate(fourMCache);
   }
+
+  // Cancel any pending teardown timer
+  if (fourMCleanupTimer) {
+    clearTimeout(fourMCleanupTimer);
+    fourMCleanupTimer = null;
+  }
+
+  // Open single Firestore stream if not already active
+  if (!activeFourMUnsub && db) {
+    try {
+      const colRef = collection(db, COLLECTION_NAME);
+      activeFourMUnsub = onSnapshot(
+        colRef,
+        (snapshot) => {
+          const remoteList = [];
+          if (!snapshot.empty) {
+            snapshot.forEach((d) => {
+              remoteList.push({ id: d.id, ...d.data() });
+            });
+          }
+
+          // Single sort for all subscribers
+          remoteList.sort((a, b) => {
+            if (b.registeredAt !== a.registeredAt) return (b.registeredAt || "").localeCompare(a.registeredAt || "");
+            return (b.date || "").localeCompare(a.date || "");
+          });
+
+          fourMCache = remoteList;
+          saveLocalFourMChangePoints(remoteList);
+
+          // Dispatch to all subscribers
+          fourMSubscribers.forEach((cb) => {
+            try {
+              cb(remoteList);
+            } catch (err) {
+              console.error("4M subscriber callback error:", err);
+            }
+          });
+        },
+        (error) => {
+          console.warn("Firestore four_m_change_points sync warning:", error);
+          const fallback = getLocalFourMChangePoints();
+          fourMSubscribers.forEach((cb) => cb(fallback));
+        }
+      );
+    } catch (e) {
+      console.error("subscribeFourMChangePoints error:", e);
+    }
+  }
+
+  // Return unsubscribe for this specific subscriber
+  return () => {
+    fourMSubscribers.delete(onUpdate);
+    // Debounced teardown after 5 seconds of zero subscribers
+    if (fourMSubscribers.size === 0 && activeFourMUnsub) {
+      fourMCleanupTimer = setTimeout(() => {
+        if (fourMSubscribers.size === 0 && activeFourMUnsub) {
+          activeFourMUnsub();
+          activeFourMUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 /**
@@ -806,6 +855,21 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
     (alertItem.actionResult && String(alertItem.actionResult).trim().length > 0)
   );
 
+  const resolvedActionResult = alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || (isResolved ? "조치 및 선별 완료" : "");
+  const resolvedContent = alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "";
+
+  // ⚡ 성능 최적화: 이미 등록되어 있고 주요 필드 및 조치상태 변경이 없는 경우 불필요한 Firestore 쓰기/트랜잭션 건너뛰기
+  if (
+    existingInLedger &&
+    Boolean(existingInLedger.isResolved) === isResolved &&
+    (existingInLedger.actionResult || "") === resolvedActionResult &&
+    (existingInLedger.title || "") === title &&
+    (existingInLedger.content || "") === resolvedContent &&
+    existingInLedger.fourM === fourM
+  ) {
+    return existingInLedger;
+  }
+
   const ledgerRecord = {
     id: id.startsWith("ledger_") ? id : `ledger_${id}`,
     originalId: id,
@@ -827,8 +891,8 @@ export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부
     title: title,
     date: alertItem.date || alertItem.targetDate || alertItem.startDate || existingInLedger?.date || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
     time: alertItem.time || existingInLedger?.time || "",
-    content: alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "",
-    actionResult: alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || (isResolved ? "조치 및 선별 완료" : ""),
+    content: resolvedContent,
+    actionResult: resolvedActionResult,
     actionAuthor: alertItem.actionAuthor || alertItem.author || (isResolved ? "관리자" : ""),
     actionAt: alertItem.actionAt || alertItem.resolvedAt || alertItem.updatedAt || "",
     images: Array.isArray(alertItem.causeImages) ? alertItem.causeImages : (Array.isArray(alertItem.images) ? alertItem.images : []),
