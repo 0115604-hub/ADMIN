@@ -528,7 +528,8 @@ export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
 // ⭐ 특근보고서 여부 판정 (주말/공휴일 공장 취합 및 특근 신청 서류)
 export function isOvertimeApprovalDoc(doc) {
   if (!doc) return false;
-  if (doc.id && doc.id.startsWith("appr_ot_")) return true;
+  if (doc.id && String(doc.id).startsWith("appr_4m_")) return false; // 4M 변동점 결재서류 우선 배제
+  if (doc.id && String(doc.id).startsWith("appr_ot_")) return true;
   if (doc.type === "OVERTIME" || doc.docType === "OVERTIME") return true;
   if (doc.category === "특근보고서" || doc.typeName?.includes("특근")) return true;
   if (doc.title && (doc.title.includes("특근") || doc.title.includes("특근보고서"))) return true;
@@ -629,6 +630,7 @@ export function saveLocalApprovalDocs(docs) {
         return d;
       }
     });
+    cachedApprovalDocs = normalized; // 🌟 Always keep in-memory cache in sync
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
     if (typeof window !== "undefined") {
       try {
@@ -651,14 +653,10 @@ export function subscribeApprovalDocs(onUpdate) {
   if (typeof onUpdate !== "function") return () => {};
 
   // 1. 인메모리 캐시 또는 로컬스토리지 즉시 반환 (UI 지연 0ms)
-  if (cachedApprovalDocs) {
-    onUpdate(cachedApprovalDocs);
-  } else {
-    const local = getLocalApprovalDocs();
-    if (local && local.length > 0) {
-      cachedApprovalDocs = local;
-      onUpdate(local);
-    }
+  const local = cachedApprovalDocs || getLocalApprovalDocs();
+  if (local) {
+    cachedApprovalDocs = local;
+    onUpdate(local);
   }
 
   approvalDocsSubscribers.add(onUpdate);
