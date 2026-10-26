@@ -83,7 +83,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
-export const PANEL_CONFIG_VERSION = "20261022_v4";
+export const PANEL_CONFIG_VERSION = "20261026_v5";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

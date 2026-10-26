@@ -76,7 +76,7 @@ export const PLANTS = [
       { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "오", pin: "11" },
       { id: "hal_br", name: "부림텍", title: "대표이사", plant: "한림공장", company: "부림텍", assignedProcess: "외주가공", role: "OPERATOR", avatar: "부", pin: "11", isPartner: true },
       { id: "hal_hu", name: "한울", title: "대표이사", plant: "한림공장", company: "한울", assignedProcess: "외주가공", role: "OPERATOR", avatar: "한", pin: "11", isPartner: true },
-      { id: "hal_test", name: "TEST", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "T", pin: "11" }
+      { id: "hal_test", name: "TEST", title: "선임", plant: "한림공장", assignedProcess: "TEST 관제", role: "OPERATOR", avatar: "T", pin: "11" }
     ]
   }
 ];

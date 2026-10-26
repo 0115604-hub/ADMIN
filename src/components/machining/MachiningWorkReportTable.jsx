@@ -37,7 +37,8 @@ import {
 
 export const MachiningWorkReportTable = ({
   onOpenReportModal,
-  currentWorkerName = ""
+  currentWorkerName = "",
+  hideCreateButtons = false
 }) => {
   const [reports, setReports] = useState([]);
   const [projectFilter, setProjectFilter] = useState("all");
@@ -407,33 +408,35 @@ export const MachiningWorkReportTable = ({
           </div>
         </div>
 
-        {/* 신규 일보 작성 버튼들 */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => onOpenReportModal && onOpenReportModal("HR", "소재준비")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ HR 일보</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenReportModal && onOpenReportModal("JA", "소재준비")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ JA 일보</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenReportModal && onOpenReportModal("NX5A", "소재준비")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ NX5a 일보</span>
-          </button>
-        </div>
+        {/* 신규 일보 작성 버튼들 (윤경수·양인나 관리자 패널에서는 삭제) */}
+        {!hideCreateButtons && currentWorkerName !== "윤경수" && currentWorkerName !== "양인나" && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onOpenReportModal && onOpenReportModal("HR", "소재준비")}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ HR 일보</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenReportModal && onOpenReportModal("JA", "소재준비")}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ JA 일보</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenReportModal && onOpenReportModal("NX5A", "소재준비")}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ NX5a 일보</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 실시간 테이블 */}

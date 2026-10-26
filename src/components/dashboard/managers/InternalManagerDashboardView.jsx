@@ -148,13 +148,21 @@ export const InternalManagerDashboardView = ({
     currentProfile?.name === "설유철" ||
     currentProfile?.id === "sam_yc"
   );
-  // 🌟 [양인나, 윤경수] 가공동 관리자 판별 (HR, JA, NX5a 작업일보 현황 프로세스 전담)
+  // 🌟 TEST 뱃지 판별
+  const isTest = Boolean(
+    currentProfile?.id === "hal_test" ||
+    currentProfile?.name === "TEST" ||
+    currentProfile?.id === "test"
+  );
+  // 🌟 [양인나, 윤경수] 가공동 관리자 판별 (HR, JA, NX5a 작업일보 현황 프로세스 전담 - TEST 뱃지는 제외)
   const isMachiningManager = Boolean(
-    currentProfile?.name === "윤경수" ||
-    currentProfile?.id === "sam_ks" ||
-    currentProfile?.name === "양인나" ||
-    currentProfile?.id === "sam_in" ||
-    currentProfile?.assignedProcess === "가공동 관리"
+    !isTest && (
+      currentProfile?.name === "윤경수" ||
+      currentProfile?.id === "sam_ks" ||
+      currentProfile?.name === "양인나" ||
+      currentProfile?.id === "sam_in" ||
+      (currentProfile?.assignedProcess === "가공동 관리" && currentProfile?.name !== "TEST")
+    )
   );
   // 🌟 [설유철] 삼랑진 압출동 총괄 책임자 판별 (압출 작업일보 현황 패널)
   const isSeolManager = Boolean(
@@ -380,8 +388,8 @@ export const InternalManagerDashboardView = ({
         />
       )}
 
-      {/* 🌟 [양인나, 윤경수 관리자] 가공동 HR, JA, NX5a 작업일보 실시간 현황 및 5대 공정 양식 설정 패널 */}
-      {(isMachiningManager || isAdmin) && (
+      {/* 🌟 [양인나, 윤경수 관리자] 가공동 HR, JA, NX5a 작업일보 실시간 현황 및 5대 공정 양식 설정 패널 (TEST 뱃지 제외, 윤경수·양인나 화면에서는 ++일보 버튼 삭제) */}
+      {!isTest && (isMachiningManager || (isAdmin && currentProfile?.name !== "TEST")) && (
         <MachiningWorkReportTable
           onOpenReportModal={(proj, proc, rep) => {
             if (onNavigateTab) {
@@ -389,6 +397,12 @@ export const InternalManagerDashboardView = ({
             }
           }}
           currentWorkerName={currentProfile?.name || ""}
+          hideCreateButtons={Boolean(
+            currentProfile?.name === "윤경수" ||
+            currentProfile?.id === "sam_ks" ||
+            currentProfile?.name === "양인나" ||
+            currentProfile?.id === "sam_in"
+          )}
         />
       )}
 
