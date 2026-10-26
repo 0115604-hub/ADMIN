@@ -6,7 +6,6 @@ import {
   DailyWorkLogTableSection,
   AdminAccessAndIncidentSection
 } from "../sections";
-import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
 
 export const AdminDashboardView = ({
   // Common Schedule Props
@@ -184,13 +183,6 @@ export const AdminDashboardView = ({
         liveQualityCurrentMonthly={liveQualityCurrentMonthly}
         liveQualityPrevMonthly={liveQualityPrevMonthly}
         handleOpenQualityPopup={handleOpenQualityPopup}
-      />
-
-      {/* 🛡️ 4M 변동점 및 이상통합 관제 패널 (4단계 경영진 최종승인 및 결재 관제 연동) */}
-      <UnifiedAbnormalityControlPanel
-        workLogs={workLogs}
-        currentProfile={currentProfile}
-        onNavigateTab={onNavigateTab}
       />
 
       {/* 5. 일일업무일지 현황 (전사 승인 및 관리) */}

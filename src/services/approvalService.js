@@ -487,7 +487,7 @@ export function isApprovalDocPending(doc) {
   if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
   const s = doc.status || "IN_PROGRESS";
   if (s === "APPROVED" || s === "완료" || s === "결재완료") return false;
-  if (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every((st) => st && st.status === "APPROVED")) {
+  if (Array.isArray(doc.steps) && doc.steps.length > 0 && doc.steps.every((st) => st && st.status === "APPROVED")) {
     return false;
   }
   return true;
@@ -504,7 +504,7 @@ export function isApprovalDocApproved(doc) {
   if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
   const s = doc.status;
   if (s === "APPROVED" || s === "완료" || s === "결재완료") return true;
-  if (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st && st.status === "APPROVED")) return true;
+  if (Array.isArray(doc.steps) && doc.steps.length > 0 && doc.steps.every(st => st && st.status === "APPROVED")) return true;
   return false;
 }
 
@@ -535,9 +535,20 @@ export function isOvertimeApprovalDoc(doc) {
   return false;
 }
 
-// ⭐ 일반 결재서류 여부 판정 (품의서, 기안서, 연차/휴가 신청서 등)
+// ⭐ 4M 변동점 결재서류 여부 판정 (4M 변동점 및 CAPA 승인 품의서 등)
+export function isFourMApprovalDoc(doc) {
+  if (!doc) return false;
+  if (doc.id && doc.id.startsWith("appr_4m_")) return true;
+  if (doc.type === "FOUR_M_CHANGE_POINT" || doc.type === "CHANGE_POINT" || doc.docType === "FOUR_M_CHANGE_POINT") return true;
+  if (doc.category === "4M변동점" || doc.typeName?.includes("4M") || doc.typeName?.includes("변동점")) return true;
+  if (doc.title && (doc.title.includes("4M") || doc.title.includes("변동점"))) return true;
+  return false;
+}
+
+// ⭐ 일반 결재서류 여부 판정 (특근보고서 및 4M변동점을 제외한 품의서, 기안서, 연차/휴가 신청서 등)
 export function isGeneralApprovalDoc(doc) {
-  return !isOvertimeApprovalDoc(doc);
+  if (!doc) return false;
+  return !isOvertimeApprovalDoc(doc) && !isFourMApprovalDoc(doc);
 }
 
 // Initial authoritative approval documents (Clean empty array by default)
@@ -761,6 +772,19 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
+  // 1-1. Designated Approver Direct Match (결재선에 명시된 지정자 본인 일치 시 즉시 승인 권한 부여)
+  const isDirectTarget = activeStep.name && (activeStep.name === userName || activeStep.name.includes(userName) || userName.includes(activeStep.name));
+  if (isDirectTarget) {
+    const isCeoOrDirector = userName === "권태형" || userName === "최미영" || userName === "이명재" || userName === "김동욱" || userTitle.includes("대표") || userTitle.includes("전무") || userTitle.includes("이사");
+    return {
+      canApprove: true,
+      stepIndex: activeStepIdx,
+      stepRole,
+      isRepresentative: isCeoOrDirector,
+      approverName: userName
+    };
+  }
+
   // 2. Step 1: 담당 (All Workers / 전작업자)
   if (stepRole === "담당") {
     return {
@@ -771,14 +795,14 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 3. Step 2: 책임 (지정된 관리자/책임자 또는 관리 직급)
-  if (stepRole === "책임") {
-    const isStepTarget = activeStep.name === userName || (activeStep.name && activeStep.name.includes(userName));
+  // 3. Step 2: 책임 / 검토 (지정된 관리자/책임자 또는 공정 관리 직급)
+  if (stepRole === "책임" || stepRole === "검토") {
+    const isStepTarget = isDirectTarget;
     const isLeadTitle = userTitle === "책임" || userTitle === "총괄" || userTitle === "선임" || userTitle === "대리" || userTitle === "반장";
     const isPlantLead =
       (docItem.plant === "한림공장" && (userName === "김동욱" || userName === "오상민" || isLeadTitle)) ||
       (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || userName === "양인나" || userName === "유동길" || userName === "조인주" || isLeadTitle)) ||
-      userName === "이명재" || userName === "최미영" || userName === "권태형"; // 상위 결재자/임원 전결 가능
+      userName === "이명재" || userName === "최미영" || userName === "권태형" || userName === "김동욱"; // 상위 결재자/임원 전결 가능
 
     if (isStepTarget || isPlantLead || isLeadTitle || isAdmin) {
       return {
@@ -790,7 +814,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     }
     return {
       canApprove: false,
-      reason: `[${activeStep.name || "책임"}] 결재 권한이 필요합니다. (지정 결재자: ${activeStep.name})`
+      reason: `[${activeStep.name || "책임/검토"}] 결재 권한이 필요합니다. (지정 결재자: ${activeStep.name})`
     };
   }
 
@@ -802,6 +826,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     if (
       userName === "이명재" ||
       userName === "최미영" ||
+      userName === "김동욱" ||
       userTitle === "이사" ||
       userTitle === "전무" ||
       isAdmin ||
@@ -811,6 +836,8 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
       let approver = "이명재";
       if (userName === "최미영" || userTitle === "전무" || currentProfile?.id === "admin_choi") {
         approver = "최미영";
+      } else if (userName === "김동욱") {
+        approver = "김동욱";
       } else if (userName === "이명재" || userTitle === "이사") {
         approver = "이명재";
       } else if (isAdmin) {
@@ -830,9 +857,19 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 5. Step 4: 대표 (대표이사 권태형 / 전무 최미영)
-  if (stepRole === "대표") {
-    if (userTitle === "대표" || userTitle === "대표이사" || userTitle === "전무" || userName === "권태형" || userName === "최미영" || userName === "대표이사" || isAdmin) {
+  // 5. Step 4: 대표 / 승인 (대표이사 이명재 / 대표(전무) 김동욱 / 대표이사 권태형 / 전무 최미영)
+  if (stepRole === "대표" || stepRole === "승인") {
+    if (
+      userTitle === "대표" ||
+      userTitle === "대표이사" ||
+      userTitle === "전무" ||
+      userName === "권태형" ||
+      userName === "최미영" ||
+      userName === "이명재" ||
+      userName === "김동욱" ||
+      userName === "대표이사" ||
+      isAdmin
+    ) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
@@ -843,7 +880,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     }
     return {
       canApprove: false,
-      reason: "대표이사/전무(ADMIN) 최종 결재 권한이 필요합니다."
+      reason: "대표/전무(경영진/최종결재자) 승인 권한이 필요합니다."
     };
   }
 
@@ -960,37 +997,14 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
   if (isRepresentative) {
     // ⭐ 대표/ADMIN 최종 결재 시: 1단계부터 4단계까지의 모든 미결재 단계를 대표 전결로 일괄 최종 승인 완료 처리
     const ceoTitle = approverName === "최미영" ? "전무" : "대표이사";
-    const ceoComment = comment || (approverName === "최미영" ? "전무 최종 승인" : "대표이사 최종 승인");
+    const ceoComment = comment || (approverName === "최미영" ? "전무 최종 승인" : approverName === "김동욱" ? "대표(전무) 최종 승인" : "대표이사 최종 승인");
+    const lastIdx = target.steps.length - 1;
 
     updatedSteps = target.steps.map((st, idx) => {
-      if (st && st.status === "APPROVED" && st.date) {
+      if (st && st.status === "APPROVED" && st.date && idx < lastIdx) {
         return st;
       }
-      if (idx === 0) {
-        return {
-          ...st,
-          status: "APPROVED",
-          date: st?.date || nowStr,
-          comment: st?.comment || "기안 상신"
-        };
-      }
-      if (idx === 1) {
-        return {
-          ...st,
-          status: "APPROVED",
-          date: st?.date || nowStr,
-          comment: st?.comment || "승인"
-        };
-      }
-      if (idx === 2) {
-        return {
-          ...st,
-          status: "APPROVED",
-          date: st?.date || nowStr,
-          comment: st?.comment || "승인"
-        };
-      }
-      if (idx === 3) {
+      if (idx === lastIdx) {
         return {
           ...st,
           name: approverName || "권태형",
@@ -1000,7 +1014,20 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
           comment: ceoComment
         };
       }
-      return { ...st, status: "APPROVED", date: nowStr, comment: "승인" };
+      if (idx === 0) {
+        return {
+          ...st,
+          status: "APPROVED",
+          date: st?.date || nowStr,
+          comment: st?.comment || "기안 상신"
+        };
+      }
+      return {
+        ...st,
+        status: "APPROVED",
+        date: st?.date || nowStr,
+        comment: st?.comment || "승인"
+      };
     });
   } else {
     // 중간 결재자 (책임, 이사) 단계별 개별 승인
