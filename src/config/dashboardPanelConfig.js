@@ -87,7 +87,7 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.WORK_LOGS
   ],
 
-  // 👑 [4단계 한림공장 총괄: 김동욱 대표(전무)] 4M 변동점은 전자결재함 [4M변동점결재] 뱃지에서 승인 관제
+  // 👑 [4단계 한림공장 총괄: 김동욱 책임] 4M 변동점은 전자결재함 [4M변동점결재] 뱃지에서 승인 관제
   "hal_dw": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,

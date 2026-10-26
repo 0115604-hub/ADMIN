@@ -96,7 +96,7 @@ const compressImage = (file, maxWidth = 900, quality = 0.75) => {
  * 2. [사내관리로 재분류] vs [공식 4M 대장 등재] 구분 판정
  * 3. 5-Why 근본원인 분석 및 시정/예방대책(CAPA) 수립
  * 4. 전후사진 각 5장 첨부 (총 10장)
- * 5. 상신 시 한림공장은 김동욱 대표(전무), 삼랑진공장은 이명재 대표이사로 전자결재 상신 및 이동
+ * 5. 상신 시 한림공장은 김동욱 책임, 삼랑진공장은 이명재 대표이사로 전자결재 상신 및 이동
  */
 export default function Step3QualityControlPanel({
   currentProfile = null,
@@ -483,7 +483,7 @@ export default function Step3QualityControlPanel({
     }
   };
 
-  // ⭐ [4단계 전자결재 상신] : 한림공장 ➔ 김동욱 대표(전무), 삼랑진공장 ➔ 이명재 대표이사
+  // ⭐ [4단계 전자결재 상신] : 한림공장 ➔ 김동욱 책임, 삼랑진공장 ➔ 이명재 대표이사
   const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
     if (!capaForm.rootCause.trim()) {
@@ -511,8 +511,8 @@ export default function Step3QualityControlPanel({
 
       // ⭐ 결재선 대상자 지정
       const approverName = isHanlim ? "김동욱" : "이명재";
-      const approverTitle = isHanlim ? "대표(전무)" : "대표이사";
-      const approverRole = isHanlim ? "한림공장 대표(전무) 김동욱" : "삼랑진공장 대표이사 이명재";
+      const approverTitle = isHanlim ? "책임" : "대표이사";
+      const approverRole = isHanlim ? "한림공장 김동욱 책임" : "삼랑진공장 대표이사 이명재";
 
       const docId = `appr_4m_${capaModalItem.id}_${Date.now()}`;
       const docNumber = `4M-${isHanlim ? "HL" : "SRJ"}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
@@ -530,8 +530,8 @@ export default function Step3QualityControlPanel({
         },
         {
           role: "검토",
-          name: isHanlim ? "김동욱" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수"),
-          title: isHanlim ? "대표(전무)" : "책임",
+          name: isHanlim ? "오상민" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수"),
+          title: isHanlim ? "선임" : "책임",
           status: "PENDING",
           date: "",
           comment: ""
@@ -667,8 +667,8 @@ export default function Step3QualityControlPanel({
       plant,
       isHanlim,
       name: isHanlim ? "김동욱" : "이명재",
-      title: isHanlim ? "전무" : "대표이사",
-      role: isHanlim ? "한림공장 대표(전무) 김동욱" : "삼랑진공장 대표이사 이명재"
+      title: isHanlim ? "책임" : "대표이사",
+      role: isHanlim ? "한림공장 김동욱 책임" : "삼랑진공장 대표이사 이명재"
     };
   }, [capaModalItem, capaForm.plant]);
 
@@ -694,7 +694,7 @@ export default function Step3QualityControlPanel({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
               <span>•</span>
-              <span>2단계 이관 건 심층 재검토 ➡️ 4M 공식등재 ➡️ 5-Why 원인분석/대책수립 ➡️ 4단계 전자결재 상신 (한림: 김동욱 대표 / 삼랑진: 이명재 대표이사)</span>
+              <span>2단계 이관 건 심층 재검토 ➡️ 4M 공식등재 ➡️ 5-Why 원인분석/대책수립 ➡️ 4단계 전자결재 상신 (한림: 김동욱 책임 / 삼랑진: 이명재 대표이사)</span>
             </p>
           </div>
         </div>

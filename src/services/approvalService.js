@@ -857,7 +857,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 5. Step 4: 대표 / 승인 (대표이사 이명재 / 대표(전무) 김동욱 / 대표이사 권태형 / 전무 최미영)
+  // 5. Step 4: 대표 / 승인 (대표이사 이명재 / 김동욱 책임 / 대표이사 권태형 / 전무 최미영)
   if (stepRole === "대표" || stepRole === "승인") {
     if (
       userTitle === "대표" ||
@@ -996,8 +996,8 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
   let updatedSteps;
   if (isRepresentative) {
     // ⭐ 대표/ADMIN 최종 결재 시: 1단계부터 4단계까지의 모든 미결재 단계를 대표 전결로 일괄 최종 승인 완료 처리
-    const ceoTitle = approverName === "최미영" ? "전무" : "대표이사";
-    const ceoComment = comment || (approverName === "최미영" ? "전무 최종 승인" : approverName === "김동욱" ? "대표(전무) 최종 승인" : "대표이사 최종 승인");
+    const ceoTitle = approverName === "최미영" ? "전무" : approverName === "김동욱" ? "책임" : "대표이사";
+    const ceoComment = comment || (approverName === "최미영" ? "전무 최종 승인" : approverName === "김동욱" ? "한림 총괄 김동욱 책임 승인" : "대표이사 최종 승인");
     const lastIdx = target.steps.length - 1;
 
     updatedSteps = target.steps.map((st, idx) => {
@@ -1036,6 +1036,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
         let finalTitle = st.title;
         if (approverName === "최미영") finalTitle = "전무";
         else if (approverName === "이명재") finalTitle = "이사";
+        else if (approverName === "김동욱") finalTitle = "책임";
         else if (approverName === "권태형") finalTitle = "대표이사";
 
         return {
