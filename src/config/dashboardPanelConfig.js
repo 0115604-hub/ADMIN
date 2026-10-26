@@ -64,6 +64,46 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.WORK_LOGS
   ],
 
+  // 👑 [이명재 이사 - 삼랑진 총괄] 4단계 경영진 최종점검 및 변동점 대장 승인 대시보드
+  "sam_mj": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "이명재": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 👑 [권태형 대표이사] 전사 4단계 경영진 최종 승인 및 관제 대시보드
+  "admin_kwon": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "권태형": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
   // 🛡️ [한림공장 TEST 관리자] 맞춤 대시보드 레이아웃
   // 요청사항: 
   // 1. 1, 2, 3, 5 패널 삭제 (매입매출, 근태현황, 중요ITEM품질, 일일업무일지)
@@ -83,7 +123,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전 관리 (설정 갱신 시 브라우저 로컬스토리지 자동 리프레시)
-export const PANEL_CONFIG_VERSION = "20261026_v5";
+export const PANEL_CONFIG_VERSION = "20261026_v6";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회
@@ -104,6 +144,10 @@ export const getPanelsForUser = (profile) => {
       localStorage.removeItem("dashboard_panels_TEST");
       localStorage.removeItem("dashboard_panels_sam_cy");
       localStorage.removeItem("dashboard_panels_이창엽");
+      localStorage.removeItem("dashboard_panels_sam_mj");
+      localStorage.removeItem("dashboard_panels_이명재");
+      localStorage.removeItem("dashboard_panels_admin_kwon");
+      localStorage.removeItem("dashboard_panels_권태형");
     }
   } catch (e) {}
 

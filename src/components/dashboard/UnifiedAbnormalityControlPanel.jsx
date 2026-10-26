@@ -94,6 +94,7 @@ import {
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
 import Step3QualityControlPanel from "../quality/Step3QualityControlPanel";
+import Step4ExecutiveApprovalPanel from "../executive/Step4ExecutiveApprovalPanel";
 import * as XLSX from "xlsx";
 
 // Image compression helper for modal photo uploads
@@ -1784,10 +1785,14 @@ export const UnifiedAbnormalityControlPanel = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 2.5. 3단계 품질관리자(이창엽 책임) 전용 변동점 재검토 및 시정조치(CAPA) 패널 */}
-      {/* (이창엽 책임 화면에서는 불필요한 전사 일보 부적합 20건 단순 나열을 삭제하고 3단계 전용 패널을 배치) */}
+      {/* 2.5. 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자 vs 2단계 생산관리자) */}
       {/* ========================================================================= */}
-      {currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy" ? (
+      {currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj" || currentProfile?.name === "권태형" || currentProfile?.id === "admin_kwon" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.role === "ADMIN" ? (
+        <Step4ExecutiveApprovalPanel
+          currentProfile={currentProfile}
+          onOpenIssueModal={onOpenIssueModal}
+        />
+      ) : currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy" ? (
         <Step3QualityControlPanel
           currentProfile={currentProfile}
           onOpenIssueModal={onOpenIssueModal}
