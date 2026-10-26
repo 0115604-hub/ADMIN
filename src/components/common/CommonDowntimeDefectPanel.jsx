@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Clock, Plus, Trash2, Camera, UploadCloud, X, AlertTriangle } from "lucide-react";
 import { DOWNTIME_CATEGORIES } from "../../services/extrusionProductionService";
+import { translateTerm } from "../../services/workLogI18nService";
 
 // Client-side image compression for Before / After action photos
 const compressPhotoFile = (file, maxWidth = 1000, maxHeight = 1000, quality = 0.78) => {
@@ -104,8 +105,10 @@ const CommonDowntimeDefectPanel = ({
   events,
   onChangeEvents,
   defaultEvents = [],
-  onSyncSummary
+  onSyncSummary,
+  currentLang = null
 }) => {
+  const t = (term) => translateTerm(term, currentLang);
   const [internalEvents, setInternalEvents] = useState(() =>
     Array.isArray(defaultEvents) ? defaultEvents : []
   );
@@ -276,7 +279,7 @@ const CommonDowntimeDefectPanel = ({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
             <Clock className="w-4 h-4 text-amber-500" />
-            <span>{title}</span>
+            <span>{t(title)}</span>
           </span>
           {plantLabel && (
             <span className="text-[10.5px] font-black px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -284,17 +287,17 @@ const CommonDowntimeDefectPanel = ({
             </span>
           )}
           <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-            총 {activeEvents.length}건
+            총 {activeEvents.length}{t("건")}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-            ⏱️ {totalMinutes}분
+            ⏱️ {totalMinutes}{t("분")}
           </span>
           {defectCount > 0 && (
             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-              🚨 부적합 {defectCount}건
+              🚨 {t("부적합")} {defectCount}{t("건")}
             </span>
           )}
           {totalScrap > 0 && (
@@ -320,7 +323,7 @@ const CommonDowntimeDefectPanel = ({
               }`}
             >
               <AlertTriangle className="w-3 h-3" />
-              <span>🚨 부적합품 발생 등록 (조치전·후 사진)</span>
+              <span>🚨 {t("부적합품 발생 등록 (조치전·후 사진)")}</span>
             </button>
             <button
               type="button"
@@ -332,11 +335,11 @@ const CommonDowntimeDefectPanel = ({
               }`}
             >
               <Clock className="w-3 h-3" />
-              <span>⏱️ 일반 비가동 등록</span>
+              <span>⏱️ {t("일반 비가동 등록")}</span>
             </button>
           </div>
           <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-            부적합품 발생 시 조치 전 · 조치 후 사진을 함께 첨부하여 등록할 수 있습니다.
+            {t("부적합품 발생 시 조치 전 · 조치 후 사진을 함께 첨부하여 등록할 수 있습니다.")}
           </span>
         </div>
 
@@ -345,7 +348,7 @@ const CommonDowntimeDefectPanel = ({
           {/* 항목 선택 (4 cols) */}
           <div className="col-span-2 sm:col-span-4">
             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-              부적합품/비가동 항목 ({MERGED_CATEGORIES.length}종)
+              {t("부적합품/비가동 항목")} ({MERGED_CATEGORIES.length}종)
             </label>
             <select
               value={draft.category || "압개시"}
@@ -360,7 +363,7 @@ const CommonDowntimeDefectPanel = ({
                 const isDef = DEFECT_CATEGORY_IDS.includes(c.id) || c.type === "불량";
                 return (
                   <option key={c.id} value={c.id}>
-                    {c.label} ({isDef ? "부적합" : "비가동"})
+                    {t(c.label)} ({isDef ? t("부적합") : t("비가동")})
                   </option>
                 );
               })}
@@ -370,7 +373,7 @@ const CommonDowntimeDefectPanel = ({
           {/* 시작 ~ 종료 시간 (4 cols) */}
           <div className="col-span-2 sm:col-span-4">
             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-              시간 (시작 ~ 종료)
+              {t("시작 ~ 종료 시간")}
             </label>
             <div className="flex items-center gap-1">
               <input
@@ -392,7 +395,7 @@ const CommonDowntimeDefectPanel = ({
           {/* 소요시간 (2 cols) */}
           <div className="col-span-1 sm:col-span-2">
             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-              소요시간(분)
+              {t("소요시간 (분)")}
             </label>
             <input
               type="number"
@@ -408,7 +411,7 @@ const CommonDowntimeDefectPanel = ({
           {/* 폐기중량 / 부적합수량 (2 cols) */}
           <div className="col-span-1 sm:col-span-2">
             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-              {unitLabel}
+              {t(unitLabel)}
             </label>
             <input
               type="number"
@@ -446,7 +449,7 @@ const CommonDowntimeDefectPanel = ({
               ) : (
                 <label className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border-2 border-dashed border-rose-300 dark:border-rose-700 flex flex-col items-center justify-center cursor-pointer hover:border-rose-500 shrink-0">
                   <Camera className="w-4 h-4 text-rose-500" />
-                  <span className="text-[9px] font-black text-rose-600 dark:text-rose-300">조치전</span>
+                  <span className="text-[9px] font-black text-rose-600 dark:text-rose-300">{t("조치전")}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -458,16 +461,16 @@ const CommonDowntimeDefectPanel = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-black">
-                    조치 전 (Before)
+                    {t("조치 전 (Before)")}
                   </span>
                   <span className="text-[10px] font-bold text-rose-600 dark:text-rose-300">
-                    {draft.beforePhoto ? "✓ 사진 첨부됨" : "부적합 현상 사진"}
+                    {draft.beforePhoto ? t("✓ 사진 첨부됨") : t("부적합 현상 사진")}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <label className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-200 text-[10px] font-bold cursor-pointer flex items-center gap-1">
                     <Camera className="w-3 h-3" />
-                    <span>촬영/파일선택</span>
+                    <span>{t("촬영/파일선택")}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -488,7 +491,7 @@ const CommonDowntimeDefectPanel = ({
                   <img
                     src={draft.afterPhoto}
                     alt="조치후"
-                    onClick={() => setPreviewModal({ title: "✨ 조치 후 (After) 사진", url: draft.afterPhoto })}
+                    onClick={() => setPreviewModal({ title: `✨ ${t("조치 후 (After)")}`, url: draft.afterPhoto })}
                     className="w-full h-full object-cover cursor-pointer"
                   />
                   <button
@@ -502,7 +505,7 @@ const CommonDowntimeDefectPanel = ({
               ) : (
                 <label className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border-2 border-dashed border-emerald-300 dark:border-emerald-700 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 shrink-0">
                   <UploadCloud className="w-4 h-4 text-emerald-500" />
-                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-300">조치후</span>
+                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-300">{t("조치후")}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -514,16 +517,16 @@ const CommonDowntimeDefectPanel = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black">
-                    조치 후 (After)
+                    {t("조치 후 (After)")}
                   </span>
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">
-                    {draft.afterPhoto ? "✓ 사진 첨부됨" : "개선 조치 완료 사진"}
+                    {draft.afterPhoto ? t("✓ 사진 첨부됨") : t("개선 조치 완료 사진")}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <label className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-200 text-[10px] font-bold cursor-pointer flex items-center gap-1">
                     <Camera className="w-3 h-3" />
-                    <span>촬영/파일선택</span>
+                    <span>{t("촬영/파일선택")}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -543,7 +546,7 @@ const CommonDowntimeDefectPanel = ({
             type="text"
             value={draft.detail || ""}
             onChange={(e) => handleDraftChange("detail", e.target.value)}
-            placeholder="발생 내역 및 조치 내용을 입력하세요 (직접 입력 또는 자동 문구 수정)"
+            placeholder={t("발생 내역 및 조치 내용을 입력하세요 (직접 입력 또는 자동 문구 수정)")}
             className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
           <button
@@ -554,7 +557,7 @@ const CommonDowntimeDefectPanel = ({
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>{isDraftDefect ? "부적합품 등록" : "비가동 등록"}</span>
+            <span>{isDraftDefect ? t("부적합품 등록") : t("비가동 등록")}</span>
           </button>
         </div>
       </div>
@@ -584,7 +587,7 @@ const CommonDowntimeDefectPanel = ({
                         : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                     }`}
                   >
-                    {isDefect ? "🚨 부적합" : "⏱️ 비가동"} · {ev.category || "압개시"}
+                    {isDefect ? `🚨 ${t("부적합")}` : `⏱️ ${t("비가동")}`} · {t(ev.category || "압개시")}
                   </span>
 
                   {(ev.startTime || ev.endTime) && (
@@ -595,7 +598,7 @@ const CommonDowntimeDefectPanel = ({
 
                   {ev.minutes > 0 && (
                     <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-rose-600 dark:text-rose-400 text-[10.5px] font-black shrink-0">
-                      {ev.minutes}분
+                      {ev.minutes}{t("분")}
                     </span>
                   )}
 
@@ -621,12 +624,12 @@ const CommonDowntimeDefectPanel = ({
                       type="button"
                       onClick={() =>
                         setPreviewModal({
-                          title: `🚨 조치 전 (Before) - ${ev.category}`,
+                          title: `🚨 ${t("조치 전 (Before)")} - ${t(ev.category)}`,
                           url: ev.beforePhoto
                         })
                       }
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 cursor-pointer hover:opacity-90"
-                      title="조치전 사진 확대보기"
+                      title={t("조치전")}
                     >
                       <img
                         src={ev.beforePhoto}
@@ -634,16 +637,16 @@ const CommonDowntimeDefectPanel = ({
                         className="w-6 h-6 rounded object-cover"
                       />
                       <span className="text-[10px] font-black text-rose-700 dark:text-rose-300">
-                        조치전
+                        {t("조치전")}
                       </span>
                     </button>
                   ) : (
                     <label
                       className="px-1.5 py-1 rounded-lg bg-rose-50/70 dark:bg-rose-950/40 border border-dashed border-rose-300 dark:border-rose-800 text-[10px] font-bold text-rose-600 dark:text-rose-300 cursor-pointer hover:bg-rose-100 flex items-center gap-0.5"
-                      title="조치전 사진 추가"
+                      title={t("조치전")}
                     >
                       <Camera className="w-3 h-3" />
-                      <span>+조치전</span>
+                      <span>+{t("조치전")}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -661,12 +664,12 @@ const CommonDowntimeDefectPanel = ({
                       type="button"
                       onClick={() =>
                         setPreviewModal({
-                          title: `✨ 조치 후 (After) - ${ev.category}`,
+                          title: `✨ ${t("조치 후 (After)")} - ${t(ev.category)}`,
                           url: ev.afterPhoto
                         })
                       }
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 cursor-pointer hover:opacity-90"
-                      title="조치후 사진 확대보기"
+                      title={t("조치후")}
                     >
                       <img
                         src={ev.afterPhoto}
@@ -674,16 +677,16 @@ const CommonDowntimeDefectPanel = ({
                         className="w-6 h-6 rounded object-cover"
                       />
                       <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300">
-                        조치후
+                        {t("조치후")}
                       </span>
                     </button>
                   ) : (
                     <label
                       className="px-1.5 py-1 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-dashed border-emerald-300 dark:border-emerald-800 text-[10px] font-bold text-emerald-600 dark:text-emerald-300 cursor-pointer hover:bg-emerald-100 flex items-center gap-0.5"
-                      title="조치후 사진 추가"
+                      title={t("조치후")}
                     >
                       <Camera className="w-3 h-3" />
-                      <span>+조치후</span>
+                      <span>+{t("조치후")}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -697,7 +700,7 @@ const CommonDowntimeDefectPanel = ({
                     type="button"
                     onClick={() => handleRemoveEvent(idx)}
                     className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shrink-0"
-                    title="삭제"
+                    title={t("삭제")}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -708,7 +711,7 @@ const CommonDowntimeDefectPanel = ({
         </div>
       ) : (
         <div className="py-2.5 text-center text-xs text-slate-400 bg-white/50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
-          등록된 비가동 및 부적합품 발생 내역이 없습니다.
+          {t("등록된 비가동 및 부적합품 발생 내역이 없습니다.")}
         </div>
       )}
 

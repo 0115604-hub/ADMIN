@@ -70,7 +70,8 @@ import {
   setWorkLogLanguage,
   SUPPORTED_LANGUAGES,
   getWorkerLanguageInfo,
-  syncWorkerLanguage
+  syncWorkerLanguage,
+  translateTerm
 } from "../services/workLogI18nService";
 
 // 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
@@ -1815,19 +1816,19 @@ export const HanulWorkReportModal = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-black text-white">
-                        작업자: <span className="text-emerald-300 font-extrabold">{effectiveWorkerName || "미선택"}</span>
+                        {translateTerm("작업자:", currentLang)} <span className="text-emerald-300 font-extrabold">{effectiveWorkerName || translateTerm("미선택", currentLang)}</span>
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-800/80 text-indigo-200 border border-indigo-600/50">
                         {date} ({shift})
                       </span>
                       {existingWorkerReport ? (
                         <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 font-black animate-pulse flex items-center gap-1">
-                          <span>🔄 작성 중인 일보 불러옴</span>
-                          <span className="text-[9.5px] text-emerald-200">(초·중·종물 이어서 입력 가능)</span>
+                          <span>🔄 {translateTerm("작성 중인 일보 불러옴", currentLang)}</span>
+                          <span className="text-[9.5px] text-emerald-200">({translateTerm("초·중·종물 이어서 입력 가능", currentLang)})</span>
                         </span>
                       ) : (
                         <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 font-black">
-                          ✨ 개별 신규 일보 작성
+                          ✨ {translateTerm("개별 신규 일보 작성", currentLang)}
                         </span>
                       )}
                       {processId === "소재준비" && (
@@ -1843,7 +1844,7 @@ export const HanulWorkReportModal = ({
                       )}
                     </div>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      💡 같은 공정이라도 작업자 개개인별로 독립된 일보가 기록되며, 초물·중물·종물 측정 시 하루 3회 이상 접속하여도 이전 측정값이 보존됩니다.
+                      💡 {translateTerm("같은 공정이라도 작업자 개개인별로 독립된 일보가 기록되며, 초물·중물·종물 측정 시 하루 3회 이상 접속하여도 이전 측정값이 보존됩니다.", currentLang)}
                     </p>
                   </div>
                 </div>
@@ -1872,7 +1873,7 @@ export const HanulWorkReportModal = ({
                         </option>
                       ))}
                     </optgroup>
-                    <option value="직접입력">✏️ 직접 입력</option>
+                    <option value="직접입력">✏️ {translateTerm("직접 입력", currentLang)}</option>
                   </select>
 
                   <input
@@ -1891,6 +1892,7 @@ export const HanulWorkReportModal = ({
                 initialTemplateData={activeAssignedTemplate}
                 initialWorkerName={effectiveWorkerName}
                 initialWorkDate={date}
+                currentLang={currentLang}
                 onSaveWorkReport={handleSaveLegoAssignedReport}
                 onDeleteWorkReport={(existingWorkerReport?.id || editReport?.id || activeAssignedTemplate?.isExistingDraft) ? handleDeleteLegoAssignedReport : null}
               />
@@ -1907,10 +1909,10 @@ export const HanulWorkReportModal = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-black text-sm sm:text-base text-indigo-950 dark:text-white">
-                      소재 준비 작업 일보 (G/RUN) — {subProcess === "정치절단" ? "✂️ 정치 절단 일보" : "📐 단컷팅 일보"}
+                      {translateTerm("소재 준비 작업 일보 (G/RUN)", currentLang)} — {subProcess === "정치절단" ? `✂️ ${translateTerm("정치절단 일보", currentLang)}` : `📐 ${translateTerm("단컷팅 일보", currentLang)}`}
                     </h4>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-2xs">
-                      적용 중
+                      {translateTerm("적용 중", currentLang)}
                     </span>
                   </div>
                   <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5">
@@ -1933,7 +1935,7 @@ export const HanulWorkReportModal = ({
                   }`}
                 >
                   <Scissors className="w-3.5 h-3.5" />
-                  <span>정치절단 일보</span>
+                  <span>{translateTerm("정치절단 일보", currentLang)}</span>
                 </button>
                 <button
                   type="button"
@@ -1945,7 +1947,7 @@ export const HanulWorkReportModal = ({
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  <span>단컷팅 일보</span>
+                  <span>{translateTerm("단컷팅 일보", currentLang)}</span>
                 </button>
               </div>
             </div>
@@ -3382,6 +3384,7 @@ export const HanulWorkReportModal = ({
             title="비가동 및 부적합품 발생내역"
             plantLabel={companyMode === "BURIM" ? "부림텍" : "한울 · 부림텍"}
             unitLabel="부적합량(EA)"
+            currentLang={currentLang}
             events={downtimeEvents}
             onChangeEvents={setDowntimeEvents}
             onSyncSummary={({ summaryText }) => {
@@ -3668,7 +3671,7 @@ export const HanulWorkReportModal = ({
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>{isSaving ? "저장 중..." : tpmI18n.saveReport}</span>
+                <span>{isSaving ? translateTerm("저장 중...", currentLang) : tpmI18n.saveReport}</span>
               </button>
             )}
           </div>

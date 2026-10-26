@@ -30,6 +30,12 @@ import {
   FolderPlus
 } from "lucide-react";
 import { saveMachiningWorkReport, deleteMachiningWorkReport } from "../../services/machiningWorkReportService";
+import {
+  translateTerm,
+  getCurrentWorkLogLanguage,
+  SUPPORTED_LANGUAGES,
+  setWorkLogLanguage
+} from "../../services/workLogI18nService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
 import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
 import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel.jsx";
@@ -553,7 +559,8 @@ export const LegoWorkReportBuilder = ({
   onNavigateToCatalog,
   onDeleteWorkReport = null,
   isEmbedded = false,
-  isWorkerRecordingMode = false
+  isWorkerRecordingMode = false,
+  currentLang: propLang = null
 }) => {
   // Current active report configuration
   const [currentReport, setCurrentReport] = useState(() => {
@@ -667,6 +674,27 @@ export const LegoWorkReportBuilder = ({
       console.warn("Auto-save currentReport quota warning:", e);
     }
   }, [currentReport]);
+
+  // 🌐 현장 근로자 다국어(한국어, 영어, 베트남어, 태국어, 인도네시아어, 미얀마어 등) 실시간 번역
+  const [currentLang, setCurrentLang] = useState(() => propLang || getCurrentWorkLogLanguage());
+
+  useEffect(() => {
+    if (propLang) {
+      setCurrentLang(propLang);
+    }
+  }, [propLang]);
+
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      if (e?.detail?.lang) {
+        setCurrentLang(e.detail.lang);
+      }
+    };
+    window.addEventListener("factory_language_changed", handleLangChange);
+    return () => window.removeEventListener("factory_language_changed", handleLangChange);
+  }, []);
+
+  const t = (term) => translateTerm(term, currentLang);
 
   // Combined catalog: standard blocks + saved custom photo-analyzed blocks
   const combinedSwitchCatalog = useMemo(() => {
@@ -2188,8 +2216,8 @@ export const LegoWorkReportBuilder = ({
                 {/* Editable Report Title (한 줄 통일: 소재준비작업일보) */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono font-bold text-slate-400">양식번호: {currentReport.formNo || "705-02"}</span>
-                    <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">✏️ 제목/치수 클릭 시 수정 가능</span>
+                    <span className="text-[11px] font-mono font-bold text-slate-400">{t("양식번호")}: {currentReport.formNo || "705-02"}</span>
+                    <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">✏️ {t("제목/치수 클릭 시 수정 가능")}</span>
                   </div>
                   <input
                     type="text"
@@ -2205,10 +2233,10 @@ export const LegoWorkReportBuilder = ({
                   <table className="border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th rowSpan={2} className="border-r border-black dark:border-slate-600 px-2 py-1 bg-slate-200 dark:bg-slate-700">결<br/>재</th>
-                        <th className="border-r border-black dark:border-slate-600 px-3 py-0.5">작 성</th>
-                        <th className="border-r border-black dark:border-slate-600 px-3 py-0.5">검 토</th>
-                        <th className="px-3 py-0.5">승 인</th>
+                        <th rowSpan={2} className="border-r border-black dark:border-slate-600 px-2 py-1 bg-slate-200 dark:bg-slate-700">{t("결재")}</th>
+                        <th className="border-r border-black dark:border-slate-600 px-3 py-0.5">{t("작 성")}</th>
+                        <th className="border-r border-black dark:border-slate-600 px-3 py-0.5">{t("검 토")}</th>
+                        <th className="px-3 py-0.5">{t("승 인")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2235,13 +2263,13 @@ export const LegoWorkReportBuilder = ({
               <div className="rounded-2xl p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                    <span>🧱 [블록 8] 작업 기본 정보 헤더</span>
-                    <span className="text-[10px] text-slate-400">(차종 · 품명 · 공정명 · 작업자 · 근무시간)</span>
+                    <span>🧱 {t("[블록 8] 작업 기본 정보 헤더")}</span>
+                    <span className="text-[10px] text-slate-400">{t("(차종 · 품명 · 공정명 · 작업자 · 근무시간)")}</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">차종 (Car model)</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t("차종 (Car model)")}</span>
                     <input
                       type="text"
                       value={currentReport.carModel || ""}
@@ -2250,7 +2278,7 @@ export const LegoWorkReportBuilder = ({
                     />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">품 명 (Part name)</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t("품 명 (Part name)")}</span>
                     <input
                       type="text"
                       value={currentReport.partName || ""}
@@ -2259,7 +2287,7 @@ export const LegoWorkReportBuilder = ({
                     />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">공정명 (Process)</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t("공정명 (Process)")}</span>
                     <input
                       type="text"
                       value={currentReport.processName ?? "소재준비"}
@@ -2274,7 +2302,7 @@ export const LegoWorkReportBuilder = ({
                     />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">작업자 (Worker)</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t("작업자 (Worker)")}</span>
                     <input
                       type="text"
                       value={currentReport.workerName || ""}
@@ -2283,7 +2311,7 @@ export const LegoWorkReportBuilder = ({
                     />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block">근무 시간</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t("근무 시간")}</span>
                     <div className="flex items-center justify-center gap-1 font-bold text-xs mt-0.5">
                       <span>{currentReport.startTime}</span>
                       <span>~</span>
@@ -2301,24 +2329,24 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-1">
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 9] 작업시간 및 생산량(실적) 테이블 (사진 9 대조)</span>
+                    <span>🧱 {t("[블록 9] 작업시간 및 생산실적 테이블")}</span>
                   </span>
                 </div>
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1.5 w-[20%]">구 분(Division)</th>
-                        <th colSpan={3} className="border-r border-black dark:border-slate-600 p-1">A단면 실적</th>
-                        <th colSpan={3} className="p-1">B단면 실적</th>
+                        <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1.5 w-[20%]">{t("구 분(Division)")}</th>
+                        <th colSpan={3} className="border-r border-black dark:border-slate-600 p-1">{t("A단면 실적")}</th>
+                        <th colSpan={3} className="p-1">{t("B단면 실적")}</th>
                       </tr>
                       <tr className="bg-amber-50 dark:bg-amber-950/50 border-b border-black dark:border-slate-600 text-[10px]">
-                        <th className="border-r border-black dark:border-slate-600 p-1">시작시간</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1">종료시간</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1">생산수량</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1">시작시간</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1">종료시간</th>
-                        <th className="p-1">생산수량</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1">{t("시작시간")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1">{t("종료시간")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1">{t("생산수량")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1">{t("시작시간")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1">{t("종료시간")}</th>
+                        <th className="p-1">{t("생산수량")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2397,7 +2425,7 @@ export const LegoWorkReportBuilder = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>🧱 [블록 15] 정치 절단 길이 (Spec cutting) & LOT NO.</span>
+                      <span>🧱 {t("[블록 15] 정치 절단 길이 (Spec cutting) & LOT NO.")}</span>
                       <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">
                         사진 15 실물 일치 (881±3 / 608±5 / 582±5)
                       </span>
@@ -2410,7 +2438,7 @@ export const LegoWorkReportBuilder = ({
                     title="새로운 절단 단면(Section D, E...)을 추가합니다."
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ 단면 행 추가</span>
+                    <span>{t("+ 단면 행 추가")}</span>
                   </button>
                 </div>
 
@@ -2418,11 +2446,11 @@ export const LegoWorkReportBuilder = ({
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px] text-black dark:text-white">
-                        <th colSpan={3} className="border-r border-black dark:border-slate-600 p-1.5 w-[28%]">구 분(Division)</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">초물(Start)</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">중물(Half)</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[22%]">종물(Finish)</th>
-                        <th className="p-1 w-[4%] print:hidden">관리</th>
+                        <th colSpan={3} className="border-r border-black dark:border-slate-600 p-1.5 w-[28%]">{t("구 분(Division)")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">{t("초물(Start)")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">{t("중물(Half)")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5 w-[22%]">{t("종물(Finish)")}</th>
+                        <th className="p-1 w-[4%] print:hidden">{t("관리")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2437,7 +2465,7 @@ export const LegoWorkReportBuilder = ({
                               >
                                 <input
                                     type="text"
-                                    value={currentReport.specCuttingProcessLabel ?? "정치 절단 길이"}
+                                    value={t(currentReport.specCuttingProcessLabel ?? "정치 절단 길이")}
                                     onChange={(e) => handleUpdateField("specCuttingProcessLabel", e.target.value)}
                                     className="w-full text-center font-black text-[11px] bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
                                     title="공정/구분 명칭 수정"
@@ -2454,7 +2482,7 @@ export const LegoWorkReportBuilder = ({
                               />
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold w-[9%]">
-                              규격(Spec)
+                              {t("규격(Spec)")}
                             </td>
                             <td colSpan={3} className="border-r border-black dark:border-slate-600 p-1 text-center font-black text-indigo-600 dark:text-cyan-400 bg-slate-50/50 dark:bg-slate-900/50">
                               <input
@@ -2463,7 +2491,7 @@ export const LegoWorkReportBuilder = ({
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "spec1", e.target.value)}
                                 className="w-full text-center font-black bg-transparent outline-none"
                                 title="규격/공차 직접 수정 (예: 881 ± 3mm)"
-                                placeholder="규격 입력 (예: 881 ± 3mm)"
+                                placeholder={t("규격 입력 (예: 881 ± 3mm)")}
                               />
                             </td>
                             <td rowSpan={3} className="p-1 align-middle text-center print:hidden w-[4%]">
@@ -2481,7 +2509,7 @@ export const LegoWorkReportBuilder = ({
                           {/* Row 2: 초/중/종 실측치 (초물, 중물, 종물 3개만 기록) */}
                           <tr className="border-b border-black dark:border-slate-600">
                             <td className="border-r border-black dark:border-slate-600 p-1 text-[11px] font-bold bg-slate-50 dark:bg-slate-800">
-                              초/중/종
+                              {t("초/중/종")}
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
                               <input
@@ -2489,7 +2517,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.start1 || ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "start1", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none"
-                                placeholder="초물"
+                                placeholder={t("초물")}
                               />
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
@@ -2498,7 +2526,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.half1 || ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "half1", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none"
-                                placeholder="중물"
+                                placeholder={t("중물")}
                               />
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
@@ -2507,7 +2535,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.finish1 || ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "finish1", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none"
-                                placeholder="종물"
+                                placeholder={t("종물")}
                               />
                             </td>
                           </tr>
@@ -2515,7 +2543,7 @@ export const LegoWorkReportBuilder = ({
                           {/* Row 3: LOT NO. (초물, 중물, 종물 3개 칸) */}
                           <tr className="border-b border-black dark:border-slate-600">
                             <td className="border-r border-black dark:border-slate-600 p-1 text-[11px] font-bold bg-slate-50 dark:bg-slate-800">
-                              LOT NO.
+                              {t("LOT NO.")}
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
                               <input
@@ -2523,7 +2551,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.lotStart ?? row.lotNo ?? ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "lotStart", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none text-slate-700 dark:text-slate-300"
-                                placeholder="초물 LOT"
+                                placeholder={t("초물 LOT")}
                               />
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
@@ -2532,7 +2560,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.lotHalf ?? row.lotNo ?? ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "lotHalf", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none text-slate-700 dark:text-slate-300"
-                                placeholder="중물 LOT"
+                                placeholder={t("중물 LOT")}
                               />
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1">
@@ -2541,7 +2569,7 @@ export const LegoWorkReportBuilder = ({
                                 value={row.lotFinish ?? row.lotNo ?? ""}
                                 onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "lotFinish", e.target.value)}
                                 className="w-full text-center font-mono font-bold bg-transparent outline-none text-slate-700 dark:text-slate-300"
-                                placeholder="종물 LOT"
+                                placeholder={t("종물 LOT")}
                               />
                             </td>
                           </tr>
@@ -2560,20 +2588,20 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
                   <span className="font-black text-xs text-slate-900 dark:text-white">
-                    🧱 [블록 2] 2. 단컷팅 - FRT 구간 치수 (사진 2)
+                    🧱 {t("[블록 2] 단컷팅 FRT 구간 치수 (49/45mm)")}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleAddStepCuttingRow("FRT")}
                     className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
                   >
-                    + 행 추가
+                    {t("+ 행 추가")}
                   </button>
                 </div>
                 <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                   <thead>
                     <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구분")}</th>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2589,7 +2617,7 @@ export const LegoWorkReportBuilder = ({
                   </thead>
                   <tbody>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">{t("SPEC")}</td>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
                           <input
@@ -2602,7 +2630,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("초물(Start)")}</td>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2615,7 +2643,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("중물(Half)")}</td>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2628,7 +2656,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr>
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("종물(Finish)")}</td>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2649,20 +2677,20 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
                   <span className="font-black text-xs text-slate-900 dark:text-white">
-                    🧱 [블록 3] 2. 단컷팅 - RR 구간 치수 (사진 3)
+                    🧱 {t("[블록 3] 단컷팅 RR 구간 치수 (40/39mm)")}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleAddStepCuttingRow("RR")}
                     className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
                   >
-                    + 행 추가
+                    {t("+ 행 추가")}
                   </button>
                 </div>
                 <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                   <thead>
                     <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구분</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구분")}</th>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2678,7 +2706,7 @@ export const LegoWorkReportBuilder = ({
                   </thead>
                   <tbody>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">SPEC</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">{t("SPEC")}</td>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
                           <input
@@ -2691,7 +2719,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">초물(Start)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("초물(Start)")}</td>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2704,7 +2732,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr className="border-b border-black dark:border-slate-600">
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">중물(Half)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("중물(Half)")}</td>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2717,7 +2745,7 @@ export const LegoWorkReportBuilder = ({
                       ))}
                     </tr>
                     <tr>
-                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종물(Finish)</td>
+                      <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("종물(Finish)")}</td>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1">
                           <input
@@ -2741,14 +2769,14 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-1">
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 10] 불량소재구분 (8열 매트릭스: 압출불량 & 공정간불량) (사진 10 대조)</span>
+                    <span>🧱 {t("[블록 10] 불량소재구분 (8열 매트릭스: 압출불량 & 공정간불량) (사진 10 대조)")}</span>
                   </span>
                 </div>
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th rowSpan={2} colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-[20%]">구 분(Division)</th>
+                        <th rowSpan={2} colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-[20%]">{t("구 분(Division)")}</th>
                         <th colSpan={4} className="border-r border-black dark:border-slate-600 p-1">FRT</th>
                         <th colSpan={4} className="p-1">RR</th>
                       </tr>
@@ -2770,7 +2798,7 @@ export const LegoWorkReportBuilder = ({
                             <td rowSpan={4} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-20">
                               <input
                                 type="text"
-                                value={currentReport.defectMatCat1Label ?? "압출소재불량"}
+                                value={t(currentReport.defectMatCat1Label ?? "압출소재불량")}
                                 onChange={(e) => handleUpdateField("defectMatCat1Label", e.target.value)}
                                 className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
                                 title="구분 분류명 수정"
@@ -2781,7 +2809,7 @@ export const LegoWorkReportBuilder = ({
                             <td rowSpan={2} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-20">
                               <input
                                 type="text"
-                                value={currentReport.defectMatCat2Label ?? "공정간불량"}
+                                value={t(currentReport.defectMatCat2Label ?? "공정간불량")}
                                 onChange={(e) => handleUpdateField("defectMatCat2Label", e.target.value)}
                                 className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
                                 title="구분 분류명 수정"
@@ -2791,7 +2819,7 @@ export const LegoWorkReportBuilder = ({
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
                             <input
                               type="text"
-                              value={row.name || ""}
+                              value={t(row.name || "")}
                               onChange={(e) => handleUpdateSpecValue("defectMaterialMatrix", row.id, "name", e.target.value)}
                               className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
                               title="구분(불량 항목)명 수정"
@@ -2876,21 +2904,21 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
                   <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 16] 불량소재구분 (Section A / B / C 3단면) (사진 16 대조)</span>
+                    <span>🧱 {t("[블록 16] 불량소재구분 (Section A / B / C 3단면) (사진 16 대조)")}</span>
                   </span>
                   <button
                     type="button"
                     onClick={handleAddDefectSectionAbcRow}
                     className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
                   >
-                    + 항목 추가
+                    {t("+ 항목 추가")}
                   </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th className="border-r border-black dark:border-slate-600 p-1 w-1/2">구 분 (Division)</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1 w-1/2">{t("구 분 (Division)")}</th>
                         <th className="border-r border-black dark:border-slate-600 p-1">Section A</th>
                         <th className="border-r border-black dark:border-slate-600 p-1">Section B</th>
                         <th className="p-1">Section C</th>
@@ -2902,7 +2930,7 @@ export const LegoWorkReportBuilder = ({
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
                             <input
                               type="text"
-                              value={row.name || ""}
+                              value={t(row.name || "")}
                               onChange={(e) => handleUpdateSpecValue("defectSectionAbc", row.id, "name", e.target.value)}
                               className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
                               title="구분(불량 항목)명 수정"
@@ -2946,18 +2974,18 @@ export const LegoWorkReportBuilder = ({
             {renderBlockWrapper("timeAndOutput", "[블록 1] 조인트 작업자 / 시간 / 생산수량", (
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                 <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
-                  🧱 [블록 1] 조인트 작업자 / 시간 / 생산수량 (사진 1 실물 대조)
+                  🧱 {t("[블록 1] 조인트 작업자 / 시간 / 생산수량")}
                 </span>
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th className="border-r border-black dark:border-slate-600 p-1.5">구 분</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5">작업자</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5">작업시간</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5">정품수량</th>
-                        <th className="border-r border-black dark:border-slate-600 p-1.5">불량수량</th>
-                        <th className="p-1.5">재조인트</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">{t("구 분")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">{t("작업자")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">{t("작업시간")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">{t("정품수량")}</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1.5">{t("불량수량")}</th>
+                        <th className="p-1.5">{t("재조인트")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2977,7 +3005,7 @@ export const LegoWorkReportBuilder = ({
                               title="구분명 수정 (클릭하여 직접 변경)"
                             />
                           </td>
-                          <td className="border-r border-black dark:border-slate-600 p-1">{currentReport.workerName || "작업자"}</td>
+                          <td className="border-r border-black dark:border-slate-600 p-1">{currentReport.workerName || t("작업자")}</td>
                           <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{currentReport.startTime} ~ {currentReport.finishTime}</td>
                           <td className="border-r border-black dark:border-slate-600 p-1 font-mono text-emerald-600 font-black">350</td>
                           <td className="border-r border-black dark:border-slate-600 p-1 font-mono text-rose-600">1</td>
@@ -2997,7 +3025,7 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-2 p-3 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
-                    <span className="text-[10px] text-slate-400 block font-bold">조인트 재료명 (Joint grade name) - 사진 4</span>
+                    <span className="text-[10px] text-slate-400 block font-bold">{t("조인트 재료명 (Joint grade name) - 사진 4")}</span>
                     <input
                       type="text"
                       value={currentReport.jointMaterial?.gradeName || ""}
@@ -3009,7 +3037,7 @@ export const LegoWorkReportBuilder = ({
                     />
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
-                    <span className="text-[10px] text-slate-400 block font-bold">조인트 재료일자 (Joint material lot no)</span>
+                    <span className="text-[10px] text-slate-400 block font-bold">{t("조인트 재료일자 (Joint material lot no)")}</span>
                     <input
                       type="text"
                       value={currentReport.jointMaterial?.lotNo || ""}
@@ -3032,16 +3060,16 @@ export const LegoWorkReportBuilder = ({
                 <table className="w-full border-collapse text-xs text-center font-bold">
                   <thead>
                     <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                      <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1">노즐(Nozzle)</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1">실린더 1(N2)</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1">실린더 2(H3)</th>
-                      <th className="p-1">실린더 3(H4)</th>
+                      <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구 분")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">{t("노즐(Nozzle)")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">{t("실린더 1(N2)")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">{t("실린더 2(H3)")}</th>
+                      <th className="p-1">{t("실린더 3(H4)")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(currentReport.injectionTemps || []).map((t, idx) => (
-                      <tr key={t.id || idx} className="border-b border-black dark:border-slate-600">
+                    {(currentReport.injectionTemps || []).map((tItem, idx) => (
+                      <tr key={tItem.id || idx} className="border-b border-black dark:border-slate-600">
                         {idx === 0 && (
                           <td rowSpan={3} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-14">
                             Sett'g
@@ -3052,11 +3080,11 @@ export const LegoWorkReportBuilder = ({
                             Actual
                           </td>
                         )}
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t.machine}</td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.nozzle}</td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl1}</td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{t.cyl2}</td>
-                        <td className="p-1 font-mono">{t.cyl3}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{tItem.machine}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{tItem.nozzle}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{tItem.cyl1}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{tItem.cyl2}</td>
+                        <td className="p-1 font-mono">{tItem.cyl3}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3072,17 +3100,17 @@ export const LegoWorkReportBuilder = ({
                 <table className="w-full border-collapse text-xs text-center font-bold">
                   <thead>
                     <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분 (항목)</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">SPEC</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1">초물 (Start)</th>
-                      <th className="border-r border-black dark:border-slate-600 p-1">중물 (Half)</th>
-                      <th className="p-1">종물 (Finish)</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구 분 (항목)")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("SPEC")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">{t("초물 (Start)")}</th>
+                      <th className="border-r border-black dark:border-slate-600 p-1">{t("중물 (Half)")}</th>
+                      <th className="p-1">{t("종물 (Finish)")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(currentReport.injectionConditions || []).map((c) => (
                       <tr key={c.id} className="border-b border-black dark:border-slate-600">
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">{c.name}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">{t(c.name)}</td>
                         <td className="border-r border-black dark:border-slate-600 p-1 text-purple-700 dark:text-purple-300 font-black">{c.spec}</td>
                         <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.startVal}</td>
                         <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.halfVal}</td>
@@ -3101,7 +3129,7 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 7] 6. 공정불량 종합 매트릭스 (사진 7 대조)</span>
+                    <span>🧱 {t("[블록 7] 6. 공정불량 종합 매트릭스")}</span>
                   </span>
                   <button
                     type="button"
@@ -3109,7 +3137,7 @@ export const LegoWorkReportBuilder = ({
                     className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ 불량 항목 추가</span>
+                    <span>{t("+ 불량 항목 추가")}</span>
                   </button>
                 </div>
 
@@ -3117,10 +3145,10 @@ export const LegoWorkReportBuilder = ({
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th rowSpan={3} className="border-r border-black dark:border-slate-600 p-1.5 w-[20%]">구 분(Division)</th>
-                        <th colSpan={5} className="border-r border-black dark:border-slate-600 p-1">폐기불량(Disposal) - 조인트작업시</th>
-                        <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1">재조인트수량(Rework)</th>
-                        <th colSpan={2} className="p-1">공정간불량(재조인트 불량포함)</th>
+                        <th rowSpan={3} className="border-r border-black dark:border-slate-600 p-1.5 w-[20%]">{t("구 분(Division)")}</th>
+                        <th colSpan={5} className="border-r border-black dark:border-slate-600 p-1">{t("폐기불량(Disposal) - 조인트작업시")}</th>
+                        <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1">{t("재조인트수량(Rework)")}</th>
+                        <th colSpan={2} className="p-1">{t("공정간불량(재조인트 불량포함)")}</th>
                       </tr>
                       <tr className="bg-amber-50 dark:bg-amber-950/50 border-b border-black dark:border-slate-600 text-[10px]">
                         <th colSpan={3} className="border-r border-black dark:border-slate-600 p-0.5">FRT LH/RH</th>
@@ -3146,7 +3174,7 @@ export const LegoWorkReportBuilder = ({
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
                             <input
                               type="text"
-                              value={row.name || ""}
+                              value={t(row.name || "")}
                               onChange={(e) => {
                                 const nextVal = e.target.value;
                                 setCurrentReport((prev) => ({
@@ -3184,14 +3212,14 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-3 p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
                 <div className="flex items-center justify-between pb-1 border-b border-emerald-200 dark:border-emerald-800">
                   <span className="text-xs font-black text-emerald-900 dark:text-emerald-300">
-                    🧱 [블록 12] 도면 기반 중요 치수 & 검사 현황 LH (사진 12 실물 대조)
+                    🧱 {t("[블록 12] 도면 치수 & 중요 검사 현황")}
                   </span>
                   <button
                     type="button"
                     onClick={handleAddDrawingSpecRow}
                     className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
                   >
-                    + 치수 행 추가
+                    {t("+ 치수 행 추가")}
                   </button>
                 </div>
 
@@ -3211,14 +3239,14 @@ export const LegoWorkReportBuilder = ({
                     <table className="w-full border-collapse text-xs text-center font-bold">
                       <thead>
                         <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                          <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">항 목</th>
-                          <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">규 격</th>
-                          <th colSpan={3} className="p-1">실 측 치</th>
+                          <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("항 목")}</th>
+                          <th rowSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("규 격")}</th>
+                          <th colSpan={3} className="p-1">{t("실 측 치")}</th>
                         </tr>
                         <tr className="bg-amber-50 dark:bg-amber-950/50 border-b border-black dark:border-slate-600 text-[10px]">
-                          <th className="border-r border-black dark:border-slate-600 p-0.5">초물</th>
-                          <th className="border-r border-black dark:border-slate-600 p-0.5">중물</th>
-                          <th className="p-0.5">종물</th>
+                          <th className="border-r border-black dark:border-slate-600 p-0.5">{t("초물")}</th>
+                          <th className="border-r border-black dark:border-slate-600 p-0.5">{t("중물")}</th>
+                          <th className="p-0.5">{t("종물")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3280,7 +3308,7 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 14] 완제품 직각검사 종합 매트릭스 (LH/RH 호기별) (사진 13, 14)</span>
+                    <span>🧱 {t("[블록 14] 완제품 직각검사 종합 매트릭스")}</span>
                   </span>
                   <button
                     type="button"
@@ -3288,7 +3316,7 @@ export const LegoWorkReportBuilder = ({
                     className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs cursor-pointer flex items-center gap-1 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ 호기 라인 추가</span>
+                    <span>{t("+ 호기 라인 추가")}</span>
                   </button>
                 </div>
 
@@ -3296,7 +3324,7 @@ export const LegoWorkReportBuilder = ({
                   <table className="w-full border-collapse text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">구 분</th>
+                        <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구 분")}</th>
                         {(currentReport.machines || []).map((m) => (
                           <th key={m.id} className="border-r border-black dark:border-slate-600 p-1">
                             <input
@@ -3322,15 +3350,15 @@ export const LegoWorkReportBuilder = ({
                       {/* 작업시간 */}
                       <tr className="border-b border-black dark:border-slate-600">
                         <td rowSpan={2} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/40 p-1 font-bold w-16">
-                          작업<br/>시간
+                          {t("작업시간")}
                         </td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">시작 시간</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("시작 시간")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono">08:00</td>
                         ))}
                       </tr>
                       <tr className="border-b border-black dark:border-slate-600">
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">종료 시간</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("종료 시간")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono">17:00</td>
                         ))}
@@ -3339,27 +3367,27 @@ export const LegoWorkReportBuilder = ({
                       {/* 제품 수량 */}
                       <tr className="border-b border-black dark:border-slate-600">
                         <td rowSpan={4} className="border-r border-black dark:border-slate-600 bg-cyan-50 dark:bg-cyan-950/40 p-1 font-bold">
-                          제품<br/>수량
+                          {t("제품수량")}
                         </td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">검 사</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold">{t("검 사")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono font-black">{m.inspectQty}</td>
                         ))}
                       </tr>
                       <tr className="border-b border-black dark:border-slate-600">
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-emerald-600">정 품</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-emerald-600">{t("정 품")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono font-black text-emerald-600">{m.goodQty}</td>
                         ))}
                       </tr>
                       <tr className="border-b border-black dark:border-slate-600">
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-amber-600">공정불량(리워크)</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-amber-600">{t("공정불량(리워크)")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono">{m.reworkQty}</td>
                         ))}
                       </tr>
                       <tr className="border-b border-black dark:border-slate-600">
-                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-rose-600">완전불량(폐기)</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 font-bold text-rose-600">{t("완전불량(폐기)")}</td>
                         {(currentReport.machines || []).map((m) => (
                           <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono text-rose-600">{m.scrapQty}</td>
                         ))}
@@ -3370,13 +3398,13 @@ export const LegoWorkReportBuilder = ({
                         <tr key={ed.id || idx} className="border-b border-black dark:border-slate-600">
                           {idx === 0 && (
                             <td rowSpan={currentReport.extrusionDefects?.length || 6} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/40 p-1 font-bold">
-                              압출<br/>불량
+                              {t("압출불량")}
                             </td>
                           )}
                           <td className="border-r border-black dark:border-slate-600 p-1 font-bold">
                             <input
                               type="text"
-                              value={ed.name || ""}
+                              value={t(ed.name || "")}
                               onChange={(e) => {
                                 const nextVal = e.target.value;
                                 setCurrentReport((prev) => ({
@@ -3401,13 +3429,13 @@ export const LegoWorkReportBuilder = ({
                         <tr key={pd.id || idx} className="border-b border-black dark:border-slate-600">
                           {idx === 0 && (
                             <td rowSpan={currentReport.postDefectsList?.length || 9} className="border-r border-black dark:border-slate-600 bg-emerald-50 dark:bg-emerald-950/40 p-1 font-bold">
-                              후가공<br/>불량
+                              {t("후가공불량")}
                             </td>
                           )}
                           <td className="border-r border-black dark:border-slate-600 p-1 font-bold">
                             <input
                               type="text"
-                              value={pd.name || ""}
+                              value={t(pd.name || "")}
                               onChange={(e) => {
                                 const nextVal = e.target.value;
                                 setCurrentReport((prev) => ({
@@ -3439,24 +3467,24 @@ export const LegoWorkReportBuilder = ({
               <div className="space-y-1.5 border border-black dark:border-slate-600 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-300 dark:border-slate-700">
                   <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🧱 [블록 17] FRT 직각검사 불량 집계표 (사진 17 실물 일치: 립컷팅/패드 누락 등)</span>
+                    <span>🧱 {t("[블록 17] FRT 직각검사 불량 집계표")}</span>
                   </span>
                   <button
                     type="button"
                     onClick={handleAddFrtRightAngleDefectRow}
                     className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
                   >
-                    + 불량 항목 추가
+                    {t("+ 불량 항목 추가")}
                   </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                     <thead>
                       <tr className="bg-amber-100 dark:bg-amber-950/70 border-b border-black dark:border-slate-600 text-[11px]">
-                        <th className="border-r border-black dark:border-slate-600 p-1 w-1/2">불량 항목 (Defect item)</th>
+                        <th className="border-r border-black dark:border-slate-600 p-1 w-1/2">{t("불량 항목 (Defect item)")}</th>
                         <th className="border-r border-black dark:border-slate-600 p-1">FRT LH</th>
                         <th className="border-r border-black dark:border-slate-600 p-1">FRT RH</th>
-                        <th className="p-1">합 계</th>
+                        <th className="p-1">{t("합 계")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3465,7 +3493,7 @@ export const LegoWorkReportBuilder = ({
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
                             <input
                               type="text"
-                              value={row.name || ""}
+                              value={t(row.name || "")}
                               onChange={(e) => handleUpdateSpecValue("frtRightAngleDefects", row.id, "name", e.target.value)}
                               className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
                               title="구분(불량 항목)명 수정"
@@ -3504,27 +3532,27 @@ export const LegoWorkReportBuilder = ({
             {renderBlockWrapper("subMaterialLot", "[블록 11] 부자재 LOT NO. (패드 5T)", (
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
                 <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 block">
-                  🧱 [블록 11] 부자재 LOT NO. (패드 5T) (사진 11)
+                  🧱 {t("[블록 11] 부자재 LOT NO. (패드 5T)")}
                 </span>
                 <input
                   type="text"
                   value={currentReport.subMaterialLot || ""}
                   onChange={(e) => handleUpdateField("subMaterialLot", e.target.value)}
                   className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
-                  placeholder="패드 5T 입고일자 및 LOT 번호 입력"
+                  placeholder={t("패드 5T 입고일자 및 LOT 번호 입력")}
                 />
               </div>
             ), { customBadge: "사진 11" })}
 
             {renderBlockWrapper("remarks", "특기 사항 및 조치사항", (
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-                <span className="text-[11px] font-black text-slate-400 block">■ 특기 사항 (조치사항)</span>
+                <span className="text-[11px] font-black text-slate-400 block">{t("■ 특기 사항 (조치사항)")}</span>
                 <input
                   type="text"
                   value={currentReport.remarks || ""}
                   onChange={(e) => handleUpdateField("remarks", e.target.value)}
                   className="w-full font-bold text-xs bg-transparent outline-none border-b border-dashed border-slate-400 py-1"
-                  placeholder="설비 이상, 원부자재 교체, 조치사항 등 입력"
+                  placeholder={t("설비 이상, 원부자재 교체, 조치사항 등 입력")}
                 />
               </div>
             ), { customBadge: "공통" })}
@@ -3542,7 +3570,8 @@ export const LegoWorkReportBuilder = ({
                   )
                 }
                 config={currentReport.bladeReplacementConfig || {}}
-                workerName={currentReport.workerName || "작업자"}
+                workerName={currentReport.workerName || t("작업자")}
+                currentLang={currentLang}
                 onChangeConfig={(nextCfg) =>
                   setCurrentReport((prev) => ({
                     ...prev,
@@ -3565,7 +3594,8 @@ export const LegoWorkReportBuilder = ({
                   )
                 }
                 config={currentReport.moldShotCountConfig || {}}
-                workerName={currentReport.workerName || "작업자"}
+                workerName={currentReport.workerName || t("작업자")}
+                currentLang={currentLang}
                 onChangeConfig={(nextCfg) =>
                   setCurrentReport((prev) => ({
                     ...prev,
@@ -3577,9 +3607,10 @@ export const LegoWorkReportBuilder = ({
 
             {renderBlockWrapper("downtimeDefectPanel", "비가동 및 부적합품 발생내역 (조치전·후 사진)", (
               <CommonDowntimeDefectPanel
-                title="비가동 및 부적합품 발생내역"
+                title={t("비가동 및 부적합품 발생내역")}
                 plantLabel={currentReport.companyName || "작업일보 공통"}
                 unitLabel="부적합량(EA/kg)"
+                currentLang={currentLang}
                 events={currentReport.downtimeEvents || []}
                 onChangeEvents={(nextEvents) =>
                   setCurrentReport((prev) => ({
@@ -3830,7 +3861,7 @@ export const LegoWorkReportBuilder = ({
             {/* Bottom Register Action Bar */}
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
               <span className="text-xs text-slate-500 font-bold">
-                💡 작성된 모든 치수 및 수량은 데이터베이스에 안전하게 영구 저장됩니다.
+                💡 {t("작성된 모든 치수 및 수량은 데이터베이스에 안전하게 영구 저장됩니다.")}
               </span>
               <div className="flex items-center gap-2">
                 {(onDeleteWorkReport || (currentReport.id && savedTemplates.some((t) => t.id === currentReport.id))) && (
@@ -3854,10 +3885,10 @@ export const LegoWorkReportBuilder = ({
                       }
                     }}
                     className="px-4 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5"
-                    title="등록된 작업일보 영구 삭제"
+                    title={t("등록된 작업일보 영구 삭제")}
                   >
                     <Trash2 className="w-4 h-4 text-rose-500" />
-                    <span>일보 삭제</span>
+                    <span>{t("일보 삭제")}</span>
                   </button>
                 )}
                 <button
@@ -3867,7 +3898,7 @@ export const LegoWorkReportBuilder = ({
                   className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-emerald-600/30 transition active:scale-95 cursor-pointer flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{isSubmitting ? "데이터베이스 저장 중..." : isWorkerRecordingMode ? "💾 작업일보 기록 저장 (DB 등록)" : "✅ 작업일보 공식 등록 (DB 저장)"}</span>
+                  <span>{isSubmitting ? t("데이터베이스 저장 중...") : isWorkerRecordingMode ? `💾 ${t("작업일보 기록 저장 (DB 등록)")}` : `✅ ${t("작업일보 공식 등록 (DB 저장)")}`}</span>
                 </button>
               </div>
             </div>
