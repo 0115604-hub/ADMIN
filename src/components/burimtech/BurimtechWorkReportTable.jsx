@@ -15,6 +15,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { MajorProcessTemplateSelectModal } from "../common/MajorProcessTemplateSelectModal";
+import { deleteWorkLog } from "../../services/workLogService";
 
 const BURIMTECH_SLOTS = [
   { id: "STANDARD", name: "부림텍 표준", sub: "전 공정 공통" },
@@ -27,12 +28,14 @@ const BURIMTECH_SLOTS = [
 export const BurimtechWorkReportTable = ({
   handleOpenWorkLogModal,
   handleOpenLogDetail,
+  handleDeleteLog,
   onNavigateTab,
   workLogs = [],
   currentProfile,
   isWorkLogApproved
 }) => {
   const [isTemplateSettingOpen, setIsTemplateSettingOpen] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState(null);
   // Filter logs for Burimtech
   const burimLogs = useMemo(() => {
     return (workLogs || []).filter((l) => {
@@ -149,7 +152,7 @@ export const BurimtechWorkReportTable = ({
               <th className="py-2.5 px-3">주요 작업 내용</th>
               <th className="py-2.5 px-3 text-center">사진</th>
               <th className="py-2.5 px-3 text-center">결재상태</th>
-              <th className="py-2.5 px-3 text-center">상세보기</th>
+              <th className="py-2.5 px-3 text-center">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -204,17 +207,44 @@ export const BurimtechWorkReportTable = ({
                         {approved ? "승인완료" : "결재대기"}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenLogDetail && handleOpenLogDetail(log);
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition"
-                      >
-                        보기
-                      </button>
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenLogDetail && handleOpenLogDetail(log);
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                          title="일보 상세 보기"
+                        >
+                          보기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!window.confirm(`정말로 이 부림텍 작업일보 [${log.workDate || log.date} - ${log.writer || "작업자"}] 항목을 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+                            setIsDeletingId(log.id);
+                            try {
+                              if (handleDeleteLog) {
+                                await handleDeleteLog(log.id);
+                              } else {
+                                await deleteWorkLog(log.id, true);
+                              }
+                            } catch (err) {
+                              alert("삭제 중 오류가 발생했습니다: " + err.message);
+                            } finally {
+                              setIsDeletingId(null);
+                            }
+                          }}
+                          disabled={isDeletingId === log.id}
+                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition cursor-pointer disabled:opacity-50"
+                          title="작업일보 영구 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

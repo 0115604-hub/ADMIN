@@ -212,6 +212,7 @@ export const PartnerManagerDashboardView = ({
         <BurimtechCustomSection
           handleOpenWorkLogModal={handleOpenWorkLogModal}
           handleOpenLogDetail={handleOpenLogDetail}
+          handleDeleteLog={handleDeleteLog}
           onNavigateTab={onNavigateTab}
           workLogs={workLogs}
           currentProfile={currentProfile}

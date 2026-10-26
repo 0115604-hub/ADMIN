@@ -14,6 +14,7 @@ const BURIMTECH_SLOTS = [
 export const BurimtechCustomSection = ({
   handleOpenWorkLogModal,
   handleOpenLogDetail,
+  handleDeleteLog,
   onNavigateTab,
   workLogs = [],
   currentProfile,
@@ -86,6 +87,7 @@ export const BurimtechCustomSection = ({
       <BurimtechWorkReportTable
         handleOpenWorkLogModal={handleOpenWorkLogModal}
         handleOpenLogDetail={handleOpenLogDetail}
+        handleDeleteLog={handleDeleteLog}
         onNavigateTab={onNavigateTab}
         workLogs={workLogs}
         currentProfile={currentProfile}

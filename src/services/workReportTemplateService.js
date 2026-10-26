@@ -14,7 +14,27 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import bundledCustomTemplates from "../data/bundledCustomTemplates.json";
 
 export const TEMPLATE_STORAGE_KEY = "oruk_work_report_templates_v2";
+export const DELETED_TEMPLATE_STORAGE_KEY = "oruk_deleted_work_report_template_ids_v1";
 const COLLECTION_NAME = "work_report_templates";
+
+// 🌟 삭제된 템플릿 ID 블랙리스트 (스냅샷/기본값에 의한 자동 부활 원천 방지)
+export const getDeletedTemplateIds = () => {
+  try {
+    const raw = localStorage.getItem(DELETED_TEMPLATE_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch (e) {
+    return new Set();
+  }
+};
+
+export const saveDeletedTemplateIds = (setOrArray) => {
+  try {
+    const arr = Array.from(setOrArray || []);
+    localStorage.setItem(DELETED_TEMPLATE_STORAGE_KEY, JSON.stringify(arr));
+  } catch (e) {}
+};
 
 // 5대 대분류 정의
 export const REPORT_MAJOR_CATEGORIES = [
@@ -370,6 +390,7 @@ const normalizeTemplateDoc = (tpl) => {
 // 로컬 스토리지 데이터 가져오기 (절대 기존 등록 양식을 파괴/초기화하지 않는 안전 병합)
 export const getLocalWorkReportTemplates = () => {
   try {
+    const deletedIds = getDeletedTemplateIds();
     const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
     let parsed = [];
     if (raw) {
@@ -379,25 +400,25 @@ export const getLocalWorkReportTemplates = () => {
       } catch (parseErr) {}
     }
 
-    // 1단계: 내장 기본 템플릿(17대 공정 양식)으로 맵 시드
+    // 1단계: 내장 기본 템플릿(17대 공정 양식)으로 맵 시드 (삭제된 것은 제외)
     const tplMap = new Map();
     DEFAULT_WORK_REPORT_TEMPLATES.forEach((tpl) => {
-      if (tpl && tpl.id) {
+      if (tpl && tpl.id && !deletedIds.has(tpl.id)) {
         tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
       }
     });
 
-    // 2단계: 로컬스토리지에 저장된 사용자 정의/수정 템플릿 병합 (ID 기준 덮어쓰기 보존)
+    // 2단계: 로컬스토리지에 저장된 사용자 정의/수정 템플릿 병합 (ID 기준 덮어쓰기 보존, 삭제된 것 제외)
     parsed.forEach((tpl) => {
-      if (tpl && tpl.id) {
+      if (tpl && tpl.id && !deletedIds.has(tpl.id)) {
         tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
       }
     });
 
-    // 3단계: 메모리 캐시에 남아있는 최신본 병합
+    // 3단계: 메모리 캐시에 남아있는 최신본 병합 (삭제된 것 제외)
     if (Array.isArray(memoryTemplatesCache)) {
       memoryTemplatesCache.forEach((tpl) => {
-        if (tpl && tpl.id) {
+        if (tpl && tpl.id && !deletedIds.has(tpl.id)) {
           tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
         }
       });
@@ -408,15 +429,19 @@ export const getLocalWorkReportTemplates = () => {
     return merged;
   } catch (e) {
     console.warn("getLocalWorkReportTemplates fallback:", e);
+    const deletedIds = getDeletedTemplateIds();
     return Array.isArray(memoryTemplatesCache)
-      ? memoryTemplatesCache
-      : DEFAULT_WORK_REPORT_TEMPLATES.map(normalizeTemplateDoc);
+      ? memoryTemplatesCache.filter((t) => t && !deletedIds.has(t.id))
+      : DEFAULT_WORK_REPORT_TEMPLATES.filter((t) => t && !deletedIds.has(t.id)).map(normalizeTemplateDoc);
   }
 };
 
 // 로컬 스토리지 저장 (QuotaExceededError 방어 + 중복제거 + 즉시 브로드캐스트)
 export const saveLocalWorkReportTemplates = (templates) => {
-  const normalized = (Array.isArray(templates) ? templates : []).map(normalizeTemplateDoc);
+  const deletedIds = getDeletedTemplateIds();
+  const normalized = (Array.isArray(templates) ? templates : [])
+    .filter((t) => t && t.id && !deletedIds.has(t.id))
+    .map(normalizeTemplateDoc);
   memoryTemplatesCache = normalized;
 
   // 로컬스토리지용 경량화 복사본 (legoConfigJson 제거)
@@ -471,21 +496,24 @@ export const subscribeWorkReportTemplates = (callback) => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const snapshotList = snapshot.docs.map((docSnap) =>
-          normalizeTemplateDoc({
-            id: docSnap.id,
-            ...docSnap.data(),
-            isDatabaseBacked: true
-          })
-        );
+        const deletedIds = getDeletedTemplateIds();
+        const snapshotList = snapshot.docs
+          .filter((docSnap) => !deletedIds.has(docSnap.id))
+          .map((docSnap) =>
+            normalizeTemplateDoc({
+              id: docSnap.id,
+              ...docSnap.data(),
+              isDatabaseBacked: true
+            })
+          );
 
         const localList = getLocalWorkReportTemplates();
         const tplMap = new Map();
         localList.forEach((tpl) => {
-          if (tpl && tpl.id) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
+          if (tpl && tpl.id && !deletedIds.has(tpl.id)) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
         });
         snapshotList.forEach((tpl) => {
-          if (tpl && tpl.id) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
+          if (tpl && tpl.id && !deletedIds.has(tpl.id)) tplMap.set(tpl.id, normalizeTemplateDoc(tpl));
         });
 
         const merged = Array.from(tplMap.values()).sort(
@@ -509,8 +537,19 @@ export const subscribeWorkReportTemplates = (callback) => {
 
 // 전체 템플릿 일괄 삭제 (비우기)
 export const deleteAllWorkReportTemplates = async () => {
+  const currentList = getLocalWorkReportTemplates();
+  const deletedIds = getDeletedTemplateIds();
+  currentList.forEach((t) => {
+    if (t && t.id) deletedIds.add(t.id);
+  });
+  DEFAULT_WORK_REPORT_TEMPLATES.forEach((t) => {
+    if (t && t.id) deletedIds.add(t.id);
+  });
+  saveDeletedTemplateIds(deletedIds);
+
   memoryTemplatesCache = [];
   saveLocalWorkReportTemplates([]);
+
   try {
     const snap = await getDocs(collection(db, COLLECTION_NAME));
     await Promise.all(snap.docs.map((d) => deleteDoc(doc(db, COLLECTION_NAME, d.id))));
@@ -530,6 +569,13 @@ export const saveWorkReportTemplate = async (template) => {
     isDatabaseBacked: true,
     updatedAt: now
   });
+
+  // 영구 삭제 블랙리스트에 등록되어 있었다면 복구 허용
+  const deletedIds = getDeletedTemplateIds();
+  if (deletedIds.has(payload.id)) {
+    deletedIds.delete(payload.id);
+    saveDeletedTemplateIds(deletedIds);
+  }
 
   // 1. 로컬 & 메모리 즉시 저장 및 이벤트 발송 (UI 0ms 즉시 반영)
   const currentList = getLocalWorkReportTemplates();
@@ -557,9 +603,33 @@ export const saveWorkReportTemplate = async (template) => {
 
 // 템플릿 삭제
 export const deleteWorkReportTemplate = async (templateId) => {
+  if (!templateId) return;
+  const deletedIds = getDeletedTemplateIds();
+  deletedIds.add(templateId);
+  saveDeletedTemplateIds(deletedIds);
+
   const currentList = getLocalWorkReportTemplates();
-  const updatedList = currentList.filter((t) => t.id !== templateId);
+  const updatedList = currentList.filter((t) => t.id !== templateId && !deletedIds.has(t.id));
   saveLocalWorkReportTemplates(updatedList);
+
+  // processSlots 할당 정리 (삭제된 템플릿이 슬롯에 남아있지 않도록)
+  try {
+    const assigns = getLocalHanulTemplateAssignments();
+    let slotChanged = false;
+    const nextSlots = { ...(assigns.processSlots || {}) };
+    Object.keys(nextSlots).forEach((k) => {
+      if (nextSlots[k] === templateId) {
+        delete nextSlots[k];
+        slotChanged = true;
+      }
+    });
+    if (slotChanged) {
+      saveLocalHanulTemplateAssignments({
+        ...assigns,
+        processSlots: nextSlots
+      });
+    }
+  } catch (err) {}
 
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, templateId));

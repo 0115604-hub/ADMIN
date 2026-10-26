@@ -30,6 +30,7 @@ import {
   YUSEONG_SPECS,
   YUSEONG_DEFECT_CATEGORIES,
   saveYuseongWorkReport,
+  deleteYuseongWorkReport,
   exportYuseongReportToExcel
 } from "../../services/yuseongWorkReportService";
 import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
@@ -560,6 +561,15 @@ export const YuseongWorkReportModal = ({
                   } catch (e) {}
                   onClose();
                 }}
+                onDeleteWorkReport={editReport?.id ? async () => {
+                  if (!window.confirm("정말로 이 등록된 유성 외주가공 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+                  try {
+                    await deleteYuseongWorkReport(editReport.id);
+                    onClose();
+                  } catch (err) {
+                    alert("삭제 중 오류가 발생했습니다: " + err.message);
+                  }
+                } : null}
                 isEmbedded={true}
               />
             </div>

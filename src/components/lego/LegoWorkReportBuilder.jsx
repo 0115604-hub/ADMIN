@@ -29,7 +29,7 @@ import {
   AlertCircle,
   FolderPlus
 } from "lucide-react";
-import { saveMachiningWorkReport } from "../../services/machiningWorkReportService";
+import { saveMachiningWorkReport, deleteMachiningWorkReport } from "../../services/machiningWorkReportService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
 import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
 import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel.jsx";
@@ -551,6 +551,7 @@ export const LegoWorkReportBuilder = ({
   onSaveWorkReport,
   onSaveToTemplateManager,
   onNavigateToCatalog,
+  onDeleteWorkReport = null,
   isEmbedded = false,
   isWorkerRecordingMode = false
 }) => {
@@ -1694,6 +1695,35 @@ export const LegoWorkReportBuilder = ({
               </button>
             )}
 
+            {/* Delete Work Report Button */}
+            {(onDeleteWorkReport || (currentReport.id && savedTemplates.some((t) => t.id === currentReport.id))) && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const repTitle = currentReport.title || currentReport.partName || "작업일보";
+                  if (!window.confirm(`정말로 이 등록된 작업일보 [${repTitle}] 항목을 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+                  try {
+                    if (onDeleteWorkReport) {
+                      await onDeleteWorkReport();
+                    } else if (currentReport.id) {
+                      await deleteWorkReportTemplate(currentReport.id);
+                      try { await deleteMachiningWorkReport(currentReport.id); } catch (err) {}
+                      setCurrentReport(PRESET_REPORTS[0]);
+                      setAppliedTemplateBanner(null);
+                      showToast(`🗑️ [${repTitle}] 작업일보가 영구 삭제되었습니다.`);
+                    }
+                  } catch (err) {
+                    alert("삭제 중 오류가 발생했습니다: " + err.message);
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 font-black text-[11px] transition cursor-pointer flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
+                title="이 등록된 작업일보 영구 삭제"
+              >
+                <Trash2 className="w-3 h-3 text-rose-400" />
+                <span>일보 삭제</span>
+              </button>
+            )}
+
             {/* Official DB Save Button */}
             <button
               type="button"
@@ -1805,6 +1835,32 @@ export const LegoWorkReportBuilder = ({
                         {tpl.processName}
                       </span>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!window.confirm(`[${label}] 등록된 일보/양식을 DB에서 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+                      try {
+                        await deleteWorkReportTemplate(tpl.id);
+                        try {
+                          await deleteMachiningWorkReport(tpl.id);
+                        } catch (mErr) {}
+                        if (currentReport.id === tpl.id) {
+                          setCurrentReport(PRESET_REPORTS[0]);
+                          setAppliedTemplateBanner(null);
+                        }
+                        showToast(`🗑️ [${label}] 등록된 일보가 삭제되었습니다.`);
+                      } catch (err) {
+                        alert("삭제 실패: " + err.message);
+                      }
+                    }}
+                    className={`p-1 pr-1.5 transition cursor-pointer hover:bg-rose-500/20 rounded-r-lg ${
+                      isSelected ? "text-slate-950 hover:text-rose-900" : "text-rose-400 hover:text-rose-200"
+                    }`}
+                    title="이 저장 일보 삭제"
+                  >
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               );
@@ -3776,15 +3832,44 @@ export const LegoWorkReportBuilder = ({
               <span className="text-xs text-slate-500 font-bold">
                 💡 작성된 모든 치수 및 수량은 데이터베이스에 안전하게 영구 저장됩니다.
               </span>
-              <button
-                type="button"
-                onClick={handleSaveOfficialWorkReport}
-                disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-emerald-600/30 transition active:scale-95 cursor-pointer flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSubmitting ? "데이터베이스 저장 중..." : isWorkerRecordingMode ? "💾 작업일보 기록 저장 (DB 등록)" : "✅ 작업일보 공식 등록 (DB 저장)"}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {(onDeleteWorkReport || (currentReport.id && savedTemplates.some((t) => t.id === currentReport.id))) && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const repTitle = currentReport.title || currentReport.partName || "작업일보";
+                      if (!window.confirm(`정말로 이 등록된 작업일보 [${repTitle}] 항목을 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+                      try {
+                        if (onDeleteWorkReport) {
+                          await onDeleteWorkReport();
+                        } else if (currentReport.id) {
+                          await deleteWorkReportTemplate(currentReport.id);
+                          try { await deleteMachiningWorkReport(currentReport.id); } catch (err) {}
+                          setCurrentReport(PRESET_REPORTS[0]);
+                          setAppliedTemplateBanner(null);
+                          showToast(`🗑️ [${repTitle}] 작업일보가 영구 삭제되었습니다.`);
+                        }
+                      } catch (err) {
+                        alert("삭제 중 오류가 발생했습니다: " + err.message);
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5"
+                    title="등록된 작업일보 영구 삭제"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                    <span>일보 삭제</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveOfficialWorkReport}
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-emerald-600/30 transition active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSubmitting ? "데이터베이스 저장 중..." : isWorkerRecordingMode ? "💾 작업일보 기록 저장 (DB 등록)" : "✅ 작업일보 공식 등록 (DB 저장)"}</span>
+                </button>
+              </div>
             </div>
 
           </div>

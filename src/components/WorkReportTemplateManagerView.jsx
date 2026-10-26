@@ -34,6 +34,7 @@ import {
   cloneWorkReportTemplate,
   getLocalCustomLegoBlocks
 } from "../services/workReportTemplateService";
+import { deleteMachiningWorkReport } from "../services/machiningWorkReportService";
 import LegoWorkReportBuilder, { LEGO_BLOCK_SWITCH_CATALOG } from "./lego/LegoWorkReportBuilder.jsx";
 
 // Helper to resolve all catalog items (standard + custom blocks) for a template in exact assembled blockOrder
@@ -217,6 +218,9 @@ export const WorkReportTemplateManagerView = () => {
     if (!confirm(`정말 [${tpl.title} - ${tpl.carModel}] 양식을 삭제하시겠습니까?`)) return;
     try {
       await deleteWorkReportTemplate(tpl.id);
+      try {
+        await deleteMachiningWorkReport(tpl.id);
+      } catch (mErr) {}
       setTemplates((prev) => prev.filter((t) => t.id !== tpl.id));
       showToast("🗑️ 양식이 삭제되었습니다.");
     } catch (e) {

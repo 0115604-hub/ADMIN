@@ -46,6 +46,7 @@ import {
   HANUL_TPM_CHECK_ITEMS,
   createDefaultHanulTpmChecks,
   saveHanulWorkReport,
+  deleteHanulWorkReport,
   exportHanulReportToExcel,
   isExcludedFromWorkReport,
   getLocalHanulWorkReports,
@@ -1035,6 +1036,29 @@ export const HanulWorkReportModal = ({
     }
   };
 
+  const handleDeleteLegoAssignedReport = async () => {
+    const targetDocId =
+      editReport?.id ||
+      activeAssignedTemplate?.reportDocId ||
+      existingWorkerReport?.id;
+    if (!targetDocId) return;
+    if (!window.confirm("정말로 이 등록된 한울 외주가공 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+    setIsSaving(true);
+    try {
+      await deleteHanulWorkReport(targetDocId);
+      setToastMessage("🗑️ 등록된 작업일보가 영구 삭제되었습니다.");
+      setTimeout(() => {
+        setToastMessage("");
+        onClose();
+      }, 700);
+    } catch (err) {
+      console.error(err);
+      alert("삭제 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleExcelExport = () => {
     const effectiveWorker = customWorker.trim() || worker;
     const effectiveMeasurements = (lotEntries[0]?.measurements && Object.keys(lotEntries[0].measurements).length > 0)
@@ -1495,6 +1519,7 @@ export const HanulWorkReportModal = ({
                 initialWorkerName={effectiveWorkerName}
                 initialWorkDate={date}
                 onSaveWorkReport={handleSaveLegoAssignedReport}
+                onDeleteWorkReport={(existingWorkerReport?.id || editReport?.id || activeAssignedTemplate?.isExistingDraft) ? handleDeleteLegoAssignedReport : null}
               />
             </div>
           ) : (
