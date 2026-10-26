@@ -2518,7 +2518,7 @@ export const WorkerPinModal = ({
                     onClick={(e) => handleOpenHanulReportAction("9BQC", e)}
                     className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
                   >
-                    <span>🚗 9BQC 일보 작성</span>
+                    <span>🚗 9BQC 작업일보 작성 (TPM 점검)</span>
                     <ArrowRight className="w-4 h-4 text-indigo-200 shrink-0" />
                   </button>
                   <button
@@ -2526,7 +2526,7 @@ export const WorkerPinModal = ({
                     onClick={(e) => handleOpenHanulReportAction("LQ2A", e)}
                     className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer truncate"
                   >
-                    <span>⚡ LQ2a 일보 작성</span>
+                    <span>⚡ LQ2a 작업일보 작성 (TPM 점검)</span>
                     <ArrowRight className="w-4 h-4 text-purple-200 shrink-0" />
                   </button>
                 </div>
