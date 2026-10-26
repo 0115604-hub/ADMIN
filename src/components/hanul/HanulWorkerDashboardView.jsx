@@ -300,7 +300,7 @@ export const HanulWorkerDashboardView = () => {
 
             {/* 🌐 국적 기반 자동 번역 안내 문구 */}
             <p className="text-xs text-slate-300 font-medium mt-1 truncate flex items-center gap-1.5">
-              <span>{workerLangInfo.flag}</span>
+              <span>{workerLangInfo.nationalityFlag || workerLangInfo.flag}</span>
               <span>{getWorkLogText("auto_translated_notice", currentLang)}</span>
             </p>
           </div>
@@ -320,6 +320,7 @@ export const HanulWorkerDashboardView = () => {
               <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/80 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-cyan-400" />
                 <span>{getWorkLogText("auto_translated_badge", currentLang)}</span>
+                <span className="text-cyan-200 font-bold">({workerLangInfo.nationality})</span>
               </span>
             )}
             <select

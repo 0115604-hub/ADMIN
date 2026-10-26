@@ -3,21 +3,21 @@
 // 지원 언어: 한국어, 영어, 베트남어, 필리핀(타갈로그), 태국어, 스리랑카(싱할라), 우즈베크어,
 //          인도네시아어, 미얀마(버마어), 네팔어, 캄보디아(크메르), 몽골어
 // ============================================================================
-import { getWorkerPersonnelCard } from "./personnelCardService.js";
+import { getWorkerPersonnelCard, getNationalityMeta } from "./personnelCardService.js";
 
 export const SUPPORTED_LANGUAGES = [
   { code: "ko", name: "한국어", nativeName: "한국어", flag: "🇰🇷", country: "대한민국" },
-  { code: "en", name: "English", nativeName: "English", flag: "🇺🇸", country: "United States" },
-  { code: "vi", name: "Vietnamese", nativeName: "Tiếng Việt", flag: "🇻🇳", country: "Việt Nam" },
-  { code: "tl", name: "Filipino", nativeName: "Tagalog", flag: "🇵🇭", country: "Philippines" },
-  { code: "th", name: "Thai", nativeName: "ภาษาไทย", flag: "🇹🇭", country: "Thailand" },
-  { code: "si", name: "Sinhala", nativeName: "සිංහල", flag: "🇱🇰", country: "Sri Lanka" },
-  { code: "uz", name: "Uzbek", nativeName: "O'zbekcha", flag: "🇺🇿", country: "Uzbekistan" },
-  { code: "id", name: "Indonesian", nativeName: "Bahasa Indonesia", flag: "🇮🇩", country: "Indonesia" },
+  { code: "en", name: "English", nativeName: "English", flag: "🇺🇸", country: "English / 미국" },
+  { code: "th", name: "Thai", nativeName: "ภาษาไทย", flag: "🇹🇭", country: "태국" },
+  { code: "id", name: "Indonesian", nativeName: "Bahasa Indonesia", flag: "🇮🇩", country: "인도네시아" },
+  { code: "vi", name: "Vietnamese", nativeName: "Tiếng Việt", flag: "🇻🇳", country: "베트남" },
   { code: "my", name: "Burmese", nativeName: "မြန်မာစာ", flag: "🇲🇲", country: "미얀마" },
-  { code: "ne", name: "Nepali", nativeName: "नेपाली", flag: "🇳🇵", country: "Nepal" },
-  { code: "km", name: "Khmer", nativeName: "ភាសាខ្មែរ", flag: "🇰🇭", country: "Cambodia" },
-  { code: "mn", name: "Mongolian", nativeName: "Монгол", flag: "🇲🇳", country: "Mongolia" }
+  { code: "tl", name: "Filipino", nativeName: "Tagalog", flag: "🇵🇭", country: "필리핀" },
+  { code: "uz", name: "Uzbek", nativeName: "O'zbekcha", flag: "🇺🇿", country: "우즈벡" },
+  { code: "si", name: "Sinhala", nativeName: "සිංහල", flag: "🇱🇰", country: "스리랑카" },
+  { code: "ne", name: "Nepali", nativeName: "नेपाली", flag: "🇳🇵", country: "네팔" },
+  { code: "km", name: "Khmer", nativeName: "ភាសាខ្មែរ", flag: "🇰🇭", country: "캄보디아" },
+  { code: "mn", name: "Mongolian", nativeName: "Монгол", flag: "🇲🇳", country: "몽골" }
 ];
 
 export const WORK_LOG_TRANSLATIONS = {
@@ -728,15 +728,15 @@ export const WORK_LOG_TRANSLATIONS = {
   },
   auto_translated_notice: {
     ko: "국적에 따라 모국어로 자동 번역되어 표시됩니다.",
-    en: "Automatically translated based on your nationality.",
+    en: "Automatically translated into English based on your profile.",
     th: "แปลเป็นภาษาไทยโดยอัตโนมัติตามสัญชาติของคุณ",
     id: "Diterjemahkan secara otomatis berdasarkan kewarganegaraan Anda.",
-    vi: "Được tự động dịch dựa trên quốc tịch của bạn.",
+    vi: "Được tự동 dịch dựa trên quốc tịch của bạn.",
     my: "သင်၏နိုင်ငံသားအလိုက် မြန်မာဘာသာစကားဖြင့် အလိုအလျောက် ပြသထားပါသည်။"
   },
   auto_translated_badge: {
     ko: "모국어 자동 번역",
-    en: "Auto Translated",
+    en: "Auto English",
     th: "แปลภาษาไทยอัตโนมัติ",
     id: "Terjemahan Otomatis",
     vi: "Tự động dịch",
@@ -931,54 +931,53 @@ export const getWorkLogText = (key, lang = null) => {
 
 // ============================================================================
 // 🌍 국적(Nationality) ➔ 지원 언어 코드 자동 매핑
+// ⭐ 규칙:
+// 1) 한국 / 대한민국 ➔ "ko" (한국어)
+// 2) 4대 주요 국적:
+//    - 태국 ➔ "th" (태국어)
+//    - 인도네시아 ➔ "id" (인도네시아어)
+//    - 베트남 ➔ "vi" (베트남어)
+//    - 미얀마 ➔ "my" (미얀마/버마어)
+// 3) 🌟 [사용자 요청] 4개 국적 이외의 모든 외국인 작업자 (필리핀, 우즈벡, 스리랑카, 네팔, 캄보디아, 몽골, 기타 등)
+//    ➔ 영어가 기본으로 보여지도록 "en" 적용
 // ============================================================================
 export const getLanguageForNationality = (nationality) => {
   if (!nationality) return "ko";
   const nat = String(nationality).trim().toLowerCase();
 
-  // 1. 태국 (Thailand / Thai) 🇹🇭
+  // 1. 한국 / 대한민국 ➔ 한국어 (ko)
+  if (
+    nat.includes("대한민국") ||
+    nat.includes("한국") ||
+    nat.includes("korea") ||
+    nat.includes("korean") ||
+    nat === "ko" ||
+    nat === "kr"
+  ) {
+    return "ko";
+  }
+
+  // 2. 4대 주요 국적: 태국, 인도네시아, 베트남, 미얀마
+  // 1) 태국 (Thailand / Thai) 🇹🇭
   if (nat.includes("태국") || nat.includes("thailand") || nat.includes("thai") || nat === "th") {
     return "th";
   }
-  // 2. 인도네시아 (Indonesia / Indonesian) 🇮🇩
+  // 2) 인도네시아 (Indonesia / Indonesian) 🇮🇩
   if (nat.includes("인도네시아") || nat.includes("indonesia") || nat === "id") {
     return "id";
   }
-  // 3. 베트남 (Vietnam / Vietnamese) 🇻🇳
+  // 3) 베트남 (Vietnam / Vietnamese) 🇻🇳
   if (nat.includes("베트남") || nat.includes("vietnam") || nat.includes("viet") || nat === "vi") {
     return "vi";
   }
-  // 4. 미얀마 (Myanmar / Burmese) 🇲🇲
+  // 4) 미얀마 (Myanmar / Burmese) 🇲🇲
   if (nat.includes("미얀마") || nat.includes("myanmar") || nat.includes("burma") || nat.includes("burmese") || nat === "my") {
     return "my";
   }
-  // 5. 필리핀 (Philippines / Tagalog) 🇵🇭
-  if (nat.includes("필리핀") || nat.includes("philippines") || nat.includes("filipino") || nat === "tl") {
-    return "tl";
-  }
-  // 6. 우즈베키스탄 (Uzbekistan / Uzbek) 🇺🇿
-  if (nat.includes("우즈벡") || nat.includes("uzbek") || nat === "uz") {
-    return "uz";
-  }
-  // 7. 스리랑카 (Sri Lanka / Sinhala) 🇱🇰
-  if (nat.includes("스리랑카") || nat.includes("sri lanka") || nat.includes("sinhala") || nat === "si") {
-    return "si";
-  }
-  // 8. 네팔 (Nepal / Nepali) 🇳🇵
-  if (nat.includes("네팔") || nat.includes("nepal") || nat === "ne") {
-    return "ne";
-  }
-  // 9. 캄보디아 (Cambodia / Khmer) 🇰🇭
-  if (nat.includes("캄보디아") || nat.includes("cambodia") || nat.includes("khmer") || nat === "km") {
-    return "km";
-  }
-  // 10. 몽골 (Mongolia / Mongolian) 🇲🇳
-  if (nat.includes("몽골") || nat.includes("mongolia") || nat === "mn") {
-    return "mn";
-  }
 
-  // 기본값: 한국어
-  return "ko";
+  // 3. 🌟 4개국적 이외의 모든 외국인 작업자 (필리핀, 우즈벡, 스리랑카, 네팔, 캄보디아, 몽골, 기타 등)
+  // ➔ 영어를 기본으로 설정!
+  return "en";
 };
 
 // ============================================================================
@@ -993,6 +992,7 @@ export const getWorkerLanguageInfo = (workerOrProfile) => {
       flag: "🇰🇷",
       country: "대한민국",
       nationality: "대한민국",
+      nationalityFlag: "🇰🇷",
       isAutoTranslated: false
     };
   }
@@ -1015,11 +1015,13 @@ export const getWorkerLanguageInfo = (workerOrProfile) => {
 
   const effectiveNationality = (nationality === "기타" ? (nationalityOther || nationality) : nationality) || "대한민국";
   const langCode = getLanguageForNationality(effectiveNationality);
-  const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === langCode) || SUPPORTED_LANGUAGES[0];
+  const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === langCode) || SUPPORTED_LANGUAGES[1];
+  const natMeta = typeof getNationalityMeta === "function" ? getNationalityMeta(effectiveNationality) : null;
 
   return {
     ...langMeta,
     nationality: effectiveNationality,
+    nationalityFlag: natMeta?.flag || langMeta.flag,
     isAutoTranslated: langCode !== "ko"
   };
 };
