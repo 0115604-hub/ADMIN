@@ -937,80 +937,93 @@ export const ElectronicApprovalView = ({
           </div>
         </div>
 
-        {/* 6 KPI Summary Status Cards (일반결재 / 4M변동점 / 특근보고서 3종 미결 분리 및 최적화) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
-          {/* 1. 일반결재 미결 */}
-          <div
-            onClick={() => {
-              setSelectedTab("PENDING_GENERAL");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "PENDING_GENERAL"
-                ? "bg-teal-50 dark:bg-teal-950/40 border-teal-400 dark:border-teal-700 ring-2 ring-teal-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-teal-600 dark:text-teal-400 font-bold">
-              <span className="flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" />
-                <span>일반결재 미결</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-teal-600 dark:text-teal-400 mt-0.5 font-mono">
-              {categoryCounts.generalPending}건
-            </div>
-          </div>
-
-          {/* 2. 4M변동점 미결 */}
-          <div
-            onClick={() => {
-              setSelectedTab("PENDING_FOUR_M");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "PENDING_FOUR_M"
-                ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/40 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-rose-600 dark:text-rose-400 font-bold">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>4M변동점 미결</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">
-              {categoryCounts.fourMPending}건
-            </div>
-          </div>
-
-          {/* 3. 특근보고서 미결 */}
-          <div
-            onClick={() => {
-              setSelectedTab("PENDING_OVERTIME");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "PENDING_OVERTIME"
-                ? "bg-purple-50 dark:bg-purple-950/40 border-purple-400 dark:border-purple-700 ring-2 ring-purple-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-purple-600 dark:text-purple-400 font-bold">
-              <span className="flex items-center gap-1">
+        {/* 5 KPI Summary Status Cards (미결 3분할 뱃지: 일반결재 / 4M변동점 / 특근보고서 심플 통합) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+          {/* 1. 미결 결재함 (삼분할 뱃지: 일반결재 / 4M변동점 / 특근보고서) */}
+          <div className="p-1.5 sm:p-2 rounded-xl border border-rose-300/80 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-1 px-0.5">
+              <span className="flex items-center gap-1 font-black">
                 <Clock className="w-3.5 h-3.5" />
-                <span>특근보고서 미결</span>
+                <span>미결 결재함</span>
+              </span>
+              <span className="font-mono font-black text-xs text-rose-600 dark:text-rose-400">
+                {categoryCounts.generalPending + categoryCounts.fourMPending + categoryCounts.overtimePending}건
               </span>
             </div>
-            <div className="text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 mt-0.5 font-mono">
-              {categoryCounts.overtimePending}건
+
+            {/* 삼분할 뱃지 */}
+            <div className="grid grid-cols-3 gap-1">
+              {/* ① 일반결재 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("GENERAL");
+                }}
+                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
+                  selectedTab === "PENDING" && docCategoryFilter === "GENERAL"
+                    ? "bg-teal-600 text-white border-teal-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span className="block text-[9.5px] font-bold truncate">일반결재</span>
+                <span className={`block text-xs font-black font-mono ${
+                  selectedTab === "PENDING" && docCategoryFilter === "GENERAL" ? "text-white" : "text-teal-600 dark:text-teal-400"
+                }`}>
+                  {categoryCounts.generalPending}건
+                </span>
+              </button>
+
+              {/* ② 4M변동점 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("FOUR_M");
+                }}
+                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
+                  selectedTab === "PENDING" && docCategoryFilter === "FOUR_M"
+                    ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span className="block text-[9.5px] font-bold truncate">4M변동점</span>
+                <span className={`block text-xs font-black font-mono ${
+                  selectedTab === "PENDING" && docCategoryFilter === "FOUR_M" ? "text-white" : "text-rose-600 dark:text-rose-400"
+                }`}>
+                  {categoryCounts.fourMPending}건
+                </span>
+              </button>
+
+              {/* ③ 특근보고서 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("OVERTIME");
+                }}
+                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
+                  selectedTab === "PENDING" && docCategoryFilter === "OVERTIME"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span className="block text-[9.5px] font-bold truncate">특근보고서</span>
+                <span className={`block text-xs font-black font-mono ${
+                  selectedTab === "PENDING" && docCategoryFilter === "OVERTIME" ? "text-white" : "text-purple-600 dark:text-purple-400"
+                }`}>
+                  {categoryCounts.overtimePending}건
+                </span>
+              </button>
             </div>
           </div>
 
-          {/* 4. 보류 문서 */}
+          {/* 2. 보류 문서 */}
           <div
-            onClick={() => setSelectedTab("HOLD")}
+            onClick={() => {
+              setSelectedTab("HOLD");
+              setDocCategoryFilter("ALL");
+            }}
             className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selectedTab === "HOLD"
                 ? "bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 shadow-xs"
@@ -1028,9 +1041,12 @@ export const ElectronicApprovalView = ({
             </div>
           </div>
 
-          {/* 5. 최종 승인 완료 */}
+          {/* 3. 최종 승인 완료 */}
           <div
-            onClick={() => setSelectedTab("APPROVED")}
+            onClick={() => {
+              setSelectedTab("APPROVED");
+              setDocCategoryFilter("ALL");
+            }}
             className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selectedTab === "APPROVED"
                 ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/30 shadow-xs"
@@ -1048,13 +1064,36 @@ export const ElectronicApprovalView = ({
             </div>
           </div>
 
-          {/* 6. 전체 문서 목록 */}
+          {/* 4. 반려 문서 */}
+          <div
+            onClick={() => {
+              setSelectedTab("REJECTED");
+              setDocCategoryFilter("ALL");
+            }}
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+              selectedTab === "REJECTED"
+                ? "bg-slate-200 dark:bg-slate-700 border-slate-400 ring-2 ring-slate-500/30 shadow-xs"
+                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
+            }`}
+          >
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>반려 문서</span>
+              </span>
+            </div>
+            <div className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-300 mt-0.5 font-mono">
+              {stats.rejected}건
+            </div>
+          </div>
+
+          {/* 5. 전체 문서 목록 */}
           <div
             onClick={() => {
               setSelectedTab("ALL");
               setDocCategoryFilter("ALL");
             }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer col-span-2 sm:col-span-1 flex flex-col justify-between ${
               selectedTab === "ALL" && docCategoryFilter === "ALL"
                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
@@ -1074,7 +1113,7 @@ export const ElectronicApprovalView = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. Document Category Switcher: [전체] vs [4M변동점결재] vs [일반결재서류] vs [특근보고서] */}
+      {/* 2. Document Category Switcher: [전체] vs [4M변동점] vs [일반결재] vs [특근보고서] */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5">
         {/* Category Switcher Tabs */}
@@ -1111,7 +1150,7 @@ export const ElectronicApprovalView = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>🛡️ 4M변동점결재</span>
+            <span>🛡️ 4M변동점</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
               docCategoryFilter === "FOUR_M"
                 ? "bg-rose-900/80 text-rose-200 border border-rose-400/50"
@@ -1137,7 +1176,7 @@ export const ElectronicApprovalView = ({
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>📄 일반결재서류</span>
+            <span>📄 일반결재</span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
               docCategoryFilter === "GENERAL"
                 ? "bg-teal-900/80 text-teal-200 border border-teal-400/50"
@@ -1212,30 +1251,13 @@ export const ElectronicApprovalView = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. Status Filter Tabs Bar (미결뱃지: 일반결재 / 4M변동점결재 / 특근보고서 3종 분리) */}
+      {/* 3. Status Filter Tabs Bar (미결/대기, 승인완료, 내 기안함, 보류, 반려) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center overflow-x-auto">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full">
           {[
             { id: "ALL", label: `전체 (${stats.total})` },
-            {
-              id: "PENDING_GENERAL",
-              label: `📑 일반결재 (${stats.pendingGeneral})`,
-              highlight: stats.pendingGeneral > 0,
-              highlightClass: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-300"
-            },
-            {
-              id: "PENDING_FOUR_M",
-              label: `🛡️ 4M변동점결재 (${stats.pendingFourM})`,
-              highlight: stats.pendingFourM > 0,
-              highlightClass: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-400 ring-2 ring-rose-500/40 shadow-xs"
-            },
-            {
-              id: "PENDING_OVERTIME",
-              label: `⏰ 특근보고서 (${stats.pendingOvertime})`,
-              highlight: stats.pendingOvertime > 0,
-              highlightClass: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300"
-            },
+            { id: "PENDING", label: `🔴 미결/대기 (${stats.pending})`, highlight: stats.pending > 0 },
             { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
             { id: "MY_DRAFTS", label: `내 기안함 (${stats.myDrafts})` },
             { id: "HOLD", label: `⏸️ 보류 (${stats.hold})`, holdLight: stats.hold > 0 },

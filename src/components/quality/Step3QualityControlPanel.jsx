@@ -510,15 +510,18 @@ export default function Step3QualityControlPanel({
       const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
 
       // ⭐ 결재선 대상자 지정
-      const approverName = isHanlim ? "김동욱" : "이명재";
-      const approverTitle = isHanlim ? "책임" : "대표이사";
-      const approverRole = isHanlim ? "한림공장 김동욱 책임" : "삼랑진공장 대표이사 이명재";
+      // 한림공장: 1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)
+      // 삼랑진공장: 1단계 이창엽(상신) ➔ 2단계 공정책임(설유철/윤경수 검토) ➔ 3단계 이명재 대표이사(승인)
+      const reviewerName = isHanlim ? "김동욱" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수");
+      const approverName = isHanlim ? "대표 / 전무" : "이명재";
+      const approverTitle = isHanlim ? "대표이사/전무" : "대표이사";
+      const approverRole = isHanlim ? "1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)" : "1단계 이창엽(상신) ➔ 2단계 공정책임(검토) ➔ 3단계 이명재 대표이사(승인)";
 
       const docId = `appr_4m_${capaModalItem.id}_${Date.now()}`;
       const docNumber = `4M-${isHanlim ? "HL" : "SRJ"}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
       const docTitle = `[4M 변동점 결재] [${plant}] ${capaModalItem.line || ""} - ${capaModalItem.title || capaForm.content || "변동점 시정대책"}`;
 
-      // 결재 단계 구성 (1단계 기안: 이창엽 -> 2단계 검토: 공정관리자 -> 3단계 최종승인: 김동욱/이명재)
+      // 결재 단계 구성 (1단계 기안: 이창엽 -> 2단계 검토: 김동욱/공정책임 -> 3단계 최종승인: 대표또는전무/이명재)
       const steps = [
         {
           role: "담당",
@@ -530,8 +533,8 @@ export default function Step3QualityControlPanel({
         },
         {
           role: "검토",
-          name: isHanlim ? "오상민" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수"),
-          title: isHanlim ? "선임" : "책임",
+          name: reviewerName,
+          title: "책임",
           status: "PENDING",
           date: "",
           comment: ""
@@ -540,7 +543,7 @@ export default function Step3QualityControlPanel({
           role: "승인",
           name: approverName,
           title: approverTitle,
-          status: "PENDING",
+          status: "WAITING",
           date: "",
           comment: ""
         }
@@ -666,9 +669,9 @@ export default function Step3QualityControlPanel({
     return {
       plant,
       isHanlim,
-      name: isHanlim ? "김동욱" : "이명재",
-      title: isHanlim ? "책임" : "대표이사",
-      role: isHanlim ? "한림공장 김동욱 책임" : "삼랑진공장 대표이사 이명재"
+      name: isHanlim ? "대표 / 전무" : "이명재",
+      title: isHanlim ? "대표이사/전무" : "대표이사",
+      role: isHanlim ? "1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)" : "1단계 이창엽(상신) ➔ 2단계 공정책임(검토) ➔ 3단계 이명재 대표이사(승인)"
     };
   }, [capaModalItem, capaForm.plant]);
 
@@ -694,7 +697,7 @@ export default function Step3QualityControlPanel({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
               <span>•</span>
-              <span>2단계 이관 건 심층 재검토 ➡️ 4M 공식등재 ➡️ 5-Why 원인분석/대책수립 ➡️ 4단계 전자결재 상신 (한림: 김동욱 책임 / 삼랑진: 이명재 대표이사)</span>
+              <span>4단계 전자결재 상신 (한림: 이창엽 상신 ➔ 김동욱 검토 ➔ 대표/전무 승인 / 삼랑진: 이창엽 상신 ➔ 공정책임 검토 ➔ 이명재 승인)</span>
             </p>
           </div>
         </div>
