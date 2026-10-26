@@ -93,6 +93,7 @@ import {
 } from "../../services/personnelCardService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
+import Step3QualityControlPanel from "../quality/Step3QualityControlPanel";
 import * as XLSX from "xlsx";
 
 // Image compression helper for modal photo uploads
@@ -1783,12 +1784,20 @@ export const UnifiedAbnormalityControlPanel = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 2.5. 작업일보내 부적합발생패널 및 부적합관리대장패널 (변동점등록 / 사내관리등록 구분) */}
+      {/* 2.5. 3단계 품질관리자(이창엽 책임) 전용 변동점 재검토 및 시정조치(CAPA) 패널 */}
+      {/* (이창엽 책임 화면에서는 불필요한 전사 일보 부적합 20건 단순 나열을 삭제하고 3단계 전용 패널을 배치) */}
       {/* ========================================================================= */}
-      <WorkReportNonconformanceLedgerPanel
-        currentProfile={currentProfile}
-        titlePrefix="전사"
-      />
+      {currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy" ? (
+        <Step3QualityControlPanel
+          currentProfile={currentProfile}
+          onOpenIssueModal={onOpenIssueModal}
+        />
+      ) : (
+        <WorkReportNonconformanceLedgerPanel
+          currentProfile={currentProfile}
+          titlePrefix="전사"
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* 3. 1줄짜리 초간결 목록표 (High-Density 1-Line Table View) */}
