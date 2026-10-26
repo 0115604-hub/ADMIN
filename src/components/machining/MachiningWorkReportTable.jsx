@@ -34,6 +34,22 @@ import {
   saveHanulTemplateAssignment,
   buildHanulProcessSlotKey
 } from "../../services/workReportTemplateService";
+import {
+  getLocalProductionOrders,
+  saveProductionOrder,
+  subscribeProductionOrders
+} from "../../services/productionOrderService";
+import {
+  getLocalWorkReportNcLedger,
+  saveWorkReportNcLedger,
+  WORK_REPORT_NC_STORAGE_KEY
+} from "../common/WorkReportNonconformanceLedgerPanel";
+import {
+  registerToFourMLedger,
+  unregisterFromFourMLedger
+} from "../../services/fourMChangePointService";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase";
 
 export const MachiningWorkReportTable = ({
   onOpenReportModal,
@@ -46,6 +62,12 @@ export const MachiningWorkReportTable = ({
   const [searchWorker, setSearchWorker] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [isDeleting, setIsDeleting] = useState(null);
+
+  // 2단계 생산공정: 생산오더 & 비가동 소팅 상태
+  const [productionOrders, setProductionOrders] = useState(() => getLocalProductionOrders("machining"));
+  const [ledgerState, setLedgerState] = useState(() => getLocalWorkReportNcLedger());
+  const [orderModalProject, setOrderModalProject] = useState(null); // "HR" | "JA" | "NX5A" | null
+  const [orderModalInput, setOrderModalInput] = useState("");
 
   // 5대 공정 양식 보관함 리스트 & 양식 매핑 상태
   const [allTemplates, setAllTemplates] = useState(() => getLocalWorkReportTemplates());
@@ -60,19 +82,61 @@ export const MachiningWorkReportTable = ({
   const [previewTemplate, setPreviewTemplate] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const unsub = subscribeMachiningWorkReports((list) => {
-      setReports(list || []);
+      if (isMounted) setReports(list || []);
     });
     const unsubTemplates = subscribeWorkReportTemplates((list) => {
-      if (Array.isArray(list)) setAllTemplates(list);
+      if (isMounted && Array.isArray(list)) setAllTemplates(list);
     });
     const unsubAssign = subscribeHanulTemplateAssignments((map) => {
-      if (map) setTemplateAssignments(map);
+      if (isMounted && map) setTemplateAssignments(map);
     });
+    const unsubOrders = subscribeProductionOrders("machining", (orders) => {
+      if (isMounted && orders) setProductionOrders(orders);
+    });
+
+    const handleLocalLedgerUpdate = (e) => {
+      if (!isMounted) return;
+      if (e?.detail) setLedgerState(e.detail);
+      else setLedgerState(getLocalWorkReportNcLedger());
+    };
+    window.addEventListener("work_report_nc_ledger_updated", handleLocalLedgerUpdate);
+
+    let unsubFirestoreLedger = () => {};
+    if (db) {
+      try {
+        unsubFirestoreLedger = onSnapshot(
+          doc(db, "app_settings", WORK_REPORT_NC_STORAGE_KEY),
+          (snap) => {
+            if (!isMounted) return;
+            if (snap.exists()) {
+              const data = snap.data();
+              const nextState = {
+                overrides: data?.overrides || {},
+                manualItems: Array.isArray(data?.manualItems) ? data.manualItems : []
+              };
+              try {
+                localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(nextState));
+              } catch (err) {}
+              setLedgerState(nextState);
+            }
+          },
+          (err) => console.warn("Firestore ledger listen error:", err)
+        );
+      } catch (err) {
+        console.warn("Firestore ledger attach error:", err);
+      }
+    }
+
     return () => {
+      isMounted = false;
       unsub();
       unsubTemplates();
       unsubAssign();
+      unsubOrders();
+      window.removeEventListener("work_report_nc_ledger_updated", handleLocalLedgerUpdate);
+      if (typeof unsubFirestoreLedger === "function") unsubFirestoreLedger();
     };
   }, []);
 
@@ -221,6 +285,209 @@ export const MachiningWorkReportTable = ({
     return { totalCount, hrGross, hrGen, hrYield, jaGross, jaGen, jaYield, nx5Gross, nx5Gen, nx5Yield };
   }, [filteredReports]);
 
+  // 2단계 생산공정: 오더 및 달성률 계산
+  const orders = useMemo(() => {
+    const defaultOrders = { HR: 800, JA: 1200, NX5A: 1500 };
+    return { ...defaultOrders, ...(productionOrders || {}) };
+  }, [productionOrders]);
+
+  const hrOrder = Number(orders.HR) || 800;
+  const jaOrder = Number(orders.JA) || 1200;
+  const nx5Order = Number(orders.NX5A) || 1500;
+
+  const hrAttainment = hrOrder > 0 ? ((stats.hrGen / hrOrder) * 100).toFixed(1) : "100.0";
+  const jaAttainment = jaOrder > 0 ? ((stats.jaGen / jaOrder) * 100).toFixed(1) : "100.0";
+  const nx5Attainment = nx5Order > 0 ? ((stats.nx5Gen / nx5Order) * 100).toFixed(1) : "100.0";
+
+  // 2단계 생산공정: 당일 가공동 비가동 및 부적합 내역 수합
+  const machiningIncidents = useMemo(() => {
+    const list = [];
+    const overrides = ledgerState?.overrides || {};
+
+    filteredReports.forEach((r) => {
+      if (!r) return;
+      const rId = String(r.id || "");
+      const date = String(r.date || "").trim();
+      const worker = String(r.worker || "").trim();
+      const proj = String(r.project || "가공").trim().toUpperCase();
+      const proc = String(r.processId || "").trim();
+      const dtEvents = Array.isArray(r.downtimeEvents) ? r.downtimeEvents : [];
+      let hasDefectEvent = false;
+
+      dtEvents.forEach((ev, idx) => {
+        if (!ev) return;
+        const evType = String(ev.type || "").trim();
+        const isDefect =
+          evType === "불량" ||
+          evType === "부적합" ||
+          Boolean(ev.beforePhoto || ev.afterPhoto) ||
+          String(ev.category || "").includes("불량") ||
+          String(ev.category || "").includes("부적합") ||
+          Number(ev.minutes) > 0;
+
+        if (!isDefect) return;
+        hasDefectEvent = true;
+
+        const itemId = `wr_nc_${rId}_${ev.id || idx}`;
+        const ov = overrides[itemId] || {};
+        if (ov.isDeleted) return;
+
+        const defectType = ov.defectType || ev.category || (evType === "부적합" ? "공정 부적합" : "라인 비가동");
+        const registrationType = ov.registrationType || "UNREGISTERED";
+
+        list.push({
+          id: itemId,
+          reportId: rId,
+          date,
+          time: ev.startTime || r.time || "",
+          worker,
+          project: proj,
+          processId: proc,
+          defectType,
+          minutes: Number(ov.downtimeMinutes !== undefined ? ov.downtimeMinutes : (ev.minutes || 0)),
+          scrapKg: Number(ov.scrapKg !== undefined ? ov.scrapKg : (ev.scrapKg || 0)),
+          content: ov.content !== undefined ? ov.content : (ev.detail || `${defectType} 발생`),
+          actionResult: ov.actionResult !== undefined ? ov.actionResult : (ev.actionDetail || ""),
+          beforePhoto: ov.beforePhoto !== undefined ? ov.beforePhoto : (ev.beforePhoto || null),
+          afterPhoto: ov.afterPhoto !== undefined ? ov.afterPhoto : (ev.afterPhoto || null),
+          registrationType,
+          registeredBy: ov.registeredBy || "",
+          registeredAt: ov.registeredAt || ""
+        });
+      });
+
+      if (!hasDefectEvent && Number(r.totals?.bad || r.badQty || 0) > 0) {
+        const itemId = `wr_nc_def_${rId}`;
+        const ov = overrides[itemId] || {};
+        if (!ov.isDeleted) {
+          const badQty = Number(r.totals?.bad || r.badQty || 0);
+          const defectType = ov.defectType || "가공 불량 발생";
+          const registrationType = ov.registrationType || "UNREGISTERED";
+          list.push({
+            id: itemId,
+            reportId: rId,
+            date,
+            time: r.time || "",
+            worker,
+            project: proj,
+            processId: proc,
+            defectType,
+            minutes: Number(ov.downtimeMinutes || 0),
+            scrapKg: badQty,
+            content: ov.content || `${proj} ${proc} 불량 ${badQty}EA 발생 ${r.remark || ""}`.trim(),
+            actionResult: ov.actionResult || "",
+            beforePhoto: ov.beforePhoto || null,
+            afterPhoto: ov.afterPhoto || null,
+            registrationType,
+            registeredBy: ov.registeredBy || "",
+            registeredAt: ov.registeredAt || ""
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [filteredReports, ledgerState]);
+
+  const incidentStats = useMemo(() => {
+    return {
+      total: machiningIncidents.length,
+      unsorted: machiningIncidents.filter((i) => !i.registrationType || i.registrationType === "UNREGISTERED").length,
+      internal: machiningIncidents.filter((i) => i.registrationType === "INTERNAL").length,
+      quality: machiningIncidents.filter((i) => i.registrationType === "CHANGE_POINT").length
+    };
+  }, [machiningIncidents]);
+
+  const handleSortIncident = async (item, targetType) => {
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    const managerName = currentWorkerName || "가공동 관리자";
+    const nextOverrides = {
+      ...(ledgerState.overrides || {}),
+      [item.id]: {
+        ...(ledgerState.overrides?.[item.id] || {}),
+        registrationType: targetType,
+        registeredBy: managerName,
+        registeredAt: nowStr
+      }
+    };
+
+    const nextState = {
+      ...ledgerState,
+      overrides: nextOverrides
+    };
+    setLedgerState(nextState);
+    await saveWorkReportNcLedger(nextState);
+
+    if (targetType === "CHANGE_POINT") {
+      await registerToFourMLedger(
+        {
+          id: `ledger_${item.id}`,
+          originalId: item.id,
+          rawId: item.id,
+          fourM: "Method",
+          origin: "가공동 작업일보 부적합",
+          sourceType: "WORK_REPORT_NC",
+          plant: "삼랑진공장",
+          line: `${item.project} ${item.processId || "가공라인"}`,
+          writer: item.worker || managerName,
+          title: `[가공동 부적합] ${item.project} - ${item.defectType}`,
+          date: item.date,
+          time: item.time || "",
+          content: item.content || item.defectType || "",
+          actionResult: item.actionResult || "",
+          actionAuthor: item.actionResult ? managerName : "",
+          actionAt: item.actionResult ? nowStr : "",
+          images: item.beforePhoto ? [item.beforePhoto] : [],
+          actionImages: item.afterPhoto ? [item.afterPhoto] : [],
+          isResolved: Boolean(item.actionResult || item.afterPhoto),
+          scrapKg: Number(item.scrapKg) || 0,
+          downtimeMinutes: Number(item.minutes) || 0,
+          registrationBadge: "변동점등록",
+          isOfficialLedger: true
+        },
+        managerName
+      );
+      setAssignToast(`🚨 [${item.project} ${item.defectType}] 건이 3단계 품질관리자(이창엽 책임) 4M 대장으로 이관되었습니다.`);
+    } else if (targetType === "INTERNAL") {
+      await unregisterFromFourMLedger(item.id);
+      await unregisterFromFourMLedger(`ledger_${item.id}`);
+      setAssignToast(`🟢 [${item.project} ${item.defectType}] 건이 사내 내부관리로 종결 처리되었습니다.`);
+    } else {
+      // RESET
+      await unregisterFromFourMLedger(item.id);
+      await unregisterFromFourMLedger(`ledger_${item.id}`);
+      setAssignToast(`↩️ [${item.project} ${item.defectType}] 소팅이 초기화되었습니다.`);
+    }
+    setTimeout(() => setAssignToast(""), 3500);
+  };
+
+  const handleOpenOrderEdit = (projKey, currentVal) => {
+    setOrderModalProject(projKey);
+    setOrderModalInput(String(currentVal || 0));
+  };
+
+  const handleSaveOrderModal = async () => {
+    if (!orderModalProject) return;
+    const qty = parseInt(orderModalInput, 10);
+    if (isNaN(qty) || qty < 0) {
+      alert("유효한 수량을 입력해주세요.");
+      return;
+    }
+    await saveProductionOrder("machining", orderModalProject, qty, currentWorkerName);
+    setProductionOrders((prev) => ({ ...prev, [orderModalProject]: qty }));
+    setAssignToast(`✅ [${orderModalProject}] 생산오더가 [${qty.toLocaleString()} EA]로 설정되었습니다.`);
+    setTimeout(() => setAssignToast(""), 3500);
+    setOrderModalProject(null);
+  };
+
   const handleDelete = async (id, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     if (!window.confirm("정말로 이 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
@@ -295,55 +562,263 @@ export const MachiningWorkReportTable = ({
         </div>
       </div>
 
-      {/* 요약 통계 카드 3종 (HR, JA, NX5a) */}
+      {/* 2단계 생산공정: 3대 차종 오더 ↔ 실적 달성률 통합 카드 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* HR */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40">
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-black text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
               <span>🚚</span> <span>HR G/RUN (포터)</span>
             </span>
-            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">수율 {stats.hrYield}%</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${Number(hrAttainment) >= 100 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-400" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-400"}`}>
+              달성률 {hrAttainment}%
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {stats.hrGen.toLocaleString()} <span className="text-xs font-normal text-slate-500">EA 정품</span>
+          <div className="flex items-baseline justify-between text-xs pt-0.5">
+            <div className="space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">생산오더 (목표)</span>
+              <button
+                type="button"
+                onClick={() => handleOpenOrderEdit("HR", hrOrder)}
+                className="font-mono font-bold text-amber-700 dark:text-amber-300 text-sm hover:underline cursor-pointer flex items-center gap-1"
+                title="클릭하여 HR 오늘 생산오더를 수정합니다"
+              >
+                <span>{hrOrder.toLocaleString()} EA</span>
+                <span className="text-[10px] text-slate-400">✏️</span>
+              </button>
             </div>
-            <span className="text-xs font-bold text-slate-500">총 {stats.hrGross.toLocaleString()} EA</span>
+            <div className="text-right space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">당일 실적 (양품)</span>
+              <span className="font-mono font-black text-slate-900 dark:text-white text-base">
+                {stats.hrGen.toLocaleString()} EA
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${Number(hrAttainment) >= 100 ? "bg-gradient-to-r from-blue-500 to-indigo-500" : "bg-gradient-to-r from-amber-500 to-emerald-500"}`}
+              style={{ width: `${Math.min(100, Math.max(0, Number(hrAttainment)))}%` }}
+            ></div>
+          </div>
+          <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>불량: {(stats.hrGross - stats.hrGen).toLocaleString()} EA (수율 {stats.hrYield}%)</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">총 {stats.hrGross.toLocaleString()} EA</span>
           </div>
         </div>
 
         {/* JA */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 border border-indigo-200/80 dark:border-indigo-900/40">
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 border border-indigo-200/80 dark:border-indigo-900/40 space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-black text-xs text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
               <span>🚗</span> <span>JA G/RUN (모닝/레이)</span>
             </span>
-            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">수율 {stats.jaYield}%</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${Number(jaAttainment) >= 100 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-400" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-400"}`}>
+              달성률 {jaAttainment}%
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {stats.jaGen.toLocaleString()} <span className="text-xs font-normal text-slate-500">EA 정품</span>
+          <div className="flex items-baseline justify-between text-xs pt-0.5">
+            <div className="space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">생산오더 (목표)</span>
+              <button
+                type="button"
+                onClick={() => handleOpenOrderEdit("JA", jaOrder)}
+                className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-sm hover:underline cursor-pointer flex items-center gap-1"
+                title="클릭하여 JA 오늘 생산오더를 수정합니다"
+              >
+                <span>{jaOrder.toLocaleString()} EA</span>
+                <span className="text-[10px] text-slate-400">✏️</span>
+              </button>
             </div>
-            <span className="text-xs font-bold text-slate-500">총 {stats.jaGross.toLocaleString()} EA</span>
+            <div className="text-right space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">당일 실적 (양품)</span>
+              <span className="font-mono font-black text-slate-900 dark:text-white text-base">
+                {stats.jaGen.toLocaleString()} EA
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${Number(jaAttainment) >= 100 ? "bg-gradient-to-r from-blue-500 to-indigo-500" : "bg-gradient-to-r from-indigo-500 to-emerald-500"}`}
+              style={{ width: `${Math.min(100, Math.max(0, Number(jaAttainment)))}%` }}
+            ></div>
+          </div>
+          <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>불량: {(stats.jaGross - stats.jaGen).toLocaleString()} EA (수율 {stats.jaYield}%)</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">총 {stats.jaGross.toLocaleString()} EA</span>
           </div>
         </div>
 
         {/* NX5a */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40">
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40 space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-black text-xs text-teal-700 dark:text-teal-300 flex items-center gap-1">
               <span>⚡</span> <span>NX5a G/RUN (투싼 PE)</span>
             </span>
-            <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">수율 {stats.nx5Yield}%</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${Number(nx5Attainment) >= 95 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-400" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-400"}`}>
+              달성률 {nx5Attainment}%
+            </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {stats.nx5Gen.toLocaleString()} <span className="text-xs font-normal text-slate-500">EA 정품</span>
+          <div className="flex items-baseline justify-between text-xs pt-0.5">
+            <div className="space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">생산오더 (목표)</span>
+              <button
+                type="button"
+                onClick={() => handleOpenOrderEdit("NX5A", nx5Order)}
+                className="font-mono font-bold text-teal-700 dark:text-teal-300 text-sm hover:underline cursor-pointer flex items-center gap-1"
+                title="클릭하여 NX5a 오늘 생산오더를 수정합니다"
+              >
+                <span>{nx5Order.toLocaleString()} EA</span>
+                <span className="text-[10px] text-slate-400">✏️</span>
+              </button>
             </div>
-            <span className="text-xs font-bold text-slate-500">총 {stats.nx5Gross.toLocaleString()} EA</span>
+            <div className="text-right space-y-0.5">
+              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">당일 실적 (양품)</span>
+              <span className="font-mono font-black text-slate-900 dark:text-white text-base">
+                {stats.nx5Gen.toLocaleString()} EA
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${Number(nx5Attainment) >= 95 ? "bg-gradient-to-r from-teal-500 to-emerald-500" : "bg-gradient-to-r from-amber-500 to-rose-500"}`}
+              style={{ width: `${Math.min(100, Math.max(0, Number(nx5Attainment)))}%` }}
+            ></div>
+          </div>
+          <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 pt-0.5">
+            <span>불량: {(stats.nx5Gross - stats.nx5Gen).toLocaleString()} EA (수율 {stats.nx5Yield}%)</span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">총 {stats.nx5Gross.toLocaleString()} EA</span>
           </div>
         </div>
+      </div>
+
+      {/* 2단계 생산공정: 당일 가공동 비가동 · 부적합 1차 소팅 바 */}
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700/60 space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs sm:text-sm">
+              <span>⏱️ 당일 가공동 비가동 · 부적합 1차 소팅</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10.5px]">
+              전체 {incidentStats.total}건
+            </span>
+            {incidentStats.unsorted > 0 ? (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black font-black text-[10.5px] animate-pulse">
+                ⏳ 미소팅 {incidentStats.unsorted}건
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-bold text-[10.5px]">
+                🟢 소팅완료
+              </span>
+            )}
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10.5px]">
+              사내관리 {incidentStats.internal}건
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10.5px]">
+              품질이관 {incidentStats.quality}건
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+            ※ 관리자 검토 후 원클릭 소팅 ➡️ 품질 변동점 대장 자동 이관
+          </span>
+        </div>
+
+        {machiningIncidents.length === 0 ? (
+          <div className="p-2 text-center text-xs text-slate-500 dark:text-slate-400">
+            🟢 오늘 접수된 가공동 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {machiningIncidents.map((inc) => {
+              const isUnsorted = !inc.registrationType || inc.registrationType === "UNREGISTERED";
+              const isInternal = inc.registrationType === "INTERNAL";
+              const isQuality = inc.registrationType === "CHANGE_POINT";
+
+              return (
+                <div
+                  key={inc.id}
+                  className={`p-2.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition ${
+                    isUnsorted
+                      ? "bg-amber-100/60 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 shadow-xs"
+                      : isQuality
+                      ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900/60"
+                      : "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-900/60"
+                  }`}
+                >
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isUnsorted && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">
+                          미소팅
+                        </span>
+                      )}
+                      {isQuality && (
+                        <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[10px]">
+                          🚨 품질이관됨
+                        </span>
+                      )}
+                      {isInternal && (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px]">
+                          🟢 사내종결
+                        </span>
+                      )}
+                      <span className="font-mono text-slate-500 text-[11px]">{inc.date} {inc.time}</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {inc.project} {inc.processId} ({inc.worker || "작업자"})
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold text-[10.5px]">
+                        {inc.defectType}
+                      </span>
+                      {inc.minutes > 0 && (
+                        <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">{inc.minutes}분</span>
+                      )}
+                      {inc.scrapKg > 0 && (
+                        <span className="text-amber-700 dark:text-amber-300 font-mono text-[11px]">{inc.scrapKg}EA</span>
+                      )}
+                      {(inc.beforePhoto || inc.afterPhoto) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          📷사진첨부
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 text-[11.5px] truncate">
+                      {inc.content} {inc.actionResult ? `(조치: ${inc.actionResult})` : ""}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    {isUnsorted ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleSortIncident(inc, "INTERNAL")}
+                          className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold transition cursor-pointer"
+                        >
+                          🟢 사내관리
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSortIncident(inc, "CHANGE_POINT")}
+                          className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-xs transition flex items-center gap-1 cursor-pointer"
+                        >
+                          🚨 품질 변동점 이관 ➡️
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSortIncident(inc, "UNREGISTERED")}
+                        className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
+                        title="소팅 취소 및 재설정"
+                      >
+                        ↩️ 재소팅
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 필터 및 검색 바 */}
@@ -768,6 +1243,64 @@ export const MachiningWorkReportTable = ({
               onClose={() => setPreviewTemplate(null)}
             />
           )}
+        </div>
+      )}
+
+      {/* 🌟 2단계 관리자: 생산오더 간편 수정 모달 */}
+      {orderModalProject && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-indigo-500/80 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-indigo-600 text-white font-black text-sm">🎯</span>
+                <h4 className="font-black text-sm text-white">
+                  [{orderModalProject} G/RUN] 생산오더 설정
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOrderModalProject(null)}
+                className="text-slate-400 hover:text-white font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 block">
+                당일 관리자 생산오더 수량 (EA)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="50"
+                value={orderModalInput}
+                onChange={(e) => setOrderModalInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-indigo-500/60 font-mono font-black text-white text-base text-right outline-none focus:ring-2 focus:ring-indigo-400"
+                autoFocus
+              />
+              <p className="text-[11px] text-slate-400">
+                💡 입력하신 오더수량은 현장작업자의 당일 작업일보 [🎯 목표수량]에 즉시 자동 반영됩니다.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setOrderModalProject(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveOrderModal}
+                className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md cursor-pointer"
+              >
+                오더 저장 적용
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
