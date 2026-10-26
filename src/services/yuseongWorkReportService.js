@@ -1,4 +1,4 @@
-﻿// (주)유성 외주가공 작업일보 및 TPM 일상점검 서비스
+// (주)유성 외주가공 작업일보 및 TPM 일상점검 서비스
 import {
   collection,
   doc,
@@ -115,55 +115,104 @@ export const saveLocalYuseongWorkReports = (items) => {
 };
 
 // Real-time Cloud Synchronization
+// ⚡ 성능 최적화: 싱글톤 멀티플렉싱(Single-Flight) 리스너 & 인메모리 캐시 공유
+let activeYuseongReportsUnsub = null;
+const yuseongReportsSubscribers = new Set();
+let cachedYuseongReports = null;
+let yuseongReportsTeardownTimer = null;
+
 export const subscribeYuseongWorkReports = (onUpdate) => {
+  if (typeof onUpdate !== "function") return () => {};
+
   if (!db) {
     onUpdate(getLocalYuseongWorkReports());
     return () => {};
   }
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        const remoteList = [];
-        if (!snapshot.empty) {
-          snapshot.forEach((d) => {
-            remoteList.push({ id: d.id, ...d.data() });
+
+  // 1. 이미 메모리에 캐시가 있거나 로컬스토리지 데이터가 있으면 즉시 전달 (UI 지연 0ms)
+  if (cachedYuseongReports) {
+    onUpdate(cachedYuseongReports);
+  } else {
+    const local = getLocalYuseongWorkReports();
+    if (local && local.length > 0) {
+      cachedYuseongReports = local;
+      onUpdate(local);
+    }
+  }
+
+  yuseongReportsSubscribers.add(onUpdate);
+
+  if (yuseongReportsTeardownTimer) {
+    clearTimeout(yuseongReportsTeardownTimer);
+    yuseongReportsTeardownTimer = null;
+  }
+
+  // 2. 단 하나의 공유 Firestore 리스너만 가동 (중복 쿼리 및 대량 localStorage 쓰기 완전 차단)
+  if (!activeYuseongReportsUnsub) {
+    try {
+      const colRef = collection(db, COLLECTION_NAME);
+      activeYuseongReportsUnsub = onSnapshot(
+        colRef,
+        (snapshot) => {
+          const remoteList = [];
+          if (!snapshot.empty) {
+            snapshot.forEach((d) => {
+              remoteList.push({ id: d.id, ...d.data() });
+            });
+          }
+
+          const localList = getLocalYuseongWorkReports();
+          const map = new Map();
+
+          localList.forEach((it) => {
+            if (it && it.id) map.set(it.id, it);
+          });
+
+          remoteList.forEach((it) => {
+            if (it && it.id) map.set(it.id, it);
+          });
+
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => {
+            const dateComp = (b.date || "").localeCompare(a.date || "");
+            if (dateComp !== 0) return dateComp;
+            return (b.createdAt || "").localeCompare(a.createdAt || "");
+          });
+
+          cachedYuseongReports = merged;
+          saveLocalYuseongWorkReports(merged);
+          yuseongReportsSubscribers.forEach((cb) => {
+            try { cb(merged); } catch (e) { console.error("Yuseong subscriber cb error:", e); }
+          });
+        },
+        (error) => {
+          console.warn("Firestore yuseong_work_reports sync warning:", error);
+          const fallback = getLocalYuseongWorkReports();
+          cachedYuseongReports = fallback;
+          yuseongReportsSubscribers.forEach((cb) => {
+            try { cb(fallback); } catch (e) { console.error("Yuseong subscriber cb error:", e); }
           });
         }
-
-        const localList = getLocalYuseongWorkReports();
-        const map = new Map();
-
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => {
-          const dateComp = (b.date || "").localeCompare(a.date || "");
-          if (dateComp !== 0) return dateComp;
-          return (b.createdAt || "").localeCompare(a.createdAt || "");
-        });
-
-        saveLocalYuseongWorkReports(merged);
-        onUpdate(merged);
-      },
-      (error) => {
-        console.warn("Firestore yuseong_work_reports sync warning:", error);
-        onUpdate(getLocalYuseongWorkReports());
-      }
-    );
-    return unsubscribe;
-  } catch (err) {
-    console.warn("Firestore subscription error for yuseong_work_reports:", err);
-    onUpdate(getLocalYuseongWorkReports());
-    return () => {};
+      );
+    } catch (err) {
+      console.warn("Firestore subscription error for yuseong_work_reports:", err);
+      const fallback = getLocalYuseongWorkReports();
+      onUpdate(fallback);
+    }
   }
+
+  // 3. 디바운스된 리스너 해제 (5초 유지)
+  return () => {
+    yuseongReportsSubscribers.delete(onUpdate);
+    if (yuseongReportsSubscribers.size === 0) {
+      yuseongReportsTeardownTimer = setTimeout(() => {
+        if (yuseongReportsSubscribers.size === 0 && activeYuseongReportsUnsub) {
+          activeYuseongReportsUnsub();
+          activeYuseongReportsUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 // Save Work Report

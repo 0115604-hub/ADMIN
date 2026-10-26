@@ -111,36 +111,60 @@ export const saveProductionOrder = async (division, itemKey, qty, managerName = 
 
 /**
  * Subscribe to real-time production orders (Memory leak safe with clean unsubscribe)
+ * ⚡ 성능 최적화: 싱글톤 멀티플렉싱(Single-Flight) 리스너 & 인메모리 캐시 공유
  */
-export const subscribeProductionOrders = (division, callback) => {
-  let isSubscribed = true;
+let activeOrdersUnsub = null;
+const orderSubscribers = new Set(); // { division, callback }
+let cachedOrdersData = null;
+let ordersTeardownTimer = null;
+let globalWindowHandlerAttached = false;
 
-  // 1. Initial fire with local cache
-  if (callback && typeof callback === "function") {
-    callback(getLocalProductionOrders(division));
+const notifyOrderSubscribers = (allData) => {
+  cachedOrdersData = allData;
+  orderSubscribers.forEach((sub) => {
+    try {
+      sub.callback(sub.division ? allData[sub.division] || {} : allData);
+    } catch (e) {
+      console.error("order subscriber error:", e);
+    }
+  });
+};
+
+const handleGlobalOrdersUpdate = (e) => {
+  const allData = e.detail?.all || getLocalProductionOrders();
+  notifyOrderSubscribers(allData);
+};
+
+export const subscribeProductionOrders = (division, callback) => {
+  if (typeof callback !== "function") return () => {};
+
+  // 1. Initial fire with cache (UI 지연 제로)
+  if (cachedOrdersData) {
+    callback(division ? cachedOrdersData[division] || {} : cachedOrdersData);
+  } else {
+    const local = getLocalProductionOrders(division);
+    callback(local);
   }
 
-  // 2. Window event listener for multi-tab / cross-component sync
-  const handleLocalUpdate = (e) => {
-    if (!isSubscribed) return;
-    if (callback && typeof callback === "function") {
-      if (e.detail?.all) {
-        callback(division ? e.detail.all[division] || {} : e.detail.all);
-      } else {
-        callback(getLocalProductionOrders(division));
-      }
-    }
-  };
-  window.addEventListener("production_orders_updated", handleLocalUpdate);
+  const subEntry = { division, callback };
+  orderSubscribers.add(subEntry);
 
-  // 3. Firestore snapshot listener
-  let unsubFirestore = () => {};
-  if (db) {
+  if (!globalWindowHandlerAttached && typeof window !== "undefined") {
+    window.addEventListener("production_orders_updated", handleGlobalOrdersUpdate);
+    globalWindowHandlerAttached = true;
+  }
+
+  if (ordersTeardownTimer) {
+    clearTimeout(ordersTeardownTimer);
+    ordersTeardownTimer = null;
+  }
+
+  // 2. 단 하나의 공유 Firestore 리스너만 가동
+  if (!activeOrdersUnsub && db) {
     try {
-      unsubFirestore = onSnapshot(
+      activeOrdersUnsub = onSnapshot(
         doc(db, "app_settings", PRODUCTION_ORDERS_STORAGE_KEY),
         (snap) => {
-          if (!isSubscribed) return;
           if (snap.exists()) {
             const data = snap.data();
             try {
@@ -148,9 +172,7 @@ export const subscribeProductionOrders = (division, callback) => {
                 localStorage.setItem(PRODUCTION_ORDERS_STORAGE_KEY, JSON.stringify(data));
               }
             } catch (err) {}
-            if (callback && typeof callback === "function") {
-              callback(division ? data[division] || {} : data);
-            }
+            notifyOrderSubscribers(data);
           }
         },
         (error) => {
@@ -162,12 +184,22 @@ export const subscribeProductionOrders = (division, callback) => {
     }
   }
 
-  // 4. Return complete cleanup function to guarantee ZERO memory leaks
+  // 3. 디바운스된 리스너 해제 (중복 해제/재연결 깜빡임 방지)
   return () => {
-    isSubscribed = false;
-    window.removeEventListener("production_orders_updated", handleLocalUpdate);
-    if (typeof unsubFirestore === "function") {
-      unsubFirestore();
+    orderSubscribers.delete(subEntry);
+    if (orderSubscribers.size === 0) {
+      ordersTeardownTimer = setTimeout(() => {
+        if (orderSubscribers.size === 0) {
+          if (typeof activeOrdersUnsub === "function") {
+            activeOrdersUnsub();
+            activeOrdersUnsub = null;
+          }
+          if (globalWindowHandlerAttached && typeof window !== "undefined") {
+            window.removeEventListener("production_orders_updated", handleGlobalOrdersUpdate);
+            globalWindowHandlerAttached = false;
+          }
+        }
+      }, 5000);
     }
   };
 };

@@ -641,103 +641,151 @@ export function saveLocalApprovalDocs(docs) {
 }
 
 // Real-time Cloud Synchronization with Robust Local Merge & Permanent Document Retention
+// ⚡ 성능 최적화: 싱글톤 멀티플렉싱(Single-Flight) 리스너 & 인메모리 캐시 공유
+let activeApprovalDocsUnsub = null;
+const approvalDocsSubscribers = new Set();
+let cachedApprovalDocs = null;
+let approvalDocsTeardownTimer = null;
+
 export function subscribeApprovalDocs(onUpdate) {
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const unsubscribe = onSnapshot(
-      colRef,
-      (snapshot) => {
-        const remoteDocs = [];
-        if (!snapshot.empty) {
-          snapshot.forEach((d) => {
-            const rawDoc = { id: d.id, ...d.data() };
-            try {
-              const normalized = normalizeApprovalDoc(rawDoc);
-              if (normalized && normalized.id) {
-                remoteDocs.push(normalized);
+  if (typeof onUpdate !== "function") return () => {};
+
+  // 1. 인메모리 캐시 또는 로컬스토리지 즉시 반환 (UI 지연 0ms)
+  if (cachedApprovalDocs) {
+    onUpdate(cachedApprovalDocs);
+  } else {
+    const local = getLocalApprovalDocs();
+    if (local && local.length > 0) {
+      cachedApprovalDocs = local;
+      onUpdate(local);
+    }
+  }
+
+  approvalDocsSubscribers.add(onUpdate);
+
+  if (approvalDocsTeardownTimer) {
+    clearTimeout(approvalDocsTeardownTimer);
+    approvalDocsTeardownTimer = null;
+  }
+
+  // 2. 단 하나의 공유 Firestore 리스너만 가동 (중복 쿼리 및 대량 localStorage 쓰기 완전 차단)
+  if (!activeApprovalDocsUnsub) {
+    try {
+      const colRef = collection(db, COLLECTION_NAME);
+      activeApprovalDocsUnsub = onSnapshot(
+        colRef,
+        (snapshot) => {
+          const remoteDocs = [];
+          if (!snapshot.empty) {
+            snapshot.forEach((d) => {
+              const rawDoc = { id: d.id, ...d.data() };
+              try {
+                const normalized = normalizeApprovalDoc(rawDoc);
+                if (normalized && normalized.id) {
+                  remoteDocs.push(normalized);
+                }
+              } catch (e) {
+                if (rawDoc.id) remoteDocs.push(rawDoc);
               }
-            } catch (e) {
-              if (rawDoc.id) remoteDocs.push(rawDoc);
+            });
+          }
+
+          // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so documents are NEVER wiped
+          const localDocs = getLocalApprovalDocs();
+          const docMap = new Map();
+
+          // 1. Seed with local documents
+          localDocs.forEach((d) => {
+            if (d && d.id) {
+              docMap.set(d.id, d);
             }
           });
-        }
 
-        // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so documents are NEVER wiped
-        const localDocs = getLocalApprovalDocs();
-        const docMap = new Map();
-
-        // 1. Seed with local documents
-        localDocs.forEach((d) => {
-          if (d && d.id) {
-            docMap.set(d.id, d);
-          }
-        });
-
-        // 2. Merge remote docs (remote is authoritative or newer, preserving highest approval progress)
-        remoteDocs.forEach((r) => {
-          if (r && r.id) {
-            const existing = docMap.get(r.id);
-            if (!existing) {
-              docMap.set(r.id, r);
-            } else {
-              const countR = (r.steps || []).filter((s) => s?.status === "APPROVED").length;
-              const countL = (existing.steps || []).filter((s) => s?.status === "APPROVED").length;
-              if (r.status === "APPROVED" && existing.status !== "APPROVED") {
+          // 2. Merge remote docs (remote is authoritative or newer, preserving highest approval progress)
+          remoteDocs.forEach((r) => {
+            if (r && r.id) {
+              const existing = docMap.get(r.id);
+              if (!existing) {
                 docMap.set(r.id, r);
-              } else if (existing.status === "APPROVED" && r.status !== "APPROVED") {
-                docMap.set(r.id, existing);
-              } else if (countR > countL) {
-                docMap.set(r.id, r);
-              } else if (countL > countR) {
-                docMap.set(r.id, existing);
               } else {
-                const tR = parseSafeTimestamp(r.updatedAt || r.createdAt);
-                const tL = parseSafeTimestamp(existing.updatedAt || existing.createdAt);
-                if (tR >= tL) {
+                const countR = (r.steps || []).filter((s) => s?.status === "APPROVED").length;
+                const countL = (existing.steps || []).filter((s) => s?.status === "APPROVED").length;
+                if (r.status === "APPROVED" && existing.status !== "APPROVED") {
                   docMap.set(r.id, r);
-                } else {
+                } else if (existing.status === "APPROVED" && r.status !== "APPROVED") {
                   docMap.set(r.id, existing);
+                } else if (countR > countL) {
+                  docMap.set(r.id, r);
+                } else if (countL > countR) {
+                  docMap.set(r.id, existing);
+                } else {
+                  const tR = parseSafeTimestamp(r.updatedAt || r.createdAt);
+                  const tL = parseSafeTimestamp(existing.updatedAt || existing.createdAt);
+                  if (tR >= tL) {
+                    docMap.set(r.id, r);
+                  } else {
+                    docMap.set(r.id, existing);
+                  }
                 }
               }
             }
-          }
-        });
+          });
 
-        // 3. Keep local fallback in memory without silent cloud writes
-        localDocs.forEach((localDoc) => {
-          if (localDoc && localDoc.id && !docMap.has(localDoc.id)) {
-            docMap.set(localDoc.id, localDoc);
-          }
-        });
+          // 3. Keep local fallback in memory without silent cloud writes
+          localDocs.forEach((localDoc) => {
+            if (localDoc && localDoc.id && !docMap.has(localDoc.id)) {
+              docMap.set(localDoc.id, localDoc);
+            }
+          });
 
-        const mergedList = Array.from(docMap.values()).map((d) => {
-          try {
-            return normalizeApprovalDoc(d);
-          } catch (e) {
-            return d;
-          }
-        });
+          const mergedList = Array.from(docMap.values()).map((d) => {
+            try {
+              return normalizeApprovalDoc(d);
+            } catch (e) {
+              return d;
+            }
+          });
 
-        mergedList.sort((a, b) => {
-          const tA = getApprovalDocSortTimestamp(a);
-          const tB = getApprovalDocSortTimestamp(b);
-          return tB - tA;
-        });
+          mergedList.sort((a, b) => {
+            const tA = getApprovalDocSortTimestamp(a);
+            const tB = getApprovalDocSortTimestamp(b);
+            return tB - tA;
+          });
 
-        saveLocalApprovalDocs(mergedList);
-        if (onUpdate) onUpdate(mergedList);
-      },
-      (error) => {
-        console.warn("Firestore approval sync warning:", error);
-        if (onUpdate) onUpdate(getLocalApprovalDocs());
-      }
-    );
-    return unsubscribe;
-  } catch (e) {
-    console.error("subscribeApprovalDocs error:", e);
-    if (onUpdate) onUpdate(getLocalApprovalDocs());
-    return () => {};
+          cachedApprovalDocs = mergedList;
+          saveLocalApprovalDocs(mergedList);
+          approvalDocsSubscribers.forEach((cb) => {
+            try { cb(mergedList); } catch (e) { console.error("approval subscriber cb error:", e); }
+          });
+        },
+        (error) => {
+          console.warn("Firestore approval sync warning:", error);
+          const fallback = getLocalApprovalDocs();
+          cachedApprovalDocs = fallback;
+          approvalDocsSubscribers.forEach((cb) => {
+            try { cb(fallback); } catch (e) { console.error("approval subscriber cb error:", e); }
+          });
+        }
+      );
+    } catch (e) {
+      console.error("subscribeApprovalDocs error:", e);
+      const fallback = getLocalApprovalDocs();
+      onUpdate(fallback);
+    }
   }
+
+  // 3. 디바운스된 해제 (탭 전환 시 불필요한 재연결 방지)
+  return () => {
+    approvalDocsSubscribers.delete(onUpdate);
+    if (approvalDocsSubscribers.size === 0) {
+      approvalDocsTeardownTimer = setTimeout(() => {
+        if (approvalDocsSubscribers.size === 0 && activeApprovalDocsUnsub) {
+          activeApprovalDocsUnsub();
+          activeApprovalDocsUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 }
 
 // Check Approval Role Permission

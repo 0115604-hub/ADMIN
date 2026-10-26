@@ -424,37 +424,89 @@ export const saveLocalHanulWorkReports = (reports) => {
   }
 };
 
-// Subscribe to Firestore collection with real-time updates
+// Real-time Cloud Synchronization
+// ⚡ 성능 최적화: 싱글톤 멀티플렉싱(Single-Flight) 리스너 & 인메모리 캐시 공유
+let activeHanulReportsUnsub = null;
+const hanulReportsSubscribers = new Set();
+let cachedHanulReports = null;
+let hanulReportsTeardownTimer = null;
+
 export const subscribeHanulWorkReports = (callback) => {
+  if (typeof callback !== "function") return () => {};
+
   if (!db) {
     callback(getLocalHanulWorkReports());
     return () => {};
   }
 
-  const q = query(collection(db, COLLECTION_NAME));
-  const unsubscribe = onSnapshot(
-    q,
-    (snapshot) => {
-      const reports = [];
-      snapshot.forEach((docSnap) => {
-        reports.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      // Sort descending by date and createdAt
-      reports.sort((a, b) => {
-        const da = `${a.date || ""} ${a.createdAt || ""}`;
-        const db_ = `${b.date || ""} ${b.createdAt || ""}`;
-        return db_.localeCompare(da);
-      });
-      saveLocalHanulWorkReports(reports);
-      callback(reports);
-    },
-    (error) => {
-      console.warn("Firestore Hanul subscribe error, fallback to local:", error);
+  // 1. 이미 메모리에 캐시가 있거나 로컬스토리지 데이터가 있으면 즉시 전달 (UI 지연 0ms)
+  if (cachedHanulReports) {
+    callback(cachedHanulReports);
+  } else {
+    const local = getLocalHanulWorkReports();
+    if (local && local.length > 0) {
+      cachedHanulReports = local;
+      callback(local);
+    }
+  }
+
+  hanulReportsSubscribers.add(callback);
+
+  if (hanulReportsTeardownTimer) {
+    clearTimeout(hanulReportsTeardownTimer);
+    hanulReportsTeardownTimer = null;
+  }
+
+  // 2. 단 하나의 공유 Firestore 리스너만 가동 (5개 화면 동시 마운트 시 중복 연결 완전 차단)
+  if (!activeHanulReportsUnsub) {
+    try {
+      const q = query(collection(db, COLLECTION_NAME));
+      activeHanulReportsUnsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const reports = [];
+          snapshot.forEach((docSnap) => {
+            reports.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          // Sort descending by date and createdAt
+          reports.sort((a, b) => {
+            const da = `${a.date || ""} ${a.createdAt || ""}`;
+            const db_ = `${b.date || ""} ${b.createdAt || ""}`;
+            return db_.localeCompare(da);
+          });
+          cachedHanulReports = reports;
+          saveLocalHanulWorkReports(reports);
+          hanulReportsSubscribers.forEach((cb) => {
+            try { cb(reports); } catch (e) { console.error("Hanul subscriber cb error:", e); }
+          });
+        },
+        (error) => {
+          console.warn("Firestore Hanul subscribe error, fallback to local:", error);
+          const fallback = getLocalHanulWorkReports();
+          cachedHanulReports = fallback;
+          hanulReportsSubscribers.forEach((cb) => {
+            try { cb(fallback); } catch (e) { console.error("Hanul subscriber cb error:", e); }
+          });
+        }
+      );
+    } catch (e) {
+      console.warn("Firestore attach error for Hanul reports:", e);
       callback(getLocalHanulWorkReports());
     }
-  );
+  }
 
-  return unsubscribe;
+  // 3. 디바운스된 리스너 해제 (5초 유지)
+  return () => {
+    hanulReportsSubscribers.delete(callback);
+    if (hanulReportsSubscribers.size === 0) {
+      hanulReportsTeardownTimer = setTimeout(() => {
+        if (hanulReportsSubscribers.size === 0 && activeHanulReportsUnsub) {
+          activeHanulReportsUnsub();
+          activeHanulReportsUnsub = null;
+        }
+      }, 5000);
+    }
+  };
 };
 
 // Save Hanul Work Report (Create or Update)
