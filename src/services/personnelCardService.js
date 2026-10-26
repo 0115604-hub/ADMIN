@@ -447,9 +447,14 @@ export const getSkillMeta = (level) => {
   return SKILL_LEVEL_META[lvl] || SKILL_LEVEL_META[3];
 };
 
-// 입사일 기준 근속기간 자동 계산 (예: "6년 7개월", "1년 2개월", "8개월")
+// 입사일 기준 근속기간 자동 계산 (예: "6년 7개월", "1년 2개월", "8개월") - Map 캐시 적용
+const tenureCache = new Map();
+
 export const calculateTenureFromJoinDate = (joinDateStr) => {
   if (!joinDateStr) return "1년 미만";
+  const cached = tenureCache.get(joinDateStr);
+  if (cached) return cached;
+
   try {
     const cleanStr = String(joinDateStr).replace(/\./g, "-").trim();
     const parts = cleanStr.match(/(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})?/);
@@ -476,19 +481,28 @@ export const calculateTenureFromJoinDate = (joinDateStr) => {
       months += 12;
     }
 
-    if (years < 0) return "신규 입사";
-    if (years === 0 && months === 0) return "1개월 미만";
-    if (years === 0) return `${months}개월`;
-    if (months === 0) return `${years}년`;
-    return `${years}년 ${months}개월`;
+    let result = "1년 미만";
+    if (years < 0) result = "신규 입사";
+    else if (years === 0 && months === 0) result = "1개월 미만";
+    else if (years === 0) result = `${months}개월`;
+    else if (months === 0) result = `${years}년`;
+    else result = `${years}년 ${months}개월`;
+
+    tenureCache.set(joinDateStr, result);
+    return result;
   } catch (e) {
     return "1년 미만";
   }
 };
 
-// ⭐ 입사일 기준 공정년차 자동 계산 (예: "7년차", "3년차", "1년차")
+// ⭐ 입사일 기준 공정년차 자동 계산 (예: "7년차", "3년차", "1년차") - Map 캐시 적용
+const processYearCache = new Map();
+
 export const calculateProcessYearFromJoinDate = (joinDateStr) => {
   if (!joinDateStr) return "1년차";
+  const cached = processYearCache.get(joinDateStr);
+  if (cached) return cached;
+
   try {
     const cleanStr = String(joinDateStr).replace(/\./g, "-").trim();
     const parts = cleanStr.match(/(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})?/);
@@ -515,7 +529,9 @@ export const calculateProcessYearFromJoinDate = (joinDateStr) => {
     }
 
     const totalYears = Math.max(0, years);
-    return `${totalYears + 1}년차`;
+    const result = `${totalYears + 1}년차`;
+    processYearCache.set(joinDateStr, result);
+    return result;
   } catch (e) {
     return "1년차";
   }
@@ -586,6 +602,12 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   const company = normalizeStandardCompany(rawCompany);
   const cleanComp = cleanCompanyName(company);
   const name = String(worker.name || existingCard.name || "").trim();
+
+  // 🚀 인메모리 카드 캐시 조회 (동일 근로자 반복 계산 및 GC 부하 원천 제거)
+  const cacheKey = `${cleanComp}_${name}_${idx}`;
+  if (!worker.personnelCard && !worker.card && workerCardCache.has(cacheKey)) {
+    return workerCardCache.get(cacheKey);
+  }
 
   let localSavedCard = null;
   if (name) {
@@ -682,7 +704,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 작업자 사진
   const photoUrl = merged.photoUrl || worker.photoUrl || "";
 
-  return {
+  const resultCard = {
     empNo,
     company,
     dept,
@@ -708,35 +730,45 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     ),
     updatedAt: merged.updatedAt || new Date().toISOString()
   };
+
+  if (!worker.personnelCard && !worker.card) {
+    workerCardCache.set(cacheKey, resultCard);
+  }
+  return resultCard;
 };
 
 // 인메모리 인사카드 캐시 및 삭제된 카드 키 추적기
 let memoryPersonnelCardsMap = null;
 const deletedPersonnelCardKeys = new Set();
+const workerCardCache = new Map();
 
-// 로컬 스토리지에서 전체 인사카드 맵 로드
+// 로컬 스토리지에서 전체 인사카드 맵 로드 (인메모리 O(1) 직접 반환으로 얕은 복사 가비지 완전 제거)
 export const getLocalPersonnelCardsMap = () => {
   if (memoryPersonnelCardsMap && typeof memoryPersonnelCardsMap === "object") {
-    return { ...memoryPersonnelCardsMap };
+    return memoryPersonnelCardsMap;
   }
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        memoryPersonnelCardsMap = parsed;
-        return { ...parsed };
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          memoryPersonnelCardsMap = parsed;
+          return memoryPersonnelCardsMap;
+        }
       }
     }
   } catch (e) {
     console.warn("Failed to load local personnel cards map:", e);
   }
-  return {};
+  memoryPersonnelCardsMap = {};
+  return memoryPersonnelCardsMap;
 };
 
 // 로컬 스토리지에 인사카드 맵 저장 (중복 키 제거로 용량 최적화 및 QuotaExceeded 원천 방지)
 export const saveLocalPersonnelCardsMap = (cardsMap) => {
   try {
+    workerCardCache.clear();
     const safeMap = cardsMap || {};
     const canonicalMap = {};
     Object.entries(safeMap).forEach(([key, card]) => {
@@ -749,24 +781,26 @@ export const saveLocalPersonnelCardsMap = (cardsMap) => {
     });
     memoryPersonnelCardsMap = canonicalMap;
 
-    // 불필요한 중복 업체별 카드 스토리지 키 영구 정리 (용량 확보)
-    ["오륙", "유성", "조영", "한울", "부림텍"].forEach((comp) => {
-      try {
-        localStorage.removeItem(getCompanyCardsStorageKey(comp));
-      } catch (e) {}
-    });
-
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(canonicalMap));
-    } catch (quotaErr) {
-      // 용량 초과 시 사진(photoUrl) 제외한 경량 메타데이터만 로컬 스토리지에 보관하고 인메모리에는 원본 유지
-      const lightMap = {};
-      Object.entries(canonicalMap).forEach(([k, v]) => {
-        const copy = { ...v };
-        delete copy.photoUrl;
-        lightMap[k] = copy;
+    if (typeof window !== "undefined" && window.localStorage) {
+      // 불필요한 중복 업체별 카드 스토리지 키 영구 정리 (용량 확보)
+      ["오륙", "유성", "조영", "한울", "부림텍"].forEach((comp) => {
+        try {
+          localStorage.removeItem(getCompanyCardsStorageKey(comp));
+        } catch (e) {}
       });
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lightMap));
+
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(canonicalMap));
+      } catch (quotaErr) {
+        // 용량 초과 시 사진(photoUrl) 제외한 경량 메타데이터만 로컬 스토리지에 보관하고 인메모리에는 원본 유지
+        const lightMap = {};
+        Object.entries(canonicalMap).forEach(([k, v]) => {
+          const copy = { ...v };
+          delete copy.photoUrl;
+          lightMap[k] = copy;
+        });
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lightMap));
+      }
     }
   } catch (e) {
     console.warn("Failed to save local personnel cards map:", e);
@@ -866,6 +900,7 @@ export const subscribePersonnelCards = (callback) => {
 // 개별 근로자 인사카드 영구 삭제 (Firestore & LocalStorage - 모든 변형 키 일괄 영구 삭제)
 export const deleteWorkerPersonnelCard = async (companyName, workerName) => {
   try {
+    workerCardCache.clear();
     const cleanComp = cleanCompanyName(companyName);
     const normComp = normalizeStandardCompany(companyName);
     const rawComp = String(companyName || "").trim();

@@ -55,26 +55,38 @@ const sanitizeHanulAlert = (item) => {
   return { ...item, isClosedByAdmin: true };
 };
 
-// Helper: Read local storage
+// Helper: Read local storage with in-memory caching
+let memoryHanulQualityIssues = null;
+
 export const getLocalHanulQualityIssues = () => {
+  if (memoryHanulQualityIssues && Array.isArray(memoryHanulQualityIssues)) {
+    return memoryHanulQualityIssues;
+  }
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map(sanitizeHanulAlert);
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          memoryHanulQualityIssues = parsed.map(sanitizeHanulAlert);
+          return memoryHanulQualityIssues;
+        }
       }
     }
   } catch (e) {
     console.error("Local storage read error for hanul quality issues:", e);
   }
-  return [];
+  memoryHanulQualityIssues = [];
+  return memoryHanulQualityIssues;
 };
 
 // Helper: Save local storage
 export const saveLocalHanulQualityIssues = (items) => {
+  memoryHanulQualityIssues = Array.isArray(items) ? items : [];
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items || []));
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(memoryHanulQualityIssues));
+    }
   } catch (e) {
     console.error("Local storage write error for hanul quality issues:", e);
   }

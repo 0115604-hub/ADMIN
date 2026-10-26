@@ -1,4 +1,4 @@
-﻿// Hanul (한울) 9BQC G/RUN & LQ2a Work Report Service
+// Hanul (한울) 9BQC G/RUN & LQ2a Work Report Service
 // Real-time Firestore Sync + LocalStorage Multi-Device Persistence
 import {
   collection,
@@ -395,12 +395,18 @@ export const DEFAULT_DEFECT_CATEGORIES = {
   "LQ2A_최종검사": ["조인트불량", "사상불량", "오염", "클립좌우혼입", "넘침", "밀림", "스코치", "미성형", "단차", "길이불량", "기타"]
 };
 
-// LocalStorage helpers
+// 🚀 LocalStorage & 인메모리 캐시 헬퍼 (JSON 중복 파싱 및 I/O 지연 제거)
+let memoryHanulWorkReports = null;
+
 export const getLocalHanulWorkReports = () => {
-  if (typeof window === "undefined") return [];
+  if (memoryHanulWorkReports && Array.isArray(memoryHanulWorkReports)) {
+    return memoryHanulWorkReports;
+  }
+  if (typeof window === "undefined" || !window.localStorage) return [];
   try {
     const raw = localStorage.getItem(HANUL_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    memoryHanulWorkReports = raw ? JSON.parse(raw) : [];
+    return memoryHanulWorkReports;
   } catch (e) {
     console.warn("Failed to load local Hanul work reports:", e);
     return [];
@@ -408,10 +414,11 @@ export const getLocalHanulWorkReports = () => {
 };
 
 export const saveLocalHanulWorkReports = (reports) => {
-  if (typeof window === "undefined") return;
+  memoryHanulWorkReports = Array.isArray(reports) ? reports : [];
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
-    localStorage.setItem(HANUL_STORAGE_KEY, JSON.stringify(reports));
-    window.dispatchEvent(new CustomEvent("hanul_work_reports_updated", { detail: reports }));
+    localStorage.setItem(HANUL_STORAGE_KEY, JSON.stringify(memoryHanulWorkReports));
+    window.dispatchEvent(new CustomEvent("hanul_work_reports_updated", { detail: memoryHanulWorkReports }));
   } catch (e) {
     console.warn("Failed to save local Hanul work reports:", e);
   }

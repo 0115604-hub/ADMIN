@@ -261,9 +261,17 @@ const FALLBACK_NE1A_ISSUE = {
   actionImages: []
 };
 
-// Helper: Read local storage
+// Helper: Read local storage with in-memory caching
+let memoryUrgentIssues = null;
+
 export const getLocalUrgentIssues = () => {
+  if (memoryUrgentIssues && Array.isArray(memoryUrgentIssues)) {
+    return memoryUrgentIssues;
+  }
   try {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return [{ ...FALLBACK_NE1A_ISSUE }];
+    }
     const hardDeletedIdsRaw = localStorage.getItem("oryuk_hard_deleted_urgent_ids") || "[]";
     let hardDeletedIds = [];
     try {
@@ -292,6 +300,7 @@ export const getLocalUrgentIssues = () => {
       clean.unshift({ ...FALLBACK_NE1A_ISSUE });
     }
 
+    memoryUrgentIssues = clean;
     return clean;
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
@@ -301,13 +310,14 @@ export const getLocalUrgentIssues = () => {
 
 // Helper: Save local storage (종결삭제관리 조회를 위해 isDeleted 항목도 함께 저장)
 export const saveLocalUrgentIssues = (issues) => {
+  const valid = Array.isArray(issues) ? issues : [];
+  memoryUrgentIssues = valid;
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
-    const valid = Array.isArray(issues) ? issues : [];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
   } catch (e) {
     console.warn("Local storage write error for urgent issues, attempting trim:", e);
     try {
-      const valid = Array.isArray(issues) ? issues : [];
       const trimmed = valid.map((item, idx) => {
         if (idx > 15 && Array.isArray(item.images) && item.images.length > 0) {
           return {

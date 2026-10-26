@@ -885,52 +885,75 @@ export const WORK_LOG_TRANSLATIONS = {
     id: "Hapus Laporan",
     vi: "Xóa báo cáo",
     my: "မှတ်တမ်းဖျက်မည်"
+  },
+  excel_download: {
+    ko: "엑셀 다운로드",
+    en: "Excel Download",
+    th: "ดาวน์โหลด Excel",
+    id: "Unduh Excel",
+    vi: "Tải xuống Excel",
+    my: "Excel ဒေါင်းလုဒ်"
   }
 };
 
+// ⚡ 자주 쓰이는 키 별칭(Alias) 등록으로 번역 누락 및 조회 지연 원천 차단
+WORK_LOG_TRANSLATIONS.date = WORK_LOG_TRANSLATIONS.work_date;
+WORK_LOG_TRANSLATIONS.worker = WORK_LOG_TRANSLATIONS.worker_name;
+WORK_LOG_TRANSLATIONS.production_qty = WORK_LOG_TRANSLATIONS.actual_qty;
+
 const LOCAL_STORAGE_LANG_KEY = "factory_worker_language_v1";
 
-// 현재 언어 가져오기 (기본값: 'ko')
+// 🚀 인메모리 언어 캐시 (매 렌더링/라벨 조회마다 수백 번의 LocalStorage 동기 I/O 발생 원천 차단)
+let memoryCurrentLang = null;
+const SUPPORTED_LANG_CODES = new Set(SUPPORTED_LANGUAGES.map((l) => l.code));
+
+// 현재 언어 가져오기 (인메모리 O(1) 우선 조회, 기본값: 'ko')
 export const getCurrentWorkLogLanguage = () => {
+  if (memoryCurrentLang) return memoryCurrentLang;
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       const saved = localStorage.getItem(LOCAL_STORAGE_LANG_KEY);
-      if (saved && SUPPORTED_LANGUAGES.some((l) => l.code === saved)) {
+      if (saved && SUPPORTED_LANG_CODES.has(saved)) {
+        memoryCurrentLang = saved;
         return saved;
       }
     }
   } catch (e) {
     console.warn("Failed to get current work log language:", e);
   }
+  memoryCurrentLang = "ko";
   return "ko";
 };
 
-// 언어 변경 및 저장
+// 언어 변경 및 저장 (동일 언어 중복 호출 시 불필요한 스토리지 쓰기 및 커스텀 이벤트 버블링 차단)
 export const setWorkLogLanguage = (langCode) => {
+  const target = SUPPORTED_LANG_CODES.has(langCode) ? langCode : "ko";
+  if (memoryCurrentLang === target) {
+    return target;
+  }
+  memoryCurrentLang = target;
   try {
-    const valid = SUPPORTED_LANGUAGES.some((l) => l.code === langCode);
-    const target = valid ? langCode : "ko";
     if (typeof window !== "undefined" && window.localStorage) {
       localStorage.setItem(LOCAL_STORAGE_LANG_KEY, target);
       window.dispatchEvent(new CustomEvent("factory_language_changed", { detail: { lang: target } }));
     }
-    return target;
   } catch (e) {
     console.warn("Failed to set work log language:", e);
-    return "ko";
   }
+  return target;
 };
 
-// 번역 텍스트 조회 헬퍼
+// 번역 텍스트 조회 헬퍼 (초고속 O(1) 인메모리 조회)
 export const getWorkLogText = (key, lang = null) => {
-  const currentLang = lang || getCurrentWorkLogLanguage();
+  if (!key) return "";
+  const currentLang = lang || memoryCurrentLang || getCurrentWorkLogLanguage();
   const entry = WORK_LOG_TRANSLATIONS[key];
   if (!entry) return key;
   return entry[currentLang] || entry["ko"] || entry["en"] || key;
 };
 
 // ============================================================================
-// 🌍 국적(Nationality) ➔ 지원 언어 코드 자동 매핑
+// 🌍 국적(Nationality) ➔ 지원 언어 코드 자동 매핑 (캐시 기반 최적화)
 // ⭐ 규칙:
 // 1) 한국 / 대한민국 ➔ "ko" (한국어)
 // 2) 4대 주요 국적:
@@ -938,12 +961,18 @@ export const getWorkLogText = (key, lang = null) => {
 //    - 인도네시아 ➔ "id" (인도네시아어)
 //    - 베트남 ➔ "vi" (베트남어)
 //    - 미얀마 ➔ "my" (미얀마/버마어)
-// 3) 🌟 [사용자 요청] 4개 국적 이외의 모든 외국인 작업자 (필리핀, 우즈벡, 스리랑카, 네팔, 캄보디아, 몽골, 기타 등)
+// 3) 🌟 4개 국적 이외의 모든 외국인 작업자 (필리핀, 우즈벡, 스리랑카, 네팔, 캄보디아, 몽골, 기타 등)
 //    ➔ 영어가 기본으로 보여지도록 "en" 적용
 // ============================================================================
+const nationalityLangMap = new Map();
+
 export const getLanguageForNationality = (nationality) => {
   if (!nationality) return "ko";
   const nat = String(nationality).trim().toLowerCase();
+  const cached = nationalityLangMap.get(nat);
+  if (cached) return cached;
+
+  let result = "en";
 
   // 1. 한국 / 대한민국 ➔ 한국어 (ko)
   if (
@@ -954,35 +983,31 @@ export const getLanguageForNationality = (nationality) => {
     nat === "ko" ||
     nat === "kr"
   ) {
-    return "ko";
+    result = "ko";
   }
-
   // 2. 4대 주요 국적: 태국, 인도네시아, 베트남, 미얀마
-  // 1) 태국 (Thailand / Thai) 🇹🇭
-  if (nat.includes("태국") || nat.includes("thailand") || nat.includes("thai") || nat === "th") {
-    return "th";
-  }
-  // 2) 인도네시아 (Indonesia / Indonesian) 🇮🇩
-  if (nat.includes("인도네시아") || nat.includes("indonesia") || nat === "id") {
-    return "id";
-  }
-  // 3) 베트남 (Vietnam / Vietnamese) 🇻🇳
-  if (nat.includes("베트남") || nat.includes("vietnam") || nat.includes("viet") || nat === "vi") {
-    return "vi";
-  }
-  // 4) 미얀마 (Myanmar / Burmese) 🇲🇲
-  if (nat.includes("미얀마") || nat.includes("myanmar") || nat.includes("burma") || nat.includes("burmese") || nat === "my") {
-    return "my";
+  else if (nat.includes("태국") || nat.includes("thailand") || nat.includes("thai") || nat === "th") {
+    result = "th";
+  } else if (nat.includes("인도네시아") || nat.includes("indonesia") || nat === "id") {
+    result = "id";
+  } else if (nat.includes("베트남") || nat.includes("vietnam") || nat.includes("viet") || nat === "vi") {
+    result = "vi";
+  } else if (nat.includes("미얀마") || nat.includes("myanmar") || nat.includes("burma") || nat.includes("burmese") || nat === "my") {
+    result = "my";
+  } else {
+    // 3. 그 외 외국인 ➔ 영어 기본
+    result = "en";
   }
 
-  // 3. 🌟 4개국적 이외의 모든 외국인 작업자 (필리핀, 우즈벡, 스리랑카, 네팔, 캄보디아, 몽골, 기타 등)
-  // ➔ 영어를 기본으로 설정!
-  return "en";
+  nationalityLangMap.set(nat, result);
+  return result;
 };
 
 // ============================================================================
-// 👤 근로자 인사카드 기반 국적 및 자동 언어 메타 조회
+// 👤 근로자 인사카드 기반 국적 및 자동 언어 메타 조회 (Map 캐싱으로 가비지 제거)
 // ============================================================================
+const workerLangInfoCache = new Map();
+
 export const getWorkerLanguageInfo = (workerOrProfile) => {
   if (!workerOrProfile) {
     return {
@@ -995,6 +1020,11 @@ export const getWorkerLanguageInfo = (workerOrProfile) => {
       nationalityFlag: "🇰🇷",
       isAutoTranslated: false
     };
+  }
+
+  const cacheKey = `${workerOrProfile.company || ""}_${workerOrProfile.name || ""}_${workerOrProfile.nationality || ""}_${workerOrProfile.nationalityOther || ""}`;
+  if (workerLangInfoCache.has(cacheKey)) {
+    return workerLangInfoCache.get(cacheKey);
   }
 
   let nationality = workerOrProfile.nationality;
@@ -1018,12 +1048,15 @@ export const getWorkerLanguageInfo = (workerOrProfile) => {
   const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === langCode) || SUPPORTED_LANGUAGES[1];
   const natMeta = typeof getNationalityMeta === "function" ? getNationalityMeta(effectiveNationality) : null;
 
-  return {
+  const result = {
     ...langMeta,
     nationality: effectiveNationality,
     nationalityFlag: natMeta?.flag || langMeta.flag,
     isAutoTranslated: langCode !== "ko"
   };
+
+  workerLangInfoCache.set(cacheKey, result);
+  return result;
 };
 
 // ============================================================================
@@ -1033,8 +1066,7 @@ export const syncWorkerLanguage = (workerOrProfile) => {
   try {
     const langInfo = getWorkerLanguageInfo(workerOrProfile);
     if (langInfo?.code) {
-      setWorkLogLanguage(langInfo.code);
-      return langInfo.code;
+      return setWorkLogLanguage(langInfo.code);
     }
   } catch (e) {
     console.warn("syncWorkerLanguage error:", e);

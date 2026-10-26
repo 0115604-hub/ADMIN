@@ -1,10 +1,13 @@
-﻿/**
+/**
  * 초·중·종물 검사 기록 여부 판정 유틸리티
  * 압출동, 가공동, 한울, 부림텍, 유성 5개사 전 공정 공통 적용
  */
 
+// 🚀 WeakMap 캐싱 적용으로 테이블 렌더링 시 중복 연산 및 GC 오버헤드 영구 제거
+const sampleStatusCache = new WeakMap();
+
 export const getSampleInspectionStatus = (report) => {
-  if (!report) {
+  if (!report || typeof report !== "object") {
     return {
       hasAny: false,
       isComplete: false,
@@ -14,6 +17,9 @@ export const getSampleInspectionStatus = (report) => {
       summary: "미기록"
     };
   }
+
+  const cached = sampleStatusCache.get(report);
+  if (cached) return cached;
 
   // 1. 명시적 완료 플래그
   if (report.sampleInspectionCompleted || report.isSampleCompleted) {
@@ -71,7 +77,7 @@ export const getSampleInspectionStatus = (report) => {
     summary = "초물(OK) • 중물(대기) • 종물(대기)";
   }
 
-  return {
+  const result = {
     hasAny,
     isComplete,
     start: hasStart,
@@ -79,6 +85,8 @@ export const getSampleInspectionStatus = (report) => {
     end: hasEnd,
     summary
   };
+  sampleStatusCache.set(report, result);
+  return result;
 };
 
 /**
