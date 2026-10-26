@@ -140,7 +140,8 @@ export const UnifiedAbnormalityControlPanel = ({
   onOpenWorkLogDetail = null,
   onOpenIssueModal = null,
   onOpenExtrusionReport = null,
-  currentProfile = null
+  currentProfile = null,
+  onNavigateTab = null
 }) => {
   // Real-time state streams
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
@@ -1791,11 +1792,13 @@ export const UnifiedAbnormalityControlPanel = ({
         <Step4ExecutiveApprovalPanel
           currentProfile={currentProfile}
           onOpenIssueModal={onOpenIssueModal}
+          onNavigateTab={onNavigateTab}
         />
       ) : currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy" ? (
         <Step3QualityControlPanel
           currentProfile={currentProfile}
           onOpenIssueModal={onOpenIssueModal}
+          onNavigateTab={onNavigateTab}
         />
       ) : (
         <WorkReportNonconformanceLedgerPanel

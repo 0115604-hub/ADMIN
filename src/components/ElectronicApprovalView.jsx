@@ -303,6 +303,15 @@ export const ElectronicApprovalView = () => {
       if (selectedDocRef.current) {
         const found = docs.find((d) => d.id === selectedDocRef.current.id);
         if (found) setSelectedDoc(found);
+      } else {
+        const activeDocId = localStorage.getItem("active_approval_doc_id");
+        if (activeDocId) {
+          const target = (docs || []).find((d) => d.id === activeDocId);
+          if (target) {
+            setSelectedDoc(target);
+            localStorage.removeItem("active_approval_doc_id");
+          }
+        }
       }
     });
 
@@ -312,6 +321,15 @@ export const ElectronicApprovalView = () => {
       if (selectedDocRef.current) {
         const found = latest.find((d) => d.id === selectedDocRef.current.id);
         if (found) setSelectedDoc(found);
+      } else {
+        const activeDocId = localStorage.getItem("active_approval_doc_id");
+        if (activeDocId) {
+          const target = (latest || []).find((d) => d.id === activeDocId);
+          if (target) {
+            setSelectedDoc(target);
+            localStorage.removeItem("active_approval_doc_id");
+          }
+        }
       }
     };
     window.addEventListener("oryuk_approval_document_updated", handleLocalUpdate);

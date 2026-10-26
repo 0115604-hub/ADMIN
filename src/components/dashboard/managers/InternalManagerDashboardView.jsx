@@ -367,6 +367,7 @@ export const InternalManagerDashboardView = ({
         <UnifiedAbnormalityControlPanel
           workLogs={workLogs}
           currentProfile={currentProfile}
+          onNavigateTab={onNavigateTab}
           onOpenWorkLogDetail={handleOpenLogDetail}
           onOpenExtrusionReport={() => {
             try {

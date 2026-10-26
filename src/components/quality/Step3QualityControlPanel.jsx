@@ -25,7 +25,12 @@ import {
   Wrench,
   UserCheck,
   Send,
-  RotateCcw
+  RotateCcw,
+  Plus,
+  Trash2,
+  Eye,
+  Building2,
+  Stamp
 } from "lucide-react";
 import {
   subscribeToExtrusionReports
@@ -52,6 +57,7 @@ import {
   getFourMBadgeColor,
   determineFourMCategory
 } from "../../services/fourMChangePointService";
+import { saveApprovalDocument } from "../../services/approvalService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 
 // Client-side image compression
@@ -89,11 +95,13 @@ const compressImage = (file, maxWidth = 900, quality = 0.75) => {
  * 1. 2단계 생산관리자가 이관한 변동점 항목을 심층 재검토
  * 2. [사내관리로 재분류] vs [공식 4M 대장 등재] 구분 판정
  * 3. 5-Why 근본원인 분석 및 시정/예방대책(CAPA) 수립
- * 4. 조치완료 증빙 첨부 후 4단계(이명재 이사 / 권태형 대표이사) 최종 승인 상신
+ * 4. 전후사진 각 5장 첨부 (총 10장)
+ * 5. 상신 시 한림공장은 김동욱 대표(전무), 삼랑진공장은 이명재 대표이사로 전자결재 상신 및 이동
  */
 export default function Step3QualityControlPanel({
   currentProfile = null,
-  onOpenIssueModal = null
+  onOpenIssueModal = null,
+  onNavigateTab = null
 }) {
   const managerName = currentProfile?.name || "이창엽";
 
@@ -120,12 +128,17 @@ export default function Step3QualityControlPanel({
   const [capaModalItem, setCapaModalItem] = useState(null);
   const [capaForm, setCapaForm] = useState({
     fourM: "Machine",
+    title: "",
+    content: "",
     rootCause: "",
     correctiveAction: "",
     isSqNotice: false,
     author: managerName,
-    afterPhoto: null,
-    targetDate: new Date().toISOString().slice(0, 10)
+    beforePhotos: [], // Array of up to 5 photos
+    afterPhotos: [],  // Array of up to 5 photos
+    targetDate: new Date().toISOString().slice(0, 10),
+    plant: "삼랑진공장",
+    line: ""
   });
   const [isSubmittingCapa, setIsSubmittingCapa] = useState(false);
 
@@ -192,7 +205,6 @@ export default function Step3QualityControlPanel({
   // 4. Official 4M Change Point Ledger items
   const official4MItems = useMemo(() => {
     return fourMRecords.filter((rec) => {
-      // Must be an official 4M ledger entry or registered with origin/source
       return rec.isOfficialLedger || String(rec.id || "").startsWith("ledger_") || rec.sourceType === "WORK_REPORT_NC" || rec.origin === "변동점";
     });
   }, [fourMRecords]);
@@ -251,6 +263,50 @@ export default function Step3QualityControlPanel({
     }
   };
 
+  // Open CAPA modal for an existing 4M ledger record or an incoming record
+  const handleOpenCapaModal = (record) => {
+    setCapaModalItem(record);
+
+    // Initial before photos (up to 5)
+    let initialBefore = [];
+    if (Array.isArray(record.beforePhotos) && record.beforePhotos.length > 0) {
+      initialBefore = record.beforePhotos;
+    } else if (Array.isArray(record.causeImages) && record.causeImages.length > 0) {
+      initialBefore = record.causeImages;
+    } else if (Array.isArray(record.images) && record.images.length > 0) {
+      initialBefore = record.images;
+    } else if (record.beforePhoto) {
+      initialBefore = [record.beforePhoto];
+    }
+
+    // Initial after photos (up to 5)
+    let initialAfter = [];
+    if (Array.isArray(record.afterPhotos) && record.afterPhotos.length > 0) {
+      initialAfter = record.afterPhotos;
+    } else if (Array.isArray(record.actionImages) && record.actionImages.length > 0) {
+      initialAfter = record.actionImages;
+    } else if (record.afterPhoto) {
+      initialAfter = [record.afterPhoto];
+    }
+
+    const defaultPlant = record.plant || (String(record.line || "").includes("한림") ? "한림공장" : "삼랑진공장");
+
+    setCapaForm({
+      fourM: record.fourM || "Machine",
+      title: record.title || "",
+      content: record.content || record.details || record.defectType || record.title || "",
+      rootCause: record.rootCause || record.whyAnalysis || "",
+      correctiveAction: record.actionResult || record.correctiveAction || "",
+      isSqNotice: Boolean(record.isSqNotice),
+      author: record.actionAuthor || managerName,
+      beforePhotos: initialBefore.slice(0, 5),
+      afterPhotos: initialAfter.slice(0, 5),
+      targetDate: record.targetDate || new Date().toISOString().slice(0, 10),
+      plant: defaultPlant,
+      line: record.line || ""
+    });
+  };
+
   // Handle confirming an incoming item into the Official 4M Change Point Ledger
   const handleConfirmToFourMLedger = async (item) => {
     const selectedFourM = incomingSelections[item.id]?.fourM || item.fourM || determineFourMCategory(item) || "Machine";
@@ -266,97 +322,176 @@ export default function Step3QualityControlPanel({
         hour12: false
       }).replace(/\. /g, "-").replace(/\./g, "");
 
-      // Register to 4M Ledger
-      await registerToFourMLedger(
-        {
-          id: `ledger_${item.id}`,
-          originalId: item.id,
-          rawId: item.id,
-          fourM: selectedFourM,
-          origin: "작업일보 부적합",
-          sourceType: "WORK_REPORT_NC",
-          plant: item.plant || "삼랑진공장",
-          line: item.line || item.company || "생산라인",
-          writer: `${managerName} (품질책임)`,
-          title: item.title || `[4M 변동점] ${item.line} - ${item.defectType || item.content}`,
-          date: item.date,
-          time: item.time || "",
-          content: item.content || item.defectType || "",
-          actionResult: item.actionResult || "",
-          actionAuthor: item.actionResult ? managerName : "",
-          actionAt: item.actionResult ? nowStr : "",
-          images: item.beforePhoto ? [item.beforePhoto] : (item.images || []),
-          actionImages: item.afterPhoto ? [item.afterPhoto] : (item.actionImages || []),
-          isResolved: Boolean(item.actionResult || item.afterPhoto || item.status === "RESOLVED"),
-          scrapKg: Number(item.scrapKg) || 0,
-          downtimeMinutes: Number(item.downtimeMinutes) || 0,
-          registrationBadge: "변동점등록",
-          isOfficialLedger: true,
-          isSqNotice: isSqNotice,
-          qualityReviewer: managerName,
-          qualityReviewedAt: nowStr,
-          status: item.actionResult ? "RESOLVED" : "PROGRESS"
-        },
-        managerName
-      );
-
-      // Open CAPA modal immediately to allow entering root cause & corrective action
-      setCapaModalItem({
-        ...item,
+      const createdLedgerItem = {
         id: `ledger_${item.id}`,
         originalId: item.id,
+        rawId: item.id,
         fourM: selectedFourM,
-        isSqNotice
-      });
-      setCapaForm({
-        fourM: selectedFourM,
-        rootCause: item.rootCause || "",
-        correctiveAction: item.actionResult || "",
+        origin: "작업일보 부적합",
+        sourceType: "WORK_REPORT_NC",
+        plant: item.plant || "삼랑진공장",
+        line: item.line || item.company || "생산라인",
+        writer: `${managerName} (품질책임)`,
+        title: item.title || `[4M 변동점] ${item.line} - ${item.defectType || item.content}`,
+        date: item.date,
+        time: item.time || "",
+        content: item.content || item.defectType || "",
+        actionResult: item.actionResult || "",
+        actionAuthor: item.actionResult ? managerName : "",
+        actionAt: item.actionResult ? nowStr : "",
+        images: item.beforePhoto ? [item.beforePhoto] : (item.images || []),
+        actionImages: item.afterPhoto ? [item.afterPhoto] : (item.actionImages || []),
+        isResolved: Boolean(item.actionResult || item.afterPhoto || item.status === "RESOLVED"),
+        scrapKg: Number(item.scrapKg) || 0,
+        downtimeMinutes: Number(item.downtimeMinutes) || 0,
+        registrationBadge: "변동점등록",
+        isOfficialLedger: true,
         isSqNotice: isSqNotice,
-        author: managerName,
-        afterPhoto: item.afterPhoto || null,
-        targetDate: new Date().toISOString().slice(0, 10)
-      });
+        qualityReviewer: managerName,
+        qualityReviewedAt: nowStr,
+        status: item.actionResult ? "RESOLVED" : "PROGRESS"
+      };
+
+      await registerToFourMLedger(createdLedgerItem, managerName);
+
+      // Open CAPA modal immediately to allow entering root cause & corrective action & photos
+      handleOpenCapaModal(createdLedgerItem);
     } catch (e) {
       console.error("Failed to register to 4M ledger:", e);
       alert("4M 대장 등재 중 오류가 발생했습니다.");
     }
   };
 
-  // Open CAPA modal for an existing 4M ledger record
-  const handleOpenCapaModal = (record) => {
-    setCapaModalItem(record);
-    setCapaForm({
-      fourM: record.fourM || "Machine",
-      rootCause: record.rootCause || record.whyAnalysis || "",
-      correctiveAction: record.actionResult || record.correctiveAction || "",
-      isSqNotice: Boolean(record.isSqNotice),
-      author: record.actionAuthor || managerName,
-      afterPhoto: (record.actionImages && record.actionImages[0]) || record.afterPhoto || null,
-      targetDate: record.targetDate || new Date().toISOString().slice(0, 10)
+  // Add Before Photos (up to 5)
+  const handleAddBeforePhotos = async (files) => {
+    if (!files || files.length === 0) return;
+    const current = [...(capaForm.beforePhotos || [])];
+    const availableSlots = 5 - current.length;
+    if (availableSlots <= 0) {
+      alert("조치 전 사진은 최대 5장까지 등록 가능합니다.");
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    for (const file of filesToProcess) {
+      const base64 = await compressImage(file, 900, 0.75);
+      if (base64) current.push(base64);
+    }
+    setCapaForm((prev) => ({ ...prev, beforePhotos: current }));
+  };
+
+  // Replace / Set specific slot for Before photo
+  const handleSetBeforePhotoSlot = async (file, slotIndex) => {
+    if (!file) return;
+    const base64 = await compressImage(file, 900, 0.75);
+    if (!base64) return;
+    setCapaForm((prev) => {
+      const updated = [...(prev.beforePhotos || [])];
+      updated[slotIndex] = base64;
+      return { ...prev, beforePhotos: updated.slice(0, 5) };
     });
   };
 
-  // Handle Photo Upload inside CAPA Modal
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
+  // Remove specific Before photo
+  const handleRemoveBeforePhoto = (index) => {
+    setCapaForm((prev) => ({
+      ...prev,
+      beforePhotos: (prev.beforePhotos || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Add After Photos (up to 5)
+  const handleAddAfterPhotos = async (files) => {
+    if (!files || files.length === 0) return;
+    const current = [...(capaForm.afterPhotos || [])];
+    const availableSlots = 5 - current.length;
+    if (availableSlots <= 0) {
+      alert("조치 후 사진은 최대 5장까지 등록 가능합니다.");
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    for (const file of filesToProcess) {
       const base64 = await compressImage(file, 900, 0.75);
-      if (base64) {
-        setCapaForm((prev) => ({ ...prev, afterPhoto: base64 }));
-      }
-    } catch (err) {
-      console.error("Photo compress error:", err);
-      alert("사진 압축 및 첨부에 실패했습니다.");
+      if (base64) current.push(base64);
+    }
+    setCapaForm((prev) => ({ ...prev, afterPhotos: current }));
+  };
+
+  // Replace / Set specific slot for After photo
+  const handleSetAfterPhotoSlot = async (file, slotIndex) => {
+    if (!file) return;
+    const base64 = await compressImage(file, 900, 0.75);
+    if (!base64) return;
+    setCapaForm((prev) => {
+      const updated = [...(prev.afterPhotos || [])];
+      updated[slotIndex] = base64;
+      return { ...prev, afterPhotos: updated.slice(0, 5) };
+    });
+  };
+
+  // Remove specific After photo
+  const handleRemoveAfterPhoto = (index) => {
+    setCapaForm((prev) => ({
+      ...prev,
+      afterPhotos: (prev.afterPhotos || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Save Progress (임시 저장)
+  const handleSaveProgress = async () => {
+    if (!capaModalItem) return;
+    setIsSubmittingCapa(true);
+    try {
+      const nowStr = new Date().toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replace(/\. /g, "-").replace(/\./g, "");
+
+      const updatedRecord = {
+        ...capaModalItem,
+        fourM: capaForm.fourM,
+        title: capaForm.title || capaModalItem.title,
+        content: capaForm.content || capaModalItem.content,
+        rootCause: capaForm.rootCause,
+        whyAnalysis: capaForm.rootCause,
+        actionResult: capaForm.correctiveAction,
+        correctiveAction: capaForm.correctiveAction,
+        actionAuthor: capaForm.author || managerName,
+        actionAt: nowStr,
+        isSqNotice: capaForm.isSqNotice,
+        targetDate: capaForm.targetDate,
+        beforePhotos: capaForm.beforePhotos,
+        causeImages: capaForm.beforePhotos,
+        images: capaForm.beforePhotos,
+        afterPhotos: capaForm.afterPhotos,
+        actionImages: capaForm.afterPhotos
+      };
+
+      await registerToFourMLedger(updatedRecord, managerName);
+      alert("💾 변동점 내용 및 원인/대책이 성공적으로 임시저장되었습니다.");
+      setCapaModalItem(null);
+    } catch (e) {
+      console.error("Save progress error:", e);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmittingCapa(false);
     }
   };
 
-  // Save CAPA action and optionally submit for Step 4 approval
-  const handleSaveCapa = async (isSubmitForApproval = false) => {
+  // ⭐ [4단계 전자결재 상신] : 한림공장 ➔ 김동욱 대표(전무), 삼랑진공장 ➔ 이명재 대표이사
+  const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
-    if (!capaForm.rootCause.trim() && !capaForm.correctiveAction.trim()) {
-      alert("원인분석 또는 시정/예방대책 내용을 입력해주세요.");
+    if (!capaForm.rootCause.trim()) {
+      alert("5-Why 근본원인 분석 내용을 입력해주세요.");
+      return;
+    }
+    if (!capaForm.correctiveAction.trim()) {
+      alert("시정 및 재발방지대책(조치결과) 내용을 입력해주세요.");
       return;
     }
 
@@ -371,11 +506,99 @@ export default function Step3QualityControlPanel({
         hour12: false
       }).replace(/\. /g, "-").replace(/\./g, "");
 
-      const isResolved = Boolean(isSubmitForApproval || capaForm.correctiveAction.trim().length > 0 || capaForm.afterPhoto);
+      const plant = capaModalItem.plant || capaForm.plant || "삼랑진공장";
+      const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
 
+      // ⭐ 결재선 대상자 지정
+      const approverName = isHanlim ? "김동욱" : "이명재";
+      const approverTitle = isHanlim ? "대표(전무)" : "대표이사";
+      const approverRole = isHanlim ? "한림공장 대표(전무) 김동욱" : "삼랑진공장 대표이사 이명재";
+
+      const docId = `appr_4m_${capaModalItem.id}_${Date.now()}`;
+      const docNumber = `4M-${isHanlim ? "HL" : "SRJ"}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+      const docTitle = `[4M 변동점 결재] [${plant}] ${capaModalItem.line || ""} - ${capaModalItem.title || capaForm.content || "변동점 시정대책"}`;
+
+      // 결재 단계 구성 (1단계 기안: 이창엽 -> 2단계 검토: 공정관리자 -> 3단계 최종승인: 김동욱/이명재)
+      const steps = [
+        {
+          role: "담당",
+          name: managerName || "이창엽",
+          title: "책임",
+          status: "APPROVED",
+          date: nowStr,
+          comment: "4M 변동점 및 시정대책(CAPA) 기안 상신"
+        },
+        {
+          role: "검토",
+          name: isHanlim ? "김동욱" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수"),
+          title: isHanlim ? "대표(전무)" : "책임",
+          status: "PENDING",
+          date: "",
+          comment: ""
+        },
+        {
+          role: "승인",
+          name: approverName,
+          title: approverTitle,
+          status: "PENDING",
+          date: "",
+          comment: ""
+        }
+      ];
+
+      const docPayload = {
+        id: docId,
+        docNumber: docNumber,
+        title: docTitle,
+        category: "품의서",
+        type: "FOUR_M_CHANGE_POINT",
+        typeName: "4M 변동점 및 CAPA 승인 품의서",
+        plant: plant,
+        department: "품질보증팀",
+        drafter: managerName || "이창엽",
+        drafterTitle: "책임",
+        fourM: capaForm.fourM,
+        isSqNotice: capaForm.isSqNotice,
+        line: capaModalItem.line || "",
+        content: [
+          `[4M 변동점 및 이상발생 내용]`,
+          `• 발생공장: [${plant}] ${capaModalItem.line || ""}`,
+          `• 4M 변동 구분: ${capaForm.fourM}`,
+          `• SQ 고객사 통보: ${capaForm.isSqNotice ? "통보 대상 (변동점 신고서 제출)" : "사내관리 종결"}`,
+          `• 변동점 및 이상내용: ${capaForm.content || capaModalItem.title}`,
+          capaModalItem.downtimeMinutes > 0 ? `• 비가동 시간: ${capaModalItem.downtimeMinutes}분` : "",
+          capaModalItem.scrapKg > 0 ? `• 폐기량: ${capaModalItem.scrapKg}kg` : "",
+          ``,
+          `[5-Why 근본원인 분석 (발생 & 유출)]`,
+          `${capaForm.rootCause}`,
+          ``,
+          `[조치결과 및 시정/예방대책 (CAPA)]`,
+          `${capaForm.correctiveAction}`,
+          ``,
+          `[조치 담당자 및 기한]`,
+          `• 담당자: ${capaForm.author}`,
+          `• 조치완료(예정)일: ${capaForm.targetDate}`,
+          `• 증빙사진: 조치 전 ${capaForm.beforePhotos.length}장 / 조치 후 ${capaForm.afterPhotos.length}장 첨부됨`
+        ].filter(Boolean).join("\n"),
+        causeImages: capaForm.beforePhotos,
+        actionImages: capaForm.afterPhotos,
+        images: [...capaForm.beforePhotos, ...capaForm.afterPhotos],
+        steps: steps,
+        currentStep: 2,
+        status: "IN_PROGRESS",
+        createdAt: nowStr,
+        updatedAt: nowStr
+      };
+
+      // 1. 전자결재 공식 문서함 저장
+      await saveApprovalDocument(docPayload, { isDirectManualDraft: true });
+
+      // 2. 4M 대장 레코드 업데이트
       const updatedRecord = {
         ...capaModalItem,
         fourM: capaForm.fourM,
+        title: capaForm.title || capaModalItem.title,
+        content: capaForm.content || capaModalItem.content,
         rootCause: capaForm.rootCause,
         whyAnalysis: capaForm.rootCause,
         actionResult: capaForm.correctiveAction,
@@ -384,16 +607,22 @@ export default function Step3QualityControlPanel({
         actionAt: nowStr,
         isSqNotice: capaForm.isSqNotice,
         targetDate: capaForm.targetDate,
-        isResolved: isResolved,
-        status: isResolved ? "RESOLVED" : "PROGRESS",
-        approvalStatus: isSubmitForApproval ? "PENDING_APPROVAL" : (capaModalItem.approvalStatus || "DRAFT"),
-        approvalRequestedAt: isSubmitForApproval ? nowStr : (capaModalItem.approvalRequestedAt || null),
-        actionImages: capaForm.afterPhoto ? [capaForm.afterPhoto] : (capaModalItem.actionImages || [])
+        beforePhotos: capaForm.beforePhotos,
+        causeImages: capaForm.beforePhotos,
+        images: capaForm.beforePhotos,
+        afterPhotos: capaForm.afterPhotos,
+        actionImages: capaForm.afterPhotos,
+        isResolved: true,
+        status: "RESOLVED",
+        approvalStatus: "PENDING_APPROVAL",
+        approvalDocId: docId,
+        targetApprover: approverRole,
+        approvalRequestedAt: nowStr
       };
 
       await registerToFourMLedger(updatedRecord, managerName);
 
-      // Also update ncLedgerState overrides if applicable
+      // 3. overrides 동기화
       const origId = capaModalItem.originalId || capaModalItem.rawId || String(capaModalItem.id).replace(/^ledger_/, "");
       if (ncLedgerState.overrides?.[origId]) {
         const nextOverrides = {
@@ -401,8 +630,8 @@ export default function Step3QualityControlPanel({
           [origId]: {
             ...ncLedgerState.overrides[origId],
             actionResult: capaForm.correctiveAction,
-            afterPhoto: capaForm.afterPhoto || ncLedgerState.overrides[origId].afterPhoto,
-            status: isResolved ? "RESOLVED" : "ACTIVE"
+            afterPhoto: capaForm.afterPhotos[0] || null,
+            status: "RESOLVED"
           }
         };
         const nextState = { ...ncLedgerState, overrides: nextOverrides };
@@ -411,18 +640,34 @@ export default function Step3QualityControlPanel({
       }
 
       setCapaModalItem(null);
-      if (isSubmitForApproval) {
-        alert("✅ 조치완료 처리되었으며, 4단계 경영진(이사/대표이사) 승인 대기로 상신되었습니다.");
-      } else {
-        alert("💾 원인분석 및 시정대책이 성공적으로 저장되었습니다.");
+      localStorage.setItem("active_approval_doc_id", docId);
+
+      alert(`✅ [4M 변동점 상신 완료]\n\n• 공장: ${plant}\n• 최종 결재자: ${approverRole}\n\n전자결재 문서함으로 이동합니다.`);
+
+      if (typeof onNavigateTab === "function") {
+        onNavigateTab("electronic_approval");
       }
     } catch (e) {
-      console.error("Save CAPA error:", e);
-      alert("저장 중 오류가 발생했습니다.");
+      console.error("Submit approval error:", e);
+      alert("전자결재 상신 중 오류가 발생했습니다.");
     } finally {
       setIsSubmittingCapa(false);
     }
   };
+
+  // Determine modal approver label
+  const modalApproverInfo = useMemo(() => {
+    if (!capaModalItem) return { name: "이명재", role: "삼랑진공장 대표이사 이명재", isHanlim: false };
+    const plant = capaModalItem.plant || capaForm.plant || "삼랑진공장";
+    const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
+    return {
+      plant,
+      isHanlim,
+      name: isHanlim ? "김동욱" : "이명재",
+      title: isHanlim ? "전무" : "대표이사",
+      role: isHanlim ? "한림공장 대표(전무) 김동욱" : "삼랑진공장 대표이사 이명재"
+    };
+  }, [capaModalItem, capaForm.plant]);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-500/40 shadow-xl p-4 sm:p-6 space-y-5 text-left transition-all">
@@ -446,7 +691,7 @@ export default function Step3QualityControlPanel({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
               <span>•</span>
-              <span>2단계 생산관리자 이관 건 심층 재검토 ➡️ 4M 공식등재 ➡️ 5-Why 원인분석/시정대책 ➡️ 4단계 경영진 승인 상신</span>
+              <span>2단계 이관 건 심층 재검토 ➡️ 4M 공식등재 ➡️ 5-Why 원인분석/대책수립 ➡️ 4단계 전자결재 상신 (한림: 김동욱 대표 / 삼랑진: 이명재 대표이사)</span>
             </p>
           </div>
         </div>
@@ -875,18 +1120,20 @@ export default function Step3QualityControlPanel({
                             <span>대책수정</span>
                           </button>
 
-                          {!isPendingApproval && !isApproved && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleOpenCapaModal(rec);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shadow-xs transition cursor-pointer flex items-center gap-1"
-                            >
-                              <Send className="w-3 h-3" />
-                              <span>4단계 상신</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCapaModal(rec)}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] shadow-xs transition cursor-pointer flex items-center gap-1 ${
+                              isApproved
+                                ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
+                                : isPendingApproval
+                                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
+                                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                            }`}
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>4단계 상신</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -898,170 +1145,356 @@ export default function Step3QualityControlPanel({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. CAPA / 5-Why 원인분석 및 시정대책 작성 모달 */}
+      {/* 4. 팝업창: 4M 변동점 및 이상내용 + 조치결과 + 전후사진 각 5장 + 전자결재 상신 모달 */}
       {/* ========================================================================= */}
       {capaModalItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4 text-left">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-indigo-600 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto p-5 sm:p-7 space-y-4 text-left">
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800 gap-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shrink-0">
                   <Wrench className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
-                    3단계 시정/예방조치(CAPA) 및 5-Why 원인분석
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {capaModalItem.line} • {capaModalItem.title || capaModalItem.content}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 text-xs font-black">
+                      4M 시정/예방조치 및 결재상신
+                    </span>
+                    <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
+                      [{modalApproverInfo.plant}] {capaModalItem.line}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    관리번호: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{String(capaModalItem.id).replace(/^ledger_/, "")}</span> • 발생일자: {capaModalItem.date} {capaModalItem.time}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCapaModalItem(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Dynamic Target Approver Badge */}
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border-2 border-purple-400 dark:border-purple-600 text-purple-900 dark:text-purple-200 text-xs font-black flex items-center gap-1.5">
+                  <Stamp className="w-4 h-4 text-purple-600" />
+                  <span>최종 결재자: {modalApproverInfo.role}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCapaModalItem(null)}
+                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              {/* 4M & SQ Notice */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    4M 변동점 구분
-                  </label>
-                  <select
-                    value={capaForm.fourM}
-                    onChange={(e) => setCapaForm({ ...capaForm, fourM: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none"
-                  >
-                    <option value="Machine">Machine (설비/금형 이상)</option>
-                    <option value="Material">Material (원단/원자재 불량)</option>
-                    <option value="Method">Method (작업방법/조건 변경)</option>
-                    <option value="Man">Man (작업자 숙련도/인원 교체)</option>
-                  </select>
-                </div>
+            <div className="space-y-4 text-xs">
+              {/* SECTION 1: 변동점 및 이상내용 (발생 현황) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span>1. 변동점 및 이상내용 (발생 정보)</span>
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-500">4M 구분:</span>
+                    <select
+                      value={capaForm.fourM}
+                      onChange={(e) => setCapaForm({ ...capaForm, fourM: e.target.value })}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-500/50 text-indigo-700 dark:text-indigo-300 font-bold outline-none"
+                    >
+                      <option value="Machine">Machine (설비/금형 이상)</option>
+                      <option value="Material">Material (원단/원자재 불량)</option>
+                      <option value="Method">Method (작업방법/조건 변경)</option>
+                      <option value="Man">Man (작업자 숙련도/인원 교체)</option>
+                    </select>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    SQ 고객사 통보 여부
-                  </label>
-                  <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={capaForm.isSqNotice}
-                      onChange={(e) => setCapaForm({ ...capaForm, isSqNotice: e.target.checked })}
-                      className="rounded accent-indigo-600 w-4 h-4"
-                    />
-                    <span className="font-bold text-amber-600 dark:text-amber-400">
-                      SQ 변동점 신고서 발행 대상
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* 5-Why Root Cause Input */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  🔍 5-Why 근본원인 분석 (발생원인 & 유출원인)
-                </label>
-                <textarea
-                  rows={3}
-                  value={capaForm.rootCause}
-                  onChange={(e) => setCapaForm({ ...capaForm, rootCause: e.target.value })}
-                  placeholder="예: 1-Why) 금형 R부 마모로 인한 스크래치 → 2-Why) 슬러지 고착 및 정기 연마주기 초과 → 근본원인: 정기 점검 체크리스트 미준수"
-                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              {/* Corrective & Preventive Action */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  🛠️ 시정 및 재발방지대책 (CAPA)
-                </label>
-                <textarea
-                  rows={3}
-                  value={capaForm.correctiveAction}
-                  onChange={(e) => setCapaForm({ ...capaForm, correctiveAction: e.target.value })}
-                  placeholder="예: 긴급조치: 해당 로트 전수 선별 및 다이스 세척 교체 / 재발방지: 금형 R부 세척주기 표준 개정(주 1회→일 1회) 및 초물 검사항목 추가"
-                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              {/* Photos & Author */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    📷 조치 후 개선 증빙 사진
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 cursor-pointer font-bold text-slate-700 dark:text-slate-300">
-                      <Camera className="w-4 h-4 text-indigo-500" />
-                      <span>사진 첨부하기</span>
+                    <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold cursor-pointer">
                       <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
+                        type="checkbox"
+                        checked={capaForm.isSqNotice}
+                        onChange={(e) => setCapaForm({ ...capaForm, isSqNotice: e.target.checked })}
+                        className="rounded accent-indigo-600 w-3.5 h-3.5"
                       />
+                      <span className="text-amber-600 dark:text-amber-400">SQ 고객사 통보 대상</span>
                     </label>
-                    {capaForm.afterPhoto && (
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(capaForm.afterPhoto)}
-                        className="px-2.5 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-xs cursor-pointer"
-                      >
-                        사진 미리보기
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    조치 담당자 (품질)
+                  <textarea
+                    rows={2}
+                    value={capaForm.content}
+                    onChange={(e) => setCapaForm({ ...capaForm, content: e.target.value })}
+                    placeholder="변동점 및 이상 발생 상세 내용을 입력하세요..."
+                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {(capaModalItem.downtimeMinutes > 0 || capaModalItem.scrapKg > 0) && (
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
+                      {capaModalItem.downtimeMinutes > 0 && <span>⏱️ 비가동: {capaModalItem.downtimeMinutes}분</span>}
+                      {capaModalItem.scrapKg > 0 && <span>🗑️ 폐기량: {capaModalItem.scrapKg}kg</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 2: 5-Why 원인분석 및 조치결과 (CAPA 대책) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* 5-Why Cause */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-300/60 dark:border-amber-800/60 space-y-1.5">
+                  <label className="block font-black text-amber-800 dark:text-amber-300">
+                    🔍 5-Why 근본원인 분석 (발생원인 & 유출원인)
                   </label>
+                  <textarea
+                    rows={4}
+                    value={capaForm.rootCause}
+                    onChange={(e) => setCapaForm({ ...capaForm, rootCause: e.target.value })}
+                    placeholder="예: 1-Why) 타임 벨트 마모 슬립 → 2-Why) 정기 교체주기 초과 사용 → 근본원인: 정기 점검 기준 미준수 및 예비품 관리 미흡"
+                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800/80 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Corrective Action (조치결과) */}
+                <div className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-300/60 dark:border-emerald-800/60 space-y-1.5">
+                  <label className="block font-black text-emerald-800 dark:text-emerald-300">
+                    🛠️ 조치결과 및 시정/예방대책 (CAPA)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={capaForm.correctiveAction}
+                    onChange={(e) => setCapaForm({ ...capaForm, correctiveAction: e.target.value })}
+                    placeholder="예: 긴급조치: 타임 벨트 신품 즉시 교체 및 인취 속도 튜닝 / 재발방지: 벨트 수명 관리 체크리스트 개정(월 1회 점검 표준화)"
+                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800/80 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Author & Date Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-600 dark:text-slate-400">조치 담당자 (품질):</span>
                   <input
                     type="text"
                     value={capaForm.author}
                     onChange={(e) => setCapaForm({ ...capaForm, author: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none"
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none w-36"
                   />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-600 dark:text-slate-400">조치완료(예정)일:</span>
+                  <input
+                    type="date"
+                    value={capaForm.targetDate}
+                    onChange={(e) => setCapaForm({ ...capaForm, targetDate: e.target.value })}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* ========================================================================= */}
+              {/* SECTION 3: 전후사진 각 5장 첨부 (총 10장 슬롯) */}
+              {/* ========================================================================= */}
+              <div className="space-y-4 pt-2">
+                {/* 3-A. 조치 전 사진 5장 */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-indigo-500" />
+                      <span className="font-black text-slate-900 dark:text-white text-xs">
+                        📷 조치 전 사진 (Before) - 최대 5장 등록
+                      </span>
+                      <span className="px-2 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[11px]">
+                        {capaForm.beforePhotos.length} / 5장
+                      </span>
+                    </div>
+
+                    <label className="flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs cursor-pointer">
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>전 사진 일괄 추가</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleAddBeforePhotos(e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* 5 Slots Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    {[0, 1, 2, 3, 4].map((slotIdx) => {
+                      const img = capaForm.beforePhotos[slotIdx];
+                      return (
+                        <div
+                          key={`before_slot_${slotIdx}`}
+                          className="relative aspect-4/3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-1.5 overflow-hidden group"
+                        >
+                          {img ? (
+                            <>
+                              <img
+                                src={img}
+                                alt={`조치 전 ${slotIdx + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                              <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white font-mono text-[9px] font-bold">
+                                전-{slotIdx + 1}
+                              </div>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage(img)}
+                                  className="p-1 rounded-md bg-white/90 text-slate-800 hover:bg-white"
+                                  title="미리보기"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveBeforePhoto(slotIdx)}
+                                  className="p-1 rounded-md bg-rose-600 text-white hover:bg-rose-700"
+                                  title="삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <label className="w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-indigo-500 cursor-pointer text-center p-1">
+                              <Camera className="w-4 h-4 mb-0.5" />
+                              <span className="text-[10.5px] font-bold">전-{slotIdx + 1} 첨부</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleSetBeforePhotoSlot(e.target.files?.[0], slotIdx)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3-B. 조치 후 사진 5장 */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-emerald-500" />
+                      <span className="font-black text-slate-900 dark:text-white text-xs">
+                        📷 조치 후 개선 사진 (After) - 최대 5장 등록
+                      </span>
+                      <span className="px-2 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                        {capaForm.afterPhotos.length} / 5장
+                      </span>
+                    </div>
+
+                    <label className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-xs cursor-pointer">
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>후 사진 일괄 추가</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleAddAfterPhotos(e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* 5 Slots Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    {[0, 1, 2, 3, 4].map((slotIdx) => {
+                      const img = capaForm.afterPhotos[slotIdx];
+                      return (
+                        <div
+                          key={`after_slot_${slotIdx}`}
+                          className="relative aspect-4/3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-1.5 overflow-hidden group"
+                        >
+                          {img ? (
+                            <>
+                              <img
+                                src={img}
+                                alt={`조치 후 ${slotIdx + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                              <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white font-mono text-[9px] font-bold">
+                                후-{slotIdx + 1}
+                              </div>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage(img)}
+                                  className="p-1 rounded-md bg-white/90 text-slate-800 hover:bg-white"
+                                  title="미리보기"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAfterPhoto(slotIdx)}
+                                  className="p-1 rounded-md bg-rose-600 text-white hover:bg-rose-700"
+                                  title="삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <label className="w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 cursor-pointer text-center p-1">
+                              <Camera className="w-4 h-4 mb-0.5" />
+                              <span className="text-[10.5px] font-bold">후-{slotIdx + 1} 첨부</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleSetAfterPhotoSlot(e.target.files?.[0], slotIdx)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setCapaModalItem(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition cursor-pointer"
-              >
-                닫기
-              </button>
+            {/* Modal Bottom Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                💡 <span className="font-bold text-purple-600 dark:text-purple-400">상신 시: </span>
+                <span>{modalApproverInfo.role} 전자결재 문서함으로 즉시 등록 후 이동합니다.</span>
+              </div>
 
-              <button
-                type="button"
-                disabled={isSubmittingCapa}
-                onClick={() => handleSaveCapa(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs transition cursor-pointer"
-              >
-                임시 저장
-              </button>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCapaModalItem(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition cursor-pointer"
+                >
+                  닫기
+                </button>
 
-              <button
-                type="button"
-                disabled={isSubmittingCapa}
-                onClick={() => handleSaveCapa(true)}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>조치완료 및 4단계 경영진 승인 상신</span>
-              </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingCapa}
+                  onClick={handleSaveProgress}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs transition cursor-pointer"
+                >
+                  대책 임시저장
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSubmittingCapa}
+                  onClick={handleSubmitToElectronicApproval}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ring-2 ring-purple-400/40"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>4단계 전자결재 상신 ({modalApproverInfo.role})</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
