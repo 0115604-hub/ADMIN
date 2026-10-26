@@ -164,6 +164,15 @@ export const ElectronicApprovalView = ({
     return currentProfile?.plant || "ALL";
   });
 
+  // 🌟 사용자 전환(Admin <-> 공장총괄) 시 공장 선택 필터가 오염되지 않도록 완벽 자동 동기화
+  useEffect(() => {
+    if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
+      setSelectedPlant("ALL");
+    } else if (currentProfile?.plant && (currentProfile.plant === "삼랑진공장" || currentProfile.plant === "한림공장")) {
+      setSelectedPlant(currentProfile.plant);
+    }
+  }, [isAdmin, currentProfile?.name, currentProfile?.plant]);
+
   // Modals
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [editingDocId, setEditingDocId] = useState(null);
@@ -447,7 +456,9 @@ export const ElectronicApprovalView = ({
     const fourMPending = fourMList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     const pendingTotal = overtimePending + fourMPending + generalPending;
-    const companyInProgressTotal = plantScoped.filter(isApprovalDocInProgress).length;
+    // ⭐ 전사 전체 미결은 공장 필터와 무관하게 회사 전체(9건) 기준 영구 고정
+    const companyInProgressTotal = approvalDocs.filter(isApprovalDocInProgress).length;
+    const plantInProgressTotal = plantScoped.filter(isApprovalDocInProgress).length;
     const approvedTotal = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
     const holdTotal = plantScoped.filter(isApprovalDocHold).length;
     const rejectedTotal = plantScoped.filter(isApprovalDocRejected).length;
@@ -459,6 +470,7 @@ export const ElectronicApprovalView = ({
       general,
       pendingTotal,
       companyInProgressTotal,
+      plantInProgressTotal,
       overtimePending,
       fourMPending,
       generalPending,
@@ -488,6 +500,7 @@ export const ElectronicApprovalView = ({
 
       // 2. Tab filter (결재 상태)
       if (selectedTab === "PENDING" && !isApprovalDocPending(doc, currentProfile, isAdmin)) return false;
+      if (selectedTab === "COMPANY_IN_PROGRESS" && !isApprovalDocInProgress(doc)) return false;
       if (selectedTab === "HOLD" && !isApprovalDocHold(doc)) return false;
       if (selectedTab === "MY_DRAFTS" && !isApprovalDocMyDraft(doc, currentProfile, isAdmin)) return false;
       if (selectedTab === "APPROVED" && !isApprovalDocApproved(doc, currentProfile, isAdmin)) return false;
@@ -529,6 +542,7 @@ export const ElectronicApprovalView = ({
     });
     const total = plantScoped.length;
     const pending = plantScoped.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const companyInProgress = plantScoped.filter(isApprovalDocInProgress).length;
     const hold = plantScoped.filter(isApprovalDocHold).length;
     const approved = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
     const rejected = plantScoped.filter(isApprovalDocRejected).length;
@@ -536,6 +550,7 @@ export const ElectronicApprovalView = ({
     return {
       total,
       pending,
+      companyInProgress,
       hold,
       approved,
       rejected,
@@ -932,7 +947,7 @@ export const ElectronicApprovalView = ({
                 title="미결 문서 전체를 대표이사 최종 결재(전결)로 일괄 승인"
               >
                 <Crown className="w-3.5 h-3.5" />
-                <span>미결 문서 일괄 최종 승인 ({stats.pending}건)</span>
+                <span>대표 최종 승인 ({stats.pending}건 일괄 결재)</span>
               </button>
             )}
 
@@ -963,15 +978,23 @@ export const ElectronicApprovalView = ({
             <div className="flex items-center justify-between text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-1 px-0.5">
               <span className="flex items-center gap-1 font-black">
                 <Clock className="w-3.5 h-3.5" />
-                <span>{isAdmin ? "미결 결재함" : "내 결재 대기"}</span>
+                <span>{isAdmin ? "대표 결재 대기" : "내 결재 대기"}</span>
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="font-mono font-black text-xs text-rose-600 dark:text-rose-400">
                   {categoryCounts.pendingTotal}건
                 </span>
-                {!isAdmin && categoryCounts.companyInProgressTotal > categoryCounts.pendingTotal && (
-                  <span className="text-[9.5px] font-normal text-slate-400 font-mono">
-                    (전사 {categoryCounts.companyInProgressTotal})
+                {categoryCounts.companyInProgressTotal > 0 && (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTab("COMPANY_IN_PROGRESS");
+                      setDocCategoryFilter("ALL");
+                    }}
+                    className="text-[9.5px] font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-mono bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs hover:border-slate-400 transition-all"
+                    title="클릭하여 전사 미결(진행중) 목록 전체 보기"
+                  >
+                    전사 {categoryCounts.companyInProgressTotal}
                   </span>
                 )}
               </div>
@@ -1283,7 +1306,8 @@ export const ElectronicApprovalView = ({
         <div className="flex items-center gap-1.5 overflow-x-auto w-full">
           {[
             { id: "ALL", label: `전체 (${stats.total})` },
-            { id: "PENDING", label: `🔴 미결/대기 (${stats.pending})`, highlight: stats.pending > 0 },
+            { id: "PENDING", label: `🔴 내 결재 대기 (${stats.pending})`, highlight: stats.pending > 0 },
+            { id: "COMPANY_IN_PROGRESS", label: `📋 전사 미결 (${stats.companyInProgress})`, inProgressLight: stats.companyInProgress > 0 },
             { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
             { id: "MY_DRAFTS", label: `내 기안함 (${stats.myDrafts})` },
             { id: "HOLD", label: `⏸️ 보류 (${stats.hold})`, holdLight: stats.hold > 0 },
@@ -1297,6 +1321,8 @@ export const ElectronicApprovalView = ({
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs"
                   : tab.highlight
                   ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300"
+                  : tab.inProgressLight
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                   : tab.holdLight
                   ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300"
                   : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"

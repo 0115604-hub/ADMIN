@@ -494,26 +494,74 @@ export function isApprovalDocInProgress(doc) {
 }
 
 // Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-// ⭐ 사용자별 결재 대기 판정:
-// 1. 프로필 미지정 또는 최고 경영진(권태형 대표이사, 최미영 전무, ADMIN): 전사 미결 목록 전체
-// 2. 공장 총괄/부서 책임자(이명재 이사, 김동욱 책임 등): 해당 사용자에게 실제로 결재 권한 및 차례가 있는 문서만 정확히 판정
+// ⭐ 사용자별 결재 대기 판정 (1~4단계 파이프라인 기반 엄격한 차례 판정):
+// - 1단계(담당): 작성자 본인
+// - 2단계(책임): 공장별 책임/선임 (한림: 김동욱, 삼랑진: 윤경수/설유철/이창엽/전재율 등)
+// - 3단계(이사): 공장 총괄/임원 (삼랑진: 이명재 이사, 한림/본사: 최미영 전무)
+// - 4단계(대표): 최고 경영진 최종 승인 (권태형 대표이사 / 최미영 전무)
 export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
   if (!isApprovalDocInProgress(doc)) return false;
 
-  // 1. 최고 경영진/ADMIN은 전사 미결 문서 모두 관리
-  if (!currentProfile || isAdmin || currentProfile.role === "ADMIN") {
+  const activeStepIdx = Array.isArray(doc.steps)
+    ? doc.steps.findIndex((st) => st?.status === "PENDING" || st?.status === "HOLD")
+    : -1;
+  if (activeStepIdx === -1) return false;
+
+  const activeStep = doc.steps[activeStepIdx];
+  const stepRole = activeStep?.role || "";
+  const stepName = activeStep?.name || "";
+
+  // 프로필 정보가 없으면 전사 미결 여부로 기본 반환
+  if (!currentProfile) return true;
+
+  const userName = currentProfile?.name || "";
+  const userTitle = currentProfile?.title || "";
+  const userRole = currentProfile?.role || "";
+  const userPlant = currentProfile?.plant || "";
+
+  // 1. 최고 경영진 (권태형 대표이사 / 본사 ADMIN) -> 4단계 (대표/승인) 최종 승인 차례 문서
+  if (userName === "권태형" || userTitle === "대표" || userTitle === "대표이사" || (userRole === "ADMIN" && userName !== "최미영")) {
+    return stepRole === "대표" || stepRole === "승인";
+  }
+
+  // 2. 최고 경영진 (최미영 전무) -> 4단계 (대표/승인) 또는 배정된 3단계 (이사/전무) 결재 대기 문서
+  if (userName === "최미영" || userTitle === "전무") {
+    if (stepRole === "대표" || stepRole === "승인") return true;
+    if (stepRole === "이사" && (!stepName || stepName.includes("최미영"))) return true;
+    return false;
+  }
+
+  // 3. 삼랑진공장 총괄 / 이사 (이명재 이사) -> 3단계 (이사) 결재 대기 문서
+  if (userName === "이명재" || userTitle === "이사") {
+    if (stepRole !== "이사") return false;
+    return !stepName || stepName.includes("이명재") || doc.plant === "삼랑진공장";
+  }
+
+  // 4. 한림공장 총괄 / 책임 (김동욱 책임) -> 한림공장 2단계 (책임) 또는 지정된 이사 결재 대기 문서
+  if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
+    if (stepRole === "책임" && (doc.plant === "한림공장" || !stepName || stepName.includes("김동욱"))) return true;
+    if (stepRole === "이사" && stepName && stepName.includes("김동욱")) return true;
+    return false;
+  }
+
+  // 5. 공장별 책임/선임 (윤경수, 설유철, 이창엽, 전재율, 조인주, 오상민 등) -> 해당 공장 2단계 (책임/검토)
+  if (stepRole === "책임" || stepRole === "검토") {
+    if (stepName && (stepName.includes(userName) || userName.includes(stepName))) return true;
+    if (userPlant && doc.plant && userPlant === doc.plant && (userTitle === "책임" || userTitle === "선임" || userTitle === "대리" || userTitle === "반장")) return true;
+    return false;
+  }
+
+  // 6. 1단계 담당 (작성자)
+  if (stepRole === "담당") {
+    return Boolean(stepName && (stepName.includes(userName) || userName.includes(stepName)));
+  }
+
+  // 7. 직접 지정된 결재자 일치 시
+  if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
     return true;
   }
 
-  const userName = currentProfile.name || "";
-  const userTitle = currentProfile.title || "";
-  if (userName === "권태형" || userName === "최미영" || userTitle.includes("대표") || userTitle.includes("전무")) {
-    return true;
-  }
-
-  // 2. 개별 직급/공장 총괄자: 본인이 실제로 결재(승인)해야 할 차례인지 검증
-  const perm = checkApprovalPermission(doc, currentProfile, isAdmin);
-  return Boolean(perm && perm.canApprove);
+  return false;
 }
 
 export function isApprovalDocHold(doc) {
