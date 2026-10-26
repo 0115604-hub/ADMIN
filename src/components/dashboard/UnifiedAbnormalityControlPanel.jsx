@@ -93,6 +93,7 @@ import {
 } from "../../services/personnelCardService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import WorkReportNonconformanceLedgerPanel from "../common/WorkReportNonconformanceLedgerPanel";
+import Step2ProductionManagerPanel from "../production/Step2ProductionManagerPanel";
 import Step3QualityControlPanel from "../quality/Step3QualityControlPanel";
 import Step4ExecutiveApprovalPanel from "../executive/Step4ExecutiveApprovalPanel";
 import * as XLSX from "xlsx";
@@ -1845,11 +1846,12 @@ export const UnifiedAbnormalityControlPanel = ({
           );
         }
 
+        // 🏭 2단계: 공정·생산관리자 전용 생산오더 & 비가동 1차 소팅 패널
         return (
-          <WorkReportNonconformanceLedgerPanel
+          <Step2ProductionManagerPanel
             currentProfile={currentProfile}
-            filterCompany={managerCompanyFilter}
-            titlePrefix={managerTitlePrefix}
+            onOpenIssueModal={onOpenIssueModal}
+            onNavigateTab={onNavigateTab}
           />
         );
       })()}

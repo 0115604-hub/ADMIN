@@ -380,6 +380,51 @@ export const SeolExtrusionWorkReportTable = ({
         </div>
       </div>
 
+      {/* 2단계 압출라인 선택 뱃지 바 */}
+      <div className="flex items-center justify-between flex-wrap gap-2 pt-1 pb-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-1">
+            <span>🏷️</span> <span>담당 라인 선택:</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setLineFilter("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              lineFilter === "all"
+                ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md ring-2 ring-slate-400"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+            }`}
+          >
+            전체 라인 보기 ({reports.length}건)
+          </button>
+          {["1호기", "2호기", "3호기", "4호기"].map((lineKey) => (
+            <button
+              key={lineKey}
+              type="button"
+              onClick={() => setLineFilter(lineFilter === lineKey ? "all" : lineKey)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                lineFilter === lineKey
+                  ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 scale-105"
+                  : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 hover:bg-indigo-100"
+              }`}
+            >
+              <span>🏭</span> <span>{lineKey}</span>
+              {lineFilter === lineKey && <span className="bg-indigo-900 text-indigo-200 px-1.5 py-0.2 rounded-full text-[9px]">선택됨</span>}
+            </button>
+          ))}
+        </div>
+
+        {lineFilter !== "all" && (
+          <button
+            type="button"
+            onClick={() => setLineFilter("all")}
+            className="text-xs text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>✕ 필터 해제 (전체 보기)</span>
+          </button>
+        )}
+      </div>
+
       {/* 요약 통계 카드 (오더 vs 실적 달성률 일체형) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Card 1: 총 일보 건수 */}
