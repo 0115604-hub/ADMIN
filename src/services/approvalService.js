@@ -1169,6 +1169,62 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
     }
   }
 
+  // ⭐ Bidirectional 4M Change Point Sync: If this is a 4M Change Point document, immediately sync status to four_m_change_points
+  if (isFourMApprovalDoc(updatedTarget)) {
+    try {
+      const fourMRaw = typeof window !== "undefined" ? localStorage.getItem("oryuk_four_m_change_points_v2") : null;
+      if (fourMRaw) {
+        const fourMList = JSON.parse(fourMRaw);
+        if (Array.isArray(fourMList)) {
+          let modified = false;
+          const updated4MList = fourMList.map((item) => {
+            const matchesId =
+              item.approvalDocId === updatedTarget.id ||
+              (item.id && updatedTarget.id && updatedTarget.id.includes(item.id)) ||
+              (item.id && updatedTarget.id && updatedTarget.id.includes(String(item.id).replace(/^ledger_/, ""))) ||
+              (item.originalId && updatedTarget.id && updatedTarget.id.includes(item.originalId));
+
+            if (matchesId) {
+              modified = true;
+              return {
+                ...item,
+                approvalStatus: isAllApproved ? "APPROVED" : "PENDING_APPROVAL",
+                approvedBy: approverName,
+                approvedTitle: approverName === "최미영" ? "전무" : approverName === "김동욱" ? "책임" : "대표이사",
+                approvedAt: nowStr,
+                approvalComment: comment || (isAllApproved ? "최종 승인 완료" : "검토 승인"),
+                isResolved: true,
+                status: isAllApproved ? "RESOLVED" : (item.status || "IN_PROGRESS"),
+                updatedAt: nowStr
+              };
+            }
+            return item;
+          });
+
+          if (modified) {
+            localStorage.setItem("oryuk_four_m_change_points_v2", JSON.stringify(updated4MList));
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("oryuk_four_m_updated", { detail: updated4MList }));
+            }
+            // Background sync matching documents to Firestore four_m_change_points
+            updated4MList.forEach(async (it) => {
+              const matched =
+                it.approvalDocId === updatedTarget.id ||
+                (it.id && updatedTarget.id && updatedTarget.id.includes(it.id));
+              if (matched && it.id && db) {
+                try {
+                  await setDoc(doc(db, "four_m_change_points", it.id), sanitizeForFirestore(it), { merge: true });
+                } catch (e) {}
+              }
+            });
+          }
+        }
+      }
+    } catch (fourMSyncErr) {
+      console.warn("Could not sync 4M change points in approveDocumentStep:", fourMSyncErr);
+    }
+  }
+
   // Telegram notification on step approval (오직 최종 승인 완료 시에만 발송)
   if (isAllApproved) {
     sendApprovalStepTelegram(updatedTarget, approverName, comment, true).catch((err) => {

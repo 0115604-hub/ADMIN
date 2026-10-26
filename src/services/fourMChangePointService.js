@@ -152,7 +152,23 @@ export const mergeUnified4MRecords = (existing, incoming) => {
     actionImages: Array.from(new Set([...(existing.actionImages || []), ...(incoming.actionImages || [])])),
     replies: [...(existing.replies || []), ...(incoming.replies || [])].filter(
       (r, idx, arr) => arr.findIndex((other) => other.id === r.id || other.createdAt === r.createdAt) === idx
-    )
+    ),
+    // 👑 경영진 결재 및 CAPA 필드 불변 보존
+    approvalStatus: incoming.approvalStatus || existing.approvalStatus || "",
+    approvalDocId: incoming.approvalDocId || existing.approvalDocId || "",
+    approvedBy: incoming.approvedBy || existing.approvedBy || "",
+    approvedTitle: incoming.approvedTitle || existing.approvedTitle || "",
+    approvedAt: incoming.approvedAt || existing.approvedAt || "",
+    approvalSignature: incoming.approvalSignature || existing.approvalSignature || "",
+    approvalComment: incoming.approvalComment || existing.approvalComment || "",
+    targetApprover: incoming.targetApprover || existing.targetApprover || "",
+    approvalRequestedAt: incoming.approvalRequestedAt || existing.approvalRequestedAt || "",
+    rootCause: incoming.rootCause || existing.rootCause || "",
+    whyAnalysis: incoming.whyAnalysis || existing.whyAnalysis || "",
+    correctiveAction: incoming.correctiveAction || existing.correctiveAction || "",
+    isSqNotice: incoming.isSqNotice !== undefined ? incoming.isSqNotice : existing.isSqNotice,
+    beforePhotos: (Array.isArray(incoming.beforePhotos) && incoming.beforePhotos.length > 0) ? incoming.beforePhotos : (existing.beforePhotos || []),
+    afterPhotos: (Array.isArray(incoming.afterPhotos) && incoming.afterPhotos.length > 0) ? incoming.afterPhotos : (existing.afterPhotos || [])
   };
 };
 
@@ -172,11 +188,20 @@ export const getLocalFourMChangePoints = () => {
   return [];
 };
 
-// Helper: Save local storage
+// Helper: Save local storage and immediately push to all subscribers
 export const saveLocalFourMChangePoints = (items) => {
   try {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items || []));
+    }
+    fourMCache = items;
+    fourMSubscribers.forEach((cb) => {
+      try {
+        cb(items);
+      } catch (err) {}
+    });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("oryuk_four_m_updated", { detail: items }));
     }
   } catch (e) {
     console.error("Local storage write error for 4M change points:", e);
@@ -622,7 +647,25 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     scrapKg: Number(record.scrapKg !== undefined ? record.scrapKg : existing?.scrapKg) || 0,
     registeredAt: existing?.registeredAt ? existing.registeredAt : (record.registeredAt || nowStr),
     registeredBy: registeredBy || existing?.registeredBy || "관리자",
-    isOfficialLedger: true
+    isOfficialLedger: true,
+    // 👑 4단계 전자결재 및 경영진 승인 동기화 필드
+    approvalStatus: record.approvalStatus || existing?.approvalStatus || "",
+    approvalDocId: record.approvalDocId || existing?.approvalDocId || "",
+    approvedBy: record.approvedBy || existing?.approvedBy || "",
+    approvedTitle: record.approvedTitle || existing?.approvedTitle || "",
+    approvedAt: record.approvedAt || existing?.approvedAt || "",
+    approvalSignature: record.approvalSignature || existing?.approvalSignature || "",
+    approvalComment: record.approvalComment || existing?.approvalComment || "",
+    targetApprover: record.targetApprover || existing?.targetApprover || "",
+    approvalRequestedAt: record.approvalRequestedAt || existing?.approvalRequestedAt || "",
+    // 🔍 3단계 5-Why 원인분석 및 CAPA 대책 필드
+    rootCause: record.rootCause || existing?.rootCause || "",
+    whyAnalysis: record.whyAnalysis || existing?.whyAnalysis || "",
+    correctiveAction: record.correctiveAction || existing?.correctiveAction || "",
+    isSqNotice: Boolean(record.isSqNotice !== undefined ? record.isSqNotice : existing?.isSqNotice),
+    beforePhotos: Array.isArray(record.beforePhotos) ? record.beforePhotos : (existing?.beforePhotos || []),
+    afterPhotos: Array.isArray(record.afterPhotos) ? record.afterPhotos : (existing?.afterPhotos || []),
+    targetDate: record.targetDate || existing?.targetDate || ""
   };
 
   // Strip any undefined keys

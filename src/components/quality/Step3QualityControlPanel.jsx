@@ -173,6 +173,13 @@ export default function Step3QualityControlPanel({
     };
     window.addEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
 
+    const handleFourMUpdate = (e) => {
+      if (isMounted && Array.isArray(e?.detail)) {
+        setFourMRecords(e.detail);
+      }
+    };
+    window.addEventListener("oryuk_four_m_updated", handleFourMUpdate);
+
     return () => {
       isMounted = false;
       if (typeof unsubExtrusion === "function") unsubExtrusion();
@@ -181,6 +188,7 @@ export default function Step3QualityControlPanel({
       if (typeof unsubYuseong === "function") unsubYuseong();
       if (typeof unsubFourM === "function") unsubFourM();
       window.removeEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
+      window.removeEventListener("oryuk_four_m_updated", handleFourMUpdate);
     };
   }, []);
 

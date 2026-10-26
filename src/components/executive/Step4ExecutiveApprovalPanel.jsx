@@ -36,6 +36,10 @@ import {
   getFourMBadgeColor
 } from "../../services/fourMChangePointService";
 import {
+  approveDocumentStep,
+  rejectDocumentStep
+} from "../../services/approvalService";
+import {
   subscribeToExtrusionReports
 } from "../../services/extrusionProductionService";
 import {
@@ -104,12 +108,18 @@ export default function Step4ExecutiveApprovalPanel({
     };
     window.addEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
 
+    const handleFourMUpdate = (e) => {
+      if (isMounted && Array.isArray(e?.detail)) setFourMRecords(e.detail);
+    };
+    window.addEventListener("oryuk_four_m_updated", handleFourMUpdate);
+
     return () => {
       isMounted = false;
       if (typeof unsubFourM === "function") unsubFourM();
       if (typeof unsubExtrusion === "function") unsubExtrusion();
       if (typeof unsubMachining === "function") unsubMachining();
       window.removeEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
+      window.removeEventListener("oryuk_four_m_updated", handleFourMUpdate);
     };
   }, []);
 
@@ -200,6 +210,22 @@ export default function Step4ExecutiveApprovalPanel({
       };
 
       await registerToFourMLedger(updatedRecord, executiveName);
+
+      // ⭐ 연동된 전자결재 공식 품의서 문서가 있는 경우 함께 최종 승인 처리
+      if (item.approvalDocId) {
+        try {
+          await approveDocumentStep(
+            item.approvalDocId,
+            3,
+            executiveName,
+            `${executiveName} ${executiveTitle} 최종 승인 및 전자날인 완료`,
+            { isAdmin: true, isRepresentative: true }
+          );
+        } catch (apprErr) {
+          console.warn("Could not sync approval document in handleApproveItem:", apprErr);
+        }
+      }
+
       alert(`👑 [${item.line}] 변동점 대장이 ${executiveName} ${executiveTitle} 명의로 최종 승인 및 전자날인되었습니다.`);
     } catch (e) {
       console.error("Executive approval failed:", e);
@@ -240,6 +266,21 @@ export default function Step4ExecutiveApprovalPanel({
       };
 
       await registerToFourMLedger(updatedRecord, executiveName);
+
+      // ⭐ 연동된 전자결재 공식 품의서 문서가 있는 경우 함께 반려 처리
+      if (rejectModalItem.approvalDocId) {
+        try {
+          await rejectDocumentStep(
+            rejectModalItem.approvalDocId,
+            3,
+            executiveName,
+            rejectReason
+          );
+        } catch (apprErr) {
+          console.warn("Could not sync reject in handleConfirmReject:", apprErr);
+        }
+      }
+
       alert(`↩️ 3단계 품질관리자(이창엽 책임)에게 보완 요청(반려)이 전달되었습니다.`);
       setRejectModalItem(null);
       setRejectReason("");
