@@ -471,6 +471,8 @@ export const HanulWorkReportModal = ({
         carModel: existingWorkerReport.carModel || project,
         partName: existingWorkerReport.partName || "G/RUN",
         processName: existingWorkerReport.processId || processId || "소재준비",
+        targetQty: existingWorkerReport.targetQty || existingWorkerReport.orderQty || existingWorkerReport.legoConfig?.targetQty || 350,
+        orderQty: existingWorkerReport.orderQty || existingWorkerReport.targetQty || existingWorkerReport.legoConfig?.orderQty || 350,
         legoConfig: existingWorkerReport.legoConfig,
         isExistingDraft: true
       };
@@ -1060,6 +1062,8 @@ export const HanulWorkReportModal = ({
         partName: legoPayload?.partName || currentProjectObj.partName,
         processId: processId || legoPayload?.processName || activeAssignedTemplate?.processName || "소재준비",
         processName: activeAssignedTemplate?.title || currentProcessObj?.name || legoPayload?.title || "지정양식",
+        targetQty: Number(legoPayload?.targetQty || activeAssignedTemplate?.targetQty || 350),
+        orderQty: Number(legoPayload?.orderQty || activeAssignedTemplate?.orderQty || 350),
         subProcess: processId === "소재준비" ? subProcess : "",
         jointType: processId === "조인트" ? jointType : "",
         inspectionType: processId === "검사" ? inspectionType : "",
@@ -1820,6 +1824,12 @@ export const HanulWorkReportModal = ({
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-800/80 text-indigo-200 border border-indigo-600/50">
                         {date} ({shift})
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600/80 text-cyan-300 border border-indigo-400/50 font-black">
+                        🎯 {translateTerm("목표(오더)", currentLang)}: {(activeAssignedTemplate?.targetQty || activeAssignedTemplate?.orderQty || 350).toLocaleString()} EA
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black">
+                        🔒 {translateTerm("SPEC 고정 · 기록 전용", currentLang)}
                       </span>
                       {existingWorkerReport ? (
                         <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 font-black animate-pulse flex items-center gap-1">

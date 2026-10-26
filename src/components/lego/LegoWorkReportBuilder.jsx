@@ -217,6 +217,8 @@ export const PRESET_REPORTS = [
     companyName: "(주)오륙",
     carModel: "JA",
     partName: "G/RUN",
+    targetQty: 350,
+    orderQty: 350,
     workerName: "김작업",
     workDate: new Date().toISOString().slice(0, 10),
     shift: "주간",
@@ -330,6 +332,8 @@ export const PRESET_REPORTS = [
     companyName: "(주)오륙",
     carModel: "JA",
     partName: "G/RUN (FRT / RR)",
+    targetQty: 350,
+    orderQty: 350,
     workerName: "박조인트",
     workDate: new Date().toISOString().slice(0, 10),
     shift: "주간",
@@ -400,6 +404,8 @@ export const PRESET_REPORTS = [
     companyName: "(주)오륙",
     carModel: "JA",
     partName: "G/RUN (FRT & RR)",
+    targetQty: 350,
+    orderQty: 350,
     workerName: "이검사",
     workDate: new Date().toISOString().slice(0, 10),
     shift: "주간",
@@ -488,6 +494,8 @@ export const PRESET_REPORTS = [
     companyName: "(주)오륙",
     carModel: "JA",
     partName: "G/RUN (RR LH)",
+    targetQty: 350,
+    orderQty: 350,
     workerName: "정품질",
     workDate: new Date().toISOString().slice(0, 10),
     shift: "주간",
@@ -575,6 +583,10 @@ export const LegoWorkReportBuilder = ({
       if (initialTemplateData.carModel) cfg.carModel = initialTemplateData.carModel;
       if (initialTemplateData.partName) cfg.partName = initialTemplateData.partName;
       if (initialTemplateData.processName) cfg.processName = initialTemplateData.processName;
+      if (initialTemplateData.targetQty) cfg.targetQty = initialTemplateData.targetQty;
+      if (initialTemplateData.orderQty) cfg.orderQty = initialTemplateData.orderQty;
+      if (!cfg.targetQty) cfg.targetQty = cfg.orderQty || 350;
+      if (!cfg.orderQty) cfg.orderQty = cfg.targetQty || 350;
       return cfg;
     }
 
@@ -808,6 +820,10 @@ export const LegoWorkReportBuilder = ({
         if (initialTemplateData.processName) cfg.processName = initialTemplateData.processName;
         if (initialWorkerName) cfg.workerName = initialWorkerName;
         if (initialWorkDate) cfg.workDate = initialWorkDate;
+        if (initialTemplateData.targetQty) cfg.targetQty = initialTemplateData.targetQty;
+        if (initialTemplateData.orderQty) cfg.orderQty = initialTemplateData.orderQty;
+        if (!cfg.targetQty) cfg.targetQty = cfg.orderQty || 350;
+        if (!cfg.orderQty) cfg.orderQty = cfg.targetQty || 350;
         if (Array.isArray(cfg.customBlocks) && cfg.customBlocks.length > 0) {
           setCustomBlocks((prev) => {
             const map = new Map();
@@ -829,6 +845,10 @@ export const LegoWorkReportBuilder = ({
           if (initialTemplateData.companyName) clone.companyName = initialTemplateData.companyName;
           if (initialWorkerName) clone.workerName = initialWorkerName;
           if (initialWorkDate) clone.workDate = initialWorkDate;
+          if (initialTemplateData.targetQty) clone.targetQty = initialTemplateData.targetQty;
+          if (initialTemplateData.orderQty) clone.orderQty = initialTemplateData.orderQty;
+          if (!clone.targetQty) clone.targetQty = clone.orderQty || 350;
+          if (!clone.orderQty) clone.orderQty = clone.targetQty || 350;
           if (initialTemplateData.specs && initialTemplateData.specs.length > 0) {
             clone.specsCutting = initialTemplateData.specs.map((sp, idx) => ({
               id: sp.id || `c_${idx}`,
@@ -1058,7 +1078,7 @@ export const LegoWorkReportBuilder = ({
   // Reusable Interactive Block Wrapper with Selection, Ordering, and Action Toolbar
   const renderBlockWrapper = (blockKey, blockTitle, children, options = {}) => {
     if (!currentReport.activeBlocks?.[blockKey]) return null;
-    const isSelected = selectedBlockKey === blockKey;
+    const isSelected = !isWorkerRecordingMode && selectedBlockKey === blockKey;
     const { canAddRow = false, onAddRow = null, customBadge = null } = options;
     const orderIdx = orderedBlockItems.findIndex((b) => b.key === blockKey);
 
@@ -1066,26 +1086,35 @@ export const LegoWorkReportBuilder = ({
       <div
         id={`block_container_${blockKey}`}
         style={{ order: orderIdx >= 0 ? orderIdx : 99 }}
-        onClick={() => setSelectedBlockKey(blockKey)}
-        className={`rounded-3xl transition-all relative group cursor-pointer ${
-          isSelected
-            ? "ring-4 ring-indigo-500/90 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl bg-indigo-50/20 dark:bg-indigo-950/20 border-2 border-indigo-500 p-3 sm:p-4"
-            : "hover:ring-2 hover:ring-indigo-300 dark:hover:ring-indigo-700/60 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800/80 hover:border-indigo-300"
+        onClick={isWorkerRecordingMode ? undefined : () => setSelectedBlockKey(blockKey)}
+        className={`rounded-3xl transition-all relative group ${
+          isWorkerRecordingMode
+            ? "p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 shadow-xs"
+            : isSelected
+            ? "ring-4 ring-indigo-500/90 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl bg-indigo-50/20 dark:bg-indigo-950/20 border-2 border-indigo-500 p-3 sm:p-4 cursor-pointer"
+            : "hover:ring-2 hover:ring-indigo-300 dark:hover:ring-indigo-700/60 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800/80 hover:border-indigo-300 cursor-pointer"
         }`}
       >
         {/* Interactive Block Top Bar (항상 직관적으로 노출되는 In-App 블록 편집 & 🗑️ 블록제거 버튼) */}
         <div className={`flex items-center justify-between p-2 sm:p-2.5 mb-3 rounded-2xl transition-all flex-wrap gap-2 ${
-          isSelected
+          isWorkerRecordingMode
+            ? "bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+            : isSelected
             ? "bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white shadow-lg"
             : "bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400"
         }`}>
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? "bg-cyan-300 animate-pulse" : "bg-indigo-500"}`}></span>
+            <span className={`w-2.5 h-2.5 rounded-full ${isWorkerRecordingMode ? "bg-emerald-500" : isSelected ? "bg-cyan-300 animate-pulse" : "bg-indigo-500"}`}></span>
             <span className="text-xs sm:text-sm font-black tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>{isSelected ? "📍 " : "🧱 "}{blockTitle}</span>
+              <span>{isWorkerRecordingMode ? "🧱 " : isSelected ? "📍 " : "🧱 "}{blockTitle}</span>
+              {isWorkerRecordingMode && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
+                  🔒 {t("SPEC 고정 · 실적기록 전용")}
+                </span>
+              )}
               {customBadge && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                  isSelected ? "bg-white/20 text-cyan-200" : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
+                  isSelected && !isWorkerRecordingMode ? "bg-white/20 text-cyan-200" : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
                 }`}>
                   {customBadge}
                 </span>
@@ -1150,7 +1179,7 @@ export const LegoWorkReportBuilder = ({
               </button>
             )}
 
-            {canAddRow && onAddRow && (
+            {!isWorkerRecordingMode && canAddRow && onAddRow && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -1470,6 +1499,8 @@ export const LegoWorkReportBuilder = ({
         project: fullLegoConfig.carModel || "JA",
         partName: fullLegoConfig.partName || "G/RUN",
         processName: fullLegoConfig.processName || "소재준비",
+        targetQty: Number(fullLegoConfig.targetQty || fullLegoConfig.orderQty) || 350,
+        orderQty: Number(fullLegoConfig.orderQty || fullLegoConfig.targetQty) || 350,
         workerName: fullLegoConfig.workerName || "작업자",
         worker: fullLegoConfig.workerName || "작업자",
         writer: fullLegoConfig.workerName || "작업자",
@@ -1666,9 +1697,14 @@ export const LegoWorkReportBuilder = ({
                 </button>
               )}
               {isWorkerRecordingMode && (
-                <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black whitespace-nowrap">
-                  ✓ 관리자 지정 5대공정 양식
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black whitespace-nowrap">
+                    🔒 SPEC 고정 · 기록 전용
+                  </span>
+                  <span className="text-[10.5px] px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-cyan-300 border border-indigo-400/40 font-black whitespace-nowrap">
+                    🎯 목표(오더): {(Number(currentReport.targetQty || currentReport.orderQty) || 350).toLocaleString()} EA
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -1765,9 +1801,9 @@ export const LegoWorkReportBuilder = ({
           </div>
         </div>
 
-        {/* 작업자 기록 모드일 때: 작업자명 / 작업일자 / 근무조 빠른 확인·수정 바 */}
+        {/* 작업자 기록 모드일 때: 작업자명 / 작업일자 / 근무조 / 목표수량 빠른 확인·수정 바 */}
         {isWorkerRecordingMode && (
-          <div className="pt-2 border-t border-slate-800 grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
+          <div className="pt-2 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
             <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700">
               <span className="text-[10.5px] font-bold text-slate-400 shrink-0">작업자:</span>
               <input
@@ -1797,6 +1833,10 @@ export const LegoWorkReportBuilder = ({
                 <option value="주간">주간 (Day)</option>
                 <option value="야간">야간 (Night)</option>
               </select>
+            </div>
+            <div className="flex items-center gap-1.5 bg-indigo-950/80 px-2.5 py-1.5 rounded-xl border border-indigo-700/60">
+              <span className="text-[10.5px] font-bold text-indigo-300 shrink-0">🎯 목표수량:</span>
+              <span className="text-cyan-300 font-mono font-black text-xs">{(Number(currentReport.targetQty || currentReport.orderQty) || 350).toLocaleString()} EA</span>
             </div>
             <div className="hidden sm:flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700">
               <span className="text-[10.5px] font-bold text-slate-400 shrink-0">공정:</span>
@@ -2217,15 +2257,27 @@ export const LegoWorkReportBuilder = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono font-bold text-slate-400">{t("양식번호")}: {currentReport.formNo || "705-02"}</span>
-                    <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">✏️ {t("제목/치수 클릭 시 수정 가능")}</span>
+                    {isWorkerRecordingMode ? (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                        🔒 {t("현장작업자 기록 모드 (SPEC 고정 · 실측치 기록 전용)")}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">✏️ {t("제목/치수 클릭 시 수정 가능")}</span>
+                    )}
                   </div>
-                  <input
-                    type="text"
-                    value={currentReport.title || "소재준비작업일보"}
-                    onChange={(e) => handleUpdateField("title", e.target.value)}
-                    className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-400 focus:border-indigo-500 outline-none w-full py-1 mt-0.5"
-                    title="클릭하여 일보 제목을 자유롭게 수정하세요."
-                  />
+                  {isWorkerRecordingMode ? (
+                    <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white py-1 mt-0.5">
+                      {currentReport.title || "소재준비작업일보"}
+                    </h2>
+                  ) : (
+                    <input
+                      type="text"
+                      value={currentReport.title || "소재준비작업일보"}
+                      onChange={(e) => handleUpdateField("title", e.target.value)}
+                      className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-400 focus:border-indigo-500 outline-none w-full py-1 mt-0.5"
+                      title="클릭하여 일보 제목을 자유롭게 수정하세요."
+                    />
+                  )}
                 </div>
 
                 {/* 3단 결재란 (작성 / 검토 / 승인) */}
@@ -2264,42 +2316,83 @@ export const LegoWorkReportBuilder = ({
                 <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                     <span>🧱 {t("[블록 8] 작업 기본 정보 헤더")}</span>
-                    <span className="text-[10px] text-slate-400">{t("(차종 · 품명 · 공정명 · 작업자 · 근무시간)")}</span>
+                    <span className="text-[10px] text-slate-400">{t("(차종 · 품명 · 공정명 · 목표수량 · 작업자 · 근무시간)")}</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">{t("차종 (Car model)")}</span>
-                    <input
-                      type="text"
-                      value={currentReport.carModel || ""}
-                      onChange={(e) => handleUpdateField("carModel", e.target.value)}
-                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-cyan-400"
-                    />
+                    {isWorkerRecordingMode ? (
+                      <span className="font-black text-xs text-center block text-indigo-600 dark:text-cyan-400 py-1">
+                        {currentReport.carModel || "-"}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={currentReport.carModel || ""}
+                        onChange={(e) => handleUpdateField("carModel", e.target.value)}
+                        className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-cyan-400"
+                      />
+                    )}
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">{t("품 명 (Part name)")}</span>
-                    <input
-                      type="text"
-                      value={currentReport.partName || ""}
-                      onChange={(e) => handleUpdateField("partName", e.target.value)}
-                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300"
-                    />
+                    {isWorkerRecordingMode ? (
+                      <span className="font-black text-xs text-center block py-1">
+                        {currentReport.partName || "-"}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={currentReport.partName || ""}
+                        onChange={(e) => handleUpdateField("partName", e.target.value)}
+                        className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300"
+                      />
+                    )}
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">{t("공정명 (Process)")}</span>
-                    <input
-                      type="text"
-                      value={currentReport.processName ?? "소재준비"}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCurrentReport((prev) => ({
-                          ...prev,
-                          processName: val
-                        }));
-                      }}
-                      className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-indigo-400"
-                    />
+                    {isWorkerRecordingMode ? (
+                      <span className="font-black text-xs text-center block text-indigo-600 dark:text-indigo-400 py-1">
+                        {currentReport.processName ?? "소재준비"}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={currentReport.processName ?? "소재준비"}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCurrentReport((prev) => ({
+                            ...prev,
+                            processName: val
+                          }));
+                        }}
+                        className="font-black text-xs text-center w-full bg-transparent outline-none border-b border-dashed border-slate-300 text-indigo-600 dark:text-indigo-400"
+                      />
+                    )}
+                  </div>
+                  <div className="p-2 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/60 border-2 border-indigo-400 dark:border-indigo-600 text-center">
+                    <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 block">{t("목표수량 (관리자 오더)")}</span>
+                    {isWorkerRecordingMode ? (
+                      <span className="font-mono font-black text-xs sm:text-sm text-indigo-700 dark:text-cyan-300 block mt-0.5">
+                        🎯 {(Number(currentReport.targetQty || currentReport.orderQty) || 350).toLocaleString()} EA
+                      </span>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                        <input
+                          type="number"
+                          value={currentReport.targetQty || currentReport.orderQty || 350}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setCurrentReport((prev) => ({ ...prev, targetQty: val, orderQty: val }));
+                          }}
+                          className="font-mono font-black text-xs text-center w-16 bg-transparent outline-none border-b border-dashed border-indigo-400 text-indigo-700 dark:text-cyan-300"
+                          placeholder="350"
+                          title="관리자 오더 목표수량 설정"
+                        />
+                        <span className="text-[10px] font-bold text-slate-500">EA</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
                     <span className="text-[10px] font-bold text-slate-400 block">{t("작업자 (Worker)")}</span>
@@ -2353,13 +2446,17 @@ export const LegoWorkReportBuilder = ({
                       {(currentReport.workTimeOutput || []).map((row, idx) => (
                         <tr key={row.id || idx} className="border-b border-black dark:border-slate-600">
                           <td className="border-r border-black dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 font-black">
-                            <input
-                              type="text"
-                              value={row.division || ""}
-                              onChange={(e) => handleUpdateSpecValue("workTimeOutput", row.id, "division", e.target.value)}
-                              className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
-                              title="구분명 수정 (클릭하여 직접 변경)"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full text-center font-black block">{row.division || ""}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={row.division || ""}
+                                onChange={(e) => handleUpdateSpecValue("workTimeOutput", row.id, "division", e.target.value)}
+                                className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
+                                title="구분명 수정 (클릭하여 직접 변경)"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-1">
                             <input
@@ -2431,15 +2528,17 @@ export const LegoWorkReportBuilder = ({
                       </span>
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddCuttingSpecRow}
-                    className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
-                    title="새로운 절단 단면(Section D, E...)을 추가합니다."
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t("+ 단면 행 추가")}</span>
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddCuttingSpecRow}
+                      className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                      title="새로운 절단 단면(Section D, E...)을 추가합니다."
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t("+ 단면 행 추가")}</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
@@ -2450,7 +2549,7 @@ export const LegoWorkReportBuilder = ({
                         <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">{t("초물(Start)")}</th>
                         <th className="border-r border-black dark:border-slate-600 p-1.5 w-[23%]">{t("중물(Half)")}</th>
                         <th className="border-r border-black dark:border-slate-600 p-1.5 w-[22%]">{t("종물(Finish)")}</th>
-                        <th className="p-1 w-[4%] print:hidden">{t("관리")}</th>
+                        {!isWorkerRecordingMode && <th className="p-1 w-[4%] print:hidden">{t("관리")}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -2463,47 +2562,69 @@ export const LegoWorkReportBuilder = ({
                                 rowSpan={(currentReport.specsCutting?.length || 1) * 3}
                                 className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/40 p-2 font-black w-[10%] text-center align-middle"
                               >
-                                <input
+                                {isWorkerRecordingMode ? (
+                                  <span className="w-full text-center font-black text-[11px] block">
+                                    {t(currentReport.specCuttingProcessLabel ?? "정치 절단 길이")}
+                                  </span>
+                                ) : (
+                                  <input
                                     type="text"
                                     value={t(currentReport.specCuttingProcessLabel ?? "정치 절단 길이")}
                                     onChange={(e) => handleUpdateField("specCuttingProcessLabel", e.target.value)}
                                     className="w-full text-center font-black text-[11px] bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
                                     title="공정/구분 명칭 수정"
                                   />
+                                )}
                               </td>
                             )}
                             <td rowSpan={3} className="border-r border-black dark:border-slate-600 p-1.5 w-[9%] text-center font-black">
-                              <input
-                                type="text"
-                                value={row.section}
-                                onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "section", e.target.value)}
-                                className="w-10 text-center font-black bg-transparent border-b border-dashed border-slate-400 outline-none"
-                                title="단면 명칭 수정 (A, B, C, D...)"
-                              />
+                              {isWorkerRecordingMode ? (
+                                <span className="w-10 text-center font-black block mx-auto text-indigo-700 dark:text-cyan-400">
+                                  {row.section}
+                                </span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={row.section}
+                                  onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "section", e.target.value)}
+                                  className="w-10 text-center font-black bg-transparent border-b border-dashed border-slate-400 outline-none"
+                                  title="단면 명칭 수정 (A, B, C, D...)"
+                                />
+                              )}
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold w-[9%]">
                               {t("규격(Spec)")}
                             </td>
                             <td colSpan={3} className="border-r border-black dark:border-slate-600 p-1 text-center font-black text-indigo-600 dark:text-cyan-400 bg-slate-50/50 dark:bg-slate-900/50">
-                              <input
-                                type="text"
-                                value={row.spec1 || ""}
-                                onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "spec1", e.target.value)}
-                                className="w-full text-center font-black bg-transparent outline-none"
-                                title="규격/공차 직접 수정 (예: 881 ± 3mm)"
-                                placeholder={t("규격 입력 (예: 881 ± 3mm)")}
-                              />
+                              {isWorkerRecordingMode ? (
+                                <div className="py-1 px-2 text-center">
+                                  <span className="inline-flex items-center gap-1 font-mono font-black text-indigo-700 dark:text-cyan-300 text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900/60 shadow-2xs">
+                                    🔒 {row.spec1 || "-"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={row.spec1 || ""}
+                                  onChange={(e) => handleUpdateSpecValue("specsCutting", row.id, "spec1", e.target.value)}
+                                  className="w-full text-center font-black bg-transparent outline-none"
+                                  title="규격/공차 직접 수정 (예: 881 ± 3mm)"
+                                  placeholder={t("규격 입력 (예: 881 ± 3mm)")}
+                                />
+                              )}
                             </td>
-                            <td rowSpan={3} className="p-1 align-middle text-center print:hidden w-[4%]">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCuttingSpecRow(row.id)}
-                                className="text-rose-500 hover:text-rose-700 p-1 rounded transition cursor-pointer"
-                                title="단면 행 삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
+                            {!isWorkerRecordingMode && (
+                              <td rowSpan={3} className="p-1 align-middle text-center print:hidden w-[4%]">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCuttingSpecRow(row.id)}
+                                  className="text-rose-500 hover:text-rose-700 p-1 rounded transition cursor-pointer"
+                                  title="단면 행 삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            )}
                           </tr>
 
                           {/* Row 2: 초/중/종 실측치 (초물, 중물, 종물 3개만 기록) */}
@@ -2590,13 +2711,15 @@ export const LegoWorkReportBuilder = ({
                   <span className="font-black text-xs text-slate-900 dark:text-white">
                     🧱 {t("[블록 2] 단컷팅 FRT 구간 치수 (49/45mm)")}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleAddStepCuttingRow("FRT")}
-                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                  >
-                    {t("+ 행 추가")}
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={() => handleAddStepCuttingRow("FRT")}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                    >
+                      {t("+ 행 추가")}
+                    </button>
+                  )}
                 </div>
                 <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                   <thead>
@@ -2604,13 +2727,17 @@ export const LegoWorkReportBuilder = ({
                       <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구분")}</th>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                          <input
-                            type="text"
-                            value={c.section || ""}
-                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "section", e.target.value)}
-                            className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
-                            title="구분(구간)명 수정"
-                          />
+                          {isWorkerRecordingMode ? (
+                            <span>{c.section || ""}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={c.section || ""}
+                              onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "section", e.target.value)}
+                              className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
+                              title="구분(구간)명 수정"
+                            />
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -2620,12 +2747,18 @@ export const LegoWorkReportBuilder = ({
                       <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">{t("SPEC")}</td>
                       {(currentReport.stepCuttingFrt || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
-                          <input
-                            type="text"
-                            value={c.spec}
-                            onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "spec", e.target.value)}
-                            className="w-full text-center bg-transparent outline-none font-black"
-                          />
+                          {isWorkerRecordingMode ? (
+                            <span className="font-mono font-black text-indigo-700 dark:text-cyan-300 text-xs px-2 py-0.5 rounded bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900/60 inline-block">
+                              🔒 {c.spec}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={c.spec}
+                              onChange={(e) => handleUpdateSpecValue("stepCuttingFrt", c.id, "spec", e.target.value)}
+                              className="w-full text-center bg-transparent outline-none font-black"
+                            />
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -2679,13 +2812,15 @@ export const LegoWorkReportBuilder = ({
                   <span className="font-black text-xs text-slate-900 dark:text-white">
                     🧱 {t("[블록 3] 단컷팅 RR 구간 치수 (40/39mm)")}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleAddStepCuttingRow("RR")}
-                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                  >
-                    {t("+ 행 추가")}
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={() => handleAddStepCuttingRow("RR")}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                    >
+                      {t("+ 행 추가")}
+                    </button>
+                  )}
                 </div>
                 <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
                   <thead>
@@ -2693,13 +2828,17 @@ export const LegoWorkReportBuilder = ({
                       <th className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구분")}</th>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <th key={c.id} className="border-r border-black dark:border-slate-600 p-1">
-                          <input
-                            type="text"
-                            value={c.section || ""}
-                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "section", e.target.value)}
-                            className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
-                            title="구분(구간)명 수정"
-                          />
+                          {isWorkerRecordingMode ? (
+                            <span>{c.section || ""}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={c.section || ""}
+                              onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "section", e.target.value)}
+                              className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
+                              title="구분(구간)명 수정"
+                            />
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -2709,12 +2848,18 @@ export const LegoWorkReportBuilder = ({
                       <td className="border-r border-black dark:border-slate-600 p-1 bg-amber-50 dark:bg-amber-950/40 font-bold">{t("SPEC")}</td>
                       {(currentReport.stepCuttingRr || []).map((c) => (
                         <td key={c.id} className="border-r border-black dark:border-slate-600 p-1 text-indigo-600 dark:text-cyan-400 font-black">
-                          <input
-                            type="text"
-                            value={c.spec}
-                            onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "spec", e.target.value)}
-                            className="w-full text-center bg-transparent outline-none font-black"
-                          />
+                          {isWorkerRecordingMode ? (
+                            <span className="font-mono font-black text-indigo-700 dark:text-cyan-300 text-xs px-2 py-0.5 rounded bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900/60 inline-block">
+                              🔒 {c.spec}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={c.spec}
+                              onChange={(e) => handleUpdateSpecValue("stepCuttingRr", c.id, "spec", e.target.value)}
+                              className="w-full text-center bg-transparent outline-none font-black"
+                            />
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -2796,34 +2941,50 @@ export const LegoWorkReportBuilder = ({
                         <tr key={row.id || idx} className="border-b border-black dark:border-slate-600">
                           {idx === 0 && (
                             <td rowSpan={4} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-20">
-                              <input
-                                type="text"
-                                value={t(currentReport.defectMatCat1Label ?? "압출소재불량")}
-                                onChange={(e) => handleUpdateField("defectMatCat1Label", e.target.value)}
-                                className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
-                                title="구분 분류명 수정"
-                              />
+                              {isWorkerRecordingMode ? (
+                                <span className="w-full text-center font-black text-xs block">
+                                  {t(currentReport.defectMatCat1Label ?? "압출소재불량")}
+                                </span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={t(currentReport.defectMatCat1Label ?? "압출소재불량")}
+                                  onChange={(e) => handleUpdateField("defectMatCat1Label", e.target.value)}
+                                  className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
+                                  title="구분 분류명 수정"
+                                />
+                              )}
                             </td>
                           )}
                           {idx === 4 && (
                             <td rowSpan={2} className="border-r border-black dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 p-1 font-black w-20">
-                              <input
-                                type="text"
-                                value={t(currentReport.defectMatCat2Label ?? "공정간불량")}
-                                onChange={(e) => handleUpdateField("defectMatCat2Label", e.target.value)}
-                                className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
-                                title="구분 분류명 수정"
-                              />
+                              {isWorkerRecordingMode ? (
+                                <span className="w-full text-center font-black text-xs block">
+                                  {t(currentReport.defectMatCat2Label ?? "공정간불량")}
+                                </span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={t(currentReport.defectMatCat2Label ?? "공정간불량")}
+                                  onChange={(e) => handleUpdateField("defectMatCat2Label", e.target.value)}
+                                  className="w-full text-center font-black text-xs bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
+                                  title="구분 분류명 수정"
+                                />
+                              )}
                             </td>
                           )}
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
-                            <input
-                              type="text"
-                              value={t(row.name || "")}
-                              onChange={(e) => handleUpdateSpecValue("defectMaterialMatrix", row.id, "name", e.target.value)}
-                              className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
-                              title="구분(불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="font-bold text-xs block px-1">{t(row.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(row.name || "")}
+                                onChange={(e) => handleUpdateSpecValue("defectMaterialMatrix", row.id, "name", e.target.value)}
+                                className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
+                                title="구분(불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-0.5 font-mono">
                             <input
@@ -2906,13 +3067,15 @@ export const LegoWorkReportBuilder = ({
                   <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
                     <span>🧱 {t("[블록 16] 불량소재구분 (Section A / B / C 3단면) (사진 16 대조)")}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleAddDefectSectionAbcRow}
-                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                  >
-                    {t("+ 항목 추가")}
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddDefectSectionAbcRow}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                    >
+                      {t("+ 항목 추가")}
+                    </button>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
@@ -2928,13 +3091,17 @@ export const LegoWorkReportBuilder = ({
                       {(currentReport.defectSectionAbc || []).map((row) => (
                         <tr key={row.id} className="border-b border-black dark:border-slate-600">
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
-                            <input
-                              type="text"
-                              value={t(row.name || "")}
-                              onChange={(e) => handleUpdateSpecValue("defectSectionAbc", row.id, "name", e.target.value)}
-                              className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
-                              title="구분(불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="font-bold text-xs block px-1">{t(row.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(row.name || "")}
+                                onChange={(e) => handleUpdateSpecValue("defectSectionAbc", row.id, "name", e.target.value)}
+                                className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
+                                title="구분(불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-1">
                             <input
@@ -2992,18 +3159,22 @@ export const LegoWorkReportBuilder = ({
                       {(currentReport.jointDivisions || ["FRT LH", "FRT RH", "RR LH", "RR RH"]).map((div, dIdx) => (
                         <tr key={dIdx} className="border-b border-black dark:border-slate-600">
                           <td className="border-r border-black dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 font-black">
-                            <input
-                              type="text"
-                              value={div || ""}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                const list = [...(currentReport.jointDivisions || ["FRT LH", "FRT RH", "RR LH", "RR RH"])];
-                                list[dIdx] = nextVal;
-                                setCurrentReport((prev) => ({ ...prev, jointDivisions: list }));
-                              }}
-                              className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
-                              title="구분명 수정 (클릭하여 직접 변경)"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full text-center font-black block">{div || ""}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={div || ""}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  const list = [...(currentReport.jointDivisions || ["FRT LH", "FRT RH", "RR LH", "RR RH"])];
+                                  list[dIdx] = nextVal;
+                                  setCurrentReport((prev) => ({ ...prev, jointDivisions: list }));
+                                }}
+                                className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
+                                title="구분명 수정 (클릭하여 직접 변경)"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-1">{currentReport.workerName || t("작업자")}</td>
                           <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{currentReport.startTime} ~ {currentReport.finishTime}</td>
@@ -3026,15 +3197,21 @@ export const LegoWorkReportBuilder = ({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
                     <span className="text-[10px] text-slate-400 block font-bold">{t("조인트 재료명 (Joint grade name) - 사진 4")}</span>
-                    <input
-                      type="text"
-                      value={currentReport.jointMaterial?.gradeName || ""}
-                      onChange={(e) => setCurrentReport((prev) => ({
-                        ...prev,
-                        jointMaterial: { ...prev.jointMaterial, gradeName: e.target.value }
-                      }))}
-                      className="font-black text-xs sm:text-sm w-full bg-transparent outline-none text-purple-700 dark:text-purple-300"
-                    />
+                    {isWorkerRecordingMode ? (
+                      <span className="font-black text-xs sm:text-sm text-purple-700 dark:text-purple-300 block py-1">
+                        🔒 {currentReport.jointMaterial?.gradeName || "SJ-4004B (EPDM)"}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={currentReport.jointMaterial?.gradeName || ""}
+                        onChange={(e) => setCurrentReport((prev) => ({
+                          ...prev,
+                          jointMaterial: { ...prev.jointMaterial, gradeName: e.target.value }
+                        }))}
+                        className="font-black text-xs sm:text-sm w-full bg-transparent outline-none text-purple-700 dark:text-purple-300"
+                      />
+                    )}
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800">
                     <span className="text-[10px] text-slate-400 block font-bold">{t("조인트 재료일자 (Joint material lot no)")}</span>
@@ -3111,7 +3288,11 @@ export const LegoWorkReportBuilder = ({
                     {(currentReport.injectionConditions || []).map((c) => (
                       <tr key={c.id} className="border-b border-black dark:border-slate-600">
                         <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">{t(c.name)}</td>
-                        <td className="border-r border-black dark:border-slate-600 p-1 text-purple-700 dark:text-purple-300 font-black">{c.spec}</td>
+                        <td className="border-r border-black dark:border-slate-600 p-1 text-purple-700 dark:text-purple-300 font-black">
+                          <span className="font-mono font-black text-purple-700 dark:text-purple-300 text-xs px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 inline-block">
+                            🔒 {c.spec}
+                          </span>
+                        </td>
                         <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.startVal}</td>
                         <td className="border-r border-black dark:border-slate-600 p-1 font-mono">{c.halfVal}</td>
                         <td className="p-1 font-mono">{c.finishVal}</td>
@@ -3131,14 +3312,16 @@ export const LegoWorkReportBuilder = ({
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                     <span>🧱 {t("[블록 7] 6. 공정불량 종합 매트릭스")}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleAddJointDefectRow}
-                    className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t("+ 불량 항목 추가")}</span>
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddJointDefectRow}
+                      className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t("+ 불량 항목 추가")}</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
@@ -3172,21 +3355,25 @@ export const LegoWorkReportBuilder = ({
                       {(currentReport.jointDefects || []).map((row, idx) => (
                         <tr key={idx} className="border-b border-black dark:border-slate-600">
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
-                            <input
-                              type="text"
-                              value={t(row.name || "")}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setCurrentReport((prev) => ({
-                                  ...prev,
-                                  jointDefects: (prev.jointDefects || []).map((r, i) =>
-                                    i === idx ? { ...r, name: nextVal } : r
-                                  )
-                                }));
-                              }}
-                              className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
-                              title="구분(공정불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="font-bold text-xs block px-1">{t(row.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(row.name || "")}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  setCurrentReport((prev) => ({
+                                    ...prev,
+                                    jointDefects: (prev.jointDefects || []).map((r, i) =>
+                                      i === idx ? { ...r, name: nextVal } : r
+                                    )
+                                  }));
+                                }}
+                                className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
+                                title="구분(공정불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-0.5 font-mono">{row.frtA || ""}</td>
                           <td className="border-r border-black dark:border-slate-600 p-0.5 font-mono">{row.frtB || ""}</td>
@@ -3214,13 +3401,15 @@ export const LegoWorkReportBuilder = ({
                   <span className="text-xs font-black text-emerald-900 dark:text-emerald-300">
                     🧱 {t("[블록 12] 도면 치수 & 중요 검사 현황")}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleAddDrawingSpecRow}
-                    className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
-                  >
-                    {t("+ 치수 행 추가")}
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddDrawingSpecRow}
+                      className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
+                    >
+                      {t("+ 치수 행 추가")}
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
@@ -3253,20 +3442,30 @@ export const LegoWorkReportBuilder = ({
                         {(currentReport.drawingSpecs || []).map((ds) => (
                           <tr key={ds.id} className="border-b border-black dark:border-slate-600">
                             <td className="border-r border-black dark:border-slate-600 p-1 font-bold bg-slate-50 dark:bg-slate-800">
-                              <input
-                                type="text"
-                                value={ds.section}
-                                onChange={(e) => handleUpdateSpecValue("drawingSpecs", ds.id, "section", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-bold"
-                              />
+                              {isWorkerRecordingMode ? (
+                                <span className="w-full text-center font-bold block">{ds.section}</span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={ds.section}
+                                  onChange={(e) => handleUpdateSpecValue("drawingSpecs", ds.id, "section", e.target.value)}
+                                  className="w-full text-center bg-transparent outline-none font-bold"
+                                />
+                              )}
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1 text-emerald-600 dark:text-emerald-400 font-black">
-                              <input
-                                type="text"
-                                value={ds.spec}
-                                onChange={(e) => handleUpdateSpecValue("drawingSpecs", ds.id, "spec", e.target.value)}
-                                className="w-full text-center bg-transparent outline-none font-black"
-                              />
+                              {isWorkerRecordingMode ? (
+                                <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-xs px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 inline-block">
+                                  🔒 {ds.spec}
+                                </span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={ds.spec}
+                                  onChange={(e) => handleUpdateSpecValue("drawingSpecs", ds.id, "spec", e.target.value)}
+                                  className="w-full text-center bg-transparent outline-none font-black"
+                                />
+                              )}
                             </td>
                             <td className="border-r border-black dark:border-slate-600 p-1 font-mono">
                               <input
@@ -3310,14 +3509,16 @@ export const LegoWorkReportBuilder = ({
                   <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                     <span>🧱 {t("[블록 14] 완제품 직각검사 종합 매트릭스")}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleAddMachineRow}
-                    className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs cursor-pointer flex items-center gap-1 shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t("+ 호기 라인 추가")}</span>
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddMachineRow}
+                      className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs cursor-pointer flex items-center gap-1 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t("+ 호기 라인 추가")}</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto border border-black dark:border-slate-600 rounded-xl">
@@ -3327,21 +3528,25 @@ export const LegoWorkReportBuilder = ({
                         <th colSpan={2} className="border-r border-black dark:border-slate-600 p-1 w-1/4">{t("구 분")}</th>
                         {(currentReport.machines || []).map((m) => (
                           <th key={m.id} className="border-r border-black dark:border-slate-600 p-1">
-                            <input
-                              type="text"
-                              value={m.name || ""}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setCurrentReport((prev) => ({
-                                  ...prev,
-                                  machines: (prev.machines || []).map((item) =>
-                                    item.id === m.id ? { ...item, name: nextVal } : item
-                                  )
-                                }));
-                              }}
-                              className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
-                              title="호기/구분명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full text-center font-black block">{m.name || ""}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={m.name || ""}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  setCurrentReport((prev) => ({
+                                    ...prev,
+                                    machines: (prev.machines || []).map((item) =>
+                                      item.id === m.id ? { ...item, name: nextVal } : item
+                                    )
+                                  }));
+                                }}
+                                className="w-full text-center font-black bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500"
+                                title="호기/구분명 수정"
+                              />
+                            )}
                           </th>
                         ))}
                       </tr>
@@ -3402,21 +3607,25 @@ export const LegoWorkReportBuilder = ({
                             </td>
                           )}
                           <td className="border-r border-black dark:border-slate-600 p-1 font-bold">
-                            <input
-                              type="text"
-                              value={t(ed.name || "")}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setCurrentReport((prev) => ({
-                                  ...prev,
-                                  extrusionDefects: (prev.extrusionDefects || []).map((item, i) =>
-                                    (item.id === ed.id || i === idx) ? { ...item, name: nextVal } : item
-                                  )
-                                }));
-                              }}
-                              className="w-full text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
-                              title="구분(불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full text-center font-bold block">{t(ed.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(ed.name || "")}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  setCurrentReport((prev) => ({
+                                    ...prev,
+                                    extrusionDefects: (prev.extrusionDefects || []).map((item, i) =>
+                                      (item.id === ed.id || i === idx) ? { ...item, name: nextVal } : item
+                                    )
+                                  }));
+                                }}
+                                className="w-full text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
+                                title="구분(불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           {(currentReport.machines || []).map((m) => (
                             <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono">0</td>
@@ -3433,21 +3642,25 @@ export const LegoWorkReportBuilder = ({
                             </td>
                           )}
                           <td className="border-r border-black dark:border-slate-600 p-1 font-bold">
-                            <input
-                              type="text"
-                              value={t(pd.name || "")}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setCurrentReport((prev) => ({
-                                  ...prev,
-                                  postDefectsList: (prev.postDefectsList || []).map((item, i) =>
-                                    (item.id === pd.id || i === idx) ? { ...item, name: nextVal } : item
-                                  )
-                                }));
-                              }}
-                              className="w-full text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
-                              title="구분(불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full text-center font-bold block">{t(pd.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(pd.name || "")}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  setCurrentReport((prev) => ({
+                                    ...prev,
+                                    postDefectsList: (prev.postDefectsList || []).map((item, i) =>
+                                      (item.id === pd.id || i === idx) ? { ...item, name: nextVal } : item
+                                    )
+                                  }));
+                                }}
+                                className="w-full text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500"
+                                title="구분(불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           {(currentReport.machines || []).map((m) => (
                             <td key={m.id} className="border-r border-black dark:border-slate-600 p-1 font-mono">0</td>
@@ -3469,13 +3682,15 @@ export const LegoWorkReportBuilder = ({
                   <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
                     <span>🧱 {t("[블록 17] FRT 직각검사 불량 집계표")}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleAddFrtRightAngleDefectRow}
-                    className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
-                  >
-                    {t("+ 불량 항목 추가")}
-                  </button>
+                  {!isWorkerRecordingMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddFrtRightAngleDefectRow}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10.5px] cursor-pointer"
+                    >
+                      {t("+ 불량 항목 추가")}
+                    </button>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-black dark:border-slate-600 text-xs text-center font-bold">
@@ -3491,13 +3706,17 @@ export const LegoWorkReportBuilder = ({
                       {(currentReport.frtRightAngleDefects || []).map((row) => (
                         <tr key={row.id} className="border-b border-black dark:border-slate-600">
                           <td className="border-r border-black dark:border-slate-600 p-1 text-left px-1 font-bold bg-slate-50 dark:bg-slate-800">
-                            <input
-                              type="text"
-                              value={t(row.name || "")}
-                              onChange={(e) => handleUpdateSpecValue("frtRightAngleDefects", row.id, "name", e.target.value)}
-                              className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
-                              title="구분(불량 항목)명 수정"
-                            />
+                            {isWorkerRecordingMode ? (
+                              <span className="w-full font-bold block px-1">{t(row.name || "")}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                value={t(row.name || "")}
+                                onChange={(e) => handleUpdateSpecValue("frtRightAngleDefects", row.id, "name", e.target.value)}
+                                className="w-full font-bold bg-transparent outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 px-1"
+                                title="구분(불량 항목)명 수정"
+                              />
+                            )}
                           </td>
                           <td className="border-r border-black dark:border-slate-600 p-1">
                             <input
@@ -3735,13 +3954,15 @@ export const LegoWorkReportBuilder = ({
                                 return (
                                   <th
                                     key={cIdx}
-                                    draggable
+                                    draggable={!isWorkerRecordingMode}
                                     onDragStart={(e) => {
+                                      if (isWorkerRecordingMode) return;
                                       e.stopPropagation();
                                       setDraggedCustomCol({ bKey, colIdx: cIdx });
                                       e.dataTransfer.effectAllowed = "move";
                                     }}
                                     onDragOver={(e) => {
+                                      if (isWorkerRecordingMode) return;
                                       e.preventDefault();
                                       e.stopPropagation();
                                       e.dataTransfer.dropEffect = "move";
@@ -3753,6 +3974,7 @@ export const LegoWorkReportBuilder = ({
                                       }
                                     }}
                                     onDragLeave={(e) => {
+                                      if (isWorkerRecordingMode) return;
                                       e.stopPropagation();
                                       if (
                                         dragOverCustomCol?.bKey === bKey &&
@@ -3762,6 +3984,7 @@ export const LegoWorkReportBuilder = ({
                                       }
                                     }}
                                     onDrop={(e) => {
+                                      if (isWorkerRecordingMode) return;
                                       e.preventDefault();
                                       e.stopPropagation();
                                       if (draggedCustomCol?.bKey === bKey) {
@@ -3771,45 +3994,52 @@ export const LegoWorkReportBuilder = ({
                                       setDragOverCustomCol(null);
                                     }}
                                     onDragEnd={(e) => {
+                                      if (isWorkerRecordingMode) return;
                                       e.stopPropagation();
                                       setDraggedCustomCol(null);
                                       setDragOverCustomCol(null);
                                     }}
-                                    className={`border-r border-black dark:border-slate-600 p-1.5 cursor-grab active:cursor-grabbing select-none transition-all ${
+                                    className={`border-r border-black dark:border-slate-600 p-1.5 select-none transition-all ${
+                                      !isWorkerRecordingMode ? "cursor-grab active:cursor-grabbing" : ""
+                                    } ${
                                       isColDragged ? "opacity-40 scale-95 " : ""
                                     }${
                                       isColDragOver ? "border-l-4 border-l-indigo-500 bg-indigo-500/20 " : ""
                                     }`}
-                                    title="마우스로 잡고 좌우로 드래그하여 열 순서를 변경할 수 있습니다"
+                                    title={!isWorkerRecordingMode ? "마우스로 잡고 좌우로 드래그하여 열 순서를 변경할 수 있습니다" : undefined}
                                   >
-                                    <span className="inline-flex items-center gap-1 w-full justify-center">
-                                      <span className="text-[10px] text-amber-700 dark:text-amber-300 print:hidden">⠿</span>
-                                      <input
-                                        type="text"
-                                        value={colName || ""}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => {
-                                          const nextCols = [...cols];
-                                          nextCols[cIdx] = e.target.value;
-                                          setCurrentReport((prev) => ({
-                                            ...prev,
-                                            customBlockTables: {
-                                              ...(prev.customBlockTables || {}),
-                                              [bKey]: {
-                                                columns: nextCols,
-                                                rows: rowsData
+                                    {isWorkerRecordingMode ? (
+                                      <span className="text-center font-bold block">{colName || ""}</span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 w-full justify-center">
+                                        <span className="text-[10px] text-amber-700 dark:text-amber-300 print:hidden">⠿</span>
+                                        <input
+                                          type="text"
+                                          value={colName || ""}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onChange={(e) => {
+                                            const nextCols = [...cols];
+                                            nextCols[cIdx] = e.target.value;
+                                            setCurrentReport((prev) => ({
+                                              ...prev,
+                                              customBlockTables: {
+                                                ...(prev.customBlockTables || {}),
+                                                [bKey]: {
+                                                  columns: nextCols,
+                                                  rows: rowsData
+                                                }
                                               }
-                                            }
-                                          }));
-                                        }}
-                                        className="text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500 max-w-[120px]"
-                                        title="열(구분) 명칭 수정"
-                                      />
-                                    </span>
+                                            }));
+                                          }}
+                                          className="text-center font-bold bg-transparent outline-none border-b border-dashed border-slate-400 focus:border-indigo-500 max-w-[120px]"
+                                          title="열(구분) 명칭 수정"
+                                        />
+                                      </span>
+                                    )}
                                   </th>
                                 );
                               })}
-                              <th className="p-1 w-10 print:hidden">삭제</th>
+                              {!isWorkerRecordingMode && <th className="p-1 w-10 print:hidden">삭제</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -3822,24 +4052,30 @@ export const LegoWorkReportBuilder = ({
                                       cIdx === 0 ? "bg-slate-50 dark:bg-slate-800 font-black" : ""
                                     }`}
                                   >
-                                    <input
-                                      type="text"
-                                      value={rowArr?.[cIdx] ?? ""}
-                                      onChange={(e) => handleUpdateCustomCell(rIdx, cIdx, e.target.value)}
-                                      className="w-full text-center bg-transparent outline-none font-bold"
-                                    />
+                                    {isWorkerRecordingMode && cIdx === 0 ? (
+                                      <span className="w-full text-center block font-black">{rowArr?.[0] ?? ""}</span>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        value={rowArr?.[cIdx] ?? ""}
+                                        onChange={(e) => handleUpdateCustomCell(rIdx, cIdx, e.target.value)}
+                                        className="w-full text-center bg-transparent outline-none font-bold"
+                                      />
+                                    )}
                                   </td>
                                 ))}
-                                <td className="p-1 print:hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteCustomRow(rIdx)}
-                                    className="text-rose-500 hover:text-rose-700 text-xs font-black px-1 cursor-pointer"
-                                    title="행 삭제"
-                                  >
-                                    ✕
-                                  </button>
-                                </td>
+                                {!isWorkerRecordingMode && (
+                                  <td className="p-1 print:hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCustomRow(rIdx)}
+                                      className="text-rose-500 hover:text-rose-700 text-xs font-black px-1 cursor-pointer"
+                                      title="행 삭제"
+                                    >
+                                      ✕
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>
@@ -3847,7 +4083,7 @@ export const LegoWorkReportBuilder = ({
                       </div>
                     </div>,
                     {
-                      canAddRow: true,
+                      canAddRow: !isWorkerRecordingMode,
                       onAddRow: handleAddCustomRow,
                       customBadge: cb.badge || `사진 ${18 + cbIdx} (AI분석)`
                     }
