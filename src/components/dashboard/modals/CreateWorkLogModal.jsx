@@ -19,6 +19,7 @@ import {
   JAEYUL_EQUIPMENT_CATEGORIES
 } from "../../WorkerDashboard";
 import LegoWorkReportBuilder from "../../lego/LegoWorkReportBuilder";
+import { getAssignedTemplateForWorker } from "../../../services/workReportTemplateService";
 
 export default function CreateWorkLogModal({
   isModalOpen,
@@ -89,15 +90,48 @@ export default function CreateWorkLogModal({
   handleConfirmQualityUpload
 }) {
   const [workLogMode, setWorkLogMode] = useState("STANDARD"); // "STANDARD" | "LEGO"
+  const [assignedTemplateData, setAssignedTemplateData] = useState(null);
 
   useEffect(() => {
-    const handleOpenLego = () => {
+    const handleOpenLego = (e) => {
       setIsModalOpen(true);
       setWorkLogMode("LEGO");
+      if (e?.detail?.template) {
+        setAssignedTemplateData(e.detail.template);
+      } else {
+        const tpl = getAssignedTemplateForWorker({
+          company: e?.detail?.company || "BURIMTECH",
+          project: e?.detail?.project || "BURIMTECH"
+        });
+        if (tpl) setAssignedTemplateData(tpl);
+      }
     };
     window.addEventListener("open-lego-work-report", handleOpenLego);
     return () => window.removeEventListener("open-lego-work-report", handleOpenLego);
   }, [setIsModalOpen]);
+
+  // 🌟 부림텍 등 외주가공 공정 작업자 진입 시 관리자가 지정한 5대 공정 양식 자동 로드
+  useEffect(() => {
+    if (isModalOpen) {
+      const comp = String(formData?.company || currentProfile?.company || "").trim();
+      const isBurim =
+        comp.includes("부림") ||
+        currentProfile?.name === "최현영" ||
+        currentProfile?.name === "김동훈" ||
+        String(currentProfile?.id || "").startsWith("hal_br");
+      if (isBurim) {
+        const tpl = getAssignedTemplateForWorker({
+          company: "BURIMTECH",
+          project: "BURIMTECH",
+          processId: formData?.assignedProcess || "외주가공"
+        });
+        if (tpl) {
+          setAssignedTemplateData(tpl);
+          setWorkLogMode("LEGO");
+        }
+      }
+    }
+  }, [isModalOpen, formData?.company, formData?.assignedProcess, currentProfile]);
 
   if (!isModalOpen) return null;
 
@@ -129,7 +163,7 @@ export default function CreateWorkLogModal({
                     className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-md flex items-center gap-1.5 cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>🧩 레고블럭 작업일보 (17대 실물 블록 조합)</span>
+                    <span>🧩 5대공정 지정 양식 일보 ({assignedTemplateData?.title || "17대 블록 조합"})</span>
                   </button>
                 </div>
 
@@ -144,7 +178,28 @@ export default function CreateWorkLogModal({
               <LegoWorkReportBuilder
                 initialWorkerName={workerFullName}
                 initialWorkDate={formData.date}
-                onSaveWorkReport={() => {
+                initialTemplateData={assignedTemplateData}
+                isWorkerRecordingMode={Boolean(assignedTemplateData)}
+                onSaveWorkReport={async (reportPayload) => {
+                  try {
+                    if (handleSaveLog) {
+                      const synthLog = {
+                        ...formData,
+                        title: reportPayload?.title || "부림텍 외주가공 작업일보",
+                        writer: workerFullName || reportPayload?.workerName || "최현영",
+                        company: "부림텍",
+                        plant: "한림공장",
+                        assignedProcess: reportPayload?.processName || "외주가공",
+                        actualQuantity: reportPayload?.totals?.genuine || 0,
+                        defectCount: reportPayload?.totals?.bad || 0,
+                        downtimeMinutes: 0,
+                        workDetails: `[5대공정양식: ${reportPayload?.title || "작업일보"}] 양품 ${reportPayload?.totals?.genuine || 0} / 불량 ${reportPayload?.totals?.bad || 0}`,
+                        legoConfig: reportPayload?.legoConfig || null,
+                        assignedTemplateId: assignedTemplateData?.id || null
+                      };
+                      await handleSaveLog(synthLog);
+                    }
+                  } catch (e) {}
                   setIsModalOpen(false);
                 }}
                 isEmbedded={true}

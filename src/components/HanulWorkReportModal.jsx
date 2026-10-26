@@ -60,7 +60,8 @@ import {
   getLocalWorkReportTemplates,
   subscribeHanulTemplateAssignments,
   getLocalHanulTemplateAssignments,
-  buildHanulProcessSlotKey
+  buildHanulProcessSlotKey,
+  getAssignedTemplateForWorker
 } from "../services/workReportTemplateService";
 
 // 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
@@ -431,17 +432,33 @@ export const HanulWorkReportModal = ({
         title: existingWorkerReport.processName || existingWorkerReport.title || "작업일보",
         carModel: existingWorkerReport.carModel || project,
         partName: existingWorkerReport.partName || "G/RUN",
-        processName: existingWorkerReport.processId || processId || "외주가공",
+        processName: existingWorkerReport.processId || processId || "소재준비",
         legoConfig: existingWorkerReport.legoConfig,
         isExistingDraft: true
       };
     }
-    // 2순위: 관리자가 지정한 슬롯 템플릿
-    const slots = templateAssignments?.processSlots || {};
-    const tplId = slots[activeSlotKey];
-    if (!tplId) return null;
-    return (allCatalogTemplates || []).find((t) => t.id === tplId) || null;
-  }, [existingWorkerReport, templateAssignments, activeSlotKey, allCatalogTemplates, project, processId]);
+    // 2순위: 관리자가 지정한 슬롯 템플릿 (8단계 다단계 티어 폴백: 날짜 변경/재로그인 시에도 절대 리셋되지 않음)
+    return getAssignedTemplateForWorker({
+      company: companyMode,
+      project,
+      processId,
+      subProcess,
+      jointType,
+      inspectionType,
+      allTemplates: allCatalogTemplates,
+      assignments: templateAssignments
+    });
+  }, [
+    existingWorkerReport,
+    templateAssignments,
+    allCatalogTemplates,
+    companyMode,
+    project,
+    processId,
+    subProcess,
+    jointType,
+    inspectionType
+  ]);
 
   const isAssignedTemplateMode = Boolean(activeAssignedTemplate) && !forceLegacyMode;
 

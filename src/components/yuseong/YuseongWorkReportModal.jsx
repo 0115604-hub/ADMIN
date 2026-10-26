@@ -32,6 +32,8 @@ import {
   saveYuseongWorkReport,
   exportYuseongReportToExcel
 } from "../../services/yuseongWorkReportService";
+import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
+import { getAssignedTemplateForWorker } from "../../services/workReportTemplateService";
 
 export const YuseongWorkReportModal = ({
   isOpen,
@@ -56,6 +58,23 @@ export const YuseongWorkReportModal = ({
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("17:00");
   const [machineNo, setMachineNo] = useState("1호기");
+  const [isLegoMode, setIsLegoMode] = useState(false);
+
+  // 🌟 유성 관리자가 지정한 5대 공정 작업일보 양식 (JK1, CE1, DT) 자동 연동
+  const assignedTemplate = useMemo(() => {
+    return getAssignedTemplateForWorker({
+      company: "YUSEONG",
+      project,
+      processId,
+      subProcess
+    });
+  }, [project, processId, subProcess]);
+
+  useEffect(() => {
+    if (isOpen && assignedTemplate && !editReport) {
+      setIsLegoMode(true);
+    }
+  }, [isOpen, assignedTemplate, editReport]);
   const [dollyNo, setDollyNo] = useState("");
 
   // Material & Blade
@@ -503,9 +522,64 @@ export const YuseongWorkReportModal = ({
                 </div>
               </div>
             </div>
+          ) : isLegoMode && assignedTemplate ? (
+            /* 🌟 5대 공정 지정 레고블럭 양식 기록 화면 */
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-700/60 flex items-center justify-between text-white flex-wrap gap-2">
+                <div>
+                  <div className="text-xs font-black flex items-center gap-1.5 text-indigo-300">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>5대 공정 지정 작업일보 양식 적용</span>
+                  </div>
+                  <div className="text-sm font-black text-white mt-0.5">
+                    {assignedTemplate.title} ({project})
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsLegoMode(false)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-600 transition cursor-pointer"
+                >
+                  ↩️ 기본 수기양식으로 전환
+                </button>
+              </div>
+
+              <LegoWorkReportBuilder
+                initialTemplateData={assignedTemplate}
+                isWorkerRecordingMode={true}
+                initialWorkerName={customWorker.trim() || worker}
+                initialWorkDate={date}
+                onSaveWorkReport={async (reportPayload) => {
+                  try {
+                    await saveYuseongWorkReport({
+                      ...reportPayload,
+                      project,
+                      worker: customWorker.trim() || worker,
+                      date
+                    });
+                  } catch (e) {}
+                  onClose();
+                }}
+                isEmbedded={true}
+              />
+            </div>
           ) : (
             /* 🌟 5단계: 유성 3대 아이템 공정별 작업일보 작성 화면 (JK1, CE1, DT Hood) */
             <div className="space-y-3.5">
+              {assignedTemplate && (
+                <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-xs font-black text-indigo-900 dark:text-indigo-200">
+                    🧩 관리자가 지정한 5대 공정 양식: <strong>{assignedTemplate.title}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsLegoMode(true)}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs transition cursor-pointer"
+                  >
+                    지정 양식으로 전환 ➔
+                  </button>
+                </div>
+              )}
               {/* 🚗 1. 차종 선택 (JK1 Part'g, CE1 Part'g, DT Hood) */}
               <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2">
                 <span className="text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-1.5">

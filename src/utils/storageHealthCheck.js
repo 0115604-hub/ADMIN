@@ -21,7 +21,10 @@ export const runStorageHealthCheck = () => {
       { key: "admin_user_profile", type: "object" },
       { key: "factory_extrusion_custom_bom_v1", type: "object" },
       { key: "oryuk_4m_absence_logs_v1", type: "object" },
-      { key: "operator_upload_history_clean_v2", type: "array" }
+      { key: "operator_upload_history_clean_v2", type: "array" },
+      { key: "oruk_work_report_templates_v2", type: "array" },
+      { key: "hanul_work_report_template_assignments_v1", type: "object" },
+      { key: "oruk_custom_lego_blocks_v1", type: "array" }
     ];
 
     criticalKeys.forEach(({ key, type }) => {

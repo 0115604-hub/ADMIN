@@ -51,6 +51,7 @@ import { getKSTDateString } from "../../utils/dateUtils";
 import { useModalHistory } from "../../utils/modalHistory";
 import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
 import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel";
+import { getAssignedTemplateForWorker } from "../../services/workReportTemplateService";
 
 // 치수 공차 실시간 판정 헬퍼
 const isDimOk = (val, target, tol) => {
@@ -85,6 +86,24 @@ export const MachiningWorkReportModal = ({
   const [machineNo, setMachineNo] = useState("");
   const [dollyNo, setDollyNo] = useState("");
   const [isLegoMode, setIsLegoMode] = useState(false);
+
+  // 🌟 관리자가 5대 공정에 지정한 작업일보 양식 자동 로드 (날짜/재로그인 무관 영구 유지)
+  const assignedTemplate = useMemo(() => {
+    return getAssignedTemplateForWorker({
+      company: "ORYUK",
+      project,
+      processId,
+      subProcess,
+      jointType,
+      inspectionType
+    });
+  }, [project, processId, subProcess, jointType, inspectionType]);
+
+  useEffect(() => {
+    if (isOpen && assignedTemplate && !editReport) {
+      setIsLegoMode(true);
+    }
+  }, [isOpen, assignedTemplate, editReport]);
 
   // Lot tracking
   const [materialLot, setMaterialLot] = useState({
@@ -649,6 +668,8 @@ export const MachiningWorkReportModal = ({
                 <div className="p-1 sm:p-2">
                   <LegoWorkReportBuilder
                     initialPresetId={processId === "소재준비" ? "REPORT_CUTTING" : processId === "조인트" ? "REPORT_JOINT" : processId === "검사" ? "REPORT_RIGHT_ANGLE" : "REPORT_CUTTING"}
+                    initialTemplateData={assignedTemplate}
+                    isWorkerRecordingMode={Boolean(assignedTemplate)}
                     initialWorkerName={worker}
                     initialWorkDate={date}
                     onSaveWorkReport={() => {
