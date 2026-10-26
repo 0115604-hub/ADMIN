@@ -481,8 +481,8 @@ export function normalizeApprovalDoc(d) {
   };
 }
 
-// Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-export function isApprovalDocPending(doc) {
+// ⭐ 전사 진행중(미결) 여부 순수 판정 (사용자 권한 무관, 회사 전체 문서 기준)
+export function isApprovalDocInProgress(doc) {
   if (!doc) return false;
   if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
   const s = doc.status || "IN_PROGRESS";
@@ -491,6 +491,29 @@ export function isApprovalDocPending(doc) {
     return false;
   }
   return true;
+}
+
+// Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
+// ⭐ 사용자별 결재 대기 판정:
+// 1. 프로필 미지정 또는 최고 경영진(권태형 대표이사, 최미영 전무, ADMIN): 전사 미결 목록 전체
+// 2. 공장 총괄/부서 책임자(이명재 이사, 김동욱 책임 등): 해당 사용자에게 실제로 결재 권한 및 차례가 있는 문서만 정확히 판정
+export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
+  if (!isApprovalDocInProgress(doc)) return false;
+
+  // 1. 최고 경영진/ADMIN은 전사 미결 문서 모두 관리
+  if (!currentProfile || isAdmin || currentProfile.role === "ADMIN") {
+    return true;
+  }
+
+  const userName = currentProfile.name || "";
+  const userTitle = currentProfile.title || "";
+  if (userName === "권태형" || userName === "최미영" || userTitle.includes("대표") || userTitle.includes("전무")) {
+    return true;
+  }
+
+  // 2. 개별 직급/공장 총괄자: 본인이 실제로 결재(승인)해야 할 차례인지 검증
+  const perm = checkApprovalPermission(doc, currentProfile, isAdmin);
+  return Boolean(perm && perm.canApprove);
 }
 
 export function isApprovalDocHold(doc) {
@@ -787,7 +810,7 @@ export function subscribeApprovalDocs(onUpdate) {
 }
 
 // Check Approval Role Permission
-export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
+export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
   if (!docItem || !docItem.steps) {
     return { canApprove: false, reason: "문서 정보가 없습니다." };
   }
@@ -903,19 +926,13 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 5. Step 4: 대표 / 승인 (대표이사 이명재 / 김동욱 책임 / 대표이사 권태형 / 전무 최미영)
+  // 5. Step 4: 대표 / 승인 (권태형 대표이사, 최미영 전무, 지정 결재자)
   if (stepRole === "대표" || stepRole === "승인") {
-    if (
-      userTitle === "대표" ||
-      userTitle === "대표이사" ||
-      userTitle === "전무" ||
-      userName === "권태형" ||
-      userName === "최미영" ||
-      userName === "이명재" ||
-      userName === "김동욱" ||
-      userName === "대표이사" ||
-      isAdmin
-    ) {
+    const isTargetDirect = activeStep.name && (activeStep.name === userName || activeStep.name.includes(userName) || userName.includes(activeStep.name));
+    const priorApprovedBySelf = Array.isArray(docItem.steps) && docItem.steps.slice(0, activeStepIdx).some((st) => st?.status === "APPROVED" && st?.name && (st.name === userName || st.name.includes(userName)));
+
+    // 최고 경영진 권한자 (권태형 대표이사, 최미영 전무, ADMIN)
+    if (isAdmin || userName === "권태형" || userName === "최미영" || userTitle === "대표" || userTitle === "대표이사" || userTitle === "전무") {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
@@ -924,9 +941,21 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
         approverName: userName || "권태형"
       };
     }
+
+    // 본인이 지정된 결재자이고 이전 단계에서 이미 결재한 경우가 아닌 경우
+    if (isTargetDirect && !priorApprovedBySelf) {
+      return {
+        canApprove: true,
+        stepIndex: activeStepIdx,
+        stepRole,
+        isRepresentative: true,
+        approverName: userName
+      };
+    }
+
     return {
       canApprove: false,
-      reason: "대표/전무(경영진/최종결재자) 승인 권한이 필요합니다."
+      reason: `[대표이사] 최종 승인 권한이 필요합니다. (지정 결재자: ${activeStep.name || "권태형 대표이사"})`
     };
   }
 

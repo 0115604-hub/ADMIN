@@ -54,6 +54,7 @@ import {
   syncPlantOvertimeToApprovalBox,
   syncAllOvertimeReportsToApprovalBox,
   isApprovalDocPending,
+  isApprovalDocInProgress,
   isApprovalDocHold,
   isApprovalDocApproved,
   isApprovalDocRejected,
@@ -156,7 +157,12 @@ export const ElectronicApprovalView = ({
   const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, GENERAL
   const [selectedTab, setSelectedTab] = useState("ALL"); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlant, setSelectedPlant] = useState("ALL");
+  const [selectedPlant, setSelectedPlant] = useState(() => {
+    if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
+      return "ALL";
+    }
+    return currentProfile?.plant || "ALL";
+  });
 
   // Modals
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
@@ -441,6 +447,7 @@ export const ElectronicApprovalView = ({
     const fourMPending = fourMList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
     const pendingTotal = overtimePending + fourMPending + generalPending;
+    const companyInProgressTotal = plantScoped.filter(isApprovalDocInProgress).length;
     const approvedTotal = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
     const holdTotal = plantScoped.filter(isApprovalDocHold).length;
     const rejectedTotal = plantScoped.filter(isApprovalDocRejected).length;
@@ -451,6 +458,7 @@ export const ElectronicApprovalView = ({
       fourM,
       general,
       pendingTotal,
+      companyInProgressTotal,
       overtimePending,
       fourMPending,
       generalPending,
@@ -955,11 +963,18 @@ export const ElectronicApprovalView = ({
             <div className="flex items-center justify-between text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-1 px-0.5">
               <span className="flex items-center gap-1 font-black">
                 <Clock className="w-3.5 h-3.5" />
-                <span>미결 결재함</span>
+                <span>{isAdmin ? "미결 결재함" : "내 결재 대기"}</span>
               </span>
-              <span className="font-mono font-black text-xs text-rose-600 dark:text-rose-400">
-                {categoryCounts.pendingTotal}건
-              </span>
+              <div className="flex items-center gap-1">
+                <span className="font-mono font-black text-xs text-rose-600 dark:text-rose-400">
+                  {categoryCounts.pendingTotal}건
+                </span>
+                {!isAdmin && categoryCounts.companyInProgressTotal > categoryCounts.pendingTotal && (
+                  <span className="text-[9.5px] font-normal text-slate-400 font-mono">
+                    (전사 {categoryCounts.companyInProgressTotal})
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* 삼분할 뱃지 */}
