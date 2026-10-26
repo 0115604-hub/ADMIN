@@ -66,20 +66,61 @@ export const POSITIONS_LIST = [
   "대표이사"
 ];
 
-// ⭐ 표준 국적 목록 (필리핀, 베트남, 태국, 스리랑카, 우즈벡, 인도네시아, 대한민국, 네팔, 캄보디아, 몽골, 기타)
+// ⭐ 표준 국적 목록 (필리핀, 베트남, 태국, 스리랑카, 우즈벡, 인도네시아, 미얀마, 대한민국, 네팔, 캄보디아, 몽골, 기타)
 export const NATIONALITY_LIST = [
   { code: "대한민국", label: "🇰🇷 대한민국", flag: "🇰🇷" },
-  { code: "필리핀", label: "🇵🇭 필리핀", flag: "🇵🇭" },
-  { code: "베트남", label: "🇻🇳 베트남", flag: "🇻🇳" },
   { code: "태국", label: "🇹🇭 태국", flag: "🇹🇭" },
+  { code: "인도네시아", label: "🇮🇩 인도네시아", flag: "🇮🇩" },
+  { code: "베트남", label: "🇻🇳 베트남", flag: "🇻🇳" },
+  { code: "미얀마", label: "🇲🇲 미얀마", flag: "🇲🇲" },
+  { code: "필리핀", label: "🇵🇭 필리핀", flag: "🇵🇭" },
   { code: "스리랑카", label: "🇱🇰 스리랑카", flag: "🇱🇰" },
   { code: "우즈벡", label: "🇺🇿 우즈벡 (우즈베키스탄)", flag: "🇺🇿" },
-  { code: "인도네시아", label: "🇮🇩 인도네시아", flag: "🇮🇩" },
   { code: "네팔", label: "🇳🇵 네팔", flag: "🇳🇵" },
   { code: "캄보디아", label: "🇰🇭 캄보디아", flag: "🇰🇭" },
   { code: "몽골", label: "🇲🇳 몽골", flag: "🇲🇳" },
   { code: "기타", label: "🌐 기타 (직접 입력)", flag: "🌐" }
 ];
+
+// ⭐ 한울 25명 현장작업자 국적 초기 매핑 (인사카드 미저장 시 기본값 제공)
+export const HANUL_WORKER_DEFAULT_NATIONALITY = {
+  // 🇹🇭 태국 (5명)
+  "지라완": "태국",
+  "수파따": "태국",
+  "니사낫": "태국",
+  "찬티마": "태국",
+  "아이린": "태국",
+
+  // 🇮🇩 인도네시아 (4명)
+  "와히드": "인도네시아",
+  "무피드": "인도네시아",
+  "위간": "인도네시아",
+  "알프레도": "인도네시아",
+
+  // 🇻🇳 베트남 (5명)
+  "마크": "베트남",
+  "맥리": "베트남",
+  "에일리": "베트남",
+  "마이카": "베트남",
+  "언": "베트남",
+
+  // 🇲🇲 미얀마 (4명)
+  "마틴": "미얀마",
+  "새드릭": "미얀마",
+  "프랭클린": "미얀마",
+  "에릭": "미얀마",
+
+  // 🇵🇭 필리핀 (5명)
+  "마이클": "필리핀",
+  "로렉스": "필리핀",
+  "레이놀드": "필리핀",
+  "조제인": "필리핀",
+  "데이브": "필리핀",
+
+  // 🇰🇷 대한민국 (2명)
+  "박종미": "대한민국",
+  "박민정": "대한민국"
+};
 
 export const getNationalityMeta = (code) => {
   if (!code) return NATIONALITY_LIST[0];
@@ -631,8 +672,12 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     ? getInspectorGradeMeta(merged.inspectorGrade).grade
     : (defaultMainProcess === "검사" ? "A등급 (정검사원)" : "");
   const inspectorCertDate = merged.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
-  // 국적 (기본값: 대한민국)
-  const nationality = merged.nationality || worker.nationality || "대한민국";
+  // 국적 (저장된 카드 > 작업자 프로필 > 한울 국적 매핑 > 기본값: 대한민국)
+  const defaultNat =
+    (cleanComp === "한울" || company.includes("한울") || isPartnerCompany(name)) && HANUL_WORKER_DEFAULT_NATIONALITY[name]
+      ? HANUL_WORKER_DEFAULT_NATIONALITY[name]
+      : (HANUL_WORKER_DEFAULT_NATIONALITY[name] || "대한민국");
+  const nationality = merged.nationality || worker.nationality || defaultNat;
   const nationalityOther = merged.nationalityOther || worker.nationalityOther || "";
   // 작업자 사진
   const photoUrl = merged.photoUrl || worker.photoUrl || "";

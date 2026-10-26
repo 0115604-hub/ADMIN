@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   Factory,
   ShieldAlert,
@@ -42,6 +42,14 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import {
+  getWorkLogText,
+  getCurrentWorkLogLanguage,
+  setWorkLogLanguage,
+  SUPPORTED_LANGUAGES,
+  getWorkerLanguageInfo,
+  syncWorkerLanguage
+} from "../../services/workLogI18nService";
 
 const HanulWorkReportModal = lazy(() =>
   import("../HanulWorkReportModal").then((m) => ({
@@ -51,6 +59,7 @@ const HanulWorkReportModal = lazy(() =>
 
 export const HanulWorkerDashboardView = () => {
   const { currentProfile } = useAuth();
+  const [currentLang, setCurrentLang] = useState(() => getCurrentWorkLogLanguage());
   const [qualityIssues, setQualityIssues] = useState(() => getLocalHanulQualityIssues());
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [workReports, setWorkReports] = useState(() => getLocalHanulWorkReports());
@@ -66,6 +75,30 @@ export const HanulWorkerDashboardView = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalProject, setReportModalProject] = useState("9BQC");
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+
+  // 🌐 언어 변경 이벤트 리스너
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      if (e?.detail?.lang) {
+        setCurrentLang(e.detail.lang);
+      }
+    };
+    window.addEventListener("factory_language_changed", handleLangChange);
+    return () => window.removeEventListener("factory_language_changed", handleLangChange);
+  }, []);
+
+  // 🌍 현재 로그인한 현장작업자 국적 및 모국어 정보
+  const workerLangInfo = useMemo(() => {
+    return getWorkerLanguageInfo(currentProfile);
+  }, [currentProfile]);
+
+  // 프로필 변경 시 해당 근로자의 국적(태국, 인도네시아, 베트남, 미얀마 등) 언어로 자동 전환
+  useEffect(() => {
+    if (currentProfile) {
+      const synched = syncWorkerLanguage(currentProfile);
+      setCurrentLang(synched);
+    }
+  }, [currentProfile]);
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || currentProfile?.position || (
@@ -234,7 +267,7 @@ export const HanulWorkerDashboardView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto min-w-0">
       {/* ========================================================================= */}
-      {/* 🏭 상단 바: 초·중·종물 기록 여부만 표출 (6단계 라벨 및 일보 작성 뱃지 제거) */}
+      {/* 🏭 상단 바: 초·중·종물 기록 여부 + 4개국어 자동번역 뱃지 및 언어선택기 */}
       {/* ========================================================================= */}
       <div className="bg-slate-900/90 rounded-2xl shadow-lg border border-slate-800 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-3 min-w-0">
@@ -245,38 +278,114 @@ export const HanulWorkerDashboardView = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-black text-white leading-tight">
-                한림공장 (주)한울 외주가공
+                {getWorkLogText("hanul_plant_title", currentLang)}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-600/30 text-purple-300 border border-purple-400/40">
-                [작업자] {currentProfile?.name || "한울"} {displayTitle}
+                [{getWorkLogText("worker", currentLang)}] {currentProfile?.name || "한울"} {displayTitle}
               </span>
 
               {/* 🔥 초·중·종물 기록 여부 뱃지만 표출 */}
               {sampleStatus.isComplete ? (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/80 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>✓ 초·중·종물 기록 완료</span>
+                  <span>✓ {getWorkLogText("sample_complete", currentLang)}</span>
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-950 text-amber-300 border border-amber-500/80 flex items-center gap-1.5 shadow-sm shadow-amber-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                  <span>⏳ 초·중·종물 기록 진행중 (종물 대기)</span>
+                  <span>⏳ {getWorkLogText("sample_pending", currentLang)}</span>
                 </span>
               )}
             </div>
 
-            <p className="text-xs text-slate-400 font-medium mt-1 truncate">
-              품질이슈 공유판의 최신 불량 및 표준 조치사항을 숙지한 후 작업을 개시하세요.
+            {/* 🌐 국적 기반 자동 번역 안내 문구 */}
+            <p className="text-xs text-slate-300 font-medium mt-1 truncate flex items-center gap-1.5">
+              <span>{workerLangInfo.flag}</span>
+              <span>{getWorkLogText("auto_translated_notice", currentLang)}</span>
             </p>
           </div>
         </div>
 
-        <div className="text-right shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-1">
-          <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
-          <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
-            {sampleStatus.summary}
-          </span>
+        {/* 우측: 날짜 & 국적/언어 뱃지 및 변경 드롭다운 */}
+        <div className="shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-mono font-bold text-slate-400">{todayStr}</span>
+            <span className={`text-[11px] font-black font-mono ${sampleStatus.isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+              {sampleStatus.summary}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {workerLangInfo.isAutoTranslated && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/80 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <span>{getWorkLogText("auto_translated_badge", currentLang)}</span>
+              </span>
+            )}
+            <select
+              value={currentLang}
+              onChange={(e) => {
+                setWorkLogLanguage(e.target.value);
+                setCurrentLang(e.target.value);
+              }}
+              className="px-2 py-1 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 focus:border-indigo-400 cursor-pointer shadow-xs"
+              title="언어 변경"
+            >
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.nativeName} ({l.country || l.name})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🚀 현장 작업일보 및 TPM 점검 즉시 작성 버튼 바 (9BQC / LQ2) */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => handleOpenReportModal("9BQC")}
+          className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center justify-between transition-all active:scale-98 cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-xl bg-white/20 shrink-0 group-hover:scale-110 transition-transform">
+              <Car className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-left min-w-0">
+              <div className="font-black text-sm sm:text-base leading-tight truncate">
+                {getWorkLogText("write_9bqc_report", currentLang)}
+              </div>
+              <div className="text-[11px] text-indigo-200 font-medium truncate mt-0.5">
+                {getWorkLogText("tpm_sheet_subtitle", currentLang)}
+              </div>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleOpenReportModal("LQ2")}
+          className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-md shadow-purple-600/30 flex items-center justify-between transition-all active:scale-98 cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-xl bg-white/20 shrink-0 group-hover:scale-110 transition-transform">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-left min-w-0">
+              <div className="font-black text-sm sm:text-base leading-tight truncate">
+                {getWorkLogText("write_lq2_report", currentLang)}
+              </div>
+              <div className="text-[11px] text-purple-200 font-medium truncate mt-0.5">
+                LQ2 Door Harness Sub-assy 외주가공 작업일보
+              </div>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -387,7 +496,7 @@ export const HanulWorkerDashboardView = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-black text-sm sm:text-base text-rose-600 dark:text-rose-400">
-                  🚨 (주)한울 9BQC / LQ2 품질이슈 공유판
+                  🚨 {getWorkLogText("quality_issues_board", currentLang)}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
                   {activeQualityCount}건 진행중
@@ -416,9 +525,9 @@ export const HanulWorkerDashboardView = () => {
         <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
             {[
-              { id: "ACTIVE", label: "🚨 진행중 (조치중)" },
-              { id: "RESOLVED", label: "✅ 조치완료" },
-              { id: "ALL", label: "전체보기" }
+              { id: "ACTIVE", label: `🚨 ${getWorkLogText("status_in_progress", currentLang)}` },
+              { id: "RESOLVED", label: `✅ ${getWorkLogText("status_resolved", currentLang)}` },
+              { id: "ALL", label: getWorkLogText("view_all", currentLang) }
             ].map((st) => (
               <button
                 key={st.id}
@@ -499,7 +608,7 @@ export const HanulWorkerDashboardView = () => {
                       <span>작성: {issue.author || "한울 관리자"}</span>
                       {isAcked ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300">
-                          ✓ 숙지완료
+                          {getWorkLogText("marked_as_read", currentLang)}
                         </span>
                       ) : (
                         <button
@@ -507,7 +616,7 @@ export const HanulWorkerDashboardView = () => {
                           onClick={() => handleAcknowledge(issue.id)}
                           className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10.5px] shadow-xs cursor-pointer active:scale-95"
                         >
-                          숙지 완료
+                          {getWorkLogText("mark_as_read", currentLang)}
                         </button>
                       )}
                     </div>
@@ -604,7 +713,7 @@ export const HanulWorkerDashboardView = () => {
           <div className="flex items-center gap-2">
             <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-              <span>한울 외주가공 (9BQC • LQ2) 작업일보 등록 내역</span>
+              <span>{getWorkLogText("work_report_records", currentLang)}</span>
             </h3>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
               총 {filteredWorkReports.length}건
@@ -622,7 +731,7 @@ export const HanulWorkerDashboardView = () => {
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                내 일보만
+                {getWorkLogText("my_reports", currentLang)}
               </button>
               <button
                 type="button"
@@ -633,7 +742,7 @@ export const HanulWorkerDashboardView = () => {
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                한울 전체
+                {getWorkLogText("all_reports", currentLang)}
               </button>
             </div>
           </div>
@@ -644,14 +753,14 @@ export const HanulWorkerDashboardView = () => {
           <table className="w-full text-xs text-left border-collapse min-w-[750px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
-                <th className="py-1 px-3 w-[11%] text-center">일자</th>
+                <th className="py-1 px-3 w-[11%] text-center">{getWorkLogText("date", currentLang)}</th>
                 <th className="py-1 px-3 w-[11%] text-center">프로젝트/라인</th>
-                <th className="py-1 px-3 w-[10%]">공정</th>
-                <th className="py-1 px-3 w-[9%]">작업자</th>
-                <th className="py-1 px-3 w-[20%] text-center">생산 실적 (양품/불량/총생산)</th>
-                <th className="py-1 px-3 w-[15%] text-center">초·중·종물 검사</th>
-                <th className="py-1 px-3 w-[12%]">특이사항</th>
-                <th className="py-1 px-3 w-[12%] text-center">관리</th>
+                <th className="py-1 px-3 w-[10%]">{getWorkLogText("process", currentLang)}</th>
+                <th className="py-1 px-3 w-[9%]">{getWorkLogText("worker", currentLang)}</th>
+                <th className="py-1 px-3 w-[20%] text-center">{getWorkLogText("production_qty", currentLang)} ({getWorkLogText("good_qty", currentLang)}/{getWorkLogText("defect_qty", currentLang)}/총생산)</th>
+                <th className="py-1 px-3 w-[15%] text-center">{getWorkLogText("dimension_inspection", currentLang)}</th>
+                <th className="py-1 px-3 w-[12%]">{getWorkLogText("special_notes", currentLang)}</th>
+                <th className="py-1 px-3 w-[12%] text-center">{getWorkLogText("action_management", currentLang)}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -721,15 +830,15 @@ export const HanulWorkerDashboardView = () => {
                       <td className="py-2 px-3 text-center">
                         {insp.isComplete ? (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                            완료 (초·중·종 OK)
+                            ✓ {getWorkLogText("sample_complete", currentLang)}
                           </span>
                         ) : insp.hasAny ? (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
-                            진행중 (종물 대기)
+                            ⏳ {getWorkLogText("sample_pending", currentLang)}
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                            미기록
+                            -
                           </span>
                         )}
                       </td>
@@ -754,7 +863,7 @@ export const HanulWorkerDashboardView = () => {
                                   deleteHanulWorkReport(report.id);
                                 }
                               }}
-                              title="삭제"
+                              title={getWorkLogText("delete_report", currentLang)}
                               className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10.5px] cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

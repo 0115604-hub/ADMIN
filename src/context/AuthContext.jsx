@@ -5,6 +5,7 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { recordUserAccess } from "../services/accessLogService";
+import { syncWorkerLanguage, setWorkLogLanguage } from "../services/workLogI18nService";
 
 // Factory and User Hierarchy Definitions with Official Titles
 export const ADMIN_USERS = [
@@ -162,6 +163,9 @@ export const AuthProvider = ({ children }) => {
       try {
         if (savedProfile.isFieldWorker) {
           setCurrentProfile(savedProfile);
+          try {
+            syncWorkerLanguage(savedProfile);
+          } catch (langErr) {}
         } else {
           const targetId = savedProfile.id || savedProfile.name;
           const matched = ALL_DESIGNATED_USERS.find(
@@ -248,6 +252,13 @@ export const AuthProvider = ({ children }) => {
 
     setCurrentProfile(profileToSave);
 
+    // 🌍 현장근로자 국적(태국, 인도네시아, 베트남, 미얀마 등) 확인 및 모국어 번역 자동 적용
+    try {
+      syncWorkerLanguage(profileToSave);
+    } catch (langErr) {
+      console.warn("Language sync on login error:", langErr);
+    }
+
     // Store in sessionStorage for current tab/window session
     try {
       sessionStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
@@ -277,6 +288,9 @@ export const AuthProvider = ({ children }) => {
     }
     setCurrentUser(null);
     setCurrentProfile(null);
+    try {
+      setWorkLogLanguage("ko");
+    } catch (e) {}
     try {
       sessionStorage.removeItem("admin_user_profile");
       localStorage.removeItem("admin_user_profile");

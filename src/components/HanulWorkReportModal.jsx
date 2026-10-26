@@ -64,6 +64,14 @@ import {
   buildHanulProcessSlotKey,
   getAssignedTemplateForWorker
 } from "../services/workReportTemplateService";
+import {
+  getWorkLogText,
+  getCurrentWorkLogLanguage,
+  setWorkLogLanguage,
+  SUPPORTED_LANGUAGES,
+  getWorkerLanguageInfo,
+  syncWorkerLanguage
+} from "../services/workLogI18nService";
 
 // 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
 const isDimOk = (val, target, tol) => {
@@ -378,6 +386,34 @@ export const HanulWorkReportModal = ({
   const [tpmChecks, setTpmChecks] = useState(() => createDefaultHanulTpmChecks());
   const [tpmActionNote, setTpmActionNote] = useState("");
   const [isHanulTpmDone, setIsHanulTpmDone] = useState(false);
+
+  // 🌐 다국어 번역 상태 및 근로자 국적 기반 자동 언어 동기화
+  const [currentLang, setCurrentLang] = useState(() => getCurrentWorkLogLanguage());
+
+  // 작업자(worker / customWorker) 변경 시 해당 작업자의 국적을 확인하여 모국어로 자동 전환
+  useEffect(() => {
+    const targetW = customWorker.trim() || worker;
+    if (targetW) {
+      const synched = syncWorkerLanguage({ name: targetW, company: "한울" });
+      setCurrentLang(synched);
+    }
+  }, [worker, customWorker]);
+
+  // 언어 변경 리스너
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      if (e?.detail?.lang) {
+        setCurrentLang(e.detail.lang);
+      }
+    };
+    window.addEventListener("factory_language_changed", handleLangChange);
+    return () => window.removeEventListener("factory_language_changed", handleLangChange);
+  }, []);
+
+  const workerLangInfo = useMemo(() => {
+    const targetW = customWorker.trim() || worker;
+    return getWorkerLanguageInfo({ name: targetW, company: "한울" });
+  }, [worker, customWorker]);
 
   // 🌟 공정표에서 현재 선택된 공정/단계 위치(Slot)의 지정 양식 매칭
   const activeSubSlot = useMemo(() => {
@@ -1146,7 +1182,7 @@ export const HanulWorkReportModal = ({
                 <p className="text-[11px] text-indigo-200 truncate mt-0.5 hidden sm:block">
                   {processId === "소재준비"
                     ? (currentStep === "tpm"
-                        ? "1단계: 9BQC 소재준비 설비일상 점검 시트 (TPM 7대 항목 점검)"
+                        ? getWorkLogText("tpm_sheet_subtitle", currentLang)
                         : "2단계: 9BQC 소재준비 일일 작업일보 작성 (정치절단 / 단컷팅)")
                     : "9BQC G/RUN 및 LQ2a Hood Side 4대 핵심 공정 (소재준비 • 조인트 • 본드로봇 • 검사)"}
                 </p>
@@ -1154,6 +1190,31 @@ export const HanulWorkReportModal = ({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* 🌐 국적 및 다국어 선택기 */}
+              <div className="flex items-center gap-1.5">
+                {workerLangInfo.isAutoTranslated && (
+                  <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/80">
+                    <Sparkles className="w-3 h-3 text-cyan-400" />
+                    <span>{getWorkLogText("auto_translated_badge", currentLang)}</span>
+                  </span>
+                )}
+                <select
+                  value={currentLang}
+                  onChange={(e) => {
+                    setWorkLogLanguage(e.target.value);
+                    setCurrentLang(e.target.value);
+                  }}
+                  className="px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer shadow-xs focus:border-indigo-400"
+                  title="언어 변경"
+                >
+                  {SUPPORTED_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag} {l.nativeName} ({l.country || l.name})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {processId === "소재준비" && subProcess === "정치절단" && (
                 <button
                   type="button"
@@ -1542,14 +1603,14 @@ export const HanulWorkReportModal = ({
                           ㈜오룩 삼랑진공장
                         </span>
                         <h3 className="text-base sm:text-xl font-black tracking-tight">
-                          설비일상 점검 시트 (TPM)
+                          {getWorkLogText("tpm_sheet_title", currentLang)}
                         </h3>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40">
                           개정일자: 2024.10.01
                         </span>
                       </div>
                       <p className="text-[11px] text-indigo-200 mt-0.5">
-                        9BQC 소재준비 라인 6대 절단/단컷팅 설비 7대 일상점검 (작업 전 필수 점검)
+                        {getWorkLogText("tpm_sheet_subtitle", currentLang)}
                       </p>
                     </div>
                   </div>
@@ -1582,6 +1643,8 @@ export const HanulWorkReportModal = ({
                   const mChecks = tpmChecks[m.id] || {};
                   const isAllOk = HANUL_TPM_CHECK_ITEMS.every((it) => (mChecks[it.no] || "OK") === "OK");
                   const ngCount = HANUL_TPM_CHECK_ITEMS.filter((it) => mChecks[it.no] === "NG").length;
+                  const machKey = `tpm_mach_${m.id}`;
+                  const translatedMachName = getWorkLogText(machKey, currentLang) !== machKey ? getWorkLogText(machKey, currentLang) : m.name;
 
                   return (
                     <div
@@ -1596,23 +1659,23 @@ export const HanulWorkReportModal = ({
                         <span className="text-base">{m.icon}</span>
                         {isAllOk ? (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                            7개 양호
+                            7 {getWorkLogText("tpm_status_ok", currentLang)}
                           </span>
                         ) : (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                            이상 {ngCount}건
+                            {getWorkLogText("tpm_status_ng", currentLang)} {ngCount}
                           </span>
                         )}
                       </div>
-                      <div className="font-black text-xs text-slate-900 dark:text-white truncate mb-2">
-                        {m.name}
+                      <div className="font-black text-xs text-slate-900 dark:text-white truncate mb-2" title={translatedMachName}>
+                        {translatedMachName}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleSetMachineAllOk(m.id)}
                         className="w-full py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-700 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer active:scale-95"
                       >
-                        ✓ 설비 양호
+                        ✓ {getWorkLogText("machine_ok", currentLang)}
                       </button>
                     </div>
                   );
@@ -1629,68 +1692,78 @@ export const HanulWorkReportModal = ({
                           순번
                         </th>
                         <th className="py-2.5 px-3 font-black border-r border-slate-200 dark:border-slate-700 min-w-[190px]">
-                          설비별 점검 내용
+                          {getWorkLogText("tpm_check_items_title", currentLang)}
                         </th>
                         <th className="py-2.5 px-2 text-center w-16 font-black border-r border-slate-200 dark:border-slate-700">
                           방법
                         </th>
-                        {HANUL_TPM_MACHINES.map((m) => (
-                          <th
-                            key={m.id}
-                            className="py-2.5 px-1.5 text-center font-black text-[11px] border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-w-[85px]"
-                          >
-                            <span className="block leading-tight">{m.shortName}</span>
-                          </th>
-                        ))}
+                        {HANUL_TPM_MACHINES.map((m) => {
+                          const machKey = `tpm_mach_${m.id}`;
+                          const transMach = getWorkLogText(machKey, currentLang) !== machKey ? getWorkLogText(machKey, currentLang) : m.shortName;
+                          return (
+                            <th
+                              key={m.id}
+                              className="py-2.5 px-1.5 text-center font-black text-[11px] border-r border-slate-200 dark:border-slate-700 last:border-r-0 min-w-[85px]"
+                            >
+                              <span className="block leading-tight truncate">{transMach}</span>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
-                      {HANUL_TPM_CHECK_ITEMS.map((item) => (
-                        <tr
-                          key={item.no}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                        >
-                          <td className="py-2 px-2 text-center font-black text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
-                            {item.no}
-                          </td>
-                          <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
-                            <div className="font-black text-slate-900 dark:text-white text-xs">
-                              {item.content}
-                            </div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                              {item.desc}
-                            </div>
-                          </td>
-                          <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              {item.method}
-                            </span>
-                          </td>
-                          {HANUL_TPM_MACHINES.map((m) => {
-                            const isOk = (tpmChecks[m.id]?.[item.no] || "OK") === "OK";
-                            return (
-                              <td
-                                key={m.id}
-                                className="py-1 px-1.5 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleTpmCheck(m.id, item.no)}
-                                  className={`w-full py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1 ${
-                                    isOk
-                                      ? "bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700"
-                                      : "bg-rose-600 hover:bg-rose-700 text-white animate-pulse border border-rose-500 shadow-md"
-                                  }`}
-                                  title={`${m.name} - ${item.content} (탭하여 양호/이상 전환)`}
+                      {HANUL_TPM_CHECK_ITEMS.map((item) => {
+                        const itemKey = `tpm_item_${item.no}`;
+                        const transItem = getWorkLogText(itemKey, currentLang) !== itemKey ? getWorkLogText(itemKey, currentLang) : item.content;
+                        return (
+                          <tr
+                            key={item.no}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                          >
+                            <td className="py-2 px-2 text-center font-black text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
+                              {item.no}
+                            </td>
+                            <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                              <div className="font-black text-slate-900 dark:text-white text-xs">
+                                {transItem}
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {item.desc}
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                {item.method}
+                              </span>
+                            </td>
+                            {HANUL_TPM_MACHINES.map((m) => {
+                              const isOk = (tpmChecks[m.id]?.[item.no] || "OK") === "OK";
+                              return (
+                                <td
+                                  key={m.id}
+                                  className="py-1 px-1.5 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0"
                                 >
-                                  <span>{isOk ? "○" : "×"}</span>
-                                  <span className="text-[10.5px]">{isOk ? "양호" : "이상"}</span>
-                                </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleTpmCheck(m.id, item.no)}
+                                    className={`w-full py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1 ${
+                                      isOk
+                                        ? "bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700"
+                                        : "bg-rose-600 hover:bg-rose-700 text-white animate-pulse border border-rose-500 shadow-md"
+                                    }`}
+                                    title={`${m.name} - ${transItem}`}
+                                  >
+                                    <span>{isOk ? "○" : "×"}</span>
+                                    <span className="text-[10.5px]">
+                                      {isOk ? getWorkLogText("tpm_status_ok", currentLang) : getWorkLogText("tpm_status_ng", currentLang)}
+                                    </span>
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1702,12 +1775,12 @@ export const HanulWorkReportModal = ({
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                      이상 발생시 조치사항 (Abnormality Action Note)
+                      {getWorkLogText("abnormality_note", currentLang)}
                     </span>
                   </div>
                   {tpmSummary.ngCount > 0 ? (
                     <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                      🚨 이상 {tpmSummary.ngCount}건 발생 - 조치 보고 필수
+                      🚨 {getWorkLogText("tpm_status_ng", currentLang)} {tpmSummary.ngCount} - 조치 보고 필수
                     </span>
                   ) : (
                     <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
@@ -1720,7 +1793,7 @@ export const HanulWorkReportModal = ({
                   rows={2}
                   value={tpmActionNote}
                   onChange={(e) => setTpmActionNote(e.target.value)}
-                  placeholder="설비 이상(작동 불량, 칼날 마모, 비상버튼 미작동, 컷팅면 불량 등) 발생 시 발견 내용 및 조치결과를 기록해 주십시오."
+                  placeholder={getWorkLogText("abnormality_placeholder", currentLang)}
                   className="w-full p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
 
@@ -1773,14 +1846,14 @@ export const HanulWorkReportModal = ({
                     className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
-                    <span>전체 양호(○)</span>
+                    <span>{getWorkLogText("all_ok", currentLang)}</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleProceedToReport}
                     className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white text-xs sm:text-sm font-black shadow-md shadow-indigo-600/30 transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>TPM 점검 완료 ➔ 작업일보 작성 진행</span>
+                    <span>{getWorkLogText("tpm_save_and_next", currentLang)}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -3532,7 +3605,7 @@ export const HanulWorkReportModal = ({
                 className="px-3 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-black hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer flex items-center gap-1.5"
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>⬅️ TPM 점검표 다시보기</span>
+                <span>{getWorkLogText("back_to_tpm", currentLang)}</span>
               </button>
             )}
 
@@ -3541,7 +3614,7 @@ export const HanulWorkReportModal = ({
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
-              닫기
+              {getWorkLogText("close", currentLang)}
             </button>
 
             {processId === "소재준비" && currentStep === "tpm" ? (
@@ -3550,7 +3623,7 @@ export const HanulWorkReportModal = ({
                 onClick={handleProceedToReport}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer"
               >
-                <span>TPM 점검 완료 ➔ 작업일보 작성 진행</span>
+                <span>{getWorkLogText("tpm_save_and_next", currentLang)}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
@@ -3561,7 +3634,7 @@ export const HanulWorkReportModal = ({
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/30 flex items-center gap-2 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>{isSaving ? "저장 중..." : "작업일보 실시간 저장"}</span>
+                <span>{isSaving ? "저장 중..." : getWorkLogText("save_report", currentLang)}</span>
               </button>
             )}
           </div>
