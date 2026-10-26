@@ -47,7 +47,6 @@ import {
   compressImageToBase64
 } from "../services/personnelCardService.js";
 import { COMPANY_THEMES, cleanCompanyName } from "../services/overtimeSmartService.js";
-import { LanguageSelectBadge } from "./common/LanguageSelectBadge.jsx";
 import { useModalHistory } from "../utils/modalHistory";
 
 export default function PersonnelCardModal({
@@ -513,13 +512,6 @@ export default function PersonnelCardModal({
                     )}
                   </div>
                 </div>
-
-                {/* 🌐 외국인 근로자 전용 3배 확장형 언어 선택 패널 (한국인 제외, 주석 제거) */}
-                {formData.nationality && formData.nationality !== "대한민국" && (
-                  <div className="col-span-2 sm:col-span-3 pt-1">
-                    <LanguageSelectBadge variant="elongated" showLabel={false} />
-                  </div>
-                )}
               </div>
 
               {/* ⭐ 입사일자 입력 시 근속기간 & 공정년차만 자동계산 표시 */}
@@ -901,13 +893,6 @@ export default function PersonnelCardModal({
                   </div>
                 </div>
               </div>
-
-              {/* 🌐 외국인 근로자 전용 3배 확장형 언어 선택 패널 (한국인 제외, 주석 제거) */}
-              {formData.nationality && formData.nationality !== "대한민국" && (
-                <div className="relative z-10">
-                  <LanguageSelectBadge variant="elongated" showLabel={false} />
-                </div>
-              )}
 
               {/* 숙련등급 & 별점 표시 영역 */}
               <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 space-y-1 relative z-10">
