@@ -58,7 +58,7 @@ import {
   getFourMBadgeColor,
   determineFourMCategory
 } from "../../services/fourMChangePointService";
-import { saveApprovalDocument } from "../../services/approvalService";
+import { saveApprovalDocument, subscribeApprovalDocs } from "../../services/approvalService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 
 // Client-side image compression
@@ -115,6 +115,7 @@ export default function Step3QualityControlPanel({
 
   // 4M Ledger Records
   const [fourMRecords, setFourMRecords] = useState(() => getLocalFourMChangePoints());
+  const [approvalDocs, setApprovalDocs] = useState([]);
 
   // UI state
   const [activeTab, setActiveTab] = useState("ALL"); // ALL | INCOMING | 4M_LEDGER | PENDING_APPROVAL | RESOLVED
@@ -167,6 +168,10 @@ export default function Step3QualityControlPanel({
       if (isMounted) setFourMRecords(records || []);
     });
 
+    const unsubApproval = subscribeApprovalDocs((docs) => {
+      if (isMounted) setApprovalDocs(docs || []);
+    });
+
     const handleNcLedgerUpdate = (e) => {
       if (isMounted && e?.detail) {
         setNcLedgerState(e.detail);
@@ -188,10 +193,53 @@ export default function Step3QualityControlPanel({
       if (typeof unsubHanul === "function") unsubHanul();
       if (typeof unsubYuseong === "function") unsubYuseong();
       if (typeof unsubFourM === "function") unsubFourM();
+      if (typeof unsubApproval === "function") unsubApproval();
       window.removeEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
       window.removeEventListener("oryuk_four_m_updated", handleFourMUpdate);
     };
   }, []);
+
+  // 1-1. Approval docs map for fast status check
+  const approvalDocsMap = useMemo(() => {
+    const map = {};
+    (approvalDocs || []).forEach((d) => {
+      if (!d) return;
+      if (d.id) map[d.id] = d;
+      if (d.id && d.id.startsWith("appr_4m_")) {
+        const parts = d.id.split("_");
+        if (parts[2]) {
+          map[parts[2]] = d;
+          map[`ledger_${parts[2]}`] = d;
+        }
+      }
+    });
+    return map;
+  }, [approvalDocs]);
+
+  // Helper: check if a 4M record has final approval by CEO (권태형 대표이사)
+  const checkIsCeoApproved = (rec) => {
+    if (!rec) return false;
+    const docMatch =
+      (rec.approvalDocId && approvalDocsMap[rec.approvalDocId]) ||
+      approvalDocsMap[rec.id] ||
+      approvalDocsMap[String(rec.id).replace(/^ledger_/, "")] ||
+      (approvalDocs || []).find((d) =>
+        d.id === rec.approvalDocId ||
+        (d.id && rec.id && d.id.includes(rec.id)) ||
+        (d.id && rec.id && d.id.includes(String(rec.id).replace(/^ledger_/, ""))) ||
+        (rec.originalId && d.id && d.id.includes(rec.originalId))
+      );
+
+    return Boolean(
+      rec.approvalStatus === "APPROVED" ||
+      rec.approvedBy?.includes("권태형") ||
+      rec.approvalSignature === "KWON_SIGNATURE_RED" ||
+      (docMatch && (
+        docMatch.status === "APPROVED" ||
+        (docMatch.steps && docMatch.steps.length > 0 && docMatch.steps[docMatch.steps.length - 1]?.status === "APPROVED")
+      ))
+    );
+  };
 
   // 2. Extract Work Report Nonconformance events
   const extractedWorkReportItems = useMemo(() => {
@@ -1003,7 +1051,7 @@ export default function Step3QualityControlPanel({
                 <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
                 <th className="py-2.5 px-3 min-w-[240px]">시정대책(CAPA) 및 조치결과</th>
                 <th className="py-2.5 px-2 text-center w-24">진행상태</th>
-                <th className="py-2.5 px-3 text-center w-28">대책관리</th>
+                <th className="py-2.5 px-3 text-center w-32">수정&결재</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
@@ -1022,9 +1070,10 @@ export default function Step3QualityControlPanel({
                 })
                 .map((rec) => {
                   const badgeColor = getFourMBadgeColor(rec.fourM);
-                  const isResolved = Boolean(rec.isResolved || rec.status === "RESOLVED");
-                  const isPendingApproval = rec.approvalStatus === "PENDING_APPROVAL";
-                  const isApproved = rec.approvalStatus === "APPROVED";
+                  const isCeoApproved = checkIsCeoApproved(rec);
+                  const isApproved = isCeoApproved || rec.approvalStatus === "APPROVED";
+                  const isPendingApproval = !isApproved && rec.approvalStatus === "PENDING_APPROVAL";
+                  const isResolved = isApproved || Boolean(rec.isResolved || rec.status === "RESOLVED");
 
                   return (
                     <tr
@@ -1104,9 +1153,10 @@ export default function Step3QualityControlPanel({
 
                       {/* Status */}
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        {isApproved ? (
-                          <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-black text-[10.5px]">
-                            👑 승인완료
+                        {isCeoApproved ? (
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-black text-[10.5px] inline-flex items-center gap-1 shadow-xs">
+                            <span className="text-xs">✅</span>
+                            <span>대표이사 승인</span>
                           </span>
                         ) : isPendingApproval ? (
                           <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 font-bold text-[10.5px]">
@@ -1128,10 +1178,19 @@ export default function Step3QualityControlPanel({
                         <button
                           type="button"
                           onClick={() => handleOpenCapaModal(rec)}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-300 dark:border-indigo-800 transition cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                          className={`px-3 py-1.5 rounded-lg font-black text-[11px] border transition cursor-pointer inline-flex items-center gap-1.5 shadow-xs ${
+                            isCeoApproved
+                              ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20"
+                              : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800"
+                          }`}
+                          title={isCeoApproved ? "대표이사 결재완료건 (수정 및 결재내역 열람)" : "수정 & 임원결재"}
                         >
-                          <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span>대책수정</span>
+                          {isCeoApproved ? (
+                            <span className="text-xs">✅</span>
+                          ) : (
+                            <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          )}
+                          <span>수정&결재</span>
                         </button>
                       </td>
                     </tr>
@@ -1156,8 +1215,13 @@ export default function Step3QualityControlPanel({
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 text-xs font-black">
-                      4M 시정조치 대책수정 및 임원결재
+                    <span className={`px-2 py-0.5 rounded-md border text-xs font-black flex items-center gap-1 ${
+                      checkIsCeoApproved(capaModalItem)
+                        ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+                        : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
+                    }`}>
+                      {checkIsCeoApproved(capaModalItem) && <span>✅</span>}
+                      <span>4M 시정조치 수정&결재</span>
                     </span>
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                       [{modalApproverInfo.plant}] {capaModalItem.line}
@@ -1171,9 +1235,21 @@ export default function Step3QualityControlPanel({
 
               {/* Dynamic Target Approver Badge */}
               <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border-2 border-purple-400 dark:border-purple-600 text-purple-900 dark:text-purple-200 text-xs font-black flex items-center gap-1.5">
-                  <Stamp className="w-4 h-4 text-purple-600" />
-                  <span>결재라인: {modalApproverInfo.lineDisplay}</span>
+                <div className={`px-3 py-1.5 rounded-xl border-2 text-xs font-black flex items-center gap-1.5 ${
+                  checkIsCeoApproved(capaModalItem)
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 shadow-xs"
+                    : "bg-purple-50 dark:bg-purple-950/60 border-purple-400 dark:border-purple-600 text-purple-900 dark:text-purple-200"
+                }`}>
+                  {checkIsCeoApproved(capaModalItem) ? (
+                    <span className="text-xs">✅</span>
+                  ) : (
+                    <Stamp className="w-4 h-4 text-purple-600" />
+                  )}
+                  <span>
+                    {checkIsCeoApproved(capaModalItem)
+                      ? "대표이사 결재완료 (권태형 최종승인)"
+                      : `결재라인: ${modalApproverInfo.lineDisplay}`}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -1465,8 +1541,17 @@ export default function Step3QualityControlPanel({
             {/* Modal Bottom Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5 border-t border-slate-200 dark:border-slate-800">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                💡 <span className="font-bold text-purple-600 dark:text-purple-400">결재라인: </span>
-                <span>{modalApproverInfo.lineDisplay} (4M 변동점 전용 전자결재)</span>
+                {checkIsCeoApproved(capaModalItem) ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="text-xs">✅</span>
+                    <span>대표이사 최종 승인 및 전자서명이 완료된 건입니다.</span>
+                  </span>
+                ) : (
+                  <>
+                    💡 <span className="font-bold text-purple-600 dark:text-purple-400">결재라인: </span>
+                    <span>{modalApproverInfo.lineDisplay} (4M 변동점 전용 전자결재)</span>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-2 justify-end">
@@ -1495,7 +1580,7 @@ export default function Step3QualityControlPanel({
                   className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ring-2 ring-purple-400/40"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>임원결재</span>
+                  <span>{checkIsCeoApproved(capaModalItem) ? "임원결재 재상신" : "임원결재"}</span>
                 </button>
               </div>
             </div>
