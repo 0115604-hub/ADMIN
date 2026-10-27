@@ -781,6 +781,8 @@ export function normalizeApprovalDoc(d) {
 
   return {
     ...d,
+    category: d.category || (is4M ? "4M변동점" : isOvertimeApprovalDoc(d) ? "특근보고서" : "품의서"),
+    typeName: d.typeName || (is4M ? "4M 변동점 및 CAPA 승인 품의서" : isOvertimeApprovalDoc(d) ? "특근보고서" : "품의서"),
     currentStep: computedStep,
     status: computedStatus,
     steps: fixedSteps
@@ -850,6 +852,11 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
 
   // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
   if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
+    return true;
+  }
+
+  // ⭐ 4-1. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽 등 관리자 기안건 즉시 노출)
+  if (doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
     return true;
   }
 
