@@ -333,7 +333,7 @@ export const getWorkerDisplayRoleMeta = (userOrProfile, personnelCardsMap = null
   return { isManager, roleBadgeText, officialTitle };
 };
 
-// 협력/외주 업체 여부 확인 (유성, 한울, 부림텍)
+// 가공/협력업체 여부 확인 (유성, 한울, 부림텍)
 export const isPartnerCompany = (comp) => {
   if (!comp) return false;
   const str = String(comp).trim();

@@ -620,10 +620,10 @@ export const WORK_LOG_TRANSLATIONS = {
   },
 
   // =========================================================================
-  // 🌟 [한울 외주가공 & 작업일보] 전용 번역 키
+  // 🌟 [한울 가공/협력업체 & 작업일보] 전용 번역 키
   // =========================================================================
   hanul_plant_title: {
-    ko: "한림공장 (주)한울 외주가공",
+    ko: "한림공장 (주)한울 협력업체",
     en: "Hallim Plant Hanul Co. Processing",
     th: "โรงงานฮันลิม บริษัท ฮันอุล แปรรูปภายนอก",
     id: "Pabrik Hallim PT Hanul Pengolahan Luar",
@@ -655,7 +655,7 @@ export const WORK_LOG_TRANSLATIONS = {
     my: "🚗 9BQC အလုပ်မှတ်တမ်းရေးရန် / TPM စစ်ဆေးရန်"
   },
   write_lq2_report: {
-    ko: "⚡ LQ2 외주가공 작업일보 작성",
+    ko: "⚡ LQ2 협력업체 작업일보 작성",
     en: "⚡ LQ2 Work Report",
     th: "⚡ เขียนรายงานการแปรรูป LQ2",
     id: "⚡ Tulis Laporan Pengolahan LQ2",

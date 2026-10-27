@@ -4,8 +4,8 @@ function extractClassifiedPurchases(wsJajae, totalPurchases) {
   const rawCategories = [
     { category: 'EPDM 고무원자재 (삼랑진)', supplier: '해동무역 (삼랑진공장 직입고 W60712, W60594 등)', badge: '원자재', startRow: 31, endRow: 46 },
     { category: 'TPE 원자재/컴파운드', supplier: '화승코퍼레이션 (NX4, 9BQC, JA 등 메인/조인트제)', badge: '원자재', startRow: 65, endRow: 81 },
-    { category: '삼랑진 T&C 반제품/사출가공', supplier: '삼랑진 T&C (NX4 G/RUN FRT, DT HOOD SEAL 등)', badge: '외주가공', startRow: 82, endRow: 90 },
-    { category: '신천 압출/외주가공', supplier: '신천 (DT/DS Door Side, NE1a, MX5a 등)', badge: '외주가공', startRow: 91, endRow: 114 },
+    { category: '삼랑진 T&C 반제품/사출가공', supplier: '삼랑진 T&C (NX4 G/RUN FRT, DT HOOD SEAL 등)', badge: '가공/협력업체', startRow: 82, endRow: 90 },
+    { category: '신천 압출/협력업체', supplier: '신천 (DT/DS Door Side, NE1a, MX5a 등)', badge: '가공/협력업체', startRow: 91, endRow: 114 },
     { category: '연고무 원자재/컴파운드', supplier: '화승코퍼레이션 (HOOD RR, D/S 고무 컴파운드)', badge: '원자재', startRow: 51, endRow: 64 },
     { category: '부자재 지텍 (9BQC PRI)', supplier: '글라스 ㈜지텍 (9BQC PRI LH/RH 납품)', badge: '부자재', startRow: 5, endRow: 8 },
     { category: '부자재 세동 (9BQC D/V BAR)', supplier: '㈜세동 (9BQC D/V BAR LH/RH)', badge: '부자재', startRow: 9, endRow: 10 },

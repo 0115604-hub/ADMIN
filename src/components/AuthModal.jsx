@@ -331,7 +331,7 @@ export const AuthModal = () => {
     return list;
   }, []);
 
-  // Hanul partner user definition (한림공장 외주가공 대표 계정)
+  // Hanul partner user definition (한림공장 가공/협력업체 대표 계정)
   const hanulUser = useMemo(() => {
     return (
       PLANTS[1]?.workers?.find((w) => w.name === "한울" || w.id === "hal_hu") || {
@@ -340,7 +340,7 @@ export const AuthModal = () => {
         title: "대표이사",
         plant: "한림공장",
         company: "한울",
-        assignedProcess: "외주가공",
+        assignedProcess: "가공/협력업체",
         role: "OPERATOR",
         avatar: "한",
         pin: "11",
@@ -356,7 +356,7 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Bulimtech partner user definition (한림공장 외주가공 대표 계정)
+  // Bulimtech partner user definition (한림공장 가공/협력업체 대표 계정)
   const bulimtechUser = useMemo(() => {
     return (
       PLANTS[1]?.workers?.find((w) => w.name === "부림텍" || w.id === "hal_br") || {
@@ -365,7 +365,7 @@ export const AuthModal = () => {
         title: "대표이사",
         plant: "한림공장",
         company: "부림텍",
-        assignedProcess: "외주가공",
+        assignedProcess: "가공/협력업체",
         role: "OPERATOR",
         avatar: "부",
         pin: "11",
@@ -388,7 +388,7 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Yuseong partner user definition (삼랑진공장 외주가공 대표 계정)
+  // Yuseong partner user definition (삼랑진공장 가공/협력업체 대표 계정)
   const yuseongUser = useMemo(() => {
     return (
       PLANTS[0]?.workers?.find((w) => w.name === "유성" || w.id === "sam_ys") || {
@@ -397,7 +397,7 @@ export const AuthModal = () => {
         title: "대표이사",
         plant: "삼랑진공장",
         company: "유성",
-        assignedProcess: "외주가공",
+        assignedProcess: "가공/협력업체",
         role: "OPERATOR",
         avatar: "유",
         pin: "11",
@@ -406,7 +406,7 @@ export const AuthModal = () => {
     );
   }, []);
 
-  // Yuseong master workers list (외주가공 유성 14명)
+  // Yuseong master workers list (가공/협력업체 유성 14명)
   const yuseongWorkers = useMemo(() => {
     return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
       (w) => w.company?.includes("유성") && w.status !== "퇴사" && w.name !== "유성"
@@ -493,7 +493,7 @@ export const AuthModal = () => {
       return true;
     }
 
-    // 2. 개별 공정/외주사 관리자가 내부에서 등록한 이슈 제외 (ID 접두사: hanul_qual_, urg_hanul_qual_, ext_qual_ 등)
+    // 2. 개별 공정/협력업체 관리자가 내부에서 등록한 이슈 제외 (ID 접두사: hanul_qual_, urg_hanul_qual_, ext_qual_ 등)
     const id = String(item.id || item._docId || item.customId || "");
     if (
       id.startsWith("hanul_") ||
@@ -610,14 +610,14 @@ export const AuthModal = () => {
         source: "hanul",
         category: "부적합경보",
         plant: alert.plant || "한림공장",
-        line: alert.line || "외주가공(한울)",
+        line: alert.line || "가공/협력업체(한울)",
         author: alert.author || "한울 관리자",
-        authorTitle: alert.authorTitle || "선임",
+        authorTitle: alert.authorTitle || "대표",
         startDate: dateStr,
         expireDate: dateStr,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
-        title: alert.title || alert.defectType || "한울 외주 부적합경보",
+        title: alert.title || alert.defectType || "한울 협력업체 부적합경보",
         content: alert.content || alert.defectType || "",
         actionResult: alert.actionResult || "",
         actionAuthor: alert.actionAuthor || alert.author || "",
@@ -637,7 +637,7 @@ export const AuthModal = () => {
       });
     });
 
-    // 3. 유성 외주가공 부적합경보
+    // 3. 유성 가공/협력업체 부적합경보
     (yuseongQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.isDeleted === "true" || alert.deleted === true || alert.status === "DELETED") return;
 
@@ -653,14 +653,14 @@ export const AuthModal = () => {
         source: "yuseong",
         category: "부적합경보",
         plant: alert.plant || "삼랑진공장",
-        line: alert.project || alert.line || "외주가공(유성)",
+        line: alert.project || alert.line || "가공/협력업체(유성)",
         author: alert.author || "유성 관리자",
-        authorTitle: alert.authorTitle || "선임",
+        authorTitle: alert.authorTitle || "대표",
         startDate: dateStr,
         expireDate: dateStr,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
-        title: alert.title || alert.defectType || "유성 외주 부적합경보",
+        title: alert.title || alert.defectType || "유성 협력업체 부적합경보",
         content: alert.content || alert.description || alert.defectType || "",
         actionResult: alert.actionResult || alert.actionNotes || "",
         actionAuthor: alert.actionAuthor || alert.author || "",
@@ -2596,7 +2596,7 @@ export const AuthModal = () => {
                 type="button"
                 onClick={() => setIsHanulModalOpen(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-indigo-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-indigo-400/30"
-                title={`한림공장 외주가공 (주)한울 작업자 전용 포털 (${hanulWorkers.length}명)`}
+                title={`한림공장 가공/협력업체 (주)한울 작업자 전용 포털 (${hanulWorkers.length}명)`}
               >
                 <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-200 animate-pulse" />
                 <span>한울</span>
@@ -2609,7 +2609,7 @@ export const AuthModal = () => {
                 type="button"
                 onClick={() => setIsBulimtechModalOpen(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
-                title={`한림공장 외주가공 (주)부림텍 작업자 전용 포털 (${bulimtechWorkers.length}명)`}
+                title={`한림공장 가공/협력업체 (주)부림텍 작업자 전용 포털 (${bulimtechWorkers.length}명)`}
               >
                 <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
                 <span>부림텍</span>
@@ -2622,7 +2622,7 @@ export const AuthModal = () => {
                 type="button"
                 onClick={() => setIsYuseongModalOpen(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-blue-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-blue-400/30"
-                title={`외주가공 (주)유성 작업자 전용 포털 (${yuseongWorkers.length}명)`}
+                title={`가공/협력업체 (주)유성 작업자 전용 포털 (${yuseongWorkers.length}명)`}
               >
                 <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-200 animate-pulse" />
                 <span>유성</span>
@@ -3071,7 +3071,7 @@ export const AuthModal = () => {
         </div>
       )}
 
-      {/* 🏢 한림공장 한울 외주가공 전용 팝업 선택 모달 */}
+      {/* 🏢 한림공장 한울 가공/협력업체 전용 팝업 선택 모달 */}
       {isHanulModalOpen && (
         <div
           onClick={() => setIsHanulModalOpen(false)}
@@ -3089,13 +3089,13 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>한림공장 외주가공 (주)한울</span>
+                    <span>한림공장 가공/협력업체 (주)한울</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
                       총원 {hanulWorkers.length}명
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                    안전·품질 확인 후 한울 외주가공 및 생산관리 입장
+                    안전·품질 확인 후 한울 가공/협력업체 및 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -3109,7 +3109,7 @@ export const AuthModal = () => {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
-              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 한울 외주가공 및 생산관리 화면으로 바로 연결됩니다.
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 한울 가공/협력업체 및 생산관리 화면으로 바로 연결됩니다.
             </p>
 
             {/* Scrollable Hanul Workers Grid */}
@@ -3130,7 +3130,7 @@ export const AuthModal = () => {
                           title: worker.position || "사원",
                           position: worker.position || "사원",
                           line: worker.line,
-                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          assignedProcess: worker.line ? `${worker.line} 가공/협력업체` : "가공/협력업체",
                           plant: "한림공장",
                           company: "한울",
                           portalType: "hanul",
@@ -3167,7 +3167,7 @@ export const AuthModal = () => {
         </div>
       )}
 
-      {/* 🏢 한림공장 부림텍 외주가공 전용 팝업 선택 모달 */}
+      {/* 🏢 한림공장 부림텍 가공/협력업체 전용 팝업 선택 모달 */}
       {isBulimtechModalOpen && (
         <div
           onClick={() => setIsBulimtechModalOpen(false)}
@@ -3185,13 +3185,13 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>한림공장 외주가공 (주)부림텍</span>
+                    <span>한림공장 가공/협력업체 (주)부림텍</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
                       총원 {bulimtechWorkers.length}명
                     </span>
                   </h3>
                   <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                    안전·품질 확인 후 부림텍 외주가공 및 생산관리 입장
+                    안전·품질 확인 후 부림텍 가공/협력업체 및 생산관리 입장
                   </span>
                 </div>
               </div>
@@ -3205,7 +3205,7 @@ export const AuthModal = () => {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium shrink-0">
-              본인 이름을 터치하시면 안전알림판과 필수 공지를 확인하신 후 부림텍 외주가공 및 생산관리 화면으로 연결됩니다.
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 확인하신 후 부림텍 가공/협력업체 및 생산관리 화면으로 연결됩니다.
             </p>
 
             {/* Scrollable Bulimtech Workers Grid */}
@@ -3227,7 +3227,7 @@ export const AuthModal = () => {
                           title: displayPos,
                           position: displayPos,
                           line: worker.line,
-                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          assignedProcess: worker.line ? `${worker.line} 가공/협력업체` : "가공/협력업체",
                           plant: "한림공장",
                           company: "부림텍",
                           portalType: "bulimtech",
@@ -3262,7 +3262,7 @@ export const AuthModal = () => {
         </div>
       )}
 
-      {/* 🏢 삼랑진공장 외주가공 (주)유성 전용 팝업 선택 모달 */}
+      {/* 🏢 삼랑진공장 가공/협력업체 (주)유성 전용 팝업 선택 모달 */}
       {isYuseongModalOpen && (
         <div
           onClick={() => setIsYuseongModalOpen(false)}
@@ -3280,7 +3280,7 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>외주가공 (주)유성</span>
+                    <span>가공/협력업체 (주)유성</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
                       총원 {yuseongWorkers.length}명
                     </span>
@@ -3322,7 +3322,7 @@ export const AuthModal = () => {
                           title: displayPos,
                           position: displayPos,
                           line: worker.line,
-                          assignedProcess: worker.line ? `${worker.line} 외주가공` : "외주가공",
+                          assignedProcess: worker.line ? `${worker.line} 가공/협력업체` : "가공/협력업체",
                           plant: "삼랑진공장",
                           company: "유성",
                           portalType: "yuseong",
@@ -3474,7 +3474,7 @@ export const AuthModal = () => {
         </Suspense>
       )}
 
-      {/* 📋 한울 외주가공 작업일보 신규 작성 모달 (9BQC / LQ2a) */}
+      {/* 📋 한울 가공/협력업체 작업일보 신규 작성 모달 (9BQC / LQ2a) */}
       {isHanulWorkReportModalOpen && (
         <Suspense fallback={null}>
           <HanulWorkReportModal

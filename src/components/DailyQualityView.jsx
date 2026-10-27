@@ -80,7 +80,7 @@ export const DailyQualityView = () => {
     setPopupItem(it);
   };
 
-  // ⭐ Direct Quality Input Modal State (이창엽 선임 전용 일일 실적 직접 입력 & 수정)
+  // ⭐ Direct Quality Input Modal State (이창엽 책임 전용 일일 실적 직접 입력 & 수정)
   const [isDirectInputModalOpen, setIsDirectInputModalOpen] = useState(false);
   const [directInputDate, setDirectInputDate] = useState(() => {
     const today = new Date();
@@ -154,7 +154,7 @@ export const DailyQualityView = () => {
       const dt = new Date(directInputDate);
       const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
       const dayOfWeek = dayNames[dt.getDay()] || "월";
-      const author = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임";
+      const author = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "책임"}` : "이창엽 책임";
 
       const recordsToSave = QUALITY_CORE_ITEMS.map((core) => {
         const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 };
@@ -675,7 +675,7 @@ export const DailyQualityView = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
               <span>품질 관리 목표치: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">종합 {targetOverall}% 이하</strong> (차종별 맞춤 관리선 적용)</span>
               <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span>담당: <strong className="text-slate-700 dark:text-slate-300 font-bold">이창엽 선임</strong></span>
+              <span>담당: <strong className="text-slate-700 dark:text-slate-300 font-bold">이창엽 책임</strong></span>
               <span className="text-slate-300 dark:text-slate-700">•</span>
               <span className="text-slate-400">데이터 기준: 4개 코어 차종 (JA, HR, NX4, NX4a)</span>
             </p>
@@ -700,7 +700,7 @@ export const DailyQualityView = () => {
             </select>
           </div>
 
-          {/* ⭐ Direct Input Button (이창엽 선임 전용 직접 입력 포맷) */}
+          {/* ⭐ Direct Input Button (이창엽 책임 전용 직접 입력 포맷) */}
           <button
             onClick={() => handleOpenDirectInputModal()}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
@@ -1834,7 +1834,7 @@ export const DailyQualityView = () => {
               G-RUN 불량율 집계 & AB동 최종검사 정리 엑셀 파일 드래그 업로드
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              이창엽 선임의 엑셀 파일을 여기에 <strong>드래그하여 놓거나 클릭</strong>하여 업로드하면, 일자별 아이템 실적이 <strong>중복 없이 자동 동기화</strong>됩니다.
+              이창엽 책임의 엑셀 파일을 여기에 <strong>드래그하여 놓거나 클릭</strong>하여 업로드하면, 일자별 아이템 실적이 <strong>중복 없이 자동 동기화</strong>됩니다.
             </p>
           </div>
         </div>
@@ -1897,7 +1897,7 @@ export const DailyQualityView = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    차종: <strong className="text-slate-200">{popupItem.carModel}</strong> | 기본단가: ₩{popupItem.id === "ja" ? "3,116" : popupItem.id === "hr" ? "2,372" : "5,747"}원 | 이창엽 선임 엑셀 데이터 100% 일치
+                    차종: <strong className="text-slate-200">{popupItem.carModel}</strong> | 기본단가: ₩{popupItem.id === "ja" ? "3,116" : popupItem.id === "hr" ? "2,372" : "5,747"}원 | 이창엽 책임 엑셀 데이터 100% 일치
                   </p>
                 </div>
               </div>
@@ -2118,7 +2118,7 @@ export const DailyQualityView = () => {
             {/* Modal Footer Controls */}
             <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 shrink-0">
               <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                💡 이 데이터는 이창엽 선임의 일일 품질 실적과 100% 실시간 연동됩니다.
+                💡 이 데이터는 이창엽 책임의 일일 품질 실적과 100% 실시간 연동됩니다.
               </span>
 
               <div className="flex items-center gap-2">
@@ -2143,7 +2143,7 @@ export const DailyQualityView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 7. ⭐ [MODAL] 일일 품질 / 불량 실적 직접 입력 및 수정 모달 (이창엽 선임 전용 포맷) */}
+      {/* 7. ⭐ [MODAL] 일일 품질 / 불량 실적 직접 입력 및 수정 모달 (이창엽 책임 전용 포맷) */}
       {/* ========================================================================= */}
       {isDirectInputModalOpen && (
         <div
@@ -2170,7 +2170,7 @@ export const DailyQualityView = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    이창엽 선임의 일일 검사/불량/소재폐기 수량을 직접 입력하면 불량률 및 손실액이 100% 자동 계산됩니다.
+                    이창엽 책임의 일일 검사/불량/소재폐기 수량을 직접 입력하면 불량률 및 손실액이 100% 자동 계산됩니다.
                   </p>
                 </div>
               </div>
@@ -2216,7 +2216,7 @@ export const DailyQualityView = () => {
               </div>
 
               <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                입력자: <strong className="text-slate-800 dark:text-slate-200">{currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임"}</strong>
+                입력자: <strong className="text-slate-800 dark:text-slate-200">{currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "책임"}` : "이창엽 책임"}</strong>
               </div>
             </div>
 

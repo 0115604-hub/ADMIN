@@ -26,7 +26,7 @@ export const BurimtechCustomSection = ({
   const [isTemplateSettingOpen, setIsTemplateSettingOpen] = useState(false);
   return (
     <div className="space-y-3">
-      {/* 🌟 부림텍 전용 외주가공 부적합경보 & 작업일보 배너 */}
+      {/* 🌟 부림텍 전용 가공/협력업체 부적합경보 & 작업일보 배너 */}
       <div
         onClick={() => {
           if (setIsHanulQualityIssueModalOpen) setIsHanulQualityIssueModalOpen(true);
@@ -42,7 +42,7 @@ export const BurimtechCustomSection = ({
               부림텍 부적합경보 등록
             </span>
             <span className="hidden sm:inline text-[11px] text-teal-300 font-semibold truncate">
-              (한림공장 (주)부림텍 외주가공 실시간 작업일보 및 부적합경보 관리)
+              (한림공장 (주)부림텍 가공/협력업체 실시간 작업일보 및 부적합경보 관리)
             </span>
           </div>
         </div>
@@ -83,7 +83,7 @@ export const BurimtechCustomSection = ({
         </div>
       </div>
 
-      {/* 부림텍 외주가공 실시간 작업일보 현황 패널 (한울과 동일한 스타일) */}
+      {/* 부림텍 가공/협력업체 실시간 작업일보 현황 패널 (한울과 동일한 스타일) */}
       <BurimtechWorkReportTable
         handleOpenWorkLogModal={handleOpenWorkLogModal}
         handleOpenLogDetail={handleOpenLogDetail}
@@ -98,8 +98,8 @@ export const BurimtechCustomSection = ({
       <MajorProcessTemplateSelectModal
         isOpen={isTemplateSettingOpen}
         onClose={() => setIsTemplateSettingOpen(false)}
-        title="(주)부림텍 외주가공 5대 공정 작업일보 양식 설정"
-        subtitle="부림텍 외주가공 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
+        title="(주)부림텍 가공/협력업체 5대 공정 작업일보 양식 설정"
+        subtitle="부림텍 가공/협력업체 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
         companyKey="BURIMTECH"
         companyName="(주)부림텍"
         slots={BURIMTECH_SLOTS}
@@ -108,7 +108,7 @@ export const BurimtechCustomSection = ({
           if (handleOpenWorkLogModal) {
             handleOpenWorkLogModal({
               company: "부림텍",
-              assignedProcess: slotId === "STANDARD" ? "외주가공" : slotId,
+              assignedProcess: slotId === "STANDARD" ? "가공/협력업체" : slotId,
               templateId: tpl?.id
             });
           }

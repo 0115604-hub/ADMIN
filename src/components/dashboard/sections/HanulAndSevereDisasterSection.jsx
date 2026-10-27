@@ -75,7 +75,7 @@ export const HanulAndSevereDisasterSection = ({
                     한울 부적합경보 등록
                   </span>
                   <span className="hidden xl:inline text-[11px] text-purple-300 font-medium truncate">
-                    (9BQC G/RUN & LQ2a Hood Side 부적합경보 및 외주가공 실시간 관리)
+                    (9BQC G/RUN & LQ2a Hood Side 부적합경보 및 가공/협력업체 실시간 관리)
                   </span>
                 </div>
               </div>

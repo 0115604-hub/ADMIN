@@ -1,4 +1,4 @@
-﻿import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy } from "react";
 import WorkLogDetailModal from "./modals/WorkLogDetailModal";
 import WorkLogEditModal from "./modals/WorkLogEditModal";
 import WorkerLogListModal from "./modals/WorkerLogListModal";
@@ -490,7 +490,7 @@ export const DashboardModalsContainer = ({
         </Suspense>
       )}
 
-      {/* 🌟 한울 외주가공 작업일보 작성/수정 모달 (9BQC / LQ2a) */}
+      {/* 🌟 한울 가공/협력업체 작업일보 작성/수정 모달 (9BQC / LQ2a) */}
       {isHanulWorkReportModalOpen && (
         <Suspense fallback={null}>
           <HanulWorkReportModal
@@ -518,7 +518,7 @@ export const DashboardModalsContainer = ({
         </Suspense>
       )}
 
-      {/* 🌟 유성 외주가공 작업일보 작성/수정 모달 (JK1 / CE1 / DT) */}
+      {/* 🌟 유성 가공/협력업체 작업일보 작성/수정 모달 (JK1 / CE1 / DT) */}
       {isYuseongWorkReportModalOpen && (
         <Suspense fallback={null}>
           <YuseongWorkReportModal

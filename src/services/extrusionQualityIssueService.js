@@ -332,7 +332,7 @@ export const isExtrusionWorkerProfile = (profile) => {
   if (portal === "extrusion") return true;
   if (portal === "hanul" || portal === "bulimtech" || portal === "machining") return false;
 
-  // 🌟 한울 외주가공, 부림텍, 가공동 및 한림공장 작업자는 압출 작업자에서 명확히 분리 제외
+  // 🌟 한울 협력업체, 부림텍, 가공동 및 한림공장 작업자는 압출 작업자에서 명확히 분리 제외
   if (
     comp.includes("한울") ||
     comp.includes("부림") ||

@@ -84,7 +84,7 @@ export const sanitizeQualityRecord = (rec) => {
     scrapC,
     scrapD,
     scrapTotal,
-    uploader: String(rec.uploader || "이창엽 선임"),
+    uploader: String(rec.uploader || "이창엽 책임"),
     updatedAt: new Date().toISOString()
   };
 };
@@ -691,7 +691,7 @@ export const parseQualityExcelFiles = async (files = []) => {
                 defectRate: nx4Insp > 0 ? Number(((nx4Def / nx4Insp) * 100).toFixed(2)) : 0,
                 worstReason: "사상불량, 둔_삽입불량",
                 lossAmount: Math.round(nx4Def * unitPrices.nx4),
-                uploader: "이창엽 선임"
+                uploader: "이창엽 책임"
               });
               sheetRecordsCount++;
             }
@@ -710,7 +710,7 @@ export const parseQualityExcelFiles = async (files = []) => {
                 defectRate: nx4aInsp > 0 ? Number(((nx4aDef / nx4aInsp) * 100).toFixed(2)) : 0,
                 worstReason: "스코치, 직_삽입불량, 사상불량",
                 lossAmount: Math.round(nx4aDef * unitPrices.nx4a),
-                uploader: "이창엽 선임"
+                uploader: "이창엽 책임"
               });
               sheetRecordsCount++;
             }
@@ -808,7 +808,7 @@ export const parseQualityExcelFiles = async (files = []) => {
                 defectRate: rate,
                 worstReason,
                 lossAmount: loss,
-                uploader: "이창엽 선임"
+                uploader: "이창엽 책임"
               });
               sheetRecordsCount++;
             });
@@ -932,7 +932,7 @@ export const parseQualityExcelFiles = async (files = []) => {
             scrapC,
             scrapD,
             scrapTotal,
-            uploader: "이창엽 선임"
+            uploader: "이창엽 책임"
           });
         }
       }

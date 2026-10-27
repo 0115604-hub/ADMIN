@@ -91,7 +91,7 @@ export const Header = ({
                   {isExtrusionWorker
                     ? "압출 작업일보"
                     : isHanul
-                    ? "한울 외주가공 작업일보"
+                    ? "한울 가공/협력업체 작업일보"
                     : isBurimtech
                     ? "부림텍 작업일보"
                     : (!isManager && !isAdmin
@@ -132,7 +132,7 @@ export const Header = ({
                   window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: "9BQC" } }));
                 }}
                 className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
-                title="한울 외주가공 작업일보 작성"
+                title="한울 가공/협력업체 작업일보 작성"
               >
                 <span>✍️ 일보작성</span>
               </button>

@@ -311,7 +311,7 @@ export const acknowledgeHanulQualityIssue = async (id, workerName) => {
   return await saveHanulQualityIssue(updatedItem);
 };
 
-// Check if worker belongs to Hanul (외주가공 작업자 또는 뱃지)
+// Check if worker belongs to Hanul (가공/협력업체 작업자 또는 뱃지)
 export const isHanulWorkerProfile = (profile) => {
   if (!profile) return false;
   // 🌟 첫 화면 아래쪽 한울 뱃지(대표이사 hal_hu)는 관리자이므로 일반 작업자 전용 모드에서 제외 (기존 관리자 화면 보존)
@@ -321,7 +321,7 @@ export const isHanulWorkerProfile = (profile) => {
   if (profile.name === "황수현" || profile.id === "hal_sh" || profile.id === "sam_sh") {
     return false;
   }
-  // 🌟 압출동, 가공동, 부림텍 작업자는 한울 외주가공에서 완전 배제!
+  // 🌟 압출동, 가공동, 부림텍 작업자는 한울 협력업체에서 완전 배제!
   if (
     profile.portalType === "extrusion" ||
     profile.portalType === "machining" ||

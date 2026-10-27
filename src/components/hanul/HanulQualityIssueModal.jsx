@@ -68,14 +68,14 @@ const JOYOUNG_PROCESSES = [
   { id: "9bqc", name: "9BQC (G/RUN)", badge: "9BQC", color: "indigo" },
   { id: "lq2", name: "LQ2 (Hood Side)", badge: "LQ2", color: "purple" },
   { id: "lq2a", name: "LQ2a (Hood Side)", badge: "LQ2a", color: "pink" },
-  { id: "burim", name: "부림텍 외주가공", badge: "부림텍", color: "emerald" }
+  { id: "burim", name: "부림텍 가공/협력업체", badge: "부림텍", color: "emerald" }
 ];
 
 const BURIMTECH_PROCESSES = [
   { id: "lq2", name: "LQ2 (Hood Side)", badge: "LQ2", color: "emerald" },
   { id: "9bqc", name: "9BQC (G/RUN)", badge: "9BQC", color: "teal" },
   { id: "lq2a", name: "LQ2a (Hood Side)", badge: "LQ2a", color: "pink" },
-  { id: "burim_common", name: "부림텍 외주가공 (공통)", badge: "부림텍", color: "emerald" }
+  { id: "burim_common", name: "부림텍 협력업체 (공통)", badge: "부림텍", color: "emerald" }
 ];
 
 // Client-side image compression
@@ -186,12 +186,12 @@ export const HanulQualityIssueModal = ({ isOpen, onClose }) => {
     : isJoyoungManager
     ? "(주)조영 한림공장 전담"
     : isYuseongManager
-    ? "(주)유성 외주가공 전담"
+    ? "(주)유성 가공/협력업체 전담"
     : isBurimtechManager
-    ? "부림텍 외주가공 전담"
+    ? "부림텍 가공/협력업체 전담"
     : isSeolManager
     ? "삼랑진 압출동 전담"
-    : "한울 외주가공 전담";
+    : "한울 가공/협력업체 전담";
 
   const processOptions = isOryukManager
     ? ORYUK_PROCESSES

@@ -27,7 +27,7 @@ import TemplateAppliedPreviewModal from "./TemplateAppliedPreviewModal";
 
 /**
  * 🌟 5대 공정 양식 선택 및 매핑 공용 모달
- * 설유철(압출) / 부림텍(외주가공) 등 공정별 작업일보 실시간 현황에서
+ * 설유철(압출) / 부림텍(가공/협력업체) 등 공정별 작업일보 실시간 현황에서
  * 5대 공정 표준 양식 리스트를 확인하고 선택/매핑 및 전체보기(편집) 지원
  */
 export const MajorProcessTemplateSelectModal = ({

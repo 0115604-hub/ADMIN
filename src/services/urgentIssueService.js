@@ -212,7 +212,7 @@ export const sanitizeUrgentIssueItem = (item) => {
   return updated;
 };
 
-// Helper: 판별 - 개별 외주사/공정 내부 관리 이슈 여부 (첫 화면 및 전사 긴급이슈 컬렉션에서 완전 분리/배제 대상)
+// Helper: 판별 - 개별 협력업체/공정 내부 관리 이슈 여부 (첫 화면 및 전사 긴급이슈 컬렉션에서 완전 분리/배제 대상)
 // 🌟 첫 화면에서 등록된 이슈(한울 대표 등록 건 포함)는 첫 화면 보존 대상이므로 제외하지 않음
 export const isHanulManagedIssue = (item) => {
   if (!item) return false;
@@ -431,7 +431,7 @@ export const subscribeUrgentIssues = (onUpdate) => {
           snapshot.forEach((d) => {
             const data = d.data();
             if (!data) return;
-            // ⭐ 첫 화면 전용 목록에서 외주사/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 Firestore 삭제
+            // ⭐ 첫 화면 전용 목록에서 협력업체/공정별 개별 관리자 이슈(한울 품질경보 등) 영구 분리 및 Firestore 삭제
             if (isHanulManagedIssue({ id: d.id, ...data })) {
               deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
               return;

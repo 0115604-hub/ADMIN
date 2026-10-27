@@ -1,4 +1,4 @@
-// (주)유성 외주가공 작업일보 및 TPM 일상점검 서비스
+// (주)유성 가공/협력업체 작업일보 및 TPM 일상점검 서비스
 import {
   collection,
   doc,
@@ -275,7 +275,7 @@ export const exportYuseongReportToExcel = (report) => {
   const wb = XLSX.utils.book_new();
 
   const headerRows = [
-    ["(주)유성 외주가공 작업일보 및 TPM 일상점검표"],
+    ["(주)유성 가공/협력업체 작업일보 및 TPM 일상점검표"],
     [`차종 프로젝트: ${report.project || "JK1 Part'g"}`, `공정: ${report.processId || "소재준비"}`, `일자: ${report.date || getKSTDateString()}`],
     [`작업자: ${report.worker || ""}`, `근무: ${report.shift || "주간"}`, `작업시간: ${report.startTime || "08:00"} ~ ${report.endTime || "17:00"}`],
     [`설비호기: ${report.machineNo || "1호기"}`, `원재료 LOT: ${report.materialLot || "-"}`, `조인트 LOT: ${report.jointLot || "-"}`],

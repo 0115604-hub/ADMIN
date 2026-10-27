@@ -196,7 +196,7 @@ export const PartnerManagerDashboardView = ({
       {/* 🚨 중대재해 안전판 */}
       {SevereDisasterBar && <SevereDisasterBar />}
 
-      {/* 🌟 [커스텀 1] (주)유성 외주가공 전용: 부적합경보 + JK1/CE1/DT 작업일보 작성 및 대장 */}
+      {/* 🌟 [커스텀 1] (주)유성 가공/협력업체 전용: 부적합경보 + JK1/CE1/DT 작업일보 작성 및 대장 */}
       {isYuseong && (
         <YuseongCustomSection
           handleOpenYuseongReport={handleOpenYuseongReport}
@@ -207,7 +207,7 @@ export const PartnerManagerDashboardView = ({
         />
       )}
 
-      {/* 🌟 [커스텀 2] (주)부림텍 외주가공 전용: 부적합경보 + 부림텍 작업일보 작성 및 대장 */}
+      {/* 🌟 [커스텀 2] (주)부림텍 가공/협력업체 전용: 부적합경보 + 부림텍 작업일보 작성 및 대장 */}
       {isBurimtech && (
         <BurimtechCustomSection
           handleOpenWorkLogModal={handleOpenWorkLogModal}

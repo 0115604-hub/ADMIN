@@ -147,14 +147,14 @@ export const WorkerLoginSection = ({
         </div>
       </div>
 
-      {/* 2. 한림공장 (가공동/외주가공) */}
+      {/* 2. 한림공장 (가공/협력업체) */}
       <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
         <div className="flex items-center justify-between">
           <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
             <div className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
               <Factory className="w-3.5 h-3.5" />
             </div>
-            <span className="tracking-wide">한림공장 (가공동/외주가공)</span>
+            <span className="tracking-wide">한림공장 (가공/협력업체)</span>
             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 transition-all ${
               hanlimLeaveCount > 0
                 ? "bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 shadow-2xs"

@@ -1111,7 +1111,7 @@ export const HanulWorkReportModal = ({
       activeAssignedTemplate?.reportDocId ||
       existingWorkerReport?.id;
     if (!targetDocId) return;
-    if (!window.confirm("정말로 이 등록된 한울 외주가공 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+    if (!window.confirm("정말로 이 등록된 한울 가공/협력업체 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
     setIsSaving(true);
     try {
       await deleteHanulWorkReport(targetDocId);
@@ -1193,7 +1193,7 @@ export const HanulWorkReportModal = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h3 className="font-black text-sm sm:text-xl tracking-tight truncate">
-                    한울 외주가공 작업일보
+                    한울 가공/협력업체 작업일보
                   </h3>
                   {processId === "소재준비" ? (
                     <span className={`text-[9px] sm:text-xs px-2 py-0.5 rounded-full font-bold border ${

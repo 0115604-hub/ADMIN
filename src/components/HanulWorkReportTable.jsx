@@ -489,7 +489,7 @@ export const HanulWorkReportTable = ({
             {filteredReports.length === 0 ? (
               <tr>
                 <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">
-                  등록된 외주가공 작업일보가 없습니다. 상단의 [+ 일보 작성] 버튼을 클릭해 등록해 주십시오.
+                  등록된 가공/협력업체 작업일보가 없습니다. 상단의 [+ 일보 작성] 버튼을 클릭해 등록해 주십시오.
                 </td>
               </tr>
             ) : (

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import {
   CommonScheduleBar,
   WorkerScheduleCalendarSection,
@@ -175,7 +175,7 @@ export const HanulManagerDashboardView = ({
         myWeeklyCalendarDays={myWeeklyCalendarDays}
       />
 
-      {/* 🌟 [커스텀] 한울 외주가공 전용: 전월 지출내역 등록 + 한울 부적합경보 + 9BQC/LQ2a 작업일보 실시간 관리 대장 + 중대재해 안전판 */}
+      {/* 🌟 [커스텀] 한울 가공/협력업체 전용: 전월 지출내역 등록 + 한울 부적합경보 + 9BQC/LQ2a 작업일보 실시간 관리 대장 + 중대재해 안전판 */}
       <HanulAndSevereDisasterSection
         isHanul={isHanul}
         isAdmin={false}

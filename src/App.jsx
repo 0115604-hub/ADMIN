@@ -88,6 +88,8 @@ export const App = () => {
       currentProfile?.portalType === "bulimtech" ||
       ["한울", "유성", "부림텍"].includes(currentProfile?.company) ||
       currentProfile?.assignedProcess === "외주가공" ||
+      currentProfile?.assignedProcess === "가공/협력업체" ||
+      currentProfile?.assignedProcess?.includes("협력") ||
       currentProfile?.assignedProcess === "압출동" ||
       currentProfile?.assignedProcess === "가공동" ||
       currentProfile?.building === "압출동" ||
@@ -369,7 +371,7 @@ export const App = () => {
       if (isAdmin) return "현황";
       if (!isManager) {
         if (isExtrusionWorker) return "압출 작업일보";
-        if (isHanul) return "한울 외주가공 작업일보";
+        if (isHanul) return "한울 가공/협력업체 작업일보";
         if (isBurimtech) return "부림텍 작업일보";
         return "가공동 작업일보";
       }

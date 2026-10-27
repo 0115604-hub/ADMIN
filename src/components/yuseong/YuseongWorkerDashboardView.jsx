@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   Factory,
   ShieldAlert,
@@ -219,7 +219,7 @@ export const YuseongWorkerDashboardView = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-black text-white leading-tight">
-                (주)유성 외주가공
+                (주)유성 가공/협력업체
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-600/30 text-indigo-300 border border-indigo-400/40">
                 [작업자] {currentProfile?.name || "유성"} {displayTitle}
@@ -273,7 +273,7 @@ export const YuseongWorkerDashboardView = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-indigo-200/90 font-medium mt-0.5">
-                  (주)유성 외주가공 현장 전달 사내공지 사항입니다.
+                  (주)유성 가공/협력업체 현장 전달 사내공지 사항입니다.
                 </p>
               </div>
             </div>
@@ -667,7 +667,7 @@ export const YuseongWorkerDashboardView = () => {
         onClose={() => setIsInspectionModalOpen(false)}
       />
 
-      {/* 📋 유성 외주가공 작업일보 모달 (4단계 TPM 점검 ➔ 5단계 공정별 일보) */}
+      {/* 📋 유성 가공/협력업체 작업일보 모달 (4단계 TPM 점검 ➔ 5단계 공정별 일보) */}
       {isReportModalOpen && (
         <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
           <YuseongWorkReportModal

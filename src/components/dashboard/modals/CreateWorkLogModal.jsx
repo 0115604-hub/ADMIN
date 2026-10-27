@@ -110,7 +110,7 @@ export default function CreateWorkLogModal({
     return () => window.removeEventListener("open-lego-work-report", handleOpenLego);
   }, [setIsModalOpen]);
 
-  // 🌟 부림텍 등 외주가공 공정 작업자 진입 시 관리자가 지정한 5대 공정 양식 자동 로드
+  // 🌟 부림텍 등 가공/협력업체 공정 작업자 진입 시 관리자가 지정한 5대 공정 양식 자동 로드
   useEffect(() => {
     if (isModalOpen) {
       const comp = String(formData?.company || currentProfile?.company || "").trim();
@@ -123,7 +123,11 @@ export default function CreateWorkLogModal({
         const tpl = getAssignedTemplateForWorker({
           company: "BURIMTECH",
           project: "BURIMTECH",
-          processId: formData?.assignedProcess || "외주가공"
+          processId: formData?.assignedProcess || "가공/협력업체"
+        }) || getAssignedTemplateForWorker({
+          company: "BURIMTECH",
+          project: "BURIMTECH",
+          processId: "STANDARD"
         });
         if (tpl) {
           setAssignedTemplateData(tpl);
@@ -182,11 +186,11 @@ export default function CreateWorkLogModal({
                     if (handleSaveLog) {
                       const synthLog = {
                         ...formData,
-                        title: reportPayload?.title || "부림텍 외주가공 작업일보",
+                        title: reportPayload?.title || "부림텍 가공/협력업체 작업일보",
                         writer: workerFullName || reportPayload?.workerName || "최현영",
                         company: "부림텍",
                         plant: "한림공장",
-                        assignedProcess: reportPayload?.processName || "외주가공",
+                        assignedProcess: reportPayload?.processName || "가공/협력업체",
                         actualQuantity: reportPayload?.totals?.genuine || 0,
                         defectCount: reportPayload?.totals?.bad || 0,
                         downtimeMinutes: 0,

@@ -104,7 +104,7 @@ export const YuseongWorkReportModal = ({
         title: editReport.processName || editReport.title || assignedTemplate?.title || "유성 작업일보",
         carModel: editReport.carModel || project,
         partName: editReport.partName || assignedTemplate?.partName || "G/RUN",
-        processName: editReport.processId || processId || assignedTemplate?.processName || "외주가공",
+        processName: editReport.processId || processId || assignedTemplate?.processName || "가공/협력업체",
         targetQty: editReport.targetQty || editReport.orderQty || editReport.legoConfig?.targetQty || assignedTemplate?.targetQty || 350,
         orderQty: editReport.orderQty || editReport.targetQty || editReport.legoConfig?.orderQty || assignedTemplate?.orderQty || 350,
         legoConfig: editReport.legoConfig || assignedTemplate?.legoConfig || null,
@@ -357,7 +357,7 @@ export const YuseongWorkReportModal = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-black text-sm sm:text-base leading-tight">
-                  (주)유성 외주가공 작업일보
+                  (주)유성 가공/협력업체 작업일보
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500 text-white shadow-2xs">
                   {currentStep === "tpm" ? "4단계: TPM 설비일상점검" : `5단계: ${project} ${processId} 일보`}
@@ -608,7 +608,7 @@ export const YuseongWorkReportModal = ({
                   onClose();
                 }}
                 onDeleteWorkReport={editReport?.id ? async () => {
-                  if (!window.confirm("정말로 이 등록된 유성 외주가공 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+                  if (!window.confirm("정말로 이 등록된 유성 가공/협력업체 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
                   try {
                     await deleteYuseongWorkReport(editReport.id);
                     onClose();
@@ -1184,7 +1184,7 @@ export const YuseongWorkReportModal = ({
         <div className="p-3.5 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block animate-pulse"></span>
-            <span>(주)유성 외주가공 실시간 동기화</span>
+            <span>(주)유성 가공/협력업체 실시간 동기화</span>
           </div>
 
           <div className="flex items-center gap-2">

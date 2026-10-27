@@ -455,7 +455,7 @@ export const DEFAULT_2026_09_PURCHASE_BREAKDOWN = [
     "supplier": "삼랑진 T&C (NX4 G/RUN FRT, DT HOOD SEAL 등)",
     "amount": 274911645,
     "share": 18.91,
-    "badge": "외주가공",
+    "badge": "가공/협력업체",
     "subitems": [
       {
         "code": "G2102-2012",
@@ -515,11 +515,11 @@ export const DEFAULT_2026_09_PURCHASE_BREAKDOWN = [
     "rank": 3
   },
   {
-    "category": "신천 압출/외주가공",
+    "category": "신천 압출/협력업체",
     "supplier": "신천 (DT/DS Door Side, NE1a, MX5a 등)",
     "amount": 130499189,
     "share": 8.98,
-    "badge": "외주가공",
+    "badge": "가공/협력업체",
     "subitems": [
       {
         "code": "F2103-1709",

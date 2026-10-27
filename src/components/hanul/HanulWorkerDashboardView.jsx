@@ -419,7 +419,7 @@ export const HanulWorkerDashboardView = () => {
                 {labels.write_lq2_report}
               </div>
               <div className="text-[11px] text-purple-200 font-medium truncate mt-0.5">
-                LQ2 Door Harness Sub-assy 외주가공 작업일보
+                LQ2 Door Harness Sub-assy 가공/협력업체 작업일보
               </div>
             </div>
           </div>
@@ -524,7 +524,7 @@ export const HanulWorkerDashboardView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🚨 4. 한울 관리자 품질이슈 공유판 (9BQC / LQ2 외주가공 전용) */}
+      {/* 🚨 4. 한울 관리자 품질이슈 공유판 (9BQC / LQ2 가공/협력업체 전용) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-md space-y-4 text-slate-900 dark:text-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -841,7 +841,7 @@ export const HanulWorkerDashboardView = () => {
                         </span>
                       </td>
                       <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">
-                        {report.processId || report.processName || "외주가공"}
+                        {report.processId === "외주가공" ? "가공/협력업체" : (report.processId || report.processName || "가공/협력업체")}
                         {report.shift && (
                           <span className="ml-1 text-[10px] text-slate-400 font-normal">
                             ({report.shift})
@@ -928,7 +928,7 @@ export const HanulWorkerDashboardView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📋 한울 외주가공 작업일보 작성 모달 (9BQC / LQ2a) */}
+      {/* 📋 한울 가공/협력업체 작업일보 작성 모달 (9BQC / LQ2a) */}
       {/* ========================================================================= */}
       {isReportModalOpen && (
         <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>

@@ -216,7 +216,7 @@ export const YuseongWorkReportTable = ({
 
   const handleDelete = async (id, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
-    if (!window.confirm("정말로 이 유성 외주가공 작업일보를 영구 삭제하시겠습니까?")) return;
+    if (!window.confirm("정말로 이 유성 가공/협력업체 작업일보를 영구 삭제하시겠습니까?")) return;
     setIsDeleting(id);
     try {
       await deleteYuseongWorkReport(id);
@@ -234,7 +234,7 @@ export const YuseongWorkReportTable = ({
       return;
     }
     const today = new Date().toISOString().slice(0, 10);
-    exportYuseongReportToExcel(filteredReports, `유성_외주가공_작업일보_${today}.xlsx`);
+    exportYuseongReportToExcel(filteredReports, `유성_가공협력업체_작업일보_${today}.xlsx`);
   };
 
   return (
@@ -254,7 +254,7 @@ export const YuseongWorkReportTable = ({
           </div>
           <div>
             <h3 className="font-black text-xs sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <span>(주)유성 외주가공 작업일보 실시간 현황</span>
+              <span>(주)유성 가공/협력업체 작업일보 실시간 현황</span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold">
                 총 {stats.totalCount}건
               </span>
@@ -453,7 +453,7 @@ export const YuseongWorkReportTable = ({
             {filteredReports.length === 0 ? (
               <tr>
                 <td colSpan={9} className="py-10 text-center text-slate-400 font-bold">
-                  등록된 유성 외주가공 작업일보가 없습니다. 상단의 [+ 일보] 버튼을 클릭해 등록해 주십시오.
+                  등록된 유성 가공/협력업체 작업일보가 없습니다. 상단의 [+ 일보] 버튼을 클릭해 등록해 주십시오.
                 </td>
               </tr>
             ) : (

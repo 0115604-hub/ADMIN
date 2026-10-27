@@ -1845,7 +1845,7 @@ export const LegoWorkReportBuilder = ({
             </div>
             <div className="hidden sm:flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700">
               <span className="text-[10.5px] font-bold text-slate-400 shrink-0">공정:</span>
-              <span className="text-indigo-300 font-black truncate">{currentReport.processName || "외주가공"}</span>
+              <span className="text-indigo-300 font-black truncate">{currentReport.processName === "외주가공" ? "가공/협력업체" : (currentReport.processName || "가공/협력업체")}</span>
             </div>
           </div>
         )}

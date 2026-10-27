@@ -49,7 +49,7 @@ export const BurimtechWorkReportTable = ({
         writer === "최현영" ||
         writer === "김동훈" ||
         proc.includes("부림") ||
-        (l.plant === "한림공장" && proc.includes("외주가공"))
+        (l.plant === "한림공장" && (proc.includes("외주가공") || proc.includes("가공/협력업체") || proc.includes("협력업체") || proc.includes("가공")))
       );
     });
   }, [workLogs]);
@@ -73,13 +73,13 @@ export const BurimtechWorkReportTable = ({
           </div>
           <div>
             <h3 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              <span>(주)부림텍 외주가공 작업일보 실시간 현황</span>
+              <span>(주)부림텍 가공/협력업체 작업일보 실시간 현황</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
                 총 {stats.total}건
               </span>
             </h3>
             <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              한림공장 (주)부림텍 외주가공 일일 작업 실적 및 실시간 결재 승인 현황
+              한림공장 (주)부림텍 가공/협력업체 일일 작업 실적 및 실시간 결재 승인 현황
             </span>
           </div>
         </div>
@@ -90,7 +90,7 @@ export const BurimtechWorkReportTable = ({
             type="button"
             onClick={() => setIsTemplateSettingOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
-            title="탭하면 부림텍 외주가공에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
+            title="탭하면 부림텍 가공/협력업체에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>⚙️ 부림텍일보설정</span>
@@ -159,7 +159,7 @@ export const BurimtechWorkReportTable = ({
             {burimLogs.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-10 text-center text-slate-400 font-bold">
-                  등록된 부림텍 외주가공 작업일보가 없습니다. 상단의 [+ 일보 작성] 버튼을 클릭해 등록해 주십시오.
+                  등록된 부림텍 가공/협력업체 작업일보가 없습니다. 상단의 [+ 일보 작성] 버튼을 클릭해 등록해 주십시오.
                 </td>
               </tr>
             ) : (
@@ -180,7 +180,7 @@ export const BurimtechWorkReportTable = ({
                     </td>
                     <td className="py-2.5 px-3">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                        {log.assignedProcess || log.process || "외주가공"}
+                        {log.assignedProcess === "외주가공" ? "가공/협력업체" : (log.assignedProcess || log.process || "가공/협력업체")}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium">
@@ -254,12 +254,12 @@ export const BurimtechWorkReportTable = ({
         </table>
       </div>
 
-      {/* 🌟 5대 공정 양식 설정 모달 (부림텍 외주가공 공정별 양식 매핑) */}
+      {/* 🌟 5대 공정 양식 설정 모달 (부림텍 가공/협력업체 공정별 양식 매핑) */}
       <MajorProcessTemplateSelectModal
         isOpen={isTemplateSettingOpen}
         onClose={() => setIsTemplateSettingOpen(false)}
-        title="(주)부림텍 외주가공 5대 공정 작업일보 양식 설정"
-        subtitle="부림텍 외주가공 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
+        title="(주)부림텍 가공/협력업체 5대 공정 작업일보 양식 설정"
+        subtitle="부림텍 가공/협력업체 공정별 적용할 표준 5대 공정 양식을 선택 및 매핑하세요."
         companyKey="BURIMTECH"
         companyName="(주)부림텍"
         slots={BURIMTECH_SLOTS}
@@ -268,7 +268,7 @@ export const BurimtechWorkReportTable = ({
           if (handleOpenWorkLogModal) {
             handleOpenWorkLogModal({
               company: "부림텍",
-              assignedProcess: slotId === "STANDARD" ? "외주가공" : slotId,
+              assignedProcess: slotId === "STANDARD" ? "가공/협력업체" : slotId,
               templateId: tpl?.id
             });
           }

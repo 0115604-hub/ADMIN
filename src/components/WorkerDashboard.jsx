@@ -331,7 +331,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     currentProfile?.id === "sam_yc" ||
     isExtrusionWorkerProfile(currentProfile);
 
-  // 🌟 한울 관리자 (대표이사 hal_hu, 황수현 선임 등 외주가공 한울 관리자)
+  // 🌟 한울 관리자 (대표이사 hal_hu, 황수현 대표 등 가공/협력업체 한울 관리자)
   const isHanulManager = Boolean(
     currentProfile?.name === "한울" ||
     currentProfile?.id === "hal_hu" ||
@@ -374,7 +374,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("유성") || currentProfile?.company === "유성"))
   );
 
-  // 🌟 외주 협력사 대표/관리자 판별 (한울, 부림텍, 유성 등)
+  // 🌟 협력사 대표/관리자 판별 (한울, 부림텍, 유성 등)
   const isPartnerProfile = Boolean(
     isHanulManager ||
     isBurimtechManager ||
@@ -394,9 +394,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const assignedProcess = currentProfile?.assignedProcess || (
     currentProfile?.building === "압출동" ? "압출" :
     isExtrusionWorker ? "압출" :
-    isHanul ? "외주가공 (한울)" :
-    isBurimtech ? "외주가공 (부림텍)" :
-    isPartnerProfile ? "외주가공" :
+    isHanul ? "가공/협력업체 (한울)" :
+    isBurimtech ? "가공/협력업체 (부림텍)" :
+    isPartnerProfile ? "가공/협력업체" :
     "가공"
   );
 
@@ -1237,7 +1237,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     );
   }
 
-  // 🌟 한울 외주가공 현장작업자
+  // 🌟 한울 가공/협력업체 현장작업자
   const isHanulOperatorWorker =
     Boolean(currentProfile?.isFieldWorker) &&
     isHanulWorkerProfile(currentProfile) &&
@@ -1265,7 +1265,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     );
   }
 
-  // 🌟 (주)유성 외주가공 현장작업자 (JK1 Part'g, CE1 Part'g, DT Hood)
+  // 🌟 (주)유성 가공/협력업체 현장작업자 (JK1 Part'g, CE1 Part'g, DT Hood)
   const isYuseongOperatorWorker =
     Boolean(currentProfile?.isFieldWorker) &&
     isYuseongWorkerProfile(currentProfile) &&
@@ -1308,7 +1308,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <>
           {/* 👔 [역할별 격리된 관리자 대시보드 뷰 분기] */}
           {isHanulManager ? (
-            /* 1. 한울 외주가공 관리자 뷰 (외주 정산, 품질 경보, 9BQC/LQ2a 일보, 한울 근태) */
+            /* 1. 한울 협력업체 관리자 뷰 (협력업체 정산, 품질 경보, 9BQC/LQ2a 일보, 한울 근태) */
             <HanulManagerDashboardView
               isAdmin={isAdmin}
               hasNewScheduleMessage={hasNewScheduleMessage}
@@ -1401,7 +1401,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               activeMachiningQualityCount={activeMachiningQualityCount}
             />
           ) : isPartnerProfile ? (
-            /* 2. 외주 협력사 관리자 뷰 (유성, 부림텍 등 - 소속 근태 및 공통 일정) */
+            /* 2. 협력업체 관리자 뷰 (유성, 부림텍 등 - 소속 근태 및 공통 일정) */
             <PartnerManagerDashboardView
               isAdmin={isAdmin}
               hasNewScheduleMessage={hasNewScheduleMessage}

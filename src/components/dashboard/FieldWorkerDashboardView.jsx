@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ShieldAlert, Check } from "lucide-react";
 import {
   subscribeMachiningQualityIssues,
@@ -93,7 +93,7 @@ export default function FieldWorkerDashboardView({
   );
 
   const companyTitle = isBurimtech
-    ? "한림공장 (주)부림텍 외주가공"
+    ? "한림공장 (주)부림텍 가공/협력업체"
     : `${workerPlant || currentProfile?.plant || "삼랑진공장"} (주)${currentProfile?.company || "오륙"} 현장가공`;
 
   const workerBadgeText = `[작업자] ${workerFullName || currentProfile?.name || (isBurimtech ? "부림텍" : "")} ${displayTitle}`;

@@ -11,7 +11,7 @@ export const YuseongCustomSection = ({
 }) => {
   return (
     <div className="space-y-3">
-      {/* 🌟 유성 전용 외주가공 부적합경보 등록 & 3대 아이템 작업일보 (JK1 / CE1 / DT) 실시간 관리 */}
+      {/* 🌟 유성 전용 가공/협력업체 부적합경보 등록 & 3대 아이템 작업일보 (JK1 / CE1 / DT) 실시간 관리 */}
       <div
         onClick={() => {
           if (setIsHanulQualityIssueModalOpen) setIsHanulQualityIssueModalOpen(true);
@@ -27,7 +27,7 @@ export const YuseongCustomSection = ({
               유성 부적합경보 등록
             </span>
             <span className="hidden sm:inline text-[11px] text-blue-300 font-semibold truncate">
-              (JK1 Part'g, CE1 Part'g, DT Hood 부적합경보 및 외주가공 실시간 관리)
+              (JK1 Part'g, CE1 Part'g, DT Hood 부적합경보 및 가공/협력업체 실시간 관리)
             </span>
           </div>
         </div>

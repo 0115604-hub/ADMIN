@@ -234,7 +234,7 @@ export default function QualityStatusPopupModal({
             {/* Modal Footer Controls */}
             <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <span className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center sm:text-left">
-                💡 이 데이터는 이창엽 선임이 업로드한 원본 엑셀 파일과 100% 동일합니다.
+                💡 이 데이터는 이창엽 책임이 업로드한 원본 엑셀 파일과 100% 동일합니다.
               </span>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
