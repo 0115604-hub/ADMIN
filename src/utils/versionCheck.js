@@ -79,5 +79,11 @@ export async function forceHardReload() {
     }
   } catch (e) {}
 
+  // 🧹 구버전 브라우저 로컬 스토리지 결재 캐시 완전 강제 삭제
+  try {
+    localStorage.removeItem("oryuk_approval_documents");
+    sessionStorage.removeItem("oryuk_approval_documents");
+  } catch (e) {}
+
   window.location.replace(targetUrl);
 }
