@@ -33,7 +33,8 @@ import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints,
   registerToFourMLedger,
-  getFourMBadgeColor
+  getFourMBadgeColor,
+  getFourMRecordCompany
 } from "../../services/fourMChangePointService";
 import {
   approveDocumentStep,
@@ -305,6 +306,7 @@ export default function Step4ExecutiveApprovalPanel({
         "관리번호": String(rec.id).replace(/^ledger_/, ""),
         "발생일자": rec.date || "",
         "공장": rec.plant || "",
+        "소속사": getFourMRecordCompany(rec),
         "공정/차종": rec.line || "",
         "4M구분": rec.fourM || "",
         "SQ통보여부": rec.isSqNotice ? "대상" : "해당없음",
@@ -629,7 +631,7 @@ export default function Step4ExecutiveApprovalPanel({
                 <tr>
                   <th className="py-2.5 px-3 w-28">관리번호</th>
                   <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
-                  <th className="py-2.5 px-3 w-28">공정/차종</th>
+                  <th className="py-2.5 px-3 w-32">소속사 / 공정</th>
                   <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
                   <th className="py-2.5 px-3 min-w-[240px]">시정 및 재발방지대책 (CAPA)</th>
                   <th className="py-2.5 px-3 text-center w-36">최종 승인 및 전자서명</th>
@@ -649,8 +651,15 @@ export default function Step4ExecutiveApprovalPanel({
                           {rec.fourM || "Machine"}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                        {rec.line || rec.plant}
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
+                            {getFourMRecordCompany(rec)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          {rec.line || rec.plant}
+                        </div>
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="font-bold text-slate-800 dark:text-slate-200">{rec.title || rec.content}</div>
@@ -717,7 +726,7 @@ export default function Step4ExecutiveApprovalPanel({
                 <tr>
                   <th className="py-2.5 px-3 w-28">관리번호</th>
                   <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
-                  <th className="py-2.5 px-3 w-28">공정/차종</th>
+                  <th className="py-2.5 px-3 w-32">소속사 / 공정</th>
                   <th className="py-2.5 px-3 min-w-[200px]">변동점 내용</th>
                   <th className="py-2.5 px-3 min-w-[220px]">시정대책(CAPA) 및 조치결과</th>
                   <th className="py-2.5 px-2 text-center w-24">진행상태</th>
@@ -743,8 +752,15 @@ export default function Step4ExecutiveApprovalPanel({
                             {rec.fourM || "Machine"}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                          {rec.line || rec.plant}
+                        <td className="py-2.5 px-3">
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] font-black">
+                              {getFourMRecordCompany(rec)}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            {rec.line || rec.plant}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="font-bold text-slate-800 dark:text-slate-200">{rec.title || rec.content}</div>

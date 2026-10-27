@@ -1,6 +1,6 @@
 import React from "react";
 import { Search, Edit3 } from "lucide-react";
-import { getFourMBadgeColor } from "../../../services/fourMChangePointService";
+import { getFourMBadgeColor, getFourMRecordCompany } from "../../../services/fourMChangePointService";
 
 export const Step3Official4MLedgerSection = ({
   official4MItems,
@@ -49,8 +49,8 @@ export const Step3Official4MLedgerSection = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="공정/차종/대책 검색..."
-              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs outline-none focus:ring-1 focus:ring-indigo-500 w-36 sm:w-44"
+              placeholder="소속사/공정/차종/대책 검색..."
+              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs outline-none focus:ring-1 focus:ring-indigo-500 w-36 sm:w-48"
             />
           </div>
         </div>
@@ -63,7 +63,7 @@ export const Step3Official4MLedgerSection = ({
             <tr>
               <th className="py-2.5 px-3 w-28">관리번호</th>
               <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
-              <th className="py-2.5 px-2.5 w-28">공정/차종</th>
+              <th className="py-2.5 px-2.5 w-32">소속사 / 공정</th>
               <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
               <th className="py-2.5 px-3 min-w-[240px]">시정대책(CAPA) 및 조치결과</th>
               <th className="py-2.5 px-2 text-center w-24">진행상태</th>
@@ -76,11 +76,13 @@ export const Step3Official4MLedgerSection = ({
                 if (selectedFourMFilter !== "ALL" && rec.fourM !== selectedFourMFilter) return false;
                 if (searchQuery.trim()) {
                   const q = searchQuery.toLowerCase();
+                  const comp = getFourMRecordCompany(rec).toLowerCase();
                   const line = String(rec.line || "").toLowerCase();
+                  const plant = String(rec.plant || "").toLowerCase();
                   const title = String(rec.title || "").toLowerCase();
                   const content = String(rec.content || "").toLowerCase();
                   const action = String(rec.actionResult || "").toLowerCase();
-                  return line.includes(q) || title.includes(q) || content.includes(q) || action.includes(q);
+                  return comp.includes(q) || line.includes(q) || plant.includes(q) || title.includes(q) || content.includes(q) || action.includes(q);
                 }
                 return true;
               })
@@ -120,13 +122,15 @@ export const Step3Official4MLedgerSection = ({
                       )}
                     </td>
 
-                    {/* Line / Vehicle */}
+                    {/* Company / Process */}
                     <td className="py-2.5 px-2.5">
-                      <div className="font-bold text-slate-900 dark:text-white">
-                        {rec.line || rec.plant}
+                      <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11.5px] font-black tracking-wide">
+                          {getFourMRecordCompany(rec)}
+                        </span>
                       </div>
-                      <div className="text-[10.5px] text-slate-400">
-                        {rec.plant}
+                      <div className="text-[10.5px] text-slate-400 mt-1">
+                        {rec.line || rec.process || "압출"} · {rec.plant}
                       </div>
                     </td>
 

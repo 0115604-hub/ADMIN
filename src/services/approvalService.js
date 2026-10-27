@@ -37,7 +37,14 @@ export function getDeletedApprovalIds() {
     const raw = localStorage.getItem("deleted_approval_doc_ids");
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
+    const set = new Set(Array.isArray(arr) ? arr : []);
+    // 4M 변동점 공식 결재문서는 영구 보존 대상이므로 삭제 블랙리스트에서 자동 제외
+    set.forEach((id) => {
+      if (id && (id.startsWith("appr_4m_") || id.includes("man_log_auto_"))) {
+        set.delete(id);
+      }
+    });
+    return set;
   } catch (e) {
     return new Set();
   }

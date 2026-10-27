@@ -175,30 +175,183 @@ export const generate4MActionResult = (entry) => {
   return "";
 };
 
-// ⭐ 기본 4M 결근 및 대체투입 초기 이력 샘플 데이터 (신규 입력 기준 - 빈 상태)
-export const INITIAL_4M_ABSENCE_LOGS = {};
+// ⭐ 기본 4M 결근 및 대체투입 초기 이력 기준 데이터 (공식대장 등록 이력 영구 보존 및 누락 복구용)
+export const INITIAL_4M_ABSENCE_LOGS = {
+  "auto_2026-10-12_유성_론나차이": {
+    id: "auto_2026-10-12_유성_론나차이",
+    date: "2026-10-12",
+    company: "유성",
+    process: "압출",
+    plant: "삼랑진공장",
+    absentWorker: {
+      name: "론나차이",
+      position: "사원",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      reason: "병결"
+    },
+    substituteWorker: {
+      name: "이성기",
+      position: "대표이사",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 5,
+      isMultiSkill: true
+    },
+    riskLevel: "LOW",
+    riskWarningText: "동등/상위 숙련도 다기능공 정상 배치 완료. 표준 초물검사 1회 실시.",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:41",
+    isResolved: true,
+    supervisor: "이성기 선임",
+    createdAt: "2026-10-27T08:41:00Z"
+  },
+  "auto_2026-10-12_유성_팔라": {
+    id: "auto_2026-10-12_유성_팔라",
+    date: "2026-10-12",
+    company: "유성",
+    process: "압출",
+    plant: "삼랑진공장",
+    absentWorker: {
+      name: "팔라",
+      position: "사원",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 3,
+      skillGrade: "Lv.3 보통",
+      reason: "병결"
+    },
+    substituteWorker: {
+      name: "라인비가동",
+      isLineStopped: true
+    },
+    riskLevel: "STOPPED",
+    riskWarningText: "해당 라인/공정 비가동 상태로 대체 인원을 투입하지 않습니다 (품질 이상 없음).",
+    actionResult: "라인 비가동 (공정 정지/품질영향 없음)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:43",
+    isResolved: true,
+    supervisor: "이성기 선임",
+    createdAt: "2026-10-27T08:43:00Z"
+  },
+  "auto_2026-10-12_조영_윤의정": {
+    id: "auto_2026-10-12_조영_윤의정",
+    date: "2026-10-12",
+    company: "조영",
+    process: "소재준비",
+    plant: "한림공장",
+    absentWorker: {
+      name: "윤의정",
+      position: "사원",
+      dept: "가공관리팀",
+      mainProcess: "소재준비",
+      skillLevel: 3,
+      skillGrade: "Lv.3 보통",
+      reason: "개인사정"
+    },
+    substituteWorker: {
+      name: "라인비가동",
+      isLineStopped: true
+    },
+    riskLevel: "STOPPED",
+    riskWarningText: "해당 라인/공정 비가동 상태로 대체 인원을 투입하지 않습니다 (품질 이상 없음).",
+    actionResult: "라인 비가동 (공정 정지/품질영향 없음)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:46",
+    isResolved: true,
+    supervisor: "오상민 선임",
+    createdAt: "2026-10-27T08:46:00Z"
+  },
+  "auto_2026-10-13_유성_론나차이": {
+    id: "auto_2026-10-13_유성_론나차이",
+    date: "2026-10-13",
+    company: "유성",
+    process: "압출",
+    plant: "삼랑진공장",
+    absentWorker: {
+      name: "론나차이",
+      position: "사원",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      reason: "병결"
+    },
+    substituteWorker: {
+      name: "이성기",
+      position: "대표이사",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 5,
+      isMultiSkill: true
+    },
+    riskLevel: "LOW",
+    riskWarningText: "동등/상위 숙련도 다기능공 정상 배치 완료. 표준 초물검사 1회 실시.",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:54",
+    isResolved: true,
+    supervisor: "이성기 선임",
+    createdAt: "2026-10-27T08:54:00Z"
+  },
+  "auto_2026-10-14_유성_론나차이": {
+    id: "auto_2026-10-14_유성_론나차이",
+    date: "2026-10-14",
+    company: "유성",
+    process: "압출",
+    plant: "삼랑진공장",
+    absentWorker: {
+      name: "론나차이",
+      position: "사원",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      reason: "병결"
+    },
+    substituteWorker: {
+      name: "이성기",
+      position: "대표이사",
+      dept: "생산팀",
+      mainProcess: "압출",
+      skillLevel: 5,
+      isMultiSkill: true
+    },
+    riskLevel: "LOW",
+    riskWarningText: "동등/상위 숙련도 다기능공 정상 배치 완료. 표준 초물검사 1회 실시.",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:55",
+    isResolved: true,
+    supervisor: "이성기 선임",
+    createdAt: "2026-10-27T08:55:00Z"
+  }
+};
 
 // 로컬 스토리지에서 전체 4M 결근/대체 로그 로드
 export const getLocal4MAbsenceLogsMap = () => {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const sanitized = { ...INITIAL_4M_ABSENCE_LOGS };
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
         // 김동욱 책임은 총괄관리자이므로 결근자 목록에서 제외/정화
-        const sanitized = {};
         Object.entries(parsed).forEach(([k, v]) => {
           if (v && v.absentWorker?.name !== "김동욱" && v.name !== "김동욱") {
             sanitized[k] = v;
           }
         });
-        return sanitized;
       }
     }
+    return sanitized;
   } catch (e) {
     console.warn("Failed to load local 4M absence logs map:", e);
+    return { ...INITIAL_4M_ABSENCE_LOGS };
   }
-  return {};
 };
 
 // 로컬 스토리지에 4M 결근/대체 로그 저장 (5개사 독립 로컬 키 동시 분리 보관)

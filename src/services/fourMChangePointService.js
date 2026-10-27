@@ -52,6 +52,310 @@ export const getFourMBadgeColor = (fourM) => {
   }
 };
 
+// Helper: 4M Record Company Standardizer (소속사명 추출 헬퍼)
+export const getFourMRecordCompany = (rec) => {
+  if (!rec) return "오륙";
+  const rawComp = rec.company || rec.contractor || rec.raw?.company || rec.raw?.contractor;
+  if (rawComp) {
+    const s = String(rawComp).trim();
+    if (s.includes("유성")) return "유성";
+    if (s.includes("조영")) return "조영";
+    if (s.includes("한울")) return "한울";
+    if (s.includes("부림")) return "부림텍";
+    if (s.includes("오륙") || s.includes("설압출")) return "오륙";
+  }
+  const text = `${rec.title || ""} ${rec.content || ""} ${rec.line || ""} ${rec.plant || ""}`;
+  const m = text.match(/\[(오륙|유성|조영|한울|부림텍|부림|설압출)\]/);
+  if (m && m[1]) {
+    return m[1] === "부림" ? "부림텍" : (m[1] === "설압출" ? "오륙" : m[1]);
+  }
+  const pm = text.match(/\((오륙|유성|조영|한울|부림텍|부림|설압출)\)/);
+  if (pm && pm[1]) {
+    return pm[1] === "부림" ? "부림텍" : (pm[1] === "설압출" ? "오륙" : pm[1]);
+  }
+  if (text.includes("유성")) return "유성";
+  if (text.includes("조영")) return "조영";
+  if (text.includes("한울")) return "한울";
+  if (text.includes("부림")) return "부림텍";
+  if (text.includes("오륙") || text.includes("설압출")) return "오륙";
+
+  if (String(rec.plant || "").includes("한림")) return "한울";
+  return "오륙";
+};
+
+// ⭐ 4M 공식 관리대장 영구 보존 및 복구용 원본 기준 데이터 (이창엽 책임 품질보증 공식 등록분)
+export const DEFAULT_OFFICIAL_4M_RECORDS = [
+  {
+    id: "ledger_man_log_auto_2026-10-12_유성_론나차이",
+    originalId: "man_log_auto_2026-10-12_유성_론나차이",
+    rawId: "auto_2026-10-12_유성_론나차이",
+    fourM: "Man",
+    origin: "4M 대체투입",
+    sourceType: "MAN_ABSENCE_LOG",
+    badgeColor: "bg-sky-100 text-sky-900 border-sky-300",
+    company: "유성",
+    plant: "삼랑진공장",
+    line: "압출 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "[유성] 론나차이(사원, 유성) 결근 ➔ 이성기(대표이사) 대체투입",
+    date: "2026-10-12",
+    time: "",
+    content: "[4M Man 인원변동 결근내역]\n• 소속업체: 유성\n• 소속부서: 생산팀\n• 결근근로자: 론나차이 (사원, Lv.4)\n• 대체작업자: 이성기 (대표이사, 생산팀)\n• 결근사유: 병결\n• 담당공정: 압출 공정",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:41",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_유성_론나차이_1793058086561",
+    targetDate: "2026-10-12",
+    registeredAt: "2026-10-27 08:41"
+  },
+  {
+    id: "ledger_man_log_auto_2026-10-12_유성_팔라",
+    originalId: "man_log_auto_2026-10-12_유성_팔라",
+    rawId: "auto_2026-10-12_유성_팔라",
+    fourM: "Man",
+    origin: "결근발생",
+    sourceType: "MAN_ABSENCE_LOG",
+    badgeColor: "bg-sky-100 text-sky-900 border-sky-300",
+    company: "유성",
+    plant: "삼랑진공장",
+    line: "압출 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "[유성] 팔라(사원, 유성) 결근 ➔ [라인비가동]",
+    date: "2026-10-12",
+    time: "",
+    content: "[4M Man 인원변동 결근내역]\n• 소속업체: 유성\n• 소속부서: 생산팀\n• 결근근로자: 팔라 (사원, Lv.3)\n• 대체작업자: 라인비가동 (대체 미투입)\n• 결근사유: 병결\n• 담당공정: 압출 공정",
+    actionResult: "라인 비가동 (공정 정지/품질영향 없음)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:43",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_유성_팔라_1793058214342",
+    targetDate: "2026-10-12",
+    registeredAt: "2026-10-27 08:43"
+  },
+  {
+    id: "ledger_man_log_auto_2026-10-12_조영_윤의정",
+    originalId: "man_log_auto_2026-10-12_조영_윤의정",
+    rawId: "auto_2026-10-12_조영_윤의정",
+    fourM: "Man",
+    origin: "결근발생",
+    sourceType: "MAN_ABSENCE_LOG",
+    badgeColor: "bg-sky-100 text-sky-900 border-sky-300",
+    company: "조영",
+    plant: "한림공장",
+    line: "소재준비 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "[조영] 윤의정(사원, 가공관리팀) 결근 ➔ [라인비가동]",
+    date: "2026-10-12",
+    time: "",
+    content: "[4M Man 인원변동 결근내역]\n• 소속업체: 조영\n• 소속부서: 가공관리팀\n• 결근근로자: 윤의정 (사원, Lv.3)\n• 대체작업자: 라인비가동 (대체 미투입)\n• 결근사유: 개인사정\n• 담당공정: 소재준비 공정",
+    actionResult: "라인 비가동 (공정 정지/품질영향 없음)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:46",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_조영_윤의정_1793058413459",
+    targetDate: "2026-10-12",
+    registeredAt: "2026-10-27 08:46"
+  },
+  {
+    id: "ledger_man_log_auto_2026-10-13_유성_론나차이",
+    originalId: "man_log_auto_2026-10-13_유성_론나차이",
+    rawId: "auto_2026-10-13_유성_론나차이",
+    fourM: "Man",
+    origin: "4M 대체투입",
+    sourceType: "MAN_ABSENCE_LOG",
+    badgeColor: "bg-sky-100 text-sky-900 border-sky-300",
+    company: "유성",
+    plant: "삼랑진공장",
+    line: "압출 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "[유성] 론나차이(사원, 유성) 결근 ➔ 이성기(대표이사) 대체투입",
+    date: "2026-10-13",
+    time: "",
+    content: "[4M Man 인원변동 결근내역]\n• 소속업체: 유성\n• 소속부서: 생산팀\n• 결근근로자: 론나차이 (사원, Lv.4)\n• 대체작업자: 이성기 (대표이사, 생산팀)\n• 결근사유: 병결\n• 담당공정: 압출 공정",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:54",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-13_유성_론나차이_1793058873183",
+    targetDate: "2026-10-13",
+    registeredAt: "2026-10-27 08:54"
+  },
+  {
+    id: "ledger_man_log_auto_2026-10-14_유성_론나차이",
+    originalId: "man_log_auto_2026-10-14_유성_론나차이",
+    rawId: "auto_2026-10-14_유성_론나차이",
+    fourM: "Man",
+    origin: "4M 대체투입",
+    sourceType: "MAN_ABSENCE_LOG",
+    badgeColor: "bg-sky-100 text-sky-900 border-sky-300",
+    company: "유성",
+    plant: "삼랑진공장",
+    line: "압출 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "[유성] 론나차이(사원, 유성) 결근 ➔ 이성기(대표이사) 대체투입",
+    date: "2026-10-14",
+    time: "",
+    content: "[4M Man 인원변동 결근내역]\n• 소속업체: 유성\n• 소속부서: 생산팀\n• 결근근로자: 론나차이 (사원, Lv.4)\n• 대체작업자: 이성기 (대표이사, 생산팀)\n• 결근사유: 병결\n• 담당공정: 압출 공정",
+    actionResult: "대체작업자 이성기(대표이사) 투입 완료 (초물검사 완료 / 특별교육 완료)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-08:55",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-14_유성_론나차이_1793058904685",
+    targetDate: "2026-10-14",
+    registeredAt: "2026-10-27 08:55"
+  },
+  {
+    id: "ledger_mach_qual_1792626820469_4r5z",
+    originalId: "mach_qual_1792626820469_4r5z",
+    rawId: "1792626820469_4r5z",
+    fourM: "Material",
+    origin: "부적합경보",
+    sourceType: "QUALITY_ALERT",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    company: "조영",
+    plant: "삼랑진공장",
+    line: "가공 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "PU O/BELT 외관 스코치",
+    date: "2026-10-22",
+    time: "",
+    content: "PU O/BELT 외관 스코치 불량 발생 - 한도견본 대조 및 가공 조건 수정 필요",
+    actionResult: "가공 온도 프로파일 재설정 및 압출 속도 조정 완료 (초·중·종물 한도검사 합격)",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-27-09:25",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_mach_qual_1792626820469_4r5z_1793060701646",
+    targetDate: "2026-10-22",
+    registeredAt: "2026-10-27 09:25"
+  },
+  {
+    id: "ledger_mach_qual_1792545529692_5r70",
+    originalId: "mach_qual_1792545529692_5r70",
+    rawId: "1792545529692_5r70",
+    fourM: "Material",
+    origin: "부적합경보",
+    sourceType: "QUALITY_ALERT",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    company: "조영",
+    plant: "삼랑진공장",
+    line: "가공 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "HR (포터2) FRT G/RUN RH 립 제거 누락",
+    date: "2026-10-08",
+    time: "",
+    content: "HR G/RUN - HR (포터2) FRT G/RUN RH 립 제거 누락 발생",
+    actionResult: "자동차 담당자 면담시 마킹 안하기로 협의 완료 (예전과 동일) - 근거 10년간 동일 불량 없음",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-26-16:37",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_mach_qual_1792545529692_5r70_1793000275067",
+    targetDate: "2026-10-08",
+    registeredAt: "2026-10-26 16:37"
+  },
+  {
+    id: "ledger_hanul_qual_1791757670265",
+    originalId: "hanul_qual_1791757670265",
+    rawId: "1791757670265",
+    fourM: "Material",
+    origin: "부적합경보",
+    sourceType: "QUALITY_ALERT",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    company: "한울",
+    plant: "한림공장",
+    line: "소재준비 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "9BQC G/RUN PRI RH 글라스스크래치 다량발생 중.",
+    date: "2026-10-12",
+    time: "",
+    content: "9BQC (G/RUN) - 9BQC G/RUN PRI RH 글라스스크래치 다량발생 중. 5,052EA 선별 진행",
+    actionResult: "9BQC G/RUN Glass PRI RH 전수 선별 및 가류 온도/클립 점검 완료",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-26-14:19",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    approvalDocId: "appr_4m_ledger_hanul_qual_1791757670265_1792991956764",
+    targetDate: "2026-10-12",
+    registeredAt: "2026-10-26 14:19"
+  },
+  {
+    id: "ledger_urg_issue_1791284063707",
+    originalId: "issue_1791284063707",
+    rawId: "1791284063707",
+    fourM: "Material",
+    origin: "부적합경보",
+    sourceType: "QUALITY_ALERT",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    company: "한울",
+    plant: "한림공장",
+    line: "소재준비 공정",
+    writer: "이창엽 책임",
+    registeredBy: "이창엽",
+    classifiedBy: "이창엽",
+    isQualityClassified: true,
+    isOfficialLedger: true,
+    title: "9BQC G/RUN FIXED LH3호기 상단찍힘",
+    date: "2026-10-06",
+    time: "",
+    content: "9BQC G/RUN FIXED LH3호기 상단찍힘 발생",
+    actionResult: "금형 인서트 지그 교체 및 초물 검사 완료",
+    actionAuthor: "이창엽",
+    actionAt: "2026-10-06",
+    isResolved: true,
+    severity: "NORMAL",
+    approvalStatus: "PENDING_APPROVAL",
+    targetDate: "2026-10-06",
+    registeredAt: "2026-10-06"
+  }
+];
+
 
 // ⭐ Core Canonical ID Extractor: Strips all legacy & source prefixes to obtain the unique event timestamp/hash
 export const getCore4MId = (idOrItem) => {
@@ -172,20 +476,48 @@ export const mergeUnified4MRecords = (existing, incoming) => {
   };
 };
 
-// Helper: Read local storage
+// Helper: Read local storage (공식 대장 등재분 영구 보존 및 누락 복구 보장)
 export const getLocalFourMChangePoints = () => {
   try {
+    let localList = [];
     if (typeof localStorage !== "undefined") {
       const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) localList = parsed;
       }
     }
+    const map = new Map();
+    DEFAULT_OFFICIAL_4M_RECORDS.forEach((r) => {
+      if (r && r.id) map.set(r.id, r);
+    });
+    localList.forEach((r) => {
+      if (r && r.id) {
+        const existing = map.get(r.id);
+        map.set(r.id, existing ? { ...existing, ...r } : r);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.registeredAt !== a.registeredAt) return (b.registeredAt || "").localeCompare(a.registeredAt || "");
+      return (b.date || "").localeCompare(a.date || "");
+    });
   } catch (e) {
     console.error("Local storage read error for 4M change points:", e);
+    return DEFAULT_OFFICIAL_4M_RECORDS;
   }
-  return [];
+};
+
+// Firestore 동기화 보완 헬퍼 (공식 대장 기본 레코드 영구 보장)
+export const syncDefaultFourMRecordsToFirestore = async () => {
+  if (!db) return;
+  try {
+    for (const item of DEFAULT_OFFICIAL_4M_RECORDS) {
+      const docRef = doc(db, COLLECTION_NAME, item.id);
+      await setDoc(docRef, item, { merge: true });
+    }
+  } catch (e) {
+    console.warn("syncDefaultFourMRecordsToFirestore error:", e);
+  }
 };
 
 // Helper: Save local storage and immediately push to all subscribers
@@ -237,6 +569,9 @@ export const subscribeFourMChangePoints = (onUpdate) => {
   // Open single Firestore stream if not already active
   if (!activeFourMUnsub && db) {
     try {
+      // Trigger background sync for official records
+      syncDefaultFourMRecordsToFirestore().catch(() => {});
+
       const colRef = collection(db, COLLECTION_NAME);
       activeFourMUnsub = onSnapshot(
         colRef,
@@ -248,19 +583,31 @@ export const subscribeFourMChangePoints = (onUpdate) => {
             });
           }
 
+          // Merge with DEFAULT_OFFICIAL_4M_RECORDS to guarantee all official records are permanently preserved
+          const map = new Map();
+          DEFAULT_OFFICIAL_4M_RECORDS.forEach((r) => {
+            if (r && r.id) map.set(r.id, r);
+          });
+          remoteList.forEach((r) => {
+            if (r && r.id) {
+              const existing = map.get(r.id);
+              map.set(r.id, existing ? { ...existing, ...r } : r);
+            }
+          });
+
           // Single sort for all subscribers
-          remoteList.sort((a, b) => {
+          const mergedList = Array.from(map.values()).sort((a, b) => {
             if (b.registeredAt !== a.registeredAt) return (b.registeredAt || "").localeCompare(a.registeredAt || "");
             return (b.date || "").localeCompare(a.date || "");
           });
 
-          fourMCache = remoteList;
-          saveLocalFourMChangePoints(remoteList);
+          fourMCache = mergedList;
+          saveLocalFourMChangePoints(mergedList);
 
           // Dispatch to all subscribers
           fourMSubscribers.forEach((cb) => {
             try {
-              cb(remoteList);
+              cb(mergedList);
             } catch (err) {
               console.error("4M subscriber callback error:", err);
             }

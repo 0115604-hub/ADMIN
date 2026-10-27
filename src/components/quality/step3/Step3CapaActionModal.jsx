@@ -10,6 +10,7 @@ import {
   Save,
   Send
 } from "lucide-react";
+import { getFourMRecordCompany } from "../../../services/fourMChangePointService";
 
 export const Step3CapaActionModal = ({
   capaModalItem,
@@ -106,6 +107,9 @@ export const Step3CapaActionModal = ({
                 <span className="font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5 text-xs sm:text-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                   <span>1. 변동점 및 이상내용 (발생 현황)</span>
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded-md font-black bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {getFourMRecordCompany(capaModalItem)}
                 </span>
                 <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                   {capaModalItem.line || "해당공정"}
