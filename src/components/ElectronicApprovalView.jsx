@@ -362,30 +362,8 @@ export const ElectronicApprovalView = ({
       }
     });
 
-    const handleLocalUpdate = () => {
-      const latest = getLocalApprovalDocs();
-      setApprovalDocs(latest);
-      if (selectedDocRef.current) {
-        const found = latest.find((d) => d.id === selectedDocRef.current.id);
-        if (found && (found.updatedAt !== selectedDocRef.current.updatedAt || found.status !== selectedDocRef.current.status)) {
-          setSelectedDoc(found);
-        }
-      } else {
-        const activeDocId = localStorage.getItem("active_approval_doc_id");
-        if (activeDocId) {
-          const target = (latest || []).find((d) => d.id === activeDocId);
-          if (target) {
-            setSelectedDoc(target);
-            localStorage.removeItem("active_approval_doc_id");
-          }
-        }
-      }
-    };
-    window.addEventListener("oryuk_approval_document_updated", handleLocalUpdate);
-
     return () => {
       unsub();
-      window.removeEventListener("oryuk_approval_document_updated", handleLocalUpdate);
     };
   }, []);
 
