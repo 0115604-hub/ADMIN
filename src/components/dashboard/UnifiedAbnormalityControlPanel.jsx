@@ -670,7 +670,7 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4-B. 한울 외주가공 부적합경보
+    // 4-B. 한울 가공/협력업체 부적합경보
     // -----------------------------------------------------------------------
     (hanulQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -696,8 +696,8 @@ export const UnifiedAbnormalityControlPanel = ({
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
         plant: alert.plant || "한림공장",
-        line: alert.line || "외주가공(한울)",
-        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "한울 관리자",
+        line: alert.line || "가공/협력업체(한울)",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "황수현 선임",
         title: title,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
@@ -718,7 +718,7 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 4-C. 유성 외주가공 부적합경보
+    // 4-C. 유성 가공/협력업체 부적합경보
     // -----------------------------------------------------------------------
     (yuseongQualityIssues || []).forEach((alert) => {
       if (!alert || alert.isDeleted === true || alert.status === "DELETED") return;
@@ -744,8 +744,8 @@ export const UnifiedAbnormalityControlPanel = ({
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
         plant: alert.plant || "삼랑진공장",
-        line: alert.project || alert.line || "외주가공(유성)",
-        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "유성 관리자",
+        line: alert.project || alert.line || "가공/협력업체(유성)",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "이성기 대표",
         title: title,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
