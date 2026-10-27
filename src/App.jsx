@@ -406,7 +406,7 @@ export const App = () => {
     <div className="flex min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 mobile-pan-free">
       {/* ⚡ Real-time Version & Cache Sync Banner */}
       {updateAvailable && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40 animate-bounce">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40">
           <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
           <button
             onClick={() => forceHardReload()}

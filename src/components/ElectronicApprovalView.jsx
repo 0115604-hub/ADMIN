@@ -1217,7 +1217,7 @@ export const ElectronicApprovalView = ({
                   setDocCategoryFilter("FOUR_M");
                   setSelectedPlant("ALL");
                 }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
                 title="클릭하여 4M변동점 미결 목록 바로보기"
               >
                 미결 {categoryCounts.fourMPending}
@@ -1252,7 +1252,7 @@ export const ElectronicApprovalView = ({
                   setDocCategoryFilter("GENERAL");
                   setSelectedPlant("ALL");
                 }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
                 title="클릭하여 일반결재 미결 목록 바로보기"
               >
                 미결 {categoryCounts.generalPending}
@@ -1287,7 +1287,7 @@ export const ElectronicApprovalView = ({
                   setDocCategoryFilter("OVERTIME");
                   setSelectedPlant("ALL");
                 }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
                 title="클릭하여 특근보고서 미결 목록 바로보기"
               >
                 미결 {categoryCounts.overtimePending}
@@ -1490,7 +1490,7 @@ export const ElectronicApprovalView = ({
                             ✓ 결재완료
                           </span>
                         ) : isHold ? (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
                             ⏸️ 보류중
                           </span>
                         ) : isRejected ? (
@@ -1499,7 +1499,7 @@ export const ElectronicApprovalView = ({
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
-                            <Clock className="w-3 h-3 text-rose-500 animate-pulse" />
+                            <Clock className="w-3 h-3 text-rose-500" />
                             <span>미결 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "대표"} 대기)</span>
                           </span>
                         )}
@@ -1610,13 +1610,13 @@ export const ElectronicApprovalView = ({
                           isApproved
                             ? "bg-emerald-950 text-emerald-300 border-emerald-700"
                             : isHold
-                            ? "bg-amber-950 text-amber-300 border-amber-700 animate-pulse"
+                            ? "bg-amber-950 text-amber-300 border-amber-700"
                             : isRejected
                             ? "bg-rose-950 text-rose-300 border-rose-700"
                             : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80"
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
-                            isApproved ? "bg-emerald-400" : isHold ? "bg-amber-400" : isRejected ? "bg-rose-400" : "bg-yellow-400 animate-pulse"
+                            isApproved ? "bg-emerald-400" : isHold ? "bg-amber-400" : isRejected ? "bg-rose-400" : "bg-yellow-400"
                           }`}></span>
                           <span>
                             {isApproved
@@ -1758,7 +1758,7 @@ export const ElectronicApprovalView = ({
                               </div>
                             ) : isStepPending ? (
                               <div className="h-9 flex items-center justify-center">
-                                <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-600 text-[10px] font-black animate-pulse">
+                                <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-600 text-[10px] font-black">
                                   결재대기
                                 </span>
                               </div>

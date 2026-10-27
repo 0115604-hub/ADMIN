@@ -1278,7 +1278,7 @@ export default function Step3QualityControlPanel({
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-rose-200/60 dark:border-rose-900/40">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5 text-xs sm:text-sm">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                       <span>1. 변동점 및 이상내용 (발생 현황)</span>
                     </span>
                     <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">

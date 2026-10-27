@@ -1221,12 +1221,12 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
     }
 
     if (activeStepIdx === 1) {
-      if (userName === "이명재" || userTitle.includes("이사") || isDirectTarget || isAdmin) {
+      if (userName === "이명재" || userTitle.includes("이사") || userName === "권태형" || userTitle.includes("대표") || isDirectTarget || isAdmin) {
         return {
           canApprove: true,
           stepIndex: activeStepIdx,
           stepRole,
-          approverName: "이명재"
+          approverName: (userName === "권태형" || userTitle.includes("대표")) ? "권태형" : "이명재"
         };
       }
       return { canApprove: false, reason: "[검토] 이명재 이사 결재 권한이 필요합니다." };
@@ -1292,7 +1292,7 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
     };
   }
 
-  // 4. Step 3: 이사 (이명재 이사, 최미영 전무 등 임원 결재)
+  // 4. Step 3: 이사 (이명재 이사, 최미영 전무 등 임원 결재, 대표이사 권태형 전결 가능)
   if (stepRole === "이사") {
     const isTargetLee = !activeStep.name || activeStep.name.includes("이명재");
     const isTargetChoi = activeStep.name?.includes("최미영");
@@ -1301,6 +1301,9 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
       userName === "이명재" ||
       userName === "최미영" ||
       userName === "김동욱" ||
+      userName === "권태형" ||
+      userTitle === "대표" ||
+      userTitle === "대표이사" ||
       userTitle === "이사" ||
       userTitle === "전무" ||
       isAdmin ||
@@ -1312,10 +1315,12 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
         approver = "최미영";
       } else if (userName === "김동욱") {
         approver = "김동욱";
+      } else if (userName === "권태형" || userTitle === "대표이사" || userTitle === "대표") {
+        approver = "권태형";
       } else if (userName === "이명재" || userTitle === "이사") {
         approver = "이명재";
       } else if (isAdmin) {
-        approver = currentProfile?.name === "최미영" ? "최미영" : (activeStep.name === "최미영" ? "최미영" : "이명재");
+        approver = currentProfile?.name === "최미영" ? "최미영" : (currentProfile?.name === "권태형" ? "권태형" : (activeStep.name === "최미영" ? "최미영" : "이명재"));
       }
 
       return {
