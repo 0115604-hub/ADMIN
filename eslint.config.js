@@ -29,9 +29,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
-        React: "readonly",
-        __APP_VERSION__: "readonly",
-        __BUILD_TIMESTAMP__: "readonly"
+        React: "readonly"
       }
     },
     plugins: {

@@ -39,7 +39,6 @@ import {
   Sparkles,
   ArrowLeft
 } from "lucide-react";
-import { forceHardReload } from "../utils/versionCheck";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
   getLocalApprovalDocs,
@@ -963,15 +962,6 @@ export const ElectronicApprovalView = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => forceHardReload()}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer border border-slate-300 dark:border-slate-700 transition shadow-2xs"
-              title="브라우저 캐시를 완전히 비우고 최신 데이터로 동기화 새로고침"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-blue-500" />
-              <span>최신 동기화 새로고침</span>
-            </button>
             <button
               type="button"
               onClick={handleOpenDraftModal}

@@ -1,36 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import fs from 'fs';
-import path from 'path';
-
-// Build configuration
-const buildTimestamp = Date.now();
-const formattedVersion = `v${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.${buildTimestamp}`;
-
-try {
-  const publicDir = path.resolve(__dirname, 'public');
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-  }
-  fs.writeFileSync(
-    path.resolve(publicDir, 'version.json'),
-    JSON.stringify({
-      version: formattedVersion,
-      timestamp: buildTimestamp,
-      buildTime: new Date().toISOString()
-    }, null, 2)
-  );
-} catch (e) {
-  console.error('Failed to generate version.json:', e);
-}
 
 // Relative base './' ensures full compatibility across both Firebase Hosting and GitHub Pages
 export default defineConfig({
   base: './',
-  define: {
-    __APP_VERSION__: JSON.stringify(formattedVersion),
-    __BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp),
-  },
   plugins: [react()],
   server: {
     port: 3000,

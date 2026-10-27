@@ -64,7 +64,6 @@ import {
 } from "../services/telegramService";
 import { compressImage } from "../utils/imageCompressor";
 import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
-import { initVersionWatcher, forceHardReload } from "../utils/versionCheck";
 
 // Eager Essential Components for Login Screen
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
@@ -76,7 +75,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   FileSpreadsheet,
-  Zap,
   Cpu,
   Layers,
   Factory,
@@ -130,15 +128,6 @@ export const AuthModal = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-
-  // Auto version detection and cache synchronization on login screen
-  useEffect(() => {
-    const unsub = initVersionWatcher(() => {
-      setUpdateAvailable(true);
-    });
-    return () => unsub();
-  }, []);
 
   // Save factoryBuildingTab to localStorage
   useEffect(() => {
@@ -2494,20 +2483,6 @@ export const AuthModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
-      {/* ⚡ Real-time Version & Cache Sync Banner */}
-      {updateAvailable && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[999] w-max max-w-[94vw] px-3.5 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-bold border border-blue-300/60 animate-bounce whitespace-nowrap">
-          <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
-          <button
-            type="button"
-            onClick={() => forceHardReload()}
-            className="px-2.5 sm:px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs shrink-0"
-          >
-            지금 즉시 적용
-          </button>
-        </div>
-      )}
-
       {/* Background Ambient Glow Orbs */}
       <div className="fixed w-96 h-96 -top-20 -left-20 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-96 h-96 -bottom-20 -right-20 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
@@ -2547,21 +2522,6 @@ export const AuthModal = () => {
                   </h2>
                 </div>
               </div>
-
-              {/* ⚡ 상시 노출 최신버전적용 뱃지 (모바일 우측 상단 / PC 타이틀 옆) */}
-              <button
-                type="button"
-                onClick={() => forceHardReload()}
-                className={`px-2.5 py-1 rounded-full font-extrabold text-[11px] sm:text-xs shadow-sm transition-all flex items-center gap-1 active:scale-95 cursor-pointer shrink-0 border ${
-                  updateAvailable
-                    ? "bg-gradient-to-r from-rose-500 to-amber-500 text-white border-amber-300 animate-pulse ring-2 ring-amber-400/50"
-                    : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border-emerald-400/50 ring-1 ring-emerald-400/30"
-                }`}
-                title="터치 시 브라우저 캐시를 즉시 비우고 최신 버전을 강제 적용합니다."
-              >
-                <Zap className="w-3 h-3 text-amber-200 fill-amber-200 shrink-0" />
-                <span>{updateAvailable ? "신규버전 즉시적용" : "최신버전적용"}</span>
-              </button>
             </div>
 
             {/* Right: Badges: [압출동] & [가공동] & [한울] & [부림텍] & [유성] */}

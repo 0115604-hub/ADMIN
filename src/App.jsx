@@ -53,7 +53,6 @@ import {
   subscribeTelegramConfig
 } from "./services/telegramService";
 import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
-import { initVersionWatcher, forceHardReload } from "./utils/versionCheck";
 import { initDailyMaintenanceScheduler } from "./services/dailyMaintenanceService";
 import { syncAllOvertimeReportsToApprovalBox } from "./services/approvalService";
 
@@ -78,7 +77,6 @@ export const App = () => {
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTopBtn, setShowTopBtn] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   const isFieldWorkerProfile = Boolean(
@@ -96,14 +94,6 @@ export const App = () => {
       (typeof currentProfile?.department === "string" && currentProfile.department.includes("가공"))
     )
   );
-
-  // Auto version detection and cache synchronization (Non-intrusive alert only, never force reload while typing)
-  useEffect(() => {
-    const unsub = initVersionWatcher((newVer) => {
-      setUpdateAvailable(true);
-    });
-    return () => unsub();
-  }, []);
 
   // Daily Maintenance & HealthCheck Scheduler (매일 새벽 자동 헬스체크, 무결성 정제 및 스냅샷 백업)
   useEffect(() => {
@@ -404,19 +394,6 @@ export const App = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 mobile-pan-free">
-      {/* ⚡ Real-time Version & Cache Sync Banner */}
-      {updateAvailable && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40">
-          <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
-          <button
-            onClick={() => forceHardReload()}
-            className="px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs"
-          >
-            지금 즉시 적용
-          </button>
-        </div>
-      )}
-
       {/* Sidebar (Desktop for Admin & Mobile Drawer for All Users) */}
       <Sidebar
         activeTab={activeTab}
