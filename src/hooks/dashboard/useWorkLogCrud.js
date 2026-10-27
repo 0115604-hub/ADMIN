@@ -1,78 +1,36 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getWorkLogs,
   saveWorkLog,
   updateWorkLog,
   isWorkLogApproved,
   deleteWorkLog,
-  subscribeWorkLogs,
-  approveWorkLog,
-  batchApproveWorkLogs,
-  rejectWorkLog
+  subscribeWorkLogs
 } from "../../services/workLogService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { pushModalHistory, useModalHistory } from "../../utils/modalHistory";
 import { compressImage } from "../../utils/imageCompressor";
 
-export const DEFECT_TYPE_GROUPS = [
-  {
-    category: "제품부적합",
-    label: "📦 제품부적합",
-    items: [
-      { value: "[제품부적합] 치수", name: "치수" },
-      { value: "[제품부적합] 외관", name: "외관" },
-      { value: "[제품부적합] 조립", name: "조립" },
-      { value: "[제품부적합] 누락/혼입", name: "누락/혼입" }
-    ]
-  },
-  {
-    category: "공정부적합",
-    label: "⚙️ 공정부적합",
-    items: [
-      { value: "[공정부적합] 작업조건미준수", name: "작업조건미준수" },
-      { value: "[공정부적합] 검사누락", name: "검사누락" },
-      { value: "[공정부적합] 설비조건이상", name: "설비조건이상" },
-      { value: "[공정부적합] 금형이상", name: "금형이상" },
-      { value: "[공정부적합] 치공구이상", name: "치공구이상" }
-    ]
-  }
-];
+// Re-export constants
+import {
+  DEFECT_TYPE_GROUPS,
+  JAEYUL_EQUIPMENT_CATEGORIES,
+  JAEYUL_EQUIPMENT_OPTIONS,
+  JAEYUL_CATEGORY_EQUIPMENT_MAP,
+  LOGS_PER_PAGE
+} from "./workLogConstants.js";
 
-export const JAEYUL_EQUIPMENT_CATEGORIES = [
-  "압출기",
-  "사출기",
-  "컴프레셔",
-  "코팅설비",
-  "치공구",
-  "기타"
-];
-
-export const JAEYUL_EQUIPMENT_OPTIONS = [
-  "PCM 1호",
-  "PCM 3호",
-  "TPE 1호",
-  "PVC",
-  "300TON",
-  "45TON",
-  "25TON",
-  "압출동 컴프레셔",
-  "AB동 컴프레셔",
-  "C동 컴프레셔",
-  "코팅(8턴)",
-  "코팅(서랍)",
-  "내용직접입력"
-];
-
-export const JAEYUL_CATEGORY_EQUIPMENT_MAP = {
-  "압출기": ["PCM 1호", "PCM 3호", "TPE 1호", "PVC", "내용직접입력"],
-  "사출기": ["300TON", "45TON", "25TON", "내용직접입력"],
-  "컴프레셔": ["압출동 컴프레셔", "AB동 컴프레셔", "C동 컴프레셔", "내용직접입력"],
-  "코팅설비": ["코팅(8턴)", "코팅(서랍)", "내용직접입력"],
-  "치공구": ["내용직접입력"],
-  "기타": ["내용직접입력"]
+export {
+  DEFECT_TYPE_GROUPS,
+  JAEYUL_EQUIPMENT_CATEGORIES,
+  JAEYUL_EQUIPMENT_OPTIONS,
+  JAEYUL_CATEGORY_EQUIPMENT_MAP,
+  LOGS_PER_PAGE
 };
 
-export const LOGS_PER_PAGE = 12;
+import { useWorkLogApproval } from "./useWorkLogApproval.js";
+import { useWorkLogMaintenance } from "./useWorkLogMaintenance.js";
+import { useWorkLogPagination } from "./useWorkLogPagination.js";
 
 /**
  * Custom hook for Work Log (업무일보) CRUD, approval workflow, Jaeyul maintenance items, and pagination.
@@ -96,7 +54,6 @@ export function useWorkLogCrud({
   setLogSavedToast
 }) {
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
-  const [currentLogPage, setCurrentLogPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
 
@@ -126,7 +83,6 @@ export function useWorkLogCrud({
     issues: "",
     images: []
   });
-  const [editMaintenanceItems, setEditMaintenanceItems] = useState([]);
   const [isEditProcessingImages, setIsEditProcessingImages] = useState(false);
 
   // Field Worker states
@@ -148,6 +104,7 @@ export function useWorkLogCrud({
     imagesBefore: [],
     imagesAfter: []
   });
+
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [previewImageModal, setPreviewImageModal] = useState(null);
@@ -157,18 +114,36 @@ export function useWorkLogCrud({
     "workerDashboardPreviewImageModal"
   );
 
-  // Maintenance Items for Jaeyul
-  const [maintenanceItems, setMaintenanceItems] = useState([
-    {
-      id: 1,
-      category: "압출기",
-      equipmentName: "PCM 1호",
-      customEquipmentName: "",
-      content: "",
-      imagesBefore: [],
-      imagesAfter: []
-    }
-  ]);
+  // Sub-module: Jaeyul maintenance items management
+  const maintenance = useWorkLogMaintenance({
+    setIsProcessingImages,
+    setIsEditProcessingImages
+  });
+
+  // Sub-module: Approval & rejection workflow
+  const approval = useWorkLogApproval({
+    workLogs,
+    setWorkLogs,
+    selectedLogDetail,
+    setSelectedLogDetail,
+    approvalCommentInput,
+    currentProfile,
+    workerPlant,
+    setToastMessage,
+    setLogSavedToast
+  });
+
+  // Sub-module: Filtering, sorting, and pagination
+  const pagination = useWorkLogPagination({
+    workLogs,
+    workerFullName,
+    currentProfile,
+    workerLogScope,
+    workerPlant,
+    workerLogApprovalFilter,
+    searchTerm,
+    filterPlant
+  });
 
   // Real-time Cloud Synchronization for Work Logs across all mobile phones & PCs
   useEffect(() => {
@@ -331,266 +306,6 @@ export function useWorkLogCrud({
     });
   };
 
-  // Maintenance Items handlers for Jaeyul
-  const handleAddMaintenanceItem = () => {
-    setMaintenanceItems((prev) => [
-      ...prev,
-      {
-        id: Date.now() + Math.random(),
-        category: "압출기",
-        equipmentName: "PCM 1호",
-        customEquipmentName: "",
-        content: "",
-        imagesBefore: [],
-        imagesAfter: []
-      }
-    ]);
-  };
-
-  const handleRemoveMaintenanceItem = (id) => {
-    if (maintenanceItems.length <= 1) {
-      alert("최소 1개 이상의 설비보전 항목이 필요합니다.");
-      return;
-    }
-    setMaintenanceItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleUpdateMaintenanceItem = (id, field, value) => {
-    setMaintenanceItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        if (field === "category") {
-          const defaultEquips = JAEYUL_CATEGORY_EQUIPMENT_MAP[value] || JAEYUL_EQUIPMENT_OPTIONS;
-          return {
-            ...item,
-            category: value,
-            equipmentName: defaultEquips[0] || "PCM 1호",
-            customEquipmentName: ""
-          };
-        }
-        return { ...item, [field]: value };
-      })
-    );
-  };
-
-  const handleMaintenanceItemImageFiles = async (itemId, files, type = "before") => {
-    if (!files || files.length === 0) return;
-    const targetItem = maintenanceItems.find((it) => it.id === itemId);
-    if (!targetItem) return;
-    const key = type === "before" ? "imagesBefore" : "imagesAfter";
-    const currentImgs = targetItem[key] || [];
-    if (currentImgs.length >= 3) {
-      alert(`${type === "before" ? "개선 전" : "개선 후"} 사진은 항목당 최대 3장까지 등록 가능합니다.`);
-      return;
-    }
-    const remainingSlots = 3 - currentImgs.length;
-    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, remainingSlots);
-    if (validFiles.length === 0) return;
-
-    setIsProcessingImages(true);
-    try {
-      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
-      setMaintenanceItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) return item;
-          return {
-            ...item,
-            [key]: [...(item[key] || []), ...processed].slice(0, 3)
-          };
-        })
-      );
-    } catch (err) {
-      console.error("사진 처리 오류:", err);
-      alert("사진을 불러오거나 압축하는 중 오류가 발생했습니다.");
-    } finally {
-      setIsProcessingImages(false);
-    }
-  };
-
-  const handleRemoveMaintenanceItemImage = (itemId, imgIdx, type = "before") => {
-    const key = type === "before" ? "imagesBefore" : "imagesAfter";
-    setMaintenanceItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) return item;
-        return {
-          ...item,
-          [key]: (item[key] || []).filter((_, i) => i !== imgIdx)
-        };
-      })
-    );
-  };
-
-  // Approval Handlers
-  const pendingSamrangjinCount = useMemo(() => {
-    return workLogs.filter((l) => l.plant === "삼랑진공장" && l.approvalStatus === "결재대기" && !l.isDeleted).length;
-  }, [workLogs]);
-
-  const pendingHallimCount = useMemo(() => {
-    return workLogs.filter((l) => l.plant === "한림공장" && l.approvalStatus === "결재대기" && !l.isDeleted).length;
-  }, [workLogs]);
-
-  const handleApproveLog = async (logId, customComment) => {
-    const finalComment = (typeof customComment === "string" && customComment.trim())
-      ? customComment.trim()
-      : (approvalCommentInput.trim() || "확인 및 전자결재 승인 완료");
-
-    const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
-    const approver = {
-      name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
-      title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
-      plant: currentProfile?.plant || targetPlant,
-      comment: finalComment
-    };
-
-    const nowFormatted = new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const approvedLog = {
-      ...(targetLog || {}),
-      id: String(logId),
-      plant: targetPlant,
-      approvalStatus: "결재완료",
-      approverName: approver.name,
-      approverTitle: approver.title,
-      approverPlant: targetPlant,
-      approvedAt: nowFormatted,
-      approvalComment: finalComment,
-      updatedAt: new Date().toISOString()
-    };
-
-    setWorkLogs((prev) => {
-      const exists = prev.some((l) => String(l.id) === String(logId));
-      if (exists) {
-        return prev.map((l) => (String(l.id) === String(logId) ? approvedLog : l));
-      }
-      return [approvedLog, ...prev];
-    });
-
-    if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
-      setSelectedLogDetail(approvedLog);
-    }
-
-    try {
-      await approveWorkLog(logId, approver, targetLog);
-    } catch (e) {
-      console.error("Cloud approval error:", e);
-    }
-
-    setToastMessage("결재 및 지시사항 코멘트가 정상적으로 등록되었습니다.");
-    setLogSavedToast(true);
-    setTimeout(() => setLogSavedToast(false), 3000);
-  };
-
-  const handleBatchApproveLogs = async (logIds) => {
-    if (!Array.isArray(logIds) || logIds.length === 0) return;
-    const nowFormatted = new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const targetIds = new Set(logIds.map(String));
-    const updated = workLogs.map((l) => {
-      if (targetIds.has(String(l.id))) {
-        const targetPlant = l.plant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
-        const approverName = currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재");
-        const approverTitle = currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사");
-        return {
-          ...l,
-          plant: targetPlant,
-          approvalStatus: "결재완료",
-          approverName,
-          approverTitle,
-          approverPlant: targetPlant,
-          approvedAt: nowFormatted,
-          approvalComment: `${targetPlant} 일괄 확인 및 전자결재 승인 완료`,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return l;
-    });
-
-    setWorkLogs(updated);
-
-    try {
-      await batchApproveWorkLogs(logIds, {
-        name: currentProfile?.name,
-        title: currentProfile?.title,
-        plant: currentProfile?.plant || workerPlant
-      });
-    } catch (e) {
-      console.error("Batch approve work logs error:", e);
-    }
-
-    setToastMessage(`선택된 ${logIds.length}건의 업무일지가 일괄 결재 승인되었습니다.`);
-    setLogSavedToast(true);
-    setTimeout(() => setLogSavedToast(false), 3000);
-  };
-
-  const handleRejectLog = async (logId) => {
-    const reason = window.prompt("반려 사유 또는 보완 요청 사항을 입력해주세요:", "내용 보완 후 재상신 요망");
-    if (!reason) return;
-
-    const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
-    const approver = {
-      name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
-      title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
-      plant: currentProfile?.plant || targetPlant
-    };
-
-    const nowFormatted = new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const rejectedLog = {
-      ...(targetLog || {}),
-      id: String(logId),
-      plant: targetPlant,
-      approvalStatus: "반려",
-      approverName: approver.name,
-      approverTitle: approver.title,
-      approverPlant: targetPlant,
-      approvedAt: nowFormatted,
-      approvalComment: reason,
-      updatedAt: new Date().toISOString()
-    };
-
-    setWorkLogs((prev) => {
-      const exists = prev.some((l) => String(l.id) === String(logId));
-      if (exists) {
-        return prev.map((l) => (String(l.id) === String(logId) ? rejectedLog : l));
-      }
-      return [rejectedLog, ...prev];
-    });
-
-    if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
-      setSelectedLogDetail(rejectedLog);
-    }
-
-    try {
-      await rejectWorkLog(logId, approver, reason, targetLog);
-    } catch (e) {
-      console.error("Cloud reject error:", e);
-    }
-
-    setToastMessage("업무일지가 반려 처리되었습니다.");
-    setLogSavedToast(true);
-    setTimeout(() => setLogSavedToast(false), 3000);
-  };
-
   // Save work log (Cloud Firestore + Local)
   const handleSaveLog = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -600,7 +315,7 @@ export function useWorkLogCrud({
     try {
       // 🌟 [설비보전 전용: 전재율 책임]
       if (isJaeyul) {
-        const filledItems = maintenanceItems.filter((it) => it.content && it.content.trim());
+        const filledItems = maintenance.maintenanceItems.filter((it) => it.content && it.content.trim());
         if (filledItems.length === 0) {
           alert("최소 1개 이상의 설비보전내용을 입력해 주세요.");
           return;
@@ -665,7 +380,7 @@ export function useWorkLogCrud({
           setWorkLogs(updatedList);
         }
 
-        setMaintenanceItems([
+        maintenance.setMaintenanceItems([
           {
             id: 1,
             category: "압출기",
@@ -846,7 +561,7 @@ export function useWorkLogCrud({
 
     const isJaeyulLog = log.process === "설비보전" || log.writer === "전재율" || (log.line && log.line.includes("설비보전")) || isJaeyul;
     if (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0) {
-      setEditMaintenanceItems(
+      maintenance.setEditMaintenanceItems(
         log.maintenanceItems.map((it, idx) => {
           const category = it.category || "압출기";
           const standardList = JAEYUL_CATEGORY_EQUIPMENT_MAP[category] || JAEYUL_EQUIPMENT_OPTIONS;
@@ -863,7 +578,7 @@ export function useWorkLogCrud({
         })
       );
     } else if (isJaeyulLog) {
-      setEditMaintenanceItems([
+      maintenance.setEditMaintenanceItems([
         {
           id: 1,
           category: "압출기",
@@ -875,7 +590,7 @@ export function useWorkLogCrud({
         }
       ]);
     } else {
-      setEditMaintenanceItems([]);
+      maintenance.setEditMaintenanceItems([]);
     }
   };
 
@@ -912,94 +627,6 @@ export function useWorkLogCrud({
     }));
   };
 
-  const handleAddEditMaintenanceItem = () => {
-    setEditMaintenanceItems((prev) => [
-      ...prev,
-      {
-        id: Date.now() + Math.random(),
-        category: "압출기",
-        equipmentName: "PCM 1호",
-        customEquipmentName: "",
-        content: "",
-        imagesBefore: [],
-        imagesAfter: []
-      }
-    ]);
-  };
-
-  const handleRemoveEditMaintenanceItem = (id) => {
-    if (editMaintenanceItems.length <= 1) {
-      alert("최소 1개 이상의 설비보전 항목이 필요합니다.");
-      return;
-    }
-    setEditMaintenanceItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleUpdateEditMaintenanceItem = (id, field, value) => {
-    setEditMaintenanceItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        if (field === "category") {
-          const defaultEquips = JAEYUL_CATEGORY_EQUIPMENT_MAP[value] || JAEYUL_EQUIPMENT_OPTIONS;
-          return {
-            ...item,
-            category: value,
-            equipmentName: defaultEquips[0] || "PCM 1호",
-            customEquipmentName: ""
-          };
-        }
-        return { ...item, [field]: value };
-      })
-    );
-  };
-
-  const handleEditMaintenanceItemImageFiles = async (itemId, files, type = "before") => {
-    if (!files || files.length === 0) return;
-    const targetItem = editMaintenanceItems.find((it) => it.id === itemId);
-    if (!targetItem) return;
-    const key = type === "before" ? "imagesBefore" : "imagesAfter";
-    const currentImgs = targetItem[key] || [];
-    if (currentImgs.length >= 3) {
-      alert(`${type === "before" ? "개선 전" : "개선 후"} 사진은 항목당 최대 3장까지 등록 가능합니다.`);
-      return;
-    }
-    const remainingSlots = 3 - currentImgs.length;
-    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, remainingSlots);
-    if (validFiles.length === 0) return;
-
-    setIsEditProcessingImages(true);
-    try {
-      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
-      setEditMaintenanceItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) return item;
-          return {
-            ...item,
-            [key]: [...(item[key] || []), ...processed].slice(0, 3)
-          };
-        })
-      );
-    } catch (err) {
-      console.error("사진 처리 오류:", err);
-      alert("사진을 불러오거나 압축하는 중 오류가 발생했습니다.");
-    } finally {
-      setIsEditProcessingImages(false);
-    }
-  };
-
-  const handleRemoveEditMaintenanceItemImage = (itemId, imgIdx, type = "before") => {
-    const key = type === "before" ? "imagesBefore" : "imagesAfter";
-    setEditMaintenanceItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) return item;
-        return {
-          ...item,
-          [key]: (item[key] || []).filter((_, i) => i !== imgIdx)
-        };
-      })
-    );
-  };
-
   const handleSaveEditedLog = async (e) => {
     if (e) e.preventDefault();
     if (!editingLog) return;
@@ -1017,10 +644,10 @@ export function useWorkLogCrud({
       editFormData.process === "설비보전" ||
       editingLog.process === "설비보전" ||
       editingLog.writer === "전재율" ||
-      editMaintenanceItems.length > 0;
+      maintenance.editMaintenanceItems.length > 0;
 
-    if (isJaeyulLog && editMaintenanceItems.length > 0) {
-      formattedItems = editMaintenanceItems
+    if (isJaeyulLog && maintenance.editMaintenanceItems.length > 0) {
+      formattedItems = maintenance.editMaintenanceItems
         .filter((it) => it.content && it.content.trim())
         .map((it) => {
           const isCustom =
@@ -1099,101 +726,11 @@ export function useWorkLogCrud({
     }
   };
 
-  // Memos & Pagination
-  const todayDateStr = useMemo(() => getKSTDateString(), []);
-
-  const todayLog = useMemo(() => {
-    return (workLogs || []).find(
-      (l) =>
-        Boolean(l) &&
-        l.date === todayDateStr &&
-        (l.writer === workerFullName ||
-          l.writer === currentProfile?.name ||
-          l.author === currentProfile?.name ||
-          (currentProfile?.name && typeof l.writer === "string" && l.writer.includes(currentProfile.name)))
-    );
-  }, [workLogs, todayDateStr, workerFullName, currentProfile?.name]);
-
-  const workerLogsList = useMemo(() => {
-    return (workLogs || [])
-      .filter((log) => {
-        if (!log) return false;
-        if (workerLogScope === "my") {
-          const isMy =
-            log.writer === workerFullName ||
-            log.writer === currentProfile?.name ||
-            log.author === currentProfile?.name ||
-            (currentProfile?.name && typeof log.writer === "string" && log.writer.includes(currentProfile.name));
-          if (!isMy) return false;
-        } else if (workerLogScope === "plant") {
-          if (workerPlant && log.plant && log.plant !== workerPlant) return false;
-        }
-
-        if (workerLogApprovalFilter === "대기") {
-          if (isWorkLogApproved(log)) return false;
-        } else if (workerLogApprovalFilter === "승인") {
-          if (!isWorkLogApproved(log)) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.date !== b.date) return (b.date || "").localeCompare(a.date || "");
-        return (b.createdAt || "").localeCompare(a.createdAt || "");
-      });
-  }, [workLogs, workerLogScope, workerFullName, currentProfile?.name, workerPlant, workerLogApprovalFilter]);
-
-  const filteredLogs = useMemo(() => {
-    const term = (searchTerm || "").trim().toLowerCase();
-    return (workLogs || [])
-      .filter((log) => {
-        if (!log || typeof log !== "object") return false;
-        const writerWithTitle = `${log.writer || ""} ${log.title || ""} ${log.process || ""}`.toLowerCase();
-        const content = String(log.workContent || "").toLowerCase();
-        const line = String(log.line || "").toLowerCase();
-        const issues = String(log.issues || "").toLowerCase();
-
-        const matchSearch =
-          !term ||
-          writerWithTitle.includes(term) ||
-          content.includes(term) ||
-          line.includes(term) ||
-          issues.includes(term);
-
-        const logPlant = log.plant || log.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(log.writer) ? "한림공장" : (["권태형", "최미영"].includes(log.writer) || log.department === "본사 관리팀" ? "본사" : "삼랑진공장"));
-
-        const matchPlant =
-          filterPlant === "all" ||
-          logPlant === filterPlant ||
-          (filterPlant === "한림공장" && (logPlant.includes("한림") || logPlant === "한림")) ||
-          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || logPlant === "삼랑진")) ||
-          (filterPlant === "본사" && (logPlant.includes("본사") || logPlant === "본사"));
-
-        return matchSearch && matchPlant;
-      })
-      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || "") || String(b.id || "").localeCompare(String(a.id || "")));
-  }, [workLogs, searchTerm, filterPlant]);
-
-  useEffect(() => {
-    setCurrentLogPage(1);
-  }, [searchTerm, filterPlant]);
-
-  const totalLogPages = useMemo(() => {
-    return Math.ceil(filteredLogs.length / LOGS_PER_PAGE) || 1;
-  }, [filteredLogs.length]);
-
-  const safeLogPage = Math.min(Math.max(1, currentLogPage), totalLogPages);
-
-  const paginatedLogs = useMemo(() => {
-    const startIdx = (safeLogPage - 1) * LOGS_PER_PAGE;
-    return filteredLogs.slice(startIdx, startIdx + LOGS_PER_PAGE);
-  }, [filteredLogs, safeLogPage]);
-
   return {
     workLogs,
     setWorkLogs,
-    currentLogPage,
-    setCurrentLogPage,
+    currentLogPage: pagination.currentLogPage,
+    setCurrentLogPage: pagination.setCurrentLogPage,
     isModalOpen,
     setIsModalOpen,
     selectedLogDetail,
@@ -1208,8 +745,8 @@ export function useWorkLogCrud({
     setEditingLog,
     editFormData,
     setEditFormData,
-    editMaintenanceItems,
-    setEditMaintenanceItems,
+    editMaintenanceItems: maintenance.editMaintenanceItems,
+    setEditMaintenanceItems: maintenance.setEditMaintenanceItems,
     isEditProcessingImages,
     workerLogScope,
     setWorkerLogScope,
@@ -1221,38 +758,40 @@ export function useWorkLogCrud({
     isProcessingImages,
     previewImageModal,
     setPreviewImageModal,
-    maintenanceItems,
-    setMaintenanceItems,
-    pendingSamrangjinCount,
-    pendingHallimCount,
-    todayLog,
-    workerLogsList,
-    filteredLogs,
-    totalLogPages,
-    safeLogPage,
-    paginatedLogs,
+    maintenanceItems: maintenance.maintenanceItems,
+    setMaintenanceItems: maintenance.setMaintenanceItems,
+    pendingSamrangjinCount: approval.pendingSamrangjinCount,
+    pendingHallimCount: approval.pendingHallimCount,
+    todayLog: pagination.todayLog,
+    workerLogsList: pagination.workerLogsList,
+    filteredLogs: pagination.filteredLogs,
+    totalLogPages: pagination.totalLogPages,
+    safeLogPage: pagination.safeLogPage,
+    paginatedLogs: pagination.paginatedLogs,
     handleOpenWorkLogModal,
     handleOpenLogDetail,
     handleWorkLogImageFiles,
     handleRemoveWorkLogImage,
-    handleAddMaintenanceItem,
-    handleRemoveMaintenanceItem,
-    handleUpdateMaintenanceItem,
-    handleMaintenanceItemImageFiles,
-    handleRemoveMaintenanceItemImage,
-    handleApproveLog,
-    handleBatchApproveLogs,
-    handleRejectLog,
+    handleAddMaintenanceItem: maintenance.handleAddMaintenanceItem,
+    handleRemoveMaintenanceItem: maintenance.handleRemoveMaintenanceItem,
+    handleUpdateMaintenanceItem: maintenance.handleUpdateMaintenanceItem,
+    handleMaintenanceItemImageFiles: maintenance.handleMaintenanceItemImageFiles,
+    handleRemoveMaintenanceItemImage: maintenance.handleRemoveMaintenanceItemImage,
+    handleApproveLog: approval.handleApproveLog,
+    handleBatchApproveLogs: approval.handleBatchApproveLogs,
+    handleRejectLog: approval.handleRejectLog,
     handleSaveLog,
     handleDeleteLog,
     handleOpenEditModal,
     handleEditLogImageFiles,
     handleRemoveEditLogImage,
-    handleAddEditMaintenanceItem,
-    handleRemoveEditMaintenanceItem,
-    handleUpdateEditMaintenanceItem,
-    handleEditMaintenanceItemImageFiles,
-    handleRemoveEditMaintenanceItemImage,
+    handleAddEditMaintenanceItem: maintenance.handleAddEditMaintenanceItem,
+    handleRemoveEditMaintenanceItem: maintenance.handleRemoveEditMaintenanceItem,
+    handleUpdateEditMaintenanceItem: maintenance.handleUpdateEditMaintenanceItem,
+    handleEditMaintenanceItemImageFiles: maintenance.handleEditMaintenanceItemImageFiles,
+    handleRemoveEditMaintenanceItemImage: maintenance.handleRemoveEditMaintenanceItemImage,
     handleSaveEditedLog
   };
 }
+
+export default useWorkLogCrud;
