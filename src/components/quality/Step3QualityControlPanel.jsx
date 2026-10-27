@@ -94,7 +94,7 @@ const compressImage = (file, maxWidth = 900, quality = 0.75) => {
  * 담당: 이창엽 책임 (품질보증)
  * 1. 2단계 생산관리자가 이관한 변동점 항목을 심층 재검토
  * 2. [사내관리로 재분류] vs [공식 4M 대장 등재] 구분 판정
- * 3. 5-Why 근본원인 분석 및 시정/예방대책(CAPA) 수립
+ * 3. 시정/예방대책(CAPA) 수립 및 4단계 결재 상신
  * 4. 전후사진 각 5장 첨부 (총 10장)
  * 5. 상신 시 한림공장은 김동욱 책임, 삼랑진공장은 이명재 대표이사로 전자결재 상신 및 이동
  */
@@ -506,10 +506,6 @@ export default function Step3QualityControlPanel({
   // ⭐ [4단계 전자결재 상신] : 한림공장 ➔ 김동욱 책임, 삼랑진공장 ➔ 이명재 대표이사
   const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
-    if (!capaForm.rootCause.trim()) {
-      alert("5-Why 근본원인 분석 내용을 입력해주세요.");
-      return;
-    }
     if (!capaForm.correctiveAction.trim()) {
       alert("시정 및 재발방지대책(조치결과) 내용을 입력해주세요.");
       return;
@@ -591,9 +587,6 @@ export default function Step3QualityControlPanel({
           `• 변동점 및 이상내용: ${capaForm.content || capaModalItem.title}`,
           capaModalItem.downtimeMinutes > 0 ? `• 비가동 시간: ${capaModalItem.downtimeMinutes}분` : "",
           capaModalItem.scrapKg > 0 ? `• 폐기량: ${capaModalItem.scrapKg}kg` : "",
-          ``,
-          `[5-Why 근본원인 분석 (발생 & 유출)]`,
-          `${capaForm.rootCause}`,
           ``,
           `[조치결과 및 시정/예방대책 (CAPA)]`,
           `${capaForm.correctiveAction}`,
@@ -1003,7 +996,7 @@ export default function Step3QualityControlPanel({
                 <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
                 <th className="py-2.5 px-2.5 w-28">공정/차종</th>
                 <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
-                <th className="py-2.5 px-3 min-w-[240px]">원인분석 (5-Why) & 시정대책(CAPA)</th>
+                <th className="py-2.5 px-3 min-w-[240px]">시정대책(CAPA) 및 조치결과</th>
                 <th className="py-2.5 px-2 text-center w-24">진행상태</th>
                 <th className="py-2.5 px-3 text-center w-36">3단계 후속조치</th>
               </tr>
@@ -1085,18 +1078,12 @@ export default function Step3QualityControlPanel({
                         )}
                       </td>
 
-                      {/* Root Cause & Corrective Action */}
+                      {/* Corrective Action */}
                       <td className="py-2.5 px-3">
-                        {rec.rootCause && (
-                          <div className="text-[11px] text-amber-700 dark:text-amber-400 font-bold mb-0.5">
-                            <span>🔍 원인: </span>
-                            <span>{rec.rootCause}</span>
-                          </div>
-                        )}
-                        {rec.actionResult ? (
+                        {rec.actionResult || rec.correctiveAction ? (
                           <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
                             <span className="font-bold">🛠️ 대책: </span>
-                            <span>{rec.actionResult}</span>
+                            <span>{rec.actionResult || rec.correctiveAction}</span>
                           </div>
                         ) : (
                           <div className="text-[11px] text-rose-500 dark:text-rose-400 font-bold">
@@ -1210,20 +1197,32 @@ export default function Step3QualityControlPanel({
               </div>
             </div>
 
-            <div className="space-y-4 text-xs">
-              {/* SECTION 1: 변동점 및 이상내용 (발생 현황) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    <span>1. 변동점 및 이상내용 (발생 정보)</span>
-                  </span>
+            <div className="space-y-3.5 text-xs">
+              {/* SECTION 1: 변동점 및 이상내용 (드래그 없이 한눈에 전체 표시) */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border-2 border-rose-300/80 dark:border-rose-900/60 space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-rose-200/60 dark:border-rose-900/40">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-500">4M 구분:</span>
+                    <span className="font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5 text-xs sm:text-sm">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span>1. 변동점 및 이상내용 (발생 현황)</span>
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {capaModalItem.line || "해당공정"}
+                    </span>
+                    {(capaModalItem.downtimeMinutes > 0 || capaModalItem.scrapKg > 0) && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                        {capaModalItem.downtimeMinutes > 0 && <span className="bg-amber-100 dark:bg-amber-950 px-1.5 py-0.5 rounded">⏱️ 비가동 {capaModalItem.downtimeMinutes}분</span>}
+                        {capaModalItem.scrapKg > 0 && <span className="bg-rose-100 dark:bg-rose-950 px-1.5 py-0.5 rounded">🗑️ 폐기 {capaModalItem.scrapKg}kg</span>}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-600 dark:text-slate-400">4M 구분:</span>
                     <select
                       value={capaForm.fourM}
                       onChange={(e) => setCapaForm({ ...capaForm, fourM: e.target.value })}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-500/50 text-indigo-700 dark:text-indigo-300 font-bold outline-none"
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold outline-none cursor-pointer"
                     >
                       <option value="Machine">Machine (설비/금형 이상)</option>
                       <option value="Material">Material (원단/원자재 불량)</option>
@@ -1243,73 +1242,65 @@ export default function Step3QualityControlPanel({
                   </div>
                 </div>
 
-                <div>
+                {/* 한눈에 바로 보이는 이상 내용 전체 (내부 스크롤/드래그 불필요) */}
+                <div className="space-y-1.5">
+                  {capaModalItem.title && capaModalItem.title !== capaForm.content && (
+                    <div className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 font-black text-xs text-rose-900 dark:text-rose-200 flex items-center gap-2">
+                      <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px]">제목</span>
+                      <span>{capaModalItem.title}</span>
+                    </div>
+                  )}
+
                   <textarea
-                    rows={2}
+                    rows={Math.max(3, Math.min(8, (capaForm.content || "").split("\n").length + 1))}
                     value={capaForm.content}
                     onChange={(e) => setCapaForm({ ...capaForm, content: e.target.value })}
                     placeholder="변동점 및 이상 발생 상세 내용을 입력하세요..."
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  {(capaModalItem.downtimeMinutes > 0 || capaModalItem.scrapKg > 0) && (
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
-                      {capaModalItem.downtimeMinutes > 0 && <span>⏱️ 비가동: {capaModalItem.downtimeMinutes}분</span>}
-                      {capaModalItem.scrapKg > 0 && <span>🗑️ 폐기량: {capaModalItem.scrapKg}kg</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SECTION 2: 5-Why 원인분석 및 조치결과 (CAPA 대책) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* 5-Why Cause */}
-                <div className="p-3.5 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-300/60 dark:border-amber-800/60 space-y-1.5">
-                  <label className="block font-black text-amber-800 dark:text-amber-300">
-                    🔍 5-Why 근본원인 분석 (발생원인 & 유출원인)
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={capaForm.rootCause}
-                    onChange={(e) => setCapaForm({ ...capaForm, rootCause: e.target.value })}
-                    placeholder="예: 1-Why) 타임 벨트 마모 슬립 → 2-Why) 정기 교체주기 초과 사용 → 근본원인: 정기 점검 기준 미준수 및 예비품 관리 미흡"
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800/80 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                {/* Corrective Action (조치결과) */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-300/60 dark:border-emerald-800/60 space-y-1.5">
-                  <label className="block font-black text-emerald-800 dark:text-emerald-300">
-                    🛠️ 조치결과 및 시정/예방대책 (CAPA)
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={capaForm.correctiveAction}
-                    onChange={(e) => setCapaForm({ ...capaForm, correctiveAction: e.target.value })}
-                    placeholder="예: 긴급조치: 타임 벨트 신품 즉시 교체 및 인취 속도 튜닝 / 재발방지: 벨트 수명 관리 체크리스트 개정(월 1회 점검 표준화)"
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800/80 text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-xs leading-relaxed outline-none focus:ring-2 focus:ring-rose-500 shadow-2xs resize-y"
                   />
                 </div>
               </div>
 
-              {/* Author & Date Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-600 dark:text-slate-400">조치 담당자 (품질):</span>
-                  <input
-                    type="text"
-                    value={capaForm.author}
-                    onChange={(e) => setCapaForm({ ...capaForm, author: e.target.value })}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none w-36"
-                  />
+              {/* SECTION 2: 시정 및 재발방지대책 (5-WHY 삭제 후 전면 배치) */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-300/80 dark:border-emerald-800/80 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-emerald-200/60 dark:border-emerald-800/40">
+                  <span className="font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span>2. 시정 및 재발방지대책 (CAPA 조치결과)</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
+                    ※ 원인에 따른 구체적 조치내용 및 재발방지 대책을 기재합니다.
+                  </span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-600 dark:text-slate-400">조치완료(예정)일:</span>
-                  <input
-                    type="date"
-                    value={capaForm.targetDate}
-                    onChange={(e) => setCapaForm({ ...capaForm, targetDate: e.target.value })}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none"
-                  />
+
+                <textarea
+                  rows={4}
+                  value={capaForm.correctiveAction}
+                  onChange={(e) => setCapaForm({ ...capaForm, correctiveAction: e.target.value })}
+                  placeholder="예: 긴급조치: 타임 벨트 신품 즉시 교체 및 인취 속도 튜닝 / 재발방지: 벨트 수명 관리 체크리스트 개정(월 1회 점검 표준화)"
+                  className="w-full p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-slate-900 dark:text-white font-medium text-xs leading-relaxed outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs resize-y"
+                />
+
+                {/* Author & Date Info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60">
+                    <span className="font-bold text-slate-600 dark:text-slate-400">조치 담당자 (품질):</span>
+                    <input
+                      type="text"
+                      value={capaForm.author}
+                      onChange={(e) => setCapaForm({ ...capaForm, author: e.target.value })}
+                      className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none w-36 text-xs"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60">
+                    <span className="font-bold text-slate-600 dark:text-slate-400">조치완료(예정)일:</span>
+                    <input
+                      type="date"
+                      value={capaForm.targetDate}
+                      onChange={(e) => setCapaForm({ ...capaForm, targetDate: e.target.value })}
+                      className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none text-xs"
+                    />
+                  </div>
                 </div>
               </div>
 

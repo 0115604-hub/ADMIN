@@ -306,7 +306,6 @@ export default function Step4ExecutiveApprovalPanel({
         "변동점내용": rec.title || rec.content || "",
         "비가동(분)": rec.downtimeMinutes || 0,
         "폐기량(kg)": rec.scrapKg || 0,
-        "5-Why 원인분석": rec.rootCause || rec.whyAnalysis || "",
         "시정대책(CAPA)": rec.actionResult || rec.correctiveAction || "",
         "품질검토자": rec.qualityReviewer || rec.actionAuthor || "이창엽",
         "진행상태": rec.approvalStatus === "APPROVED" ? "최종승인완료" : (rec.approvalStatus === "PENDING_APPROVAL" ? "경영진승인대기" : "대책실행중"),
@@ -440,7 +439,7 @@ export default function Step4ExecutiveApprovalPanel({
             <span>4M CAPA 대책수립</span>
             <span className="font-mono">{pipelineStats.step3CapaCompletedCount}건 완료</span>
           </div>
-          <div className="text-[10px] text-slate-500">5-Why 원인 & 시정대책</div>
+          <div className="text-[10px] text-slate-500">CAPA 시정대책 및 조치결과</div>
         </div>
 
         <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border-2 border-purple-400 dark:border-purple-700 space-y-1 shadow-xs">
@@ -473,7 +472,7 @@ export default function Step4ExecutiveApprovalPanel({
               </h4>
             </div>
             <span className="text-[11.5px] text-slate-500 dark:text-slate-400">
-              ※ 3단계 품질관리자(이창엽 책임)의 5-Why 원인분석 및 시정대책(CAPA) 증빙을 확인 후 최종 승인합니다.
+              ※ 3단계 품질관리자(이창엽 책임)의 시정대책(CAPA) 증빙을 확인 후 최종 승인합니다.
             </span>
           </div>
 
@@ -540,24 +539,13 @@ export default function Step4ExecutiveApprovalPanel({
                     </div>
 
                     {/* 3단계 품질관리자 CAPA 분석 결과 */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11.5px] space-y-1">
-                        <div className="font-black text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                          <span>🔍 5-Why 근본원인 분석:</span>
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                          {item.rootCause || item.whyAnalysis || "5-Why 원인분석 기록됨"}
-                        </p>
+                    <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-[11.5px] space-y-1">
+                      <div className="font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                        <span>🛠️ 시정 및 재발방지대책 (CAPA):</span>
                       </div>
-
-                      <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-[11.5px] space-y-1">
-                        <div className="font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                          <span>🛠️ 시정 및 재발방지대책 (CAPA):</span>
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                          {item.actionResult || item.correctiveAction || "시정 및 재발방지대책 기록됨"}
-                        </p>
-                      </div>
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                        {item.actionResult || item.correctiveAction || "시정 및 재발방지대책 기록됨"}
+                      </p>
                     </div>
 
                     {/* Photo Proof & Reviewer Info */}
@@ -726,7 +714,7 @@ export default function Step4ExecutiveApprovalPanel({
                   <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
                   <th className="py-2.5 px-3 w-28">공정/차종</th>
                   <th className="py-2.5 px-3 min-w-[200px]">변동점 내용</th>
-                  <th className="py-2.5 px-3 min-w-[220px]">5-Why & CAPA 대책</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">시정대책(CAPA) 및 조치결과</th>
                   <th className="py-2.5 px-2 text-center w-24">진행상태</th>
                   <th className="py-2.5 px-3 text-center w-32">최종 결재</th>
                 </tr>
@@ -831,7 +819,7 @@ export default function Step4ExecutiveApprovalPanel({
                 rows={4}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="예: 5-Why 발생원인 분석 보완 필요. 다이스 연마 후 유효성 검증 데이터(초중종 3회 치수 측정표)를 추가 첨부하여 재상신 바랍니다."
+                placeholder="예: 시정대책(CAPA) 및 유효성 검증 데이터 보완 필요. 조치 후 유효성 검증 데이터(초중종 3회 치수 측정표)를 추가 첨부하여 재상신 바랍니다."
                 className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-rose-500"
               />
             </div>
