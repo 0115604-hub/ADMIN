@@ -782,43 +782,60 @@ export function normalizeApprovalDoc(d) {
     }
   }
 
+  // ⭐ Single Source of Truth: 결재 활성 단계(PENDING 또는 HOLD) 인덱스 및 결재자 확정
+  const activeStepIdx = fixedSteps.findIndex((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
+  const activeStep = activeStepIdx >= 0 ? fixedSteps[activeStepIdx] : null;
+
   return {
     ...d,
     category: d.category || (is4M ? "4M변동점" : isOvertimeApprovalDoc(d) ? "특근보고서" : "품의서"),
     typeName: d.typeName || (is4M ? "4M 변동점 및 CAPA 승인 품의서" : isOvertimeApprovalDoc(d) ? "특근보고서" : "품의서"),
     currentStep: computedStep,
     status: computedStatus,
-    steps: fixedSteps
+    steps: fixedSteps,
+    activeStepIndex: activeStepIdx,
+    activeApproverName: activeStep?.name || "",
+    activeApproverRole: activeStep?.role || ""
   };
 }
 
-// ⭐ 전사 진행중(미결) 여부 순수 판정 (사용자 권한 무관, 회사 전체 문서 기준)
-export function isApprovalDocInProgress(doc) {
+// ⭐ 1. 전사 결재 완료 여부 순수 판정 (Single Source of Truth)
+export function isApprovalDocApproved(doc) {
   if (!doc) return false;
   if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
-  const s = doc.status || "IN_PROGRESS";
-  if (s === "APPROVED" || s === "완료" || s === "결재완료") return false;
-  if (Array.isArray(doc.steps) && doc.steps.length > 0 && doc.steps.every((st) => st && st.status === "APPROVED")) {
-    return false;
-  }
+  const s = doc.status;
+  if (s === "APPROVED" || s === "완료" || s === "결재완료") return true;
+  if (Array.isArray(doc.steps) && doc.steps.length > 0 && doc.steps.every((st) => st && st.status === "APPROVED")) return true;
+  return false;
+}
+
+// ⭐ 2. 보류 여부 판정 (Single Source of Truth)
+export function isApprovalDocHold(doc) {
+  if (!doc) return false;
+  const s = doc.status;
+  return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some((st) => st && st.status === "HOLD"));
+}
+
+// ⭐ 3. 반려 여부 판정 (Single Source of Truth)
+export function isApprovalDocRejected(doc) {
+  if (!doc) return false;
+  const s = doc.status;
+  return s === "REJECTED" || (Array.isArray(doc.steps) && doc.steps.some((st) => st && st.status === "REJECTED"));
+}
+
+// ⭐ 4. 전사 진행중(미결) 여부 순수 판정 (완료/보류/반려가 아닌 모든 서류는 100% 진행중)
+export function isApprovalDocInProgress(doc) {
+  if (!doc) return false;
+  if (isApprovalDocHold(doc) || isApprovalDocRejected(doc) || isApprovalDocApproved(doc)) return false;
   return true;
 }
 
-// Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-// ⭐ 사용자별 결재 대기 판정:
-// - 최고 경영진(권태형 대표이사 / ADMIN): 전사 상신/진행 중인 모든 결재 서류(16건)가 100% 즉시 미결로 상시 유지 (0건 깜빡임 원천 차단)
-// - 삼랑진공장 총괄(이명재 이사): 삼랑진공장 4M 변동점 서류(12건) 및 이사 결재 서류가 100% 즉시 미결로 상시 유지 (0건 깜빡임 원천 차단)
-// - 기안자 본인(윤경수, 이창엽, 설유철 등 관리자 및 전작업자): 본인이 기안한 진행 중 서류 상시 유지 (탭 전환 시 사라짐 원천 차단)
+// ⭐ 5. 사용자별 결재 대기 판정 (Single Source of Truth 단일 진실 원천 기반 1원화)
 export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
   if (!isApprovalDocInProgress(doc)) return false;
 
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
-  const userPlant = currentProfile?.plant || "";
-  const docPlant = doc.plant || "";
-  const docCompany = cleanCompanyName(doc.company || "");
-  const is4M = isFourMApprovalDoc(doc);
-
   const isProfileAdmin = Boolean(
     isAdmin ||
     currentProfile?.role === "ADMIN" ||
@@ -829,57 +846,43 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
     userTitle.includes("대표")
   );
 
-  // 1. 최고 경영진 (권태형 대표이사 / ADMIN / 최미영 전무):
-  // 전사 진행 중인 모든 결재 서류(일반 품의 + 4M = 16건)가 0건으로 떨어지지 않고 100% 유지
+  // 1. 최고 경영진 (권태형 대표이사 / ADMIN): 전사 진행 중인 모든 문서는 100% 결재 대기 보장
   if (isProfileAdmin) {
     return true;
   }
 
-  // 2. 삼랑진공장 총괄 (이명재 이사):
-  // 삼랑진공장의 4M 변동점 서류(12건) 및 삼랑진공장 이사 결재 서류가 0건으로 떨어지지 않고 100% 유지
-  if (userName === "이명재" || userTitle.includes("이사")) {
-    if (is4M && (docPlant === "삼랑진공장" || !docPlant)) {
+  if (!userName) return false;
+
+  // 2. 기안자 본인이 기안하여 진행 중인 문서: 목록 및 카운트 상시 유지
+  if (doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
+    return true;
+  }
+
+  // 3. 활성 단계 결재자 매칭 (Single Source of Truth)
+  const activeStep = doc.steps?.find((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
+  if (!activeStep) return false;
+
+  // 3-1. 결재선에 지정된 본인 이름 직접 일치
+  if (activeStep.name && (activeStep.name === userName || activeStep.name.includes(userName) || userName.includes(activeStep.name))) {
+    return true;
+  }
+
+  // 3-2. 이명재 이사 (삼랑진공장 총괄): 삼랑진공장 4M 변동점 문서이거나, 삼랑진공장 서류의 이사/검토 단계
+  const isDirector = userName === "이명재" || userTitle.includes("이사");
+  if (isDirector) {
+    const isSamrangjin = doc.plant === "삼랑진공장" || !doc.plant;
+    const is4M = isFourMApprovalDoc(doc);
+    const isDirectorStep = activeStep.role === "이사" || activeStep.role === "검토";
+    if (isSamrangjin && (is4M || isDirectorStep)) {
       return true;
     }
-    if (docPlant === "삼랑진공장") {
-      const activeStep = doc.steps?.find((s) => s?.status === "PENDING" || s?.status === "HOLD");
-      if (!activeStep?.name || activeStep.name.includes("이명재") || activeStep.role === "이사" || activeStep.role === "검토") {
-        return true;
-      }
-    }
-    return false;
   }
 
-  // 3. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽, 설유철 등 관리자/작업자 기안건 즉시 유지)
-  if (userName && doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
-    return true;
-  }
-
-  // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우
-  const activeStep = doc.steps?.find((s) => s?.status === "PENDING" || s?.status === "HOLD");
-  if (activeStep?.name && userName && (activeStep.name === userName || activeStep.name.includes(userName) || userName.includes(activeStep.name))) {
-    return true;
-  }
-
-  // 5. 공장별 책임/선임 (김동욱: 한림, 설유철/윤경수/이창엽/전재율: 삼랑진)
-  const stepRole = activeStep?.role || "";
-  const isLeadStep = stepRole === "책임" || (!is4M && stepRole === "검토");
-  if (isLeadStep) {
-    if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
-      return docPlant === "한림공장";
-    }
-    // 협력업체 관리자 (황수현: 한울, 김동훈: 부림텍, 이성기: 유성, 오상민: 조영)
-    const isHanulManager = userName === "황수현" || currentProfile?.id?.startsWith("hal_hu");
-    const isBurimManager = userName === "김동훈" || currentProfile?.id?.startsWith("hal_br");
-    const isYuseongManager = userName === "이성기" || currentProfile?.id?.startsWith("sam_ys");
-    const isJoyoungManager = userName === "오상민";
-
-    if (isHanulManager && (docCompany === "한울" || doc.title?.includes("한울"))) return true;
-    if (isBurimManager && (docCompany === "부림텍" || doc.title?.includes("부림텍") || doc.title?.includes("부림"))) return true;
-    if (isYuseongManager && (docCompany === "유성" || doc.title?.includes("유성"))) return true;
-    if (isJoyoungManager && (docCompany === "조영" || doc.title?.includes("조영"))) return true;
-
-    if (userPlant && docPlant && userPlant === docPlant) {
+  // 3-3. 공정 책임자 (activeStep.role === "책임")
+  if (activeStep.role === "책임") {
+    const userPlant = currentProfile?.plant || "";
+    const docPlant = doc.plant || "";
+    if (docPlant && userPlant && docPlant === userPlant) {
       if (
         userTitle === "책임" ||
         userTitle === "선임" ||
@@ -894,27 +897,6 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
   }
 
   return false;
-}
-
-export function isApprovalDocHold(doc) {
-  if (!doc) return false;
-  const s = doc.status;
-  return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "HOLD"));
-}
-
-export function isApprovalDocApproved(doc) {
-  if (!doc) return false;
-  if (isApprovalDocHold(doc) || isApprovalDocRejected(doc)) return false;
-  const s = doc.status;
-  if (s === "APPROVED" || s === "완료" || s === "결재완료") return true;
-  if (Array.isArray(doc.steps) && doc.steps.length > 0 && doc.steps.every(st => st && st.status === "APPROVED")) return true;
-  return false;
-}
-
-export function isApprovalDocRejected(doc) {
-  if (!doc) return false;
-  const s = doc.status;
-  return s === "REJECTED" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "REJECTED"));
 }
 
 export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
