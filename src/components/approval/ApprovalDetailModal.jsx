@@ -5,14 +5,11 @@ import {
   Trash2,
   Edit3,
   FileText,
-  Clock,
-  CheckCircle2,
   PauseCircle,
   AlertCircle,
   Stamp,
   Lock,
   Camera,
-  ZoomIn,
   ImageIcon
 } from "lucide-react";
 import {

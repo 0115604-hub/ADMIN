@@ -1,38 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  X,
-  Save,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  User,
-  Layers,
-  Sparkles,
-  Trash2,
-  TrendingUp,
-  Cpu,
-  Calendar,
-  Sun,
-  Moon,
-  Zap,
-  Activity,
-  Plus,
-  Check,
-  FileCheck2,
-  FileSpreadsheet,
-  Package,
-  ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
-  Camera,
-  AlertOctagon,
-  Wrench,
-  Thermometer,
-  Gauge,
-  Flame,
-  Droplets
-} from "lucide-react";
-import {
   WORKER_PRESETS,
   DOWNTIME_CATEGORIES,
   TPM_CHECK_ITEMS,
@@ -44,15 +11,9 @@ import {
   getItemsByLine
 } from "../../data/extrusionItemsData";
 import {
-  EPDM_RUBBERS,
-  EPDM_COMPOUNDS,
-  EPDM_INSERTS,
-  EPDM_COATINGS,
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
-import { getWorkLogText } from "../../services/workLogI18nService";
 import { useModalHistory } from "../../utils/modalHistory";
-import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel";
 import ExtrusionReportHeaderNav from "./report/ExtrusionReportHeaderNav";
 import ExtrusionReportTpmPanel from "./report/ExtrusionReportTpmPanel";
 import ExtrusionReportBasicInfo from "./report/ExtrusionReportBasicInfo";
@@ -100,14 +61,6 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
     };
   });
 };
-
-// Clean line definitions (깔끔한 라인명)
-const CLEAN_LINE_OPTIONS = [
-  { id: "pcm1", name: "PCM 1호", fullName: "PCM #1 LINE", color: "teal" },
-  { id: "pcm3", name: "PCM 3호", fullName: "PCM #3 LINE", color: "blue" },
-  { id: "pvc", name: "PVC", fullName: "PVC LINE", color: "amber" },
-  { id: "tpe", name: "TPE", fullName: "TPE LINE", color: "purple" }
-];
 
 const createDefaultItem = (lineId, suffix = Date.now()) => {
   const lineItems = getItemsByLine(lineId || "pcm1");
@@ -503,7 +456,6 @@ export const ExtrusionWorkReportModal = ({
     }
 
     const defaultItem = createDefaultItem("pcm1");
-    const defaultBOM = getMaterialBOMForItem(defaultItem.vehicle, defaultItem.itemName);
 
     return {
       date: todayStr,
@@ -882,46 +834,6 @@ export const ExtrusionWorkReportModal = ({
 
   const totalAttainmentRate = totalTargetQty > 0 ? ((totalActualQty / totalTargetQty) * 100).toFixed(1) : "100.0";
   const totalYieldRate = totalActualQty > 0 ? ((totalGoodQty / totalActualQty) * 100).toFixed(1) : "100.0";
-  const totalDefectRate = totalActualQty > 0 ? ((totalDefectQty / totalActualQty) * 100).toFixed(1) : "0.0";
-
-  // Multi-downtime aggregated totals
-  const dtEvents = Array.isArray(formData?.downtimeEvents) ? formData.downtimeEvents : [];
-  const totalDowntimeMinutes = dtEvents.reduce((sum, ev) => sum + (Number(ev?.minutes) || 0), 0);
-  const totalDowntimeScrapKg = Number(dtEvents.reduce((sum, ev) => sum + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
-
-  // Multi-worker selection helpers (압출동 11명 복수선택)
-  const currentWorkers = useMemo(() => {
-    if (!formData.worker) return [];
-    return String(formData.worker)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [formData.worker]);
-
-  const handleToggleWorker = (workerStr) => {
-    setFormData((prev) => {
-      const cur = String(prev.worker || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      const simpleName = workerStr.split(" ")[0];
-      const exists = cur.some((w) => w === workerStr || w.startsWith(simpleName) || simpleName.startsWith(w));
-
-      let updated;
-      if (exists) {
-        updated = cur.filter((w) => w !== workerStr && !w.startsWith(simpleName) && !simpleName.startsWith(w));
-      } else {
-        updated = [...cur, workerStr];
-      }
-
-      const nextWorker = updated.join(", ");
-      return {
-        ...prev,
-        worker: nextWorker
-      };
-    });
-  };
 
   // TPM Handlers
   const handleTpmStatusChange = (itemId, status) => {
@@ -1175,147 +1087,6 @@ export const ExtrusionWorkReportModal = ({
     });
   };
 
-  const handleDowntimeDraftChange = (field, value) => {
-    setDowntimeDraft((prev) => {
-      const next = { ...prev };
-      if (field === "minutes" || field === "scrapKg") {
-        next[field] = value === "" ? "" : Math.max(0, Number(value));
-      } else if (field === "type") {
-        next.type = value;
-        if (value === "불량" && next.category === "압개시") {
-          next.category = "뜯김";
-          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "뜯김");
-          next.detail = catObj?.defaultDetail || "";
-        } else if (value === "비가동" && next.category === "뜯김") {
-          next.category = "형교환";
-          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "형교환");
-          next.detail = catObj?.defaultDetail || "";
-        }
-      } else if (field === "category") {
-        next.category = value;
-        const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
-        const isDefectCategory = ["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅"].includes(value);
-        next.type = isDefectCategory ? "불량" : "비가동";
-        if (!next.detail || DOWNTIME_CATEGORIES.some((c) => c.defaultDetail === next.detail)) {
-          next.detail = catObj?.defaultDetail || "";
-        }
-      } else if (field === "detailPreset") {
-        next.detail = value;
-        const matched = DOWNTIME_CATEGORIES.find(
-          (c) => c.defaultDetail === value || `[${c.label}] ${c.defaultDetail}` === value || c.label === value
-        );
-        if (matched) {
-          next.category = matched.id;
-        }
-      } else {
-        next[field] = value;
-      }
-
-      if (field === "startTime" || field === "endTime") {
-        const s = field === "startTime" ? value : next.startTime;
-        const e = field === "endTime" ? value : next.endTime;
-        if (s && e) {
-          const comp = calculateMinutesFromTime(s, e);
-          next.minutes = comp;
-        }
-      }
-
-      return next;
-    });
-  };
-
-  const handleAddDraftEvent = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    const category = downtimeDraft.category || "압개시";
-    const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category);
-    const detail = String(downtimeDraft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치`;
-    const minutes = Number(downtimeDraft.minutes) || (downtimeDraft.startTime && downtimeDraft.endTime ? calculateMinutesFromTime(downtimeDraft.startTime, downtimeDraft.endTime) : 0);
-    const scrapKg = downtimeDraft.scrapKg !== "" && downtimeDraft.scrapKg !== undefined ? Number(downtimeDraft.scrapKg) : 0;
-
-    const newEvent = {
-      id: `dt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      type: downtimeDraft.type || "비가동",
-      category,
-      startTime: downtimeDraft.startTime || "",
-      endTime: downtimeDraft.endTime || "",
-      minutes,
-      scrapKg,
-      detail
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      downtimeEvents: [...(prev.downtimeEvents || []), newEvent]
-    }));
-
-    // Smart reset for next input entry
-    setDowntimeDraft((prev) => {
-      const nextType = prev.type || "비가동";
-      const nextCat = nextType === "불량" ? "뜯김" : "형교환";
-      const nextCatObj = DOWNTIME_CATEGORIES.find((c) => c.id === nextCat);
-      return {
-        type: nextType,
-        category: nextCat,
-        startTime: prev.endTime || "",
-        endTime: "",
-        minutes: 0,
-        scrapKg: "",
-        detail: nextCatObj?.defaultDetail || ""
-      };
-    });
-  };
-
-  const handleRemoveDowntimeEvent = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      downtimeEvents: (prev.downtimeEvents || []).filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleDowntimeEventChange = (index, field, value) => {
-    setFormData((prev) => {
-      const list = [...(prev.downtimeEvents || [])];
-      const target = { ...(list[index] || createDefaultDowntimeEvent()) };
-
-      if (field === "minutes" || field === "scrapKg") {
-        target[field] = value === "" ? "" : Math.max(0, Number(value));
-      } else if (field === "type") {
-        target.type = value;
-      } else if (field === "category") {
-        target.category = value;
-        const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
-        if (!target.detail || DOWNTIME_CATEGORIES.some((c) => c.defaultDetail === target.detail)) {
-          target.detail = catObj?.defaultDetail || "";
-        }
-      } else if (field === "detailPreset") {
-        target.detail = value;
-        const matched = DOWNTIME_CATEGORIES.find((c) => c.defaultDetail === value || `[${c.label}] ${c.defaultDetail}` === value);
-        if (matched) {
-          target.category = matched.id;
-        }
-      } else {
-        target[field] = value;
-      }
-
-      if (field === "startTime" || field === "endTime") {
-        const s = field === "startTime" ? value : target.startTime;
-        const e = field === "endTime" ? value : target.endTime;
-        if (s && e) {
-          const comp = calculateMinutesFromTime(s, e);
-          target.minutes = comp;
-        }
-      }
-
-      list[index] = target;
-      return { ...prev, downtimeEvents: list };
-    });
-  };
-
-  const handleDowntimeChange = (field, value) => {
-    const num = value === "" ? "" : Math.max(0, Number(value));
-    setFormData((prev) => ({ ...prev, [field]: num }));
-  };
-
   const handleNestedFieldChange = (parentKey, childKey, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -1389,34 +1160,6 @@ export const ExtrusionWorkReportModal = ({
     }));
   };
 
-  const handleBatchTpeExtruderTemps = (targetTemp = "190") => {
-    const val = prompt("TPE 4개 압출기 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
-    if (!val || isNaN(Number(val))) return;
-    const numStr = String(Math.round(Number(val)));
-    setFormData((prev) => {
-      const updateExtruder = (extKey) => {
-        const current = prev.conditions?.[extKey] || EXTRUSION_STANDARD_SPECS[extKey] || {};
-        const res = {};
-        Object.keys(current).forEach((k) => {
-          res[k] = k === "hopperDryer" ? String(current[k] || "80").replace(/\.0+$/, "") : numStr;
-        });
-        return res;
-      };
-
-      return {
-        ...prev,
-        conditions: {
-          ...(prev.conditions || {}),
-          tpeTemps100: updateExtruder("tpeTemps100"),
-          tpeTemps80: updateExtruder("tpeTemps80"),
-          tpeTemps65: updateExtruder("tpeTemps65"),
-          tpeTemps35: updateExtruder("tpeTemps35"),
-          tpeTemps45: updateExtruder("tpeTemps35")
-        }
-      };
-    });
-  };
-
   const handlePvcTempChange = (zoneKey, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -1430,26 +1173,6 @@ export const ExtrusionWorkReportModal = ({
     }));
   };
 
-  const handleBatchPvcExtruderTemps = (targetTemp = "180") => {
-    const val = prompt("PVC 압출기 7개 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
-    if (!val || isNaN(Number(val))) return;
-    const numStr = String(Math.round(Number(val)));
-    setFormData((prev) => {
-      const current = prev.conditions?.pvcTemps || EXTRUSION_STANDARD_SPECS.pvcTemps || {};
-      const res = {};
-      Object.keys(current).forEach((k) => {
-        res[k] = numStr;
-      });
-      return {
-        ...prev,
-        conditions: {
-          ...(prev.conditions || {}),
-          pvcTemps: res
-        }
-      };
-    });
-  };
-
   const handlePvcDryerZoneChange = (zoneKey, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -1458,25 +1181,6 @@ export const ExtrusionWorkReportModal = ({
         pvcDryerZones: {
           ...(prev.conditions?.pvcDryerZones || {}),
           [zoneKey]: value
-        }
-      }
-    }));
-  };
-
-  const handleBatchPvcDryerTemps = (targetTemp = "160") => {
-    const val = prompt("PVC 건조로 4개 존 전체 온도에 일괄 적용할 온도를 입력하세요(℃):", targetTemp);
-    if (!val || isNaN(Number(val))) return;
-    const numStr = String(Math.round(Number(val)));
-    setFormData((prev) => ({
-      ...prev,
-      conditions: {
-        ...(prev.conditions || {}),
-        pvcDryerTemp: numStr,
-        pvcDryerZones: {
-          zone1: numStr,
-          zone2: numStr,
-          zone3: numStr,
-          zone4: numStr
         }
       }
     }));

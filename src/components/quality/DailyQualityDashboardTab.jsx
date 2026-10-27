@@ -117,8 +117,6 @@ export const DailyQualityDashboardTab = ({
         {monthlyData.items.map((it) => {
           const itemTarget = getItemTarget(it.id);
           const isGood = it.defectRate <= itemTarget;
-          const isHr = it.id === "hr";
-          const isNx = it.id === "nx4" || it.id === "nx4a";
           const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0) + (it.scrapD || 0));
           const scrapRate = it.inspectQty > 0 ? Number(((scrapQty / it.inspectQty) * 100).toFixed(2)) : 0;
 

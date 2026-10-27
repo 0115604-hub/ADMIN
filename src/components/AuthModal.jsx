@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
-import { useAuth, ADMIN_USERS, PLANTS, EXTRUSION_WORKERS, ALL_DESIGNATED_USERS } from "../context/AuthContext";
+import { useAuth, ADMIN_USERS, PLANTS, EXTRUSION_WORKERS } from "../context/AuthContext";
 import {
   getAnnualLeaves,
   subscribeAnnualLeaves,

@@ -1,53 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Clock,
-  Printer,
-  Download,
-  Plus,
-  Trash2,
-  Edit3,
-  CheckCircle2,
-  Calendar,
-  User,
-  Save,
-  FileText,
-  Send,
-  Copy,
   Users,
-  Layers,
   Sparkles,
-  Award,
-  CheckCheck,
-  Building2,
-  Factory,
-  Eye,
-  Check,
-  ChevronRight,
-  ChevronDown,
-  DollarSign,
-  Search,
-  Filter,
-  RefreshCw,
-  TrendingUp,
-  BarChart3,
   CalendarDays,
-  UserCheck,
-  UserPlus,
-  UserMinus,
-  ShieldCheck,
-  AlertCircle,
-  AlertTriangle,
-  X,
   FileSpreadsheet,
-  ArrowRight,
-  ArrowLeft,
-  Sun,
-  Moon,
-  Zap,
-  CheckSquare,
-  PauseCircle,
-  Stamp,
-  Star
+  ArrowLeft
 } from "lucide-react";
 import PersonnelCardModal from "./PersonnelCardModal.jsx";
 import Absence4MModal from "./Absence4MModal.jsx";
@@ -57,13 +14,9 @@ import {
   getSkillMeta,
   getNationalityMeta,
   getInspectorGradeMeta,
-  SKILL_LEVEL_META,
-  calculateTenureFromJoinDate,
-  calculateProcessYearFromJoinDate,
   DEPARTMENTS_LIST,
   POSITIONS_LIST,
   STANDARD_PROCESS_LIST,
-  isPartnerCompany,
   normalizeStandardDept,
   normalizeStandardPosition,
   getLocalPersonnelCardsMap,
@@ -71,17 +24,12 @@ import {
   deleteWorkerPersonnelCard
 } from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
-import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
-import * as XLSX from "xlsx";
+import { getCurrentYearMonth } from "../context/MonthContext";
 import {
   COMPANIES,
-  DEPARTMENTS,
   COMPANY_THEMES,
   cleanCompanyName,
   cleanWorkerNameOnly,
-  COMPANY_APPROVAL_MANAGERS,
-  ATTENDANCE_OPTIONS,
-  getOptionMeta,
   calculateWorkerDailyHours,
   calculateWorkerMonthlyTotals,
   calculateDailySummary,
@@ -93,9 +41,7 @@ import {
   subscribeSmartOvertimeData,
   exportSmartOvertimeToExcel,
   normalizeDept,
-  ensureAllCompaniesPresent,
-  getKoreanHolidayInfo,
-  KOREAN_HOLIDAY_NAMES_2026
+  getKoreanHolidayInfo
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
@@ -103,10 +49,6 @@ import {
   saveOvertimeReport,
   deleteOvertimeReport,
   subscribeOvertimeReports,
-  formatKoreanWorkDate,
-  formatShortWorkDate,
-  calculateReportMetrics,
-  PLANT_COMPANIES,
   getPlantForCompany,
   isWeekendByDate
 } from "../services/overtimeService";
@@ -162,9 +104,7 @@ import { OvertimeReportDetailModal } from "./overtime/OvertimeReportDetailModal.
 import { OvertimeDeleteWorkerModal } from "./overtime/OvertimeDeleteWorkerModal.jsx";
 import {
   computeCopyPrevDayAttendance,
-  computeFillMissingWorkersRegular,
-  computeFillAllFilteredWorkersRegular,
-  computeClearDayAttendance
+  computeFillAllFilteredWorkersRegular
 } from "./overtime/overtimeAttendanceActions.js";
 
 
@@ -365,7 +305,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   }, [matrixYear, matrixMonthNum]);
 
   const getMatrixDayLabel = (d) => getDayOfWeekKorean(d, matrixYear, matrixMonthNum);
-  const getMatrixDayFullLabel = (d) => getDayOfWeekFullKorean(d, matrixYear, matrixMonthNum);
   const isMatrixWeekendDay = (d) => isWeekendByDate(d, matrixYear, matrixMonthNum);
 
   // Daily views state (로그인 및 접속 시점의 실시간 당일 일자로 기본 선택)
@@ -537,33 +476,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const currentCompanyDayKey = `${cleanCompanyName(selectedCompanyFilter)}_${selectedDay}`;
   const currentCompanyApproval = smartData?.companyApprovalStatus?.[currentCompanyDayKey];
   const isDayLocked = currentCompanyApproval?.status === "APPROVED" && !isDayUnlockedForEdit;
-
-  // Sync state to local/cloud (Explicit Save Action - 5개사 독립 모듈 기준)
-  const handleSaveLedger = async (updatedData, targetYM = null, explicitCompany = null) => {
-    setIsSaving(true);
-    try {
-      const ym = targetYM || selectedMonth || "2026-10";
-      if (ym === (selectedMonth || "2026-10")) {
-        setSmartData(updatedData);
-      } else {
-        setPrevMonthData(updatedData);
-      }
-      await saveSmartOvertimeData(updatedData, ym, {
-        targetCompany: explicitCompany || selectedCompanyFilter,
-        auditMeta: {
-          operator: currentProfile?.name || "관리자",
-          source: "MANUAL_SAVE_BUTTON",
-          reason: "관리자 업체별 원장 수동 저장"
-        }
-      });
-      
-      setHasUnsavedChanges(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
   const handleUpdateWorkerDayAttendance = async (targetWorkerOrIndex, newCode) => {
@@ -983,45 +895,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     });
   };
 
-  const handleSetMissingWorkersRegular = async () => {
-    if (isDayLocked) {
-      setIsDayUnlockedForEdit(true);
-    }
-    if (!missingAttendanceWorkers || missingAttendanceWorkers.length === 0) {
-      triggerToast("ℹ️ 미선택된 근로자가 없습니다. (모든 근로자의 근태가 입력되어 있습니다)");
-      return;
-    }
-
-    const isWk = isWeekendDay(selectedDay);
-    const { updatedMatrix, updatedCount } = computeFillMissingWorkersRegular({
-      missingAttendanceWorkers,
-      selectedDay,
-      isWeekend: isWk,
-      effectiveMatrix,
-      smartData
-    });
-
-    const newLedger = {
-      ...smartData,
-      year: currentYear,
-      month: currentMonthNum,
-      attendanceMatrix: updatedMatrix
-    };
-
-    setSmartData(newLedger);
-    setHasUnsavedChanges(true);
-    triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "전사" : selectedCompanyFilter}] 미입력 ${updatedCount}명이 ${isWk ? "특근(8H)" : "정시(🟢)"}로 채워졌습니다. (기존 잔업/야간/결근/병결 인원 안전 보존)`);
-    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
-      targetCompany: selectedCompanyFilter,
-      targetDay: selectedDay,
-      auditMeta: {
-        operator: currentProfile?.name || "현장관리자",
-        source: "BULK_FILL_MISSING_REGULAR",
-        reason: `${currentMonthNum}월 ${selectedDay}일 미입력 인원 정시 채우기 (${updatedCount}명)`
-      }
-    });
-  };
-
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day (Preserves 결근/병결/휴가 사유자)
   const handleSetAllFilteredWorkersRegular = async () => {
     if (isDayLocked) {
@@ -1058,53 +931,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
     });
   };
-
-  // 🗑️ 당일 근태 전체 비우기 (선택된 협력사 또는 전체의 선택된 날짜 근태 초기화)
-  const handleClearCurrentDayAttendance = async () => {
-    if (isDayLocked) {
-      setIsDayUnlockedForEdit(true);
-    }
-    const compLabel = selectedCompanyFilter === "전체" ? "전사 5개사" : selectedCompanyFilter;
-
-    setIsSaving(true);
-    try {
-      const { updatedMatrix, updatedApprovalStatus } = computeClearDayAttendance({
-        smartData,
-        selectedCompanyFilter,
-        selectedDay,
-        companiesList: COMPANIES
-      });
-
-      const newLedger = {
-        ...smartData,
-        year: currentYear,
-        month: currentMonthNum,
-        attendanceMatrix: updatedMatrix,
-        companyApprovalStatus: updatedApprovalStatus
-      };
-
-      setSmartData(newLedger);
-      setHasUnsavedChanges(true);
-
-      await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
-        targetCompany: selectedCompanyFilter,
-        targetDay: selectedDay,
-        clearedDay: selectedDay,
-        auditMeta: {
-          operator: currentProfile?.name || "현장관리자",
-          source: "DAY_CLEAR_ACTION",
-          reason: `${compLabel} Day ${selectedDay} 근태 전체 초기화 (미작성 전환)`
-        }
-      });
-      triggerToast(`🗑️ [${compLabel}] ${currentMonthNum}월 ${selectedDay}일 근태가 초기화(미작성)되었습니다.`);
-    } catch (err) {
-      console.error(err);
-      triggerToast("⚠️ 초기화 중 오류가 발생했습니다: " + (err?.message || err));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
 
   const handleEditReport = (report) => {
     if (!report) return;
@@ -1599,16 +1425,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return (a.companyNo || 0) - (b.companyNo || 0);
     });
   }, [effectiveMatrix, personnelCardsMap, selectedCompanyFilter]);
-
-  // 🚨 미입력/누락된 근태 작업자 실시간 집계 (선택된 일자 및 조회 대상 기준)
-  const missingAttendanceWorkers = useMemo(() => {
-    const d = selectedDay || 1;
-    return (filteredAttendanceWorkers || []).filter((w) => {
-      const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
-      const str = String(val || "").trim();
-      return !str || str === "미입력" || str === "undefined" || str === "null";
-    });
-  }, [filteredAttendanceWorkers, selectedDay]);
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-16 min-w-0 max-w-full">

@@ -240,10 +240,6 @@ export const DailyQualityView = () => {
   const activeTargets = customTargetInputs || qualityTargets || autoCalculatedTargets;
 
   const targetOverall = activeTargets?.overall?.targetRate ?? 0.59;
-  const targetJa = activeTargets?.items?.ja?.targetRate ?? 0.82;
-  const targetHr = activeTargets?.items?.hr?.targetRate ?? 0.53;
-  const targetNx4a = activeTargets?.items?.nx4a?.targetRate ?? 0.72;
-  const targetNx4 = activeTargets?.items?.nx4?.targetRate ?? 0.19;
 
   const getItemTarget = (itemId) => {
     const id = (itemId || "").toLowerCase();

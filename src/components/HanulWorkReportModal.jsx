@@ -1,45 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  X,
-  Save,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  User,
-  Layers,
-  Sparkles,
-  Trash2,
-  TrendingUp,
-  Cpu,
-  Calendar,
-  Sun,
-  Moon,
-  Zap,
-  Activity,
-  Plus,
-  Minus,
-  Check,
-  FileSpreadsheet,
-  Package,
-  ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
-  Printer,
-  FileText,
-  Thermometer,
-  Gauge,
-  Scissors,
-  Wrench,
-  ChevronDown,
-  RotateCcw
-} from "lucide-react";
-import {
   HANUL_PROJECTS,
   HANUL_PROCESSES,
   HANUL_JOINT_TYPES,
   HANUL_INSPECTION_TYPES,
-  HANUL_INSPECTION_DEFECT_GROUPS,
-  HANUL_WORKERS_MASTER,
   HANUL_SPECS,
   DEFAULT_DEFECT_CATEGORIES,
   HANUL_TPM_MACHINES,
@@ -77,20 +41,9 @@ import {
 import {
   getWorkLogText,
   getCurrentWorkLogLanguage,
-  setWorkLogLanguage,
-  SUPPORTED_LANGUAGES,
   getWorkerLanguageInfo,
-  syncWorkerLanguage,
-  translateTerm
+  syncWorkerLanguage
 } from "../services/workLogI18nService";
-
-// 치수 공차 실시간 판정 헬퍼 (초·중·종물 규격 내 여부)
-const isDimOk = (val, target, tol) => {
-  if (val === undefined || val === null || val === "") return true;
-  const num = parseFloat(val);
-  if (isNaN(num)) return true;
-  return num >= (target - tol) && num <= (target + tol);
-};
 
 export const HanulWorkReportModal = ({
   isOpen,

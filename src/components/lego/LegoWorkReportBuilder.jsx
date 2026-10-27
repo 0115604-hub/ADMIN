@@ -3,9 +3,7 @@ import { Sparkles } from "lucide-react";
 import { saveMachiningWorkReport, deleteMachiningWorkReport } from "../../services/machiningWorkReportService";
 import {
   translateTerm,
-  getCurrentWorkLogLanguage,
-  SUPPORTED_LANGUAGES,
-  setWorkLogLanguage
+  getCurrentWorkLogLanguage
 } from "../../services/workLogI18nService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";
 import LegoBlockCollectionModal from "./LegoBlockCollectionModal.jsx";
@@ -667,15 +665,6 @@ export const LegoWorkReportBuilder = ({
     showToast(`➕ 단컷팅 ${type} [${nextSection}] 치수 행이 추가되었습니다.`);
   };
 
-  const handleDeleteStepCuttingRow = (type, id) => {
-    const listKey = type === "FRT" ? "stepCuttingFrt" : "stepCuttingRr";
-    setCurrentReport((prev) => ({
-      ...prev,
-      [listKey]: (prev[listKey] || []).filter((r) => r.id !== id)
-    }));
-    showToast("🗑️ 단컷팅 치수 행이 삭제되었습니다.");
-  };
-
   // C. 도면 치수 검사 행 추가/삭제
   const handleAddDrawingSpecRow = () => {
     const newRow = {
@@ -693,15 +682,7 @@ export const LegoWorkReportBuilder = ({
     showToast("➕ 중요 치수 검사 행이 추가되었습니다.");
   };
 
-  const handleDeleteDrawingSpecRow = (id) => {
-    setCurrentReport((prev) => ({
-      ...prev,
-      drawingSpecs: (prev.drawingSpecs || []).filter((r) => r.id !== id)
-    }));
-    showToast("🗑️ 치수 검사 행이 삭제되었습니다.");
-  };
-
-  // D. 직각검사 호기 라인 추가/삭제
+  // D. 직각검사 호기 라인 추가
   const handleAddMachineRow = () => {
     const count = (currentReport.machines?.length || 0) + 1;
     const newMachine = {
@@ -718,18 +699,6 @@ export const LegoWorkReportBuilder = ({
       machines: [...(prev.machines || []), newMachine]
     }));
     showToast(`➕ [${newMachine.name}] 호기 열이 추가되었습니다.`);
-  };
-
-  const handleDeleteMachineRow = (id) => {
-    if ((currentReport.machines?.length || 0) <= 1) {
-      alert("최소 1개 이상의 호기가 필요합니다.");
-      return;
-    }
-    setCurrentReport((prev) => ({
-      ...prev,
-      machines: (prev.machines || []).filter((m) => m.id !== id)
-    }));
-    showToast("🗑️ 호기 열이 삭제되었습니다.");
   };
 
   // E. 공정불량(조인트) 항목 추가
