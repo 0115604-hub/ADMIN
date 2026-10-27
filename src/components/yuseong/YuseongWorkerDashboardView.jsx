@@ -104,6 +104,7 @@ export const YuseongWorkerDashboardView = () => {
       setIsReportModalOpen(true);
     };
     window.addEventListener("open-yuseong-work-report-modal", handleOpen);
+    window.addEventListener("open-worker-worklog-modal", handleOpen);
 
     // Check if auto-open requested via sessionStorage from WorkerPinModal
     try {
@@ -115,7 +116,10 @@ export const YuseongWorkerDashboardView = () => {
       }
     } catch (err) {}
 
-    return () => window.removeEventListener("open-yuseong-work-report-modal", handleOpen);
+    return () => {
+      window.removeEventListener("open-yuseong-work-report-modal", handleOpen);
+      window.removeEventListener("open-worker-worklog-modal", handleOpen);
+    };
   }, []);
 
   // Active Company Notices
@@ -537,6 +541,16 @@ export const YuseongWorkerDashboardView = () => {
                 전체 일보
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenReportModal("JK1")}
+              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-teal-600/30 transition-all cursor-pointer"
+              title="유성 신규 작업일보 작성"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>일보 작성</span>
+            </button>
           </div>
         </div>
 

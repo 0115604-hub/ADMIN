@@ -105,6 +105,7 @@ export const MachiningWorkerDashboardView = () => {
       setIsReportModalOpen(true);
     };
     window.addEventListener("open-machining-work-report-modal", handleOpen);
+    window.addEventListener("open-worker-worklog-modal", handleOpen);
 
     // Check if auto-open requested via sessionStorage from WorkerPinModal
     try {
@@ -116,7 +117,10 @@ export const MachiningWorkerDashboardView = () => {
       }
     } catch (err) {}
 
-    return () => window.removeEventListener("open-machining-work-report-modal", handleOpen);
+    return () => {
+      window.removeEventListener("open-machining-work-report-modal", handleOpen);
+      window.removeEventListener("open-worker-worklog-modal", handleOpen);
+    };
   }, []);
 
   // Active Company Notices
@@ -502,6 +506,16 @@ export const MachiningWorkerDashboardView = () => {
                 가공동 전체
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenReportModal("JA")}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-amber-600/30 transition-all cursor-pointer"
+              title="가공동 신규 작업일보 작성"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>일보 작성</span>
+            </button>
           </div>
         </div>
 

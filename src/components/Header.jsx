@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useAuth, PLANTS, isManagerOrAdminUser, isExtrusionWorkerProfile, isSeolProfile } from "../context/AuthContext";
 import { isHanulWorkerProfile } from "../services/hanulQualityIssueService";
+import { isMachiningWorkerProfile } from "../services/machiningQualityIssueService";
+import { isYuseongWorkerProfile } from "../services/yuseongQualityIssueService";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
@@ -51,7 +53,9 @@ export const Header = ({
   const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
   const isSeol = isSeolProfile(currentProfile);
   const isHanul = !isExtrusionWorker && isHanulWorkerProfile(currentProfile);
-  const isBurimtech = !isExtrusionWorker && !isHanul && Boolean(
+  const isMachining = !isExtrusionWorker && !isHanul && isMachiningWorkerProfile(currentProfile);
+  const isYuseong = !isExtrusionWorker && !isHanul && !isMachining && isYuseongWorkerProfile(currentProfile);
+  const isBurimtech = !isExtrusionWorker && !isHanul && !isMachining && !isYuseong && Boolean(
     currentProfile?.portalType === "bulimtech" ||
     currentProfile?.company === "부림텍" ||
     currentProfile?.name === "부림텍" ||
@@ -107,55 +111,56 @@ export const Header = ({
               </h2>
             </div>
 
-            {/* Extrusion Operator Work Report Write Button */}
-            {isExtrusionWorker && (
+            {/* Operator Work Report Write Button (Extrusion / Hanul / Machining / Yuseong / General) */}
+            {(isExtrusionWorker || (!isManager && !isAdmin)) && (
               <button
                 type="button"
                 onClick={() => {
-                  if (activeTab !== "extrusion_downtime" && setActiveTab) {
-                    try {
-                      localStorage.setItem("factory_extrusion_active_subtab", "production");
-                    } catch (e) {}
-                    setActiveTab("extrusion_downtime");
+                  if (isExtrusionWorker) {
+                    if (activeTab !== "extrusion_downtime" && setActiveTab) {
+                      try {
+                        localStorage.setItem("factory_extrusion_active_subtab", "production");
+                      } catch (e) {}
+                      setActiveTab("extrusion_downtime");
+                    }
+                    window.dispatchEvent(new CustomEvent("open-extrusion-work-report-modal"));
+                  } else {
+                    if (activeTab !== "worker_dashboard" && setActiveTab) {
+                      setActiveTab("worker_dashboard");
+                    }
+                    if (isHanul) {
+                      window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: "9BQC" } }));
+                    } else if (isMachining) {
+                      window.dispatchEvent(new CustomEvent("open-machining-work-report-modal", { detail: { project: "JA" } }));
+                    } else if (isYuseong) {
+                      window.dispatchEvent(new CustomEvent("open-yuseong-work-report-modal", { detail: { project: "JK1" } }));
+                    } else {
+                      window.dispatchEvent(new CustomEvent("open-worker-worklog-modal"));
+                    }
                   }
-                  window.dispatchEvent(new CustomEvent("open-extrusion-work-report-modal"));
                 }}
-                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-teal-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
-                title="압출 작업일보 작성"
-              >
-                <span>✍️ 일보작성</span>
-              </button>
-            )}
-
-            {/* Hanul Operator Work Report Write Button */}
-            {isHanul && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeTab !== "worker_dashboard" && setActiveTab) {
-                    setActiveTab("worker_dashboard");
-                  }
-                  window.dispatchEvent(new CustomEvent("open-hanul-work-report-modal", { detail: { project: "9BQC" } }));
-                }}
-                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
-                title="한울 외주가공 작업일보 작성"
-              >
-                <span>✍️ 일보작성</span>
-              </button>
-            )}
-
-            {/* General Field Worker (Machining / Bulimtech) Work Report Write Button */}
-            {!isManager && !isAdmin && !isExtrusionWorker && !isHanul && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeTab !== "worker_dashboard" && setActiveTab) {
-                    setActiveTab("worker_dashboard");
-                  }
-                  window.dispatchEvent(new CustomEvent("open-worker-worklog-modal"));
-                }}
-                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
-                title="오늘의 작업일보 작성"
+                className={`px-3 py-1.5 rounded-xl text-white text-xs font-black transition-all flex items-center gap-1 shadow-md active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0 ${
+                  isExtrusionWorker
+                    ? "bg-teal-600 hover:bg-teal-700 shadow-teal-500/20"
+                    : isHanul
+                    ? "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                    : isMachining
+                    ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                    : isYuseong
+                    ? "bg-teal-600 hover:bg-teal-700 shadow-teal-500/20"
+                    : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                }`}
+                title={
+                  isExtrusionWorker
+                    ? "압출 작업일보 작성"
+                    : isHanul
+                    ? "한울 외주가공 작업일보 작성"
+                    : isMachining
+                    ? "삼랑진 가공동 작업일보 작성"
+                    : isYuseong
+                    ? "(주)유성 외주가공 작업일보 작성"
+                    : "오늘의 작업일보 작성"
+                }
               >
                 <span>✍️ 일보작성</span>
               </button>
