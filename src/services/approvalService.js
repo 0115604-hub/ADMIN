@@ -23,12 +23,17 @@ const DELETED_COLLECTION_NAME = "deleted_approval_documents";
 const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v9_master";
 const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v9";
 
-const PREV_STORAGE_KEYS = [
-  "oryuk_approval_documents_v8_stable",
-  "oryuk_approval_documents_v7_clean",
-  "oryuk_approval_documents_v6_clean",
-  "oryuk_approval_documents_v5"
-];
+// ⭐ 과거 레거시 로컬 캐시 키 영구 파기 (오래된 더미데이터 및 좀비 서류 부활 원천 차단)
+if (typeof window !== "undefined") {
+  try {
+    [
+      "oryuk_approval_documents_v8_stable",
+      "oryuk_approval_documents_v7_clean",
+      "oryuk_approval_documents_v6_clean",
+      "oryuk_approval_documents_v5"
+    ].forEach((k) => localStorage.removeItem(k));
+  } catch (e) {}
+}
 
 export const DEFAULT_DELETED_APPROVAL_IDS = [
   "appr_4m_ledger_man_log_auto_2026-10-12_유성_론나차이_1793058086561",
@@ -36,7 +41,19 @@ export const DEFAULT_DELETED_APPROVAL_IDS = [
   "appr_4m_ledger_man_log_auto_2026-10-12_조영_윤의정_1793058413459",
   "appr_4m_ledger_man_log_auto_2026-10-13_유성_론나차이_1793058873183",
   "appr_4m_ledger_man_log_auto_2026-10-14_유성_론나차이_1793058904685",
-  "appr_4m_ledger_mach_qual_1792626820469_4r5z_1793060701646"
+  "appr_4m_ledger_mach_qual_1792626820469_4r5z_1793060701646",
+  // 구버전 합성 공장별 특근 더미데이터 영구 차단
+  "appr_ot_samrangjin_20260905",
+  "appr_ot_samrangjin_20261003",
+  "appr_ot_samrangjin_20261005",
+  "appr_ot_samrangjin_20261009",
+  "appr_ot_samrangjin_20261010",
+  "appr_ot_samrangjin_20261017",
+  "appr_ot_samrangjin_20261018",
+  "appr_ot_samrangjin_20261024",
+  "appr_ot_samrangjin_latest",
+  "appr_ot_hanlim_20260906",
+  "appr_ot_hanlim_20260914"
 ];
 
 // ⭐ Helper: Manage permanently deleted document IDs (Tombstone blacklist)
@@ -314,13 +331,15 @@ export const APPROVAL_AUTO_COMPLETE_CUTOFF_TS = new Date(2026, 9, 18, 23, 59, 59
 
 export function isApprovalDocOnOrBeforeOct18(d) {
   if (!d || typeof d !== "object") return false;
+  if (d.status === "REJECTED" || d.status === "HOLD") return false;
 
   // 1. 명시적 workDate 확인 (예: "2026-10-18", "2026. 10. 17.", "2026-09-28")
   if (d.workDate && typeof d.workDate === "string") {
     const m = d.workDate.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
     if (m) {
       const ymd = `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, "0")}-${String(parseInt(m[3], 10)).padStart(2, "0")}`;
-      return ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE;
+      if (ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
+      return true;
     }
   }
 
@@ -329,7 +348,8 @@ export function isApprovalDocOnOrBeforeOct18(d) {
     const cm = d.createdAt.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
     if (cm) {
       const ymd = `${cm[1]}-${String(parseInt(cm[2], 10)).padStart(2, "0")}-${String(parseInt(cm[3], 10)).padStart(2, "0")}`;
-      if (ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return true;
+      if (ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
+      return true;
     }
   }
 
@@ -337,7 +357,8 @@ export function isApprovalDocOnOrBeforeOct18(d) {
   if (d.id && typeof d.id === "string") {
     const idDateMatch = d.id.match(/(2026\d{4})/);
     if (idDateMatch) {
-      return Number(idDateMatch[1]) <= 20261018;
+      if (Number(idDateMatch[1]) > 20261018) return false;
+      return true;
     }
   }
 
@@ -349,20 +370,22 @@ export function isApprovalDocOnOrBeforeOct18(d) {
       const mon = parseInt(titleDateMatch[2], 10);
       const day = parseInt(titleDateMatch[3], 10);
       const ymd = `${y}-${String(mon).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      if (ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return true;
-      if (d.id?.startsWith("appr_ot_") && ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
+      if (ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
+      return true;
     }
   }
 
   // 4. 기안일시(createdAt) 또는 정렬 타임스탬프 기준 확인 (2026-10-18 23:59:59 이하)
   if (d.createdAt) {
     const tCreated = parseSafeTimestamp(d.createdAt);
+    if (tCreated > APPROVAL_AUTO_COMPLETE_CUTOFF_TS) return false;
     if (tCreated > 0 && tCreated <= APPROVAL_AUTO_COMPLETE_CUTOFF_TS) {
       return true;
     }
   }
 
   const sortTs = getApprovalDocSortTimestamp(d);
+  if (sortTs > APPROVAL_AUTO_COMPLETE_CUTOFF_TS) return false;
   if (sortTs > 0 && sortTs <= APPROVAL_AUTO_COMPLETE_CUTOFF_TS) {
     return true;
   }
@@ -444,7 +467,9 @@ export function normalizeApprovalDoc(d) {
   });
 
   // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4) 보장
-  const isOnOrBeforeCutoff = isApprovalDocOnOrBeforeCutoff(d) && d.status !== "REJECTED";
+  // 🔒 활성 검토 중인 서류(PENDING 또는 HOLD 단계가 명시된 미결 서류)는 절대 무단 완료 처리하지 않음
+  const hasActivePendingStep = fixedSteps.some((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
+  const isOnOrBeforeCutoff = isApprovalDocOnOrBeforeCutoff(d) && d.status !== "REJECTED" && !hasActivePendingStep;
 
   if (isOnOrBeforeCutoff) {
     const docDate = d.workDate ? `${d.workDate} 18:00` : (d.createdAt || "2026-10-18 18:00");
@@ -642,29 +667,11 @@ export const INITIAL_APPROVAL_DOCS = [];
 // Helper: NEVER delete or filter any document automatically
 export const isWeekdayAttSynthDoc = () => false;
 
-// Helper: Read local storage with migration from older versions and safe normalization
+// Helper: Read local storage with safe normalization
 export function getLocalApprovalDocs() {
   try {
-    let data = localStorage.getItem(LOCAL_STORAGE_KEY);
-    
-    // Auto-migration: If v9 is missing, empty string, "[]", "null", check previous storage keys to restore existing documents
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data || data === "[]" || data === "null" || data === "undefined" || data.trim() === "") {
-      for (const oldKey of PREV_STORAGE_KEYS) {
-        const oldData = localStorage.getItem(oldKey);
-        if (oldData && oldData !== "[]" && oldData !== "null") {
-          try {
-            const parsedOld = JSON.parse(oldData);
-            if (Array.isArray(parsedOld) && parsedOld.length > 0) {
-              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsedOld));
-              data = oldData;
-              break;
-            }
-          } catch (e) {}
-        }
-      }
-    }
-
-    if (!data || data === "[]" || data === "null" || data === "undefined") {
       return [];
     }
 
@@ -1568,14 +1575,6 @@ export const syncPlantOvertimeToApprovalBox = async ({
       ? [cleanComp]
       : ["오륙", "유성", "조영", "한울", "부림텍"];
 
-    // 구버전 공장 취합 결재 문서(`appr_ot_samrangjin_*`, `appr_ot_hanlim_*`) 영구 정리
-    for (const legacyPlantKey of ["samrangjin", "hanlim"]) {
-      const legacySynthId = `appr_ot_${legacyPlantKey}_${workDateStr.replace(/-/g, "")}`;
-      try {
-        await deleteDoc(doc(db, COLLECTION_NAME, legacySynthId));
-      } catch (e) {}
-    }
-
     for (const targetComp of targetCompanyList) {
       const compSlug = COMP_SLUG_MAP[targetComp] || "oryuk";
       const targetPlant = (targetComp === "오륙" || targetComp === "유성") ? "삼랑진공장" : "한림공장";
@@ -1712,6 +1711,16 @@ export const syncPlantOvertimeToApprovalBox = async ({
       } else {
         finalDocStatus = "IN_PROGRESS";
         finalCurrentStep = Math.min(approvedCount + 1, 4);
+      }
+
+      // 🔒 [결재 무단변경 원천차단] 진행 중인(IN_PROGRESS, HOLD, REJECTED) 결재 서류의 결재선과 진행 상태는 절대 덮어쓰지 않고 영구 보존
+      if (existingDoc && Array.isArray(existingDoc.steps) && existingDoc.steps.length === 4) {
+        const isExistingActive = existingDoc.status === "IN_PROGRESS" || existingDoc.status === "HOLD" || existingDoc.status === "REJECTED";
+        if (isExistingActive && !isPastOvertime) {
+          steps = existingDoc.steps;
+          finalDocStatus = existingDoc.status;
+          finalCurrentStep = existingDoc.currentStep || Math.min(steps.filter((st) => st?.status === "APPROVED").length + 1, 4);
+        }
       }
 
       const approvalDoc = normalizeApprovalDoc({

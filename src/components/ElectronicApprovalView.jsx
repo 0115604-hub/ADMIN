@@ -1222,7 +1222,16 @@ export const ElectronicApprovalView = ({
               {categoryCounts.fourM}
             </span>
             {categoryCounts.fourMPending > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("FOUR_M");
+                  setSelectedPlant("ALL");
+                }}
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                title="클릭하여 4M변동점 미결 목록 바로보기"
+              >
                 미결 {categoryCounts.fourMPending}
               </span>
             )}
@@ -1248,7 +1257,16 @@ export const ElectronicApprovalView = ({
               {categoryCounts.general}
             </span>
             {categoryCounts.generalPending > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("GENERAL");
+                  setSelectedPlant("ALL");
+                }}
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                title="클릭하여 일반결재 미결 목록 바로보기"
+              >
                 미결 {categoryCounts.generalPending}
               </span>
             )}
@@ -1274,7 +1292,16 @@ export const ElectronicApprovalView = ({
               {categoryCounts.overtime}
             </span>
             {categoryCounts.overtimePending > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTab("PENDING");
+                  setDocCategoryFilter("OVERTIME");
+                  setSelectedPlant("ALL");
+                }}
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse cursor-pointer hover:bg-rose-600 shadow-xs"
+                title="클릭하여 특근보고서 미결 목록 바로보기"
+              >
                 미결 {categoryCounts.overtimePending}
               </span>
             )}
