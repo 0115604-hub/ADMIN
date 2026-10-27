@@ -192,31 +192,18 @@ export const ElectronicApprovalView = ({
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
 
-  // 🌟 Document Detail Modal Close Handler (외부에서 진입 시 전 화면으로 즉시 복귀)
+  // 🌟 Document Detail Modal Close Handler (문서 모달 닫기 - 전자결재 목록 화면 100% 유지)
   const handleCloseDocModal = () => {
     setSelectedDoc(null);
     setActionType("APPROVE");
+    setApprovalComment("");
 
-    const returnTab = sessionStorage.getItem("approval_return_to_tab") || localStorage.getItem("approval_return_to_tab");
-    const wasExternalDirectOpen =
-      sessionStorage.getItem("approval_external_direct_open") === "true" ||
-      localStorage.getItem("approval_external_direct_open") === "true";
-
-    if (wasExternalDirectOpen || returnTab) {
-      sessionStorage.removeItem("approval_return_to_tab");
-      localStorage.removeItem("approval_return_to_tab");
-      sessionStorage.removeItem("approval_external_direct_open");
-      localStorage.removeItem("approval_external_direct_open");
-
-      if (typeof onNavigateTab === "function") {
-        onNavigateTab(returnTab || "worker_dashboard");
-        return;
-      }
-      if (typeof onBack === "function") {
-        onBack();
-        return;
-      }
-    }
+    // 모달 닫기 시 화면 전환 없이 전자결재 목록을 그대로 유지 & 잔류 스토리지 키 완전 정리
+    sessionStorage.removeItem("approval_return_to_tab");
+    localStorage.removeItem("approval_return_to_tab");
+    sessionStorage.removeItem("approval_external_direct_open");
+    localStorage.removeItem("approval_external_direct_open");
+    localStorage.removeItem("active_approval_doc_id");
   };
 
   // 🌟 Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
@@ -365,8 +352,6 @@ export const ElectronicApprovalView = ({
           const target = (docs || []).find((d) => d.id === activeDocId);
           if (target) {
             setSelectedDoc(target);
-            sessionStorage.setItem("approval_external_direct_open", "true");
-            sessionStorage.setItem("approval_return_to_tab", "worker_dashboard");
             localStorage.removeItem("active_approval_doc_id");
           }
         }
@@ -387,8 +372,6 @@ export const ElectronicApprovalView = ({
           const target = (latest || []).find((d) => d.id === activeDocId);
           if (target) {
             setSelectedDoc(target);
-            sessionStorage.setItem("approval_external_direct_open", "true");
-            sessionStorage.setItem("approval_return_to_tab", "worker_dashboard");
             localStorage.removeItem("active_approval_doc_id");
           }
         }
