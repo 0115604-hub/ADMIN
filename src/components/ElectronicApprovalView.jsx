@@ -1545,10 +1545,22 @@ export const ElectronicApprovalView = ({
                             ? "bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 ring-1 ring-sky-400/30"
                             : "bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
 
+                          const userName = currentProfile?.name || "";
+                          const isMyDraftDoc = Boolean(
+                            userName &&
+                            doc.drafter &&
+                            (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))
+                          );
+                          const isMyTurn = Boolean(name && userName && (name === userName || name.includes(userName) || userName.includes(name)));
+
                           return (
                             <span className={`px-2.5 py-1 rounded-full text-[11px] font-black border inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
                               <Clock className="w-3 h-3 shrink-0" />
-                              <span>[{currentStepNum}/{totalSteps}단계] {role}{name ? ` (${name})` : ""} 대기</span>
+                              {isMyDraftDoc && !isMyTurn ? (
+                                <span>[상신 진행중] {role}{name ? ` (${name})` : ""} 대기</span>
+                              ) : (
+                                <span>[{currentStepNum}/{totalSteps}단계] {role}{name ? ` (${name})` : ""} 대기</span>
+                              )}
                             </span>
                           );
                         })()}

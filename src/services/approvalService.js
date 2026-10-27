@@ -386,8 +386,55 @@ export function getAutoApprovalSteps(
     }
   }
 
-  // 3. [표준 4단계 결재라인 (담당 ➔ 책임 ➔ 이사 ➔ 대표)]
-  // ⭐ 모든 일반 결재 서류는 관리자/책임자 기안 여부와 무관하게 4단계를 순차적으로 정석 진행합니다.
+  // 2. [공정 관리자(책임) 직접 기안 결재라인] (책임 전결형 4단계)
+  // 윤경수, 이창엽, 설유철, 전재율, 김동욱 등 공정 관리자(책임)가 직접 기안하는 경우
+  // 본인의 2단계 책임 단계는 기안과 동시에 '책임 전결'로 자동 승인 처리되어
+  // 타 책임자에게 불필요하게 대기하지 않고 상위 결재권자(이명재 이사)에게 즉시 도달하도록 자동 생성
+  const PROCESS_LEAD_NAMES = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"];
+  const isProcessManagerLead =
+    PROCESS_LEAD_NAMES.includes(drafterName) ||
+    drafterTitle === "책임" ||
+    drafterName === step2Name ||
+    APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
+
+  if (isProcessManagerLead) {
+    return [
+      {
+        role: "담당",
+        name: drafterName || "기안자",
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "기안 상신"
+      },
+      {
+        role: "책임",
+        name: drafterName,
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "책임 전결"
+      },
+      {
+        role: "이사",
+        name: step3Name,
+        title: step3Title,
+        status: "PENDING",
+        date: "",
+        comment: ""
+      },
+      {
+        role: "대표",
+        name: finalCeoName,
+        title: ceoTitle,
+        status: "WAITING",
+        date: "",
+        comment: ""
+      }
+    ];
+  }
+
+  // 3. [일반 사원 / 선임 / 작업자 기안 결재라인] (표준 4단계)
   return [
     {
       role: "담당",
@@ -654,6 +701,32 @@ export function normalizeApprovalDoc(d) {
     return st;
   });
 
+  // ⭐ 공정 관리자(책임) 직접 기안 서류 자동 전결 치유:
+  // 일반 결재 서류에서 기안자가 책임자인데 2단계(책임)가 미결(PENDING)로 멈춰있는 경우 자동 책임 전결 승인 및 3단계(이명재 이사)로 전환
+  if (!is4M && fixedSteps.length === 4) {
+    const drafterName = d.drafter || "";
+    const drafterTitle = d.drafterTitle || "";
+    const isProcessLead =
+      ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(drafterName) ||
+      drafterTitle === "책임" ||
+      APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
+
+    if (isProcessLead && fixedSteps[1].status === "PENDING" && fixedSteps[2].status === "WAITING") {
+      fixedSteps[1] = {
+        ...fixedSteps[1],
+        name: drafterName,
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: fixedSteps[1].date || d.createdAt || fixedSteps[0]?.date || "",
+        comment: fixedSteps[1].comment || "책임 전결"
+      };
+      fixedSteps[2] = {
+        ...fixedSteps[2],
+        status: "PENDING"
+      };
+    }
+  }
+
   // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4 또는 3/3) 보장
   // 🔒 활성 검토 중인 서류(PENDING 또는 HOLD 단계가 명시된 미결 서류)는 절대 무단 완료 처리하지 않음
   const hasActivePendingStep = fixedSteps.some((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
@@ -733,9 +806,9 @@ export function isApprovalDocInProgress(doc) {
 
 // Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
 // ⭐ 사용자별 결재 대기 판정 (1~4단계 파이프라인 기반 엄격한 차례 판정):
-// - 1단계(담당): 작성자 본인
-// - 2단계(책임): 공장별 책임/선임 (한림: 김동욱, 삼랑진: 윤경수/설유철/이창엽/전재율 등)
-// - 3단계(이사): 공장 총괄/임원 (삼랑진: 이명재 이사, 한림/본사: 최미영 전무)
+// - 1단계(담당): 작성자 본인 (기안자 본인의 상신 서류는 진행 중인 동안 상시 노출 및 뱃지 카운트)
+// - 2단계(책임): 부서별 책임/선임 (삼랑진: 설유철, 윤경수, 이창엽, 전재율 / 한림: 김동욱)
+// - 3단계(이사): 공장 총괄 이사 (삼랑진: 이명재 이사, 한림/본사: 최미영 전무)
 // - 4단계(대표): 최고 경영진 최종 승인 (권태형 대표이사 / 최미영 전무)
 export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
   if (!isApprovalDocInProgress(doc)) return false;
@@ -749,86 +822,61 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
   const stepRole = activeStep?.role || "";
   const stepName = activeStep?.name || "";
 
-  // 1. 프로필 없거나 최고 관리자(ADMIN):
-  // 전사 진행 중인 결재 서류는 최고 관리자에게 즉시 미결(Pending) 건수로 카운트되어
-  // 뱃지에 빨간색 및 정확한 미결 건수가 표기됨 (전결/상신 감시 권한)
-  const isProfileAdmin = Boolean(
-    isAdmin ||
-    currentProfile?.role === "ADMIN" ||
-    currentProfile?.id === "admin" ||
-    currentProfile?.id === "admin_choi"
-  );
-  if (!currentProfile || isProfileAdmin) {
-    return true;
-  }
-
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
   const userPlant = currentProfile?.plant || "";
   const docPlant = doc.plant || "";
   const docCompany = cleanCompanyName(doc.company || "");
+  const is4M = isFourMApprovalDoc(doc);
 
-  // 2. 최고 경영진 (권태형 대표이사) -> 전사 상신/진행 중인 모든 결재 서류 미결 뱃지 표기
-  if (userName === "권태형" || userTitle === "대표이사" || userTitle === "대표") {
+  // 1. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽 등 관리자/작업자 기안건 즉시 유지 & 뱃지 표기)
+  if (userName && doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
     return true;
   }
 
-  // 3. 경영총괄 (최미영 전무)
-  if (userName === "최미영" || userTitle === "전무") {
-    if (stepRole === "대표" || stepRole === "승인") return true;
-    if (stepRole === "이사" && (!stepName || stepName.includes("최미영") || docPlant !== "삼랑진공장")) return true;
+  // 2. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
+  if (stepName && userName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
     return true;
   }
 
-  // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
-  if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
-    return true;
-  }
-
-  // 5. 4M 변동점 결재 서류 전용 결재라인: 이창엽(상신/기안) ➔ 이명재(검토) ➔ 권태형(최종승인)
-  if (isFourMApprovalDoc(doc)) {
-    if (activeStepIdx === 1 && (userName === "이명재" || userTitle === "이사")) {
-      return true;
-    }
-    if (activeStepIdx === 2 && (userName === "권태형" || userTitle.includes("대표"))) {
+  // 3. [최종 4단계 (4M 3단계) 대표이사 최종 승인 단계]: 권태형 대표이사 / 최미영 전무
+  const isCeoStep = stepRole === "대표" || (is4M && activeStepIdx === 2) || (stepRole === "승인" && is4M);
+  if (isCeoStep) {
+    if (userName === "권태형" || userTitle === "대표이사" || userTitle === "대표" || userName === "최미영" || userTitle === "전무" || isAdmin) {
       return true;
     }
     return false;
   }
 
-  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사)
-  if (userName === "이명재" || userTitle === "이사") {
-    if (stepRole === "이사" || stepRole === "검토") {
-      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || isFourMApprovalDoc(doc);
+  // 4. [3단계 (4M 2단계) 이사 승인/검토 단계]: 이명재 이사 (삼랑진) / 최미영 전무 (한림/본사)
+  const isDirectorStep = stepRole === "이사" || (is4M && activeStepIdx === 1) || (stepRole === "검토" && is4M);
+  if (isDirectorStep) {
+    if (userName === "이명재" || userTitle === "이사") {
+      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || is4M;
+    }
+    if (userName === "최미영" || userTitle === "전무") {
+      return !stepName || stepName.includes("최미영") || docPlant === "한림공장" || docPlant === "본사";
     }
     return false;
   }
 
-  // 7. 한림공장 총괄 / 책임 (김동욱 책임)
-  if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
-    if (docPlant === "한림공장") {
-      if (stepRole === "책임" || stepRole === "검토") return true;
-      if (stepRole === "이사" && (!stepName || stepName.includes("김동욱"))) return true;
+  // 5. [2단계 책임 검토 단계]: 부서별 책임자 (설유철, 윤경수, 이창엽, 전재율, 김동욱 등)
+  const isLeadStep = stepRole === "책임" || (!is4M && stepRole === "검토");
+  if (isLeadStep) {
+    if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
+      return docPlant === "한림공장";
     }
-    return false;
-  }
+    // 협력업체 관리자 (황수현: 한울, 김동훈: 부림텍, 이성기: 유성, 오상민: 조영)
+    const isHanulManager = userName === "황수현" || currentProfile?.id?.startsWith("hal_hu");
+    const isBurimManager = userName === "김동훈" || currentProfile?.id?.startsWith("hal_br");
+    const isYuseongManager = userName === "이성기" || currentProfile?.id?.startsWith("sam_ys");
+    const isJoyoungManager = userName === "오상민";
 
-  // 8. 협력업체 관리자 (황수현: 한울, 김동훈: 부림텍, 이성기: 유성, 오상민: 조영)
-  const isHanulManager = userName === "황수현" || currentProfile?.id?.startsWith("hal_hu");
-  const isBurimManager = userName === "김동훈" || currentProfile?.id?.startsWith("hal_br");
-  const isYuseongManager = userName === "이성기" || currentProfile?.id?.startsWith("sam_ys");
-  const isJoyoungManager = userName === "오상민";
+    if (isHanulManager && (docCompany === "한울" || doc.title?.includes("한울"))) return true;
+    if (isBurimManager && (docCompany === "부림텍" || doc.title?.includes("부림텍") || doc.title?.includes("부림"))) return true;
+    if (isYuseongManager && (docCompany === "유성" || doc.title?.includes("유성"))) return true;
+    if (isJoyoungManager && (docCompany === "조영" || doc.title?.includes("조영"))) return true;
 
-  if (isHanulManager && (docCompany === "한울" || doc.title?.includes("한울"))) return true;
-  if (isBurimManager && (docCompany === "부림텍" || doc.title?.includes("부림텍") || doc.title?.includes("부림"))) return true;
-  if (isYuseongManager && (docCompany === "유성" || doc.title?.includes("유성"))) return true;
-  if (isJoyoungManager && (docCompany === "조영" || doc.title?.includes("조영"))) return true;
-
-  // 9. 공장별 책임/선임 (윤경수, 설유철, 이창엽, 전재율 등)
-  if (stepRole === "책임" || stepRole === "검토") {
-    if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
-      return true;
-    }
     if (userPlant && docPlant && userPlant === docPlant) {
       if (
         userTitle === "책임" ||
@@ -841,6 +889,7 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
         return true;
       }
     }
+    return false;
   }
 
   return false;
@@ -983,10 +1032,12 @@ export function subscribeApprovalDocs(onUpdate) {
   if (typeof onUpdate !== "function") return () => {};
 
   // 1. 인메모리 캐시 또는 로컬스토리지 즉시 반환 (UI 지연 0ms)
-  const local = cachedApprovalDocs || getLocalApprovalDocs();
-  if (local) {
+  const local = (Array.isArray(cachedApprovalDocs) && cachedApprovalDocs.length > 0)
+    ? cachedApprovalDocs
+    : getLocalApprovalDocs();
+  if (Array.isArray(local) && local.length > 0) {
     cachedApprovalDocs = local;
-    onUpdate(local);
+    try { onUpdate(local); } catch (e) { console.error("Initial onUpdate error:", e); }
   }
 
   approvalDocsSubscribers.add(onUpdate);
@@ -1963,7 +2014,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         comment: isStep3Approved ? (priorSteps[3]?.comment || "대표이사 최종 승인") : (priorSteps[3]?.comment || "")
       };
 
-      const steps = [step0, step1, step2, step3];
+      let steps = [step0, step1, step2, step3];
       const approvedCount = steps.filter((st) => st.status === "APPROVED").length;
 
       let finalDocStatus = "IN_PROGRESS";
