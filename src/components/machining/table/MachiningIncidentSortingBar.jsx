@@ -2,15 +2,17 @@ import React from "react";
 
 export const MachiningIncidentSortingBar = ({
   incidentStats,
-  machiningIncidents,
-  handleSortIncident
+  machiningIncidents = [],
+  handleSortIncident,
+  title = "당일 가공동 비가동 · 부적합 1차 소팅",
+  emptyText = "🟢 오늘 접수된 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
 }) => {
   return (
     <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700/60 space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-2">
           <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs sm:text-sm">
-            <span>⏱️ 당일 가공동 비가동 · 부적합 1차 소팅</span>
+            <span>⏱️ {title}</span>
           </span>
           <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10.5px]">
             전체 {incidentStats.total}건
@@ -38,7 +40,7 @@ export const MachiningIncidentSortingBar = ({
 
       {machiningIncidents.length === 0 ? (
         <div className="p-2 text-center text-xs text-slate-500 dark:text-slate-400">
-          🟢 오늘 접수된 가공동 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)
+          {emptyText}
         </div>
       ) : (
         <div className="space-y-2">
@@ -79,14 +81,14 @@ export const MachiningIncidentSortingBar = ({
                       {inc.date} {inc.time}
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      {inc.project} {inc.processId} ({inc.worker || "작업자"})
+                      {inc.project || ""} {inc.processId || inc.processName || inc.line || ""} ({inc.worker || "작업자"})
                     </span>
                     <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold text-[10.5px]">
                       {inc.defectType}
                     </span>
-                    {inc.minutes > 0 && (
+                    {(inc.minutes > 0 || inc.downtimeMinutes > 0) && (
                       <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                        {inc.minutes}분
+                        {inc.minutes || inc.downtimeMinutes}분
                       </span>
                     )}
                     {inc.scrapKg > 0 && (

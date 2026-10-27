@@ -89,6 +89,7 @@ export const extractWorkReportNonconformances = ({
   hanulReports = [],
   yuseongReports = [],
   legoReports = [],
+  workLogs = [],
   ledgerState = { overrides: {}, manualItems: [] }
 }) => {
   const extracted = [];
@@ -224,11 +225,28 @@ export const extractWorkReportNonconformances = ({
     }
   };
 
-  (extrusionReports || []).forEach((r) => processReportEvents(r, "압출동", "삼랑진공장", r.lineName || "압출라인"));
-  (machiningReports || []).forEach((r) => processReportEvents(r, "가공동", "삼랑진공장", `${r.project || "가공"} ${r.processId || ""}`));
+  (extrusionReports || []).forEach((r) => processReportEvents(r, r.company || "오륙", "삼랑진공장", r.lineName || "압출라인"));
+  (machiningReports || []).forEach((r) => {
+    const rawProj = String(r.project || "");
+    const comp = r.company || (rawProj.includes("조영") ? "조영" : rawProj.includes("부림") ? "부림텍" : "오륙");
+    processReportEvents(r, comp, "삼랑진공장", `${r.project || "가공"} ${r.processId || ""}`);
+  });
   (hanulReports || []).forEach((r) => processReportEvents(r, r.company || "한울", "한림공장", `${r.project || "9BQC"} ${r.processId || ""}`));
-  (yuseongReports || []).forEach((r) => processReportEvents(r, "유성", "삼랑진공장", `${r.project || "유성"} ${r.processId || ""}`));
-  (legoReports || []).forEach((r) => processReportEvents(r, r.company || r.department || "작업일보", r.plant || "삼랑진공장", r.processName || r.title || "공정 작업일보"));
+  (yuseongReports || []).forEach((r) => processReportEvents(r, r.company || "유성", "삼랑진공장", `${r.project || "유성"} ${r.processId || ""}`));
+  (legoReports || []).forEach((r) => processReportEvents(r, r.company || r.department || "오륙", r.plant || "삼랑진공장", r.processName || r.title || "공정 작업일보"));
+  (workLogs || []).forEach((r) => {
+    if (!r) return;
+    const rawComp = String(r.company || "");
+    const rawWriter = String(r.writer || "");
+    const rawProc = String(r.assignedProcess || r.process || "");
+    const isBurim = rawComp.includes("부림") || rawWriter.includes("부림") || rawWriter === "최현영" || rawWriter === "김동훈" || rawProc.includes("부림");
+    const isJoyoung = rawComp.includes("조영") || rawWriter.includes("조영") || rawWriter === "오상민" || rawWriter === "김동욱" || rawProc.includes("조영");
+    if (isBurim) {
+      processReportEvents(r, "부림텍", "한림공장", rawProc || "가공/협력업체(부림텍)");
+    } else if (isJoyoung) {
+      processReportEvents(r, "조영", "한림공장", rawProc || "가공/협력업체(조영)");
+    }
+  });
 
   // Include manual items registered directly in the Work Report Nonconformance Panel
   const manualList = Array.isArray(ledgerState?.manualItems) ? ledgerState.manualItems : [];

@@ -27,6 +27,9 @@ import {
 } from "lucide-react";
 import { subscribeMachiningWorkReports } from "../../services/machiningWorkReportService";
 import { subscribeToExtrusionReports } from "../../services/extrusionProductionService";
+import { subscribeHanulWorkReports } from "../../services/hanulWorkReportService";
+import { subscribeYuseongWorkReports } from "../../services/yuseongWorkReportService";
+import { subscribeWorkLogs } from "../../services/workLogService";
 import {
   subscribeProductionOrders,
   saveProductionOrder,
@@ -41,7 +44,8 @@ import {
 import {
   registerToFourMLedger,
   unregisterFromFourMLedger,
-  determineFourMCategory
+  determineFourMCategory,
+  getFourMRecordCompany
 } from "../../services/fourMChangePointService";
 import { useCapaActionModalState } from "../quality/step3/useCapaActionModalState";
 import Step3CapaActionModal from "../quality/step3/Step3CapaActionModal";
@@ -64,6 +68,7 @@ export default function Step2ProductionManagerPanel({
   const [activeProcessTab, setActiveProcessTab] = useState("auto"); // "auto" | "machining" | "extrusion"
   const [selectedItemBadge, setSelectedItemBadge] = useState("ALL"); // "ALL" | "HR" | "JA" | "NX5A" | "1호기" ...
   const [selectedIncidentBadge, setSelectedIncidentBadge] = useState("ALL"); // "ALL" | "UNSORTED" | "INTERNAL" | "QUALITY"
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("ALL"); // "ALL" | "오륙" | "한울" | "유성" | "조영" | "부림텍"
   const [previewImg, setPreviewImg] = useState(null);
 
   // Order edit modal
@@ -73,9 +78,12 @@ export default function Step2ProductionManagerPanel({
   const [orderModalDivision, setOrderModalDivision] = useState("machining");
   const [toastMessage, setToastMessage] = useState("");
 
-  // Raw data subscriptions
+  // Raw data subscriptions (5개사 전사 작업일보 연동)
   const [machiningReports, setMachiningReports] = useState([]);
   const [extrusionReports, setExtrusionReports] = useState([]);
+  const [hanulReports, setHanulReports] = useState([]);
+  const [yuseongReports, setYuseongReports] = useState([]);
+  const [workLogs, setWorkLogs] = useState([]);
   const [productionOrders, setProductionOrders] = useState(getLocalProductionOrders());
   const [ledgerState, setLedgerState] = useState(getLocalWorkReportNcLedger());
 
@@ -117,13 +125,22 @@ export default function Step2ProductionManagerPanel({
     return "machining";
   }, [activeProcessTab, isExtrusionManager]);
 
-  // Subscriptions
+  // Subscriptions (5개사 전사 실시간 연동)
   useEffect(() => {
     const unsubMachining = subscribeMachiningWorkReports((reps) => {
       setMachiningReports(reps || []);
     });
     const unsubExtrusion = subscribeToExtrusionReports((reps) => {
       setExtrusionReports(reps || []);
+    });
+    const unsubHanul = subscribeHanulWorkReports((reps) => {
+      setHanulReports(reps || []);
+    });
+    const unsubYuseong = subscribeYuseongWorkReports((reps) => {
+      setYuseongReports(reps || []);
+    });
+    const unsubWorkLogs = subscribeWorkLogs((logs) => {
+      setWorkLogs(logs || []);
     });
     const unsubOrders = subscribeProductionOrders("", (orders) => {
       setProductionOrders(orders || getLocalProductionOrders());
@@ -137,6 +154,9 @@ export default function Step2ProductionManagerPanel({
     return () => {
       if (unsubMachining) unsubMachining();
       if (unsubExtrusion) unsubExtrusion();
+      if (unsubHanul) unsubHanul();
+      if (unsubYuseong) unsubYuseong();
+      if (unsubWorkLogs) unsubWorkLogs();
       if (unsubOrders) unsubOrders();
       window.removeEventListener("work_report_nc_ledger_updated", handleLedgerUpdate);
     };
@@ -221,40 +241,42 @@ export default function Step2ProductionManagerPanel({
     return lines;
   }, [extrusionReports, todayStr, productionOrders]);
 
-  // 3. Extract all nonconformance incidents for Step 2
+  // 3. Extract all nonconformance incidents for Step 2 (5개사 전사 통합)
   const allIncidents = useMemo(() => {
     return extractWorkReportNonconformances({
       extrusionReports,
       machiningReports,
+      hanulReports,
+      yuseongReports,
+      workLogs,
       ledgerState
     });
-  }, [extrusionReports, machiningReports, ledgerState]);
+  }, [extrusionReports, machiningReports, hanulReports, yuseongReports, workLogs, ledgerState]);
 
-  // Filter incidents for current process & selected item badge
+  // Filter incidents for current company, process & selected item badge
   const filteredIncidents = useMemo(() => {
     return allIncidents.filter((inc) => {
-      // Process filter
-      if (effectiveProcess === "machining") {
-        const isMach = String(inc.company || "").includes("오륙") || String(inc.line || "").includes("가공") || String(inc.line || "").includes("JA") || String(inc.line || "").includes("HR") || String(inc.line || "").includes("NX5") || String(inc.carModel || "").includes("JA") || String(inc.carModel || "").includes("HR") || String(inc.carModel || "").includes("NX5");
-        if (!isMach && !inc.id.includes("mach")) return false;
+      // 5개사 소속사 필터
+      if (selectedCompanyFilter !== "ALL") {
+        const comp = getFourMRecordCompany(inc);
+        if (comp !== selectedCompanyFilter) return false;
 
-        // Item filter
-        if (selectedItemBadge !== "ALL") {
-          const itemKey = selectedItemBadge.toUpperCase();
-          const targetStr = `${inc.line} ${inc.carModel} ${inc.defectType} ${inc.content}`.toUpperCase();
-          if (itemKey === "HR" && !targetStr.includes("HR") && !targetStr.includes("포터")) return false;
-          if (itemKey === "JA" && !targetStr.includes("JA") && !targetStr.includes("모닝") && !targetStr.includes("레이")) return false;
-          if (itemKey === "NX5A" && !targetStr.includes("NX5") && !targetStr.includes("NX4") && !targetStr.includes("투싼")) return false;
+        // 오륙 선택 시 세부 공정(가공 vs 압출) 필터 적용 가능
+        if (selectedCompanyFilter === "오륙") {
+          if (activeProcessTab === "machining") {
+            const isMach = String(inc.line || "").includes("가공") || String(inc.line || "").includes("JA") || String(inc.line || "").includes("HR") || String(inc.line || "").includes("NX5") || inc.id.includes("mach");
+            if (!isMach) return false;
+          } else if (activeProcessTab === "extrusion") {
+            const isExt = String(inc.line || "").includes("호기") || String(inc.line || "").includes("PCM") || String(inc.line || "").includes("TPE") || String(inc.line || "").includes("PVC") || inc.id.includes("ext");
+            if (!isExt) return false;
+          }
         }
-      } else if (effectiveProcess === "extrusion") {
-        const isExt = String(inc.company || "").includes("압출") || String(inc.line || "").includes("호기") || String(inc.line || "").includes("PCM") || String(inc.line || "").includes("TPE") || String(inc.line || "").includes("PVC") || inc.id.includes("ext");
-        if (!isExt) return false;
+      }
 
-        // Line filter
-        if (selectedItemBadge !== "ALL") {
-          const targetStr = `${inc.line} ${inc.content}`.toUpperCase();
-          if (!targetStr.includes(selectedItemBadge)) return false;
-        }
+      // Item badge filter
+      if (selectedItemBadge !== "ALL") {
+        const targetStr = `${inc.line || ""} ${inc.carModel || ""} ${inc.defectType || ""} ${inc.content || ""}`.toUpperCase();
+        if (!targetStr.includes(selectedItemBadge.toUpperCase())) return false;
       }
 
       // Incident sorting badge filter
@@ -264,15 +286,25 @@ export default function Step2ProductionManagerPanel({
 
       return true;
     });
-  }, [allIncidents, effectiveProcess, selectedItemBadge, selectedIncidentBadge]);
+  }, [allIncidents, activeProcessTab, selectedCompanyFilter, selectedItemBadge, selectedIncidentBadge]);
 
   // Incident counts
   const incidentCounts = useMemo(() => {
     const list = allIncidents.filter((inc) => {
-      if (effectiveProcess === "machining") {
-        return String(inc.company || "").includes("오륙") || String(inc.line || "").includes("가공") || String(inc.line || "").includes("JA") || String(inc.line || "").includes("HR") || String(inc.line || "").includes("NX5") || inc.id.includes("mach");
+      if (selectedCompanyFilter !== "ALL") {
+        const comp = getFourMRecordCompany(inc);
+        if (comp !== selectedCompanyFilter) return false;
+        if (selectedCompanyFilter === "오륙") {
+          if (activeProcessTab === "machining") {
+            const isMach = String(inc.line || "").includes("가공") || String(inc.line || "").includes("JA") || String(inc.line || "").includes("HR") || String(inc.line || "").includes("NX5") || inc.id.includes("mach");
+            if (!isMach) return false;
+          } else if (activeProcessTab === "extrusion") {
+            const isExt = String(inc.line || "").includes("호기") || String(inc.line || "").includes("PCM") || String(inc.line || "").includes("TPE") || String(inc.line || "").includes("PVC") || inc.id.includes("ext");
+            if (!isExt) return false;
+          }
+        }
       }
-      return String(inc.company || "").includes("압출") || String(inc.line || "").includes("호기") || inc.id.includes("ext");
+      return true;
     });
     return {
       total: list.length,
@@ -280,7 +312,7 @@ export default function Step2ProductionManagerPanel({
       internal: list.filter((i) => i.registrationType === "INTERNAL").length,
       quality: list.filter((i) => i.registrationType === "CHANGE_POINT").length
     };
-  }, [allIncidents, effectiveProcess]);
+  }, [allIncidents, selectedCompanyFilter, activeProcessTab]);
 
   const capaModalState = useCapaActionModalState({
     managerName: managerName || "생산관리자",
@@ -764,13 +796,56 @@ export default function Step2ProductionManagerPanel({
       </div>
 
       {/* ========================================================================= */}
-      {/* ⏱️ SECTION 2: 당일 비가동 · 부적합 1차 소팅 바 */}
+      {/* ⏱️ SECTION 2: 당일 비가동 · 부적합 1차 소팅 바 (5개사 전사 관리자 1차 분류 및 품질이관) */}
       {/* ========================================================================= */}
       <div className="p-3 sm:p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700/60 space-y-2.5">
+        {/* 5개사 소속사 선택 필터 바 */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-amber-200/60 dark:border-amber-900/40">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-black text-amber-900 dark:text-amber-200 mr-1 flex items-center gap-1">
+              <span>🏢</span> <span>소속 5개사 선택:</span>
+            </span>
+            {["ALL", "오륙", "한울", "유성", "조영", "부림텍"].map((compKey) => {
+              const isSelected = selectedCompanyFilter === compKey;
+              const count = compKey === "ALL"
+                ? allIncidents.length
+                : allIncidents.filter((inc) => getFourMRecordCompany(inc) === compKey).length;
+
+              return (
+                <button
+                  key={compKey}
+                  type="button"
+                  onClick={() => setSelectedCompanyFilter(compKey)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-indigo-600 text-white border-indigo-500 shadow-xs ring-1 ring-indigo-400"
+                      : "bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                  }`}
+                >
+                  <span>{compKey === "ALL" ? "5개사 전체" : compKey}</span>
+                  <span
+                    className={`text-[10.5px] px-1.5 py-0.2 rounded-full font-mono ${
+                      isSelected
+                        ? "bg-indigo-700 text-white"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden lg:inline">
+            ※ 현장작업자 부적합·비가동 ➡️ 1차 상위관리자 검토 후 <strong>[🟢 사내관리]</strong> vs <strong>[🚨 품질이관]</strong> 분류
+          </span>
+        </div>
+
         <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs sm:text-sm">
-              <span>⏱️</span> <span>당일 {effectiveProcess === "machining" ? "가공동" : "압출동"} 비가동 · 부적합 1차 소팅</span>
+              <span>⏱️</span> <span>당일 {selectedCompanyFilter === "ALL" ? "전사" : selectedCompanyFilter} 비가동 · 부적합 1차 소팅</span>
             </span>
 
             {/* Sorting Filter Buttons */}
@@ -855,6 +930,9 @@ export default function Step2ProductionManagerPanel({
                 >
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10.5px] font-black tracking-wide">
+                        {getFourMRecordCompany(inc)}
+                      </span>
                       {isUnsorted && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">
                           미소팅

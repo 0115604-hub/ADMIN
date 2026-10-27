@@ -46,6 +46,18 @@ import {
   saveHanulTemplateAssignment,
   buildHanulProcessSlotKey
 } from "../services/workReportTemplateService";
+import {
+  getLocalWorkReportNcLedger,
+  saveWorkReportNcLedger,
+  WORK_REPORT_NC_STORAGE_KEY
+} from "./common/WorkReportNonconformanceLedgerPanel";
+import { unregisterFromFourMLedger } from "../services/fourMChangePointService";
+import { useCapaActionModalState } from "./quality/step3/useCapaActionModalState";
+import Step3CapaActionModal from "./quality/step3/Step3CapaActionModal";
+import { ImagePreviewModal } from "./common/ImagePreviewModal";
+import { MachiningIncidentSortingBar } from "./machining/table/MachiningIncidentSortingBar";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 
 export const HanulWorkReportTable = ({
   onOpenReportModal,
@@ -70,20 +82,59 @@ export const HanulWorkReportTable = ({
   const [assignToast, setAssignToast] = useState("");
   const [previewTemplate, setPreviewTemplate] = useState(null);
 
+  // 2단계 생산공정: 한울 비가동 및 부적합 1차 소팅 상태
+  const [ledgerState, setLedgerState] = useState(() => getLocalWorkReportNcLedger());
+  const [previewImg, setPreviewImg] = useState(null);
+
   useEffect(() => {
+    let isMounted = true;
     const unsub = subscribeHanulWorkReports((list) => {
-      setReports(list || []);
+      if (isMounted) setReports(list || []);
     });
     const unsubTemplates = subscribeWorkReportTemplates((list) => {
-      if (Array.isArray(list)) setAllTemplates(list);
+      if (isMounted && Array.isArray(list)) setAllTemplates(list);
     });
     const unsubAssign = subscribeHanulTemplateAssignments((map) => {
-      if (map) setTemplateAssignments(map);
+      if (isMounted && map) setTemplateAssignments(map);
     });
+
+    const handleLocalLedgerUpdate = (e) => {
+      if (!isMounted) return;
+      if (e?.detail) setLedgerState(e.detail);
+      else setLedgerState(getLocalWorkReportNcLedger());
+    };
+    window.addEventListener("work_report_nc_ledger_updated", handleLocalLedgerUpdate);
+
+    let unsubFirestoreLedger = () => {};
+    if (db) {
+      try {
+        unsubFirestoreLedger = onSnapshot(
+          doc(db, "app_settings", WORK_REPORT_NC_STORAGE_KEY),
+          (snap) => {
+            if (!isMounted) return;
+            if (snap.exists()) {
+              const data = snap.data();
+              const nextState = {
+                overrides: data?.overrides || {},
+                manualItems: Array.isArray(data?.manualItems) ? data.manualItems : []
+              };
+              try {
+                localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(nextState));
+              } catch (err) {}
+              setLedgerState(nextState);
+            }
+          }
+        );
+      } catch (err) {}
+    }
+
     return () => {
+      isMounted = false;
       unsub();
       unsubTemplates();
       unsubAssign();
+      unsubFirestoreLedger();
+      window.removeEventListener("work_report_nc_ledger_updated", handleLocalLedgerUpdate);
     };
   }, []);
 
@@ -227,6 +278,167 @@ export const HanulWorkReportTable = ({
 
     return { totalCount, bqcGenuine, bqcBad, bqcYield, lq2Genuine, lq2Bad, lq2Yield };
   }, [filteredReports]);
+
+  // 2단계 생산공정: 한울 비가동 및 부적합 내역 수합 (1차 소팅용)
+  const hanulIncidents = useMemo(() => {
+    const list = [];
+    const overrides = ledgerState?.overrides || {};
+
+    filteredReports.forEach((r) => {
+      if (!r) return;
+      const rId = String(r.id || "");
+      const date = String(r.date || "").trim();
+      const worker = String(r.worker || "").trim();
+      const proj = String(r.project || "9BQC").trim().toUpperCase();
+      const proc = String(r.processName || r.processId || "").trim();
+      const dtEvents = Array.isArray(r.downtimeEvents) ? r.downtimeEvents : [];
+      let hasDefectEvent = false;
+
+      dtEvents.forEach((ev, idx) => {
+        if (!ev) return;
+        const evType = String(ev.type || "").trim();
+        const isDefect =
+          evType === "불량" ||
+          evType === "부적합" ||
+          Boolean(ev.beforePhoto || ev.afterPhoto) ||
+          String(ev.category || "").includes("불량") ||
+          String(ev.category || "").includes("부적합") ||
+          Number(ev.minutes) > 0;
+
+        if (!isDefect) return;
+        hasDefectEvent = true;
+
+        const itemId = `wr_nc_${rId}_${ev.id || idx}`;
+        const ov = overrides[itemId] || {};
+        if (ov.isDeleted) return;
+
+        const defectType = ov.defectType || ev.category || (evType === "부적합" ? "공정 부적합" : "라인 비가동");
+        const registrationType = ov.registrationType || "UNREGISTERED";
+
+        list.push({
+          id: itemId,
+          reportId: rId,
+          date,
+          time: ev.startTime || r.time || "",
+          worker,
+          company: "한울",
+          plant: "한림공장",
+          line: `${proj} ${proc}`,
+          project: proj,
+          processId: proc,
+          defectType,
+          minutes: Number(ov.downtimeMinutes !== undefined ? ov.downtimeMinutes : (ev.minutes || 0)),
+          scrapKg: Number(ov.scrapKg !== undefined ? ov.scrapKg : (ev.scrapKg || 0)),
+          content: ov.content !== undefined ? ov.content : (ev.detail || `${defectType} 발생`),
+          actionResult: ov.actionResult !== undefined ? ov.actionResult : (ev.actionDetail || ""),
+          beforePhoto: ov.beforePhoto !== undefined ? ov.beforePhoto : (ev.beforePhoto || null),
+          afterPhoto: ov.afterPhoto !== undefined ? ov.afterPhoto : (ev.afterPhoto || null),
+          registrationType,
+          registeredBy: ov.registeredBy || "",
+          registeredAt: ov.registeredAt || ""
+        });
+      });
+
+      const badQty = Number(r.totals?.bad ?? r.badQty ?? 0);
+      if (!hasDefectEvent && badQty > 0) {
+        const itemId = `wr_nc_def_${rId}`;
+        const ov = overrides[itemId] || {};
+        if (!ov.isDeleted) {
+          const defectType = ov.defectType || "한울 불량 발생";
+          const registrationType = ov.registrationType || "UNREGISTERED";
+          list.push({
+            id: itemId,
+            reportId: rId,
+            date,
+            time: r.time || "",
+            worker,
+            company: "한울",
+            plant: "한림공장",
+            line: `${proj} ${proc}`,
+            project: proj,
+            processId: proc,
+            defectType,
+            minutes: Number(ov.downtimeMinutes || 0),
+            scrapKg: badQty,
+            content: ov.content || `${proj} ${proc} 불량 ${badQty}EA 발생 ${r.remark || ""}`.trim(),
+            actionResult: ov.actionResult || "",
+            beforePhoto: ov.beforePhoto || null,
+            afterPhoto: ov.afterPhoto || null,
+            registrationType,
+            registeredBy: ov.registeredBy || "",
+            registeredAt: ov.registeredAt || ""
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [filteredReports, ledgerState]);
+
+  const incidentStats = useMemo(() => {
+    return {
+      total: hanulIncidents.length,
+      unsorted: hanulIncidents.filter((i) => !i.registrationType || i.registrationType === "UNREGISTERED").length,
+      internal: hanulIncidents.filter((i) => i.registrationType === "INTERNAL").length,
+      quality: hanulIncidents.filter((i) => i.registrationType === "CHANGE_POINT").length
+    };
+  }, [hanulIncidents]);
+
+  const capaModalState = useCapaActionModalState({
+    managerName: currentWorkerName || "한울 관리자",
+    defaultPlant: "한림공장",
+    ledgerState,
+    setLedgerState,
+    onAfterSave: (item) => {
+      setAssignToast(`🚨 [${item.line || "한울"}] 조치결과가 전체취합대장(품질 이관)으로 정상 등록되었습니다.`);
+      setTimeout(() => setAssignToast(""), 4000);
+    }
+  });
+
+  const handleSortIncident = async (item, targetType) => {
+    if (targetType === "CHANGE_POINT") {
+      capaModalState.handleOpenCapaModal(item, currentWorkerName || "한울 관리자");
+      return;
+    }
+
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    const mgr = currentWorkerName || "한울 관리자";
+    const nextOverrides = {
+      ...(ledgerState.overrides || {}),
+      [item.id]: {
+        ...(ledgerState.overrides?.[item.id] || {}),
+        registrationType: targetType,
+        registeredBy: mgr,
+        registeredAt: nowStr
+      }
+    };
+
+    const nextState = {
+      ...ledgerState,
+      overrides: nextOverrides
+    };
+    setLedgerState(nextState);
+    await saveWorkReportNcLedger(nextState);
+
+    if (targetType === "INTERNAL") {
+      await unregisterFromFourMLedger(item.id);
+      await unregisterFromFourMLedger(`ledger_${item.id}`);
+      setAssignToast(`🟢 [${item.line || "한울"} ${item.defectType}] 건이 사내 내부관리로 종결 처리되었습니다.`);
+    } else {
+      await unregisterFromFourMLedger(item.id);
+      await unregisterFromFourMLedger(`ledger_${item.id}`);
+      setAssignToast(`↩️ [${item.line || "한울"} ${item.defectType}] 소팅이 초기화되었습니다.`);
+    }
+    setTimeout(() => setAssignToast(""), 3500);
+  };
 
   const handleDelete = async (id, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -394,6 +606,15 @@ export const HanulWorkReportTable = ({
           </span>
         </div>
       </div>
+
+      {/* 2단계 생산공정: 당일 한울 비가동 · 부적합 1차 소팅 바 */}
+      <MachiningIncidentSortingBar
+        incidentStats={incidentStats}
+        machiningIncidents={hanulIncidents}
+        handleSortIncident={handleSortIncident}
+        title="당일 한울(한림) 비가동 · 부적합 1차 소팅"
+        emptyText="🟢 오늘 접수된 한울 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
+      />
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
@@ -1072,6 +1293,37 @@ export const HanulWorkReportTable = ({
             />
           )}
         </div>
+      )}
+
+      {/* 🌟 3단계 품질관리자(이창엽 책임) 연동 CAPA 시정조치 & 품질이관 등록 모달 */}
+      <Step3CapaActionModal
+        isOpen={capaModalState.isCapaModalOpen}
+        onClose={capaModalState.handleCloseCapaModal}
+        capaModalItem={capaModalState.capaModalItem}
+        capaFourM={capaModalState.capaFourM}
+        setCapaFourM={capaModalState.setCapaFourM}
+        capaActionResult={capaModalState.capaActionResult}
+        setCapaActionResult={capaModalState.setCapaActionResult}
+        capaStatus={capaModalState.capaStatus}
+        setCapaStatus={capaModalState.setCapaStatus}
+        capaBeforePhoto={capaModalState.capaBeforePhoto}
+        setCapaBeforePhoto={capaModalState.setCapaBeforePhoto}
+        capaAfterPhoto={capaModalState.capaAfterPhoto}
+        setCapaAfterPhoto={capaModalState.setCapaAfterPhoto}
+        isSavingCapa={capaModalState.isSavingCapa}
+        onSaveCapa={capaModalState.handleSaveCapaAction}
+        isQualityManager={false}
+        managerName={currentWorkerName || "한울 관리자"}
+        isOfficialLedger={false}
+      />
+
+      {/* 사진 미리보기 모달 */}
+      {previewImg && (
+        <ImagePreviewModal
+          isOpen={Boolean(previewImg)}
+          imageUrl={previewImg}
+          onClose={() => setPreviewImg(null)}
+        />
       )}
     </div>
   );
