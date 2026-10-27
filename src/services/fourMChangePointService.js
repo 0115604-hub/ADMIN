@@ -1201,8 +1201,8 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     registeredAt: existing?.registeredAt ? existing.registeredAt : (record.registeredAt || nowStr),
     registeredBy: registeredBy || existing?.registeredBy || "이창엽",
     classifiedBy: registeredBy || existing?.classifiedBy || "이창엽",
-    isQualityClassified: true,
-    isOfficialLedger: true,
+    isQualityClassified: record.isQualityClassified !== undefined ? Boolean(record.isQualityClassified) : (existing?.isQualityClassified !== undefined ? existing.isQualityClassified : true),
+    isOfficialLedger: record.isOfficialLedger !== undefined ? Boolean(record.isOfficialLedger) : (existing?.isOfficialLedger !== undefined ? existing.isOfficialLedger : true),
     // 👑 4단계 전자결재 및 경영진 승인 동기화 필드
     approvalStatus: record.approvalStatus || existing?.approvalStatus || "",
     approvalDocId: record.approvalDocId || existing?.approvalDocId || "",

@@ -14,8 +14,12 @@ import {
 import {
   getLocalWorkReportNcLedger,
   saveWorkReportNcLedger,
-  extractWorkReportNonconformances
+  extractWorkReportNonconformances,
+  WORK_REPORT_NC_STORAGE_KEY
 } from "../../common/WorkReportNonconformanceLedgerPanel";
+import { subscribeWorkLogs } from "../../../services/workLogService";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../../firebase";
 import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints,
@@ -40,6 +44,7 @@ export const useStep3QualityState = ({
   const [machiningReports, setMachiningReports] = useState([]);
   const [hanulReports, setHanulReports] = useState([]);
   const [yuseongReports, setYuseongReports] = useState([]);
+  const [workLogs, setWorkLogs] = useState([]);
   const [ncLedgerState, setNcLedgerState] = useState(() => getLocalWorkReportNcLedger());
 
   // 4M Ledger Records
@@ -93,6 +98,10 @@ export const useStep3QualityState = ({
       if (isMounted) setYuseongReports(reports || []);
     });
 
+    const unsubWorkLogs = subscribeWorkLogs((logs) => {
+      if (isMounted) setWorkLogs(logs || []);
+    });
+
     const unsubFourM = subscribeFourMChangePoints((records) => {
       if (isMounted) setFourMRecords(records || []);
     });
@@ -108,6 +117,31 @@ export const useStep3QualityState = ({
     };
     window.addEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
 
+    let unsubFirestoreNc = () => {};
+    if (db) {
+      try {
+        unsubFirestoreNc = onSnapshot(
+          doc(db, "app_settings", WORK_REPORT_NC_STORAGE_KEY),
+          (snap) => {
+            if (!isMounted) return;
+            if (snap.exists()) {
+              const data = snap.data();
+              const nextState = {
+                overrides: data?.overrides || {},
+                manualItems: Array.isArray(data?.manualItems) ? data.manualItems : []
+              };
+              try {
+                localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(nextState));
+              } catch (err) {}
+              setNcLedgerState(nextState);
+            }
+          }
+        );
+      } catch (err) {
+        console.warn("Firestore NC ledger subscribe error in step3:", err);
+      }
+    }
+
     const handleFourMUpdate = (e) => {
       if (isMounted && Array.isArray(e?.detail)) {
         setFourMRecords(e.detail);
@@ -121,8 +155,10 @@ export const useStep3QualityState = ({
       if (typeof unsubMachining === "function") unsubMachining();
       if (typeof unsubHanul === "function") unsubHanul();
       if (typeof unsubYuseong === "function") unsubYuseong();
+      if (typeof unsubWorkLogs === "function") unsubWorkLogs();
       if (typeof unsubFourM === "function") unsubFourM();
       if (typeof unsubApproval === "function") unsubApproval();
+      if (typeof unsubFirestoreNc === "function") unsubFirestoreNc();
       window.removeEventListener("work_report_nc_ledger_updated", handleNcLedgerUpdate);
       window.removeEventListener("oryuk_four_m_updated", handleFourMUpdate);
     };
@@ -181,16 +217,90 @@ export const useStep3QualityState = ({
       machiningReports,
       hanulReports,
       yuseongReports,
+      workLogs,
       ledgerState: ncLedgerState
     });
-  }, [extrusionReports, machiningReports, hanulReports, yuseongReports, ncLedgerState]);
+  }, [extrusionReports, machiningReports, hanulReports, yuseongReports, workLogs, ncLedgerState]);
 
   // 3. Filter items that 2nd stage managers transferred to Quality (CHANGE_POINT)
   const incomingTransferredItems = useMemo(() => {
-    return extractedWorkReportItems.filter((item) => {
-      return item.registrationType === "CHANGE_POINT";
+    const map = new Map();
+
+    // 1) From extracted work report items with registrationType === "CHANGE_POINT"
+    extractedWorkReportItems.forEach((item) => {
+      if (item && item.registrationType === "CHANGE_POINT") {
+        map.set(item.id, item);
+      }
     });
-  }, [extractedWorkReportItems]);
+
+    // 2) From fourMRecords where item was transferred from 2nd stage (isOfficialLedger !== true or registrationType === "CHANGE_POINT")
+    (fourMRecords || []).forEach((rec) => {
+      if (!rec) return;
+      const isIncoming =
+        rec.isOfficialLedger === false ||
+        rec.registrationType === "CHANGE_POINT" ||
+        (rec.sourceType === "WORK_REPORT_NC" && !rec.isOfficialLedger && rec.classifiedBy !== "이창엽");
+      if (isIncoming) {
+        const key = rec.originalId || rec.rawId || rec.id;
+        const ov = ncLedgerState?.overrides?.[key] || ncLedgerState?.overrides?.[rec.id] || {};
+        if (ov.registrationType === "INTERNAL" || ov.registrationType === "OFFICIAL_LEDGER" || ov.isDeleted) {
+          return;
+        }
+        if (!map.has(key)) {
+          map.set(key, {
+            ...rec,
+            id: key,
+            registrationType: "CHANGE_POINT",
+            downtimeMinutes: Number(rec.downtimeMinutes || 0),
+            scrapKg: Number(rec.scrapKg || 0),
+            beforePhoto: rec.beforePhotos?.[0] || rec.beforePhoto || rec.images?.[0] || null,
+            afterPhoto: rec.afterPhotos?.[0] || rec.afterPhoto || rec.actionImages?.[0] || null
+          });
+        }
+      }
+    });
+
+    // 3) Direct fallback from ncLedgerState.overrides where registrationType === "CHANGE_POINT"
+    const overrides = ncLedgerState?.overrides || {};
+    Object.entries(overrides).forEach(([key, ov]) => {
+      if (ov && ov.registrationType === "CHANGE_POINT" && !ov.isDeleted && !map.has(key)) {
+        const rId = key.replace(/^wr_nc_def_/, "").replace(/^wr_nc_/, "").split("_")[0];
+        const allReps = [...extrusionReports, ...machiningReports, ...hanulReports, ...yuseongReports, ...(workLogs || [])];
+        const matchedRep = allReps.find((r) => String(r.id || "") === rId || key.includes(String(r.id || "")));
+
+        map.set(key, {
+          id: key,
+          reportId: rId,
+          date: ov.actionAt || matchedRep?.date || new Date().toISOString().slice(0, 10),
+          time: matchedRep?.time || "",
+          company: matchedRep?.company || "오륙",
+          plant: matchedRep?.plant || "삼랑진공장",
+          line: matchedRep?.line || matchedRep?.project || ov.line || "생산라인",
+          worker: ov.actionAuthor || matchedRep?.worker || ov.registeredBy || "생산관리자",
+          defectType: ov.defectType || "공정 부적합",
+          title: ov.title || `[품질이관] ${ov.line || matchedRep?.line || ""} - ${ov.defectType || ov.content || "부적합"}`,
+          content: ov.content || "",
+          actionResult: ov.actionResult || "",
+          scrapKg: Number(ov.scrapKg || 0),
+          downtimeMinutes: Number(ov.downtimeMinutes || 0),
+          beforePhoto: ov.beforePhoto || ov.beforePhotos?.[0] || null,
+          afterPhoto: ov.afterPhoto || ov.afterPhotos?.[0] || null,
+          images: ov.beforePhotos || (ov.beforePhoto ? [ov.beforePhoto] : []),
+          actionImages: ov.afterPhotos || (ov.afterPhoto ? [ov.afterPhoto] : []),
+          registrationType: "CHANGE_POINT",
+          registeredBy: ov.registeredBy || "생산관리자",
+          registeredAt: ov.registeredAt || "",
+          fourM: ov.fourM || "Machine",
+          source: "WORK_REPORT"
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.date !== a.date) return String(b.date || "").localeCompare(String(a.date || ""));
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    });
+  }, [extractedWorkReportItems, fourMRecords, ncLedgerState, extrusionReports, machiningReports, hanulReports, yuseongReports, workLogs]);
 
   // 4. Official 4M Change Point Ledger items (9월/10월 전체 공식대장 및 이창엽 책임 등록 건 100% 영구 보존/노출)
   const official4MItems = useMemo(() => {
@@ -357,6 +467,21 @@ export const useStep3QualityState = ({
       };
 
       await registerToFourMLedger(createdLedgerItem, managerName);
+
+      // 🌟 3단계 공식대장 승인 완료 ➔ ncLedgerState에 OFFICIAL_LEDGER로 반영하여 접수함에서 제거
+      const nextOverrides = {
+        ...(ncLedgerState.overrides || {}),
+        [item.id]: {
+          ...(ncLedgerState.overrides?.[item.id] || {}),
+          registrationType: "OFFICIAL_LEDGER",
+          registeredBy: managerName,
+          registeredAt: nowStr
+        }
+      };
+      const nextState = { ...ncLedgerState, overrides: nextOverrides };
+      setNcLedgerState(nextState);
+      await saveWorkReportNcLedger(nextState);
+
       handleOpenCapaModal(createdLedgerItem);
     } catch (e) {
       console.error("Failed to register to 4M ledger:", e);

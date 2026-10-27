@@ -41,6 +41,8 @@ import {
   extractWorkReportNonconformances,
   WORK_REPORT_NC_STORAGE_KEY
 } from "../common/WorkReportNonconformanceLedgerPanel";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase";
 import {
   registerToFourMLedger,
   unregisterFromFourMLedger,
@@ -151,6 +153,30 @@ export default function Step2ProductionManagerPanel({
     };
     window.addEventListener("work_report_nc_ledger_updated", handleLedgerUpdate);
 
+    let unsubFirestoreLedger = () => {};
+    if (db) {
+      try {
+        unsubFirestoreLedger = onSnapshot(
+          doc(db, "app_settings", WORK_REPORT_NC_STORAGE_KEY),
+          (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              const nextState = {
+                overrides: data?.overrides || {},
+                manualItems: Array.isArray(data?.manualItems) ? data.manualItems : []
+              };
+              try {
+                localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(nextState));
+              } catch (err) {}
+              setLedgerState(nextState);
+            }
+          }
+        );
+      } catch (err) {
+        console.warn("Step 2 ledger onSnapshot error:", err);
+      }
+    }
+
     return () => {
       if (unsubMachining) unsubMachining();
       if (unsubExtrusion) unsubExtrusion();
@@ -158,6 +184,7 @@ export default function Step2ProductionManagerPanel({
       if (unsubYuseong) unsubYuseong();
       if (unsubWorkLogs) unsubWorkLogs();
       if (unsubOrders) unsubOrders();
+      if (unsubFirestoreLedger) unsubFirestoreLedger();
       window.removeEventListener("work_report_nc_ledger_updated", handleLedgerUpdate);
     };
   }, []);
