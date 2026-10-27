@@ -646,7 +646,9 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     downtimeMinutes: Number(record.downtimeMinutes !== undefined ? record.downtimeMinutes : existing?.downtimeMinutes) || 0,
     scrapKg: Number(record.scrapKg !== undefined ? record.scrapKg : existing?.scrapKg) || 0,
     registeredAt: existing?.registeredAt ? existing.registeredAt : (record.registeredAt || nowStr),
-    registeredBy: registeredBy || existing?.registeredBy || "관리자",
+    registeredBy: registeredBy || existing?.registeredBy || "이창엽",
+    classifiedBy: registeredBy || existing?.classifiedBy || "이창엽",
+    isQualityClassified: true,
     isOfficialLedger: true,
     // 👑 4단계 전자결재 및 경영진 승인 동기화 필드
     approvalStatus: record.approvalStatus || existing?.approvalStatus || "",
@@ -836,204 +838,17 @@ export const purgeAllFourMChangePoints = async () => {
 };
 
 /**
- * 🌟 부적합경보/품질이슈를 공식 4M 변동점 관리대장에 자동 동기화 (단일 항목)
+ * 🌟 [품질 단일 원천 원칙] 부적합경보/품질이슈의 공식 4M 대장 자동 동기화 중단
+ * (모든 변동점은 하단 통합 취합 패널로만 모이며, 이창엽 품질관리자가 직접 분류/등록한 건만 공식 대장에 등재됨)
  */
 export const syncQualityAlertToFourMLedger = async (alertItem, originName = "부적합경보") => {
-  if (!alertItem) return null;
-
-  // 🔒 오픈이슈, 회의일정, 공지사항은 4M 변동점 대장 등록 원천 배제
-  const cat = String(alertItem.category || "").trim();
-  if (
-    cat === "오픈이슈" ||
-    cat === "open_issue" ||
-    cat.includes("오픈이슈") ||
-    cat === "회의일정" ||
-    cat.includes("회의") ||
-    cat === "공지사항" ||
-    cat === "사내공지" ||
-    cat === "공유사항"
-  ) {
-    return null;
-  }
-
-  const isHardDelete = Boolean(
-    alertItem.hardDelete === true ||
-    alertItem.isHardDeleted === true
-  );
-  const id = String(alertItem.id || alertItem._docId || alertItem.customId || "").trim();
-  const rawId = String(alertItem.rawId || alertItem.id || "").trim();
-
-  // 오직 영구삭제(hard delete)인 경우에만 4M 관리대장에서 영구 제외
-  if (isHardDelete) {
-    await unregisterFromFourMLedger(id);
-    if (rawId && rawId !== id) await unregisterFromFourMLedger(rawId);
-    return null;
-  }
-
-  const isDel = Boolean(
-    alertItem.isDeleted === true ||
-    alertItem.isDeleted === "true" ||
-    alertItem.deleted === true ||
-    alertItem.status === "DELETED"
-  );
-
-  const title = alertItem.title || alertItem.defectType || alertItem.content || "(부적합경보)";
-  const coreId = getCore4MId(alertItem);
-  const normKey = getNormalizedTitleKey(alertItem);
-  const current = getLocalFourMChangePoints();
-  const existingInLedger = current.find((it) => {
-    const itCore = getCore4MId(it);
-    const itNorm = getNormalizedTitleKey(it);
-    return (coreId && itCore && coreId === itCore) || (normKey && itNorm && normKey === itNorm);
-  });
-  const fourM = (existingInLedger?.isManualFourM && existingInLedger.fourM)
-    ? existingInLedger.fourM
-    : determineFourMCategory(alertItem);
-  const isResolved = Boolean(
-    alertItem.isResolved ||
-    alertItem.status === "RESOLVED" ||
-    alertItem.status === "CLOSED" ||
-    alertItem.status === "DONE" ||
-    isDel || // 첫화면에서 관리자가 조치완료 후 종결/삭제한 건은 4M 대장에 '조치완료'로 영구 보존
-    (alertItem.actionResult && String(alertItem.actionResult).trim().length > 0)
-  );
-
-  const resolvedActionResult = alertItem.actionResult || alertItem.actionNotes || alertItem.resolutionNote || (isResolved ? "조치 및 선별 완료" : "");
-  const resolvedContent = alertItem.content || alertItem.details || alertItem.description || alertItem.defectType || "";
-
-  // ⚡ 성능 최적화: 이미 등록되어 있고 주요 필드 및 조치상태 변경이 없는 경우 불필요한 Firestore 쓰기/트랜잭션 건너뛰기
-  if (
-    existingInLedger &&
-    Boolean(existingInLedger.isResolved) === isResolved &&
-    (existingInLedger.actionResult || "") === resolvedActionResult &&
-    (existingInLedger.title || "") === title &&
-    (existingInLedger.content || "") === resolvedContent &&
-    existingInLedger.fourM === fourM
-  ) {
-    return existingInLedger;
-  }
-
-  const ledgerRecord = {
-    id: id.startsWith("ledger_") ? id : `ledger_${id}`,
-    originalId: id,
-    rawId: rawId,
-    fourM: fourM,
-    origin: originName,
-    sourceType: "QUALITY_ALERT",
-    badgeColor:
-      fourM === "Machine"
-        ? "bg-indigo-100 text-indigo-900 border-indigo-300"
-        : fourM === "Material"
-        ? "bg-rose-100 text-rose-900 border-rose-300"
-        : fourM === "Man"
-        ? "bg-sky-100 text-sky-900 border-sky-300"
-        : "bg-amber-100 text-amber-900 border-amber-300",
-    plant: alertItem.plant || (String(alertItem.line || "").includes("한림") || String(alertItem.line || "").includes("한울") ? "한림공장" : "삼랑진공장"),
-    line: alertItem.line || alertItem.lineName || alertItem.project || (fourM === "Machine" ? "압출설비라인" : "가공/품질라인"),
-    writer: alertItem.author ? `${alertItem.author} ${alertItem.authorTitle || ""}`.trim() : "품질관리자",
-    title: title,
-    date: alertItem.date || alertItem.targetDate || alertItem.startDate || existingInLedger?.date || (alertItem.createdAt ? String(alertItem.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
-    time: alertItem.time || existingInLedger?.time || "",
-    content: resolvedContent,
-    actionResult: resolvedActionResult,
-    actionAuthor: alertItem.actionAuthor || alertItem.author || (isResolved ? "관리자" : ""),
-    actionAt: alertItem.actionAt || alertItem.resolvedAt || alertItem.updatedAt || "",
-    images: Array.isArray(alertItem.causeImages) ? alertItem.causeImages : (Array.isArray(alertItem.images) ? alertItem.images : []),
-    actionImages: Array.isArray(alertItem.actionImages) ? alertItem.actionImages : [],
-    replies: Array.isArray(alertItem.replies) ? alertItem.replies : [],
-    isResolved: isResolved,
-    validation: isResolved ? "부적합 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
-    severity: alertItem.severity || "HIGH",
-    downtimeMinutes: Number(alertItem.downtimeMinutes) || 0,
-    scrapKg: Number(alertItem.scrapKg) || 0,
-    isOfficialLedger: true
-  };
-
-  return await registerToFourMLedger(ledgerRecord, alertItem.author || "품질관리자");
+  return null;
 };
 
 /**
- * 🌟 전 공정 부적합경보 전체를 4M 변동점 관리대장에 일괄 동기화
+ * 🌟 [품질 단일 원천 원칙] 전 공정 부적합경보의 공식 4M 대장 일괄 자동 동기화 중단
  */
 export const autoSyncAllQualityIssuesToFourMLedger = async (qualityLists = {}) => {
-  const {
-    extrusionIssues = [],
-    yuseongIssues = [],
-    hanulIssues = [],
-    machiningIssues = [],
-    urgentIssues = []
-  } = qualityLists;
-
-  const allAlerts = [];
-
-  // 1. Extrusion
-  (extrusionIssues || []).forEach((item) => {
-    if (!item || item.id === "ext_qual_demo_1" || item.id === "ext_qual_demo_2") return;
-    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "압출라인", plant: item.plant || "삼랑진공장" });
-  });
-
-  // 2. Yuseong
-  (yuseongIssues || []).forEach((item) => {
-    if (!item) return;
-    allAlerts.push({ ...item, origin: "부적합경보", line: item.project || item.line || "외주가공(유성)", plant: item.plant || "삼랑진공장" });
-  });
-
-  // 3. Hanul
-  (hanulIssues || []).forEach((item) => {
-    if (!item) return;
-    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "외주가공(한울)", plant: item.plant || "한림공장" });
-  });
-
-  // 4. Machining
-  (machiningIssues || []).forEach((item) => {
-    if (!item) return;
-    allAlerts.push({ ...item, origin: "부적합경보", line: item.line || "가공라인", plant: item.plant || "삼랑진공장" });
-  });
-
-  // 5. Urgent issues (오직 관리자 품질경보/부적합경보만 엄선 - 오픈이슈/회의/공지 완전 배제)
-  (urgentIssues || []).forEach((item) => {
-    if (!item) return;
-    const cat = String(item.category || "").trim();
-    if (
-      cat === "오픈이슈" ||
-      cat === "open_issue" ||
-      cat.includes("오픈이슈") ||
-      cat === "회의일정" ||
-      cat.includes("회의") ||
-      cat === "공지사항" ||
-      cat === "사내공지" ||
-      cat === "공유사항"
-    ) {
-      return;
-    }
-
-    const title = String(item.title || "").toLowerCase();
-    const content = String(item.content || "").toLowerCase();
-    const isQuality =
-      cat.includes("품질") ||
-      cat.includes("부적합") ||
-      item.type === "QUALITY_ALERT" ||
-      title.includes("가류조") ||
-      title.includes("코팅") ||
-      title.includes("클립") ||
-      title.includes("불량") ||
-      title.includes("이상") ||
-      content.includes("가류조") ||
-      content.includes("코팅") ||
-      content.includes("클립");
-
-    if (isQuality) {
-      allAlerts.push({ ...item, origin: "부적합경보" });
-    }
-  });
-
-  // Synchronize each alert
-  for (const alert of allAlerts) {
-    try {
-      await syncQualityAlertToFourMLedger(alert, alert.origin || "부적합경보");
-    } catch (e) {
-      console.warn("Auto sync quality alert to 4M ledger failed for item:", alert.id, e);
-    }
-  }
+  return [];
 };
 

@@ -633,14 +633,6 @@ export const saveUrgentIssue = async (issueData, options = {}) => {
       catStr.includes("부적합") ||
       fullItem.type === "QUALITY_ALERT");
 
-  if (isQualAlert) {
-    try {
-      await syncQualityAlertToFourMLedger(fullItem);
-    } catch (e) {
-      console.warn("syncQualityAlertToFourMLedger in saveUrgentIssue warning:", e);
-    }
-  }
-
   return fullItem;
 };
 

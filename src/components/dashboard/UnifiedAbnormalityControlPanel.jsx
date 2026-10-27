@@ -277,20 +277,6 @@ export const UnifiedAbnormalityControlPanel = ({
     };
   }, []);
 
-  // 🌟 전 공정 부적합경보를 공식 4M 변동점 관리대장에 자동 동기화 (디바운스 적용으로 불필요한 연속 호출 방지)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      autoSyncAllQualityIssuesToFourMLedger({
-        extrusionIssues: extrusionQualityAlerts,
-        yuseongIssues: yuseongQualityIssues,
-        hanulIssues: hanulQualityIssues,
-        machiningIssues: machiningQualityIssues,
-        urgentIssues: urgentIssues
-      }).catch(() => {});
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [extrusionQualityAlerts, yuseongQualityIssues, hanulQualityIssues, machiningQualityIssues, urgentIssues]);
 
   const handleManualRefresh = () => {
     setLastRefreshedAt(new Date());
@@ -1110,9 +1096,7 @@ export const UnifiedAbnormalityControlPanel = ({
           ledgerSet.has(`ledger_${item.id}`) ||
           (coreId && ledgerSet.has(coreId)) ||
           Boolean(item.raw?.id && ledgerSet.has(item.raw.id)) ||
-          item.isOfficialLedger ||
-          item.origin === "부적합경보" ||
-          item.sourceType === "QUALITY_ALERT";
+          Boolean(item.isOfficialLedger && (item.classifiedBy === "이창엽" || item.registeredBy === "이창엽" || item.isQualityClassified));
 
         return {
           ...item,
@@ -1432,18 +1416,6 @@ export const UnifiedAbnormalityControlPanel = ({
           newActionImages,
           rawIssue
         );
-        await syncQualityAlertToFourMLedger({
-          ...rawIssue,
-          id: targetId,
-          title: selectedItemForDetail.title || rawIssue.title,
-          content: selectedItemForDetail.content || rawIssue.content,
-          actionResult: actionText,
-          actionAuthor: effectiveAuthor,
-          actionAt: nowStr,
-          actionImages: Array.from(new Set([...(rawIssue.actionImages || []), ...newActionImages])),
-          status: "RESOLVED",
-          isResolved: true
-        }).catch(() => {});
       }
 
       if (selectedItemForDetail.isRegisteredInLedger || selectedItemForDetail.sourceType === "OFFICIAL_LEDGER" || idStr.startsWith("ledger_")) {
@@ -1530,7 +1502,16 @@ export const UnifiedAbnormalityControlPanel = ({
         alert(`[${item.title}]\n\n변동점 관리대장에서 정상적으로 등록 해제되었습니다.`);
       }
     } else {
-      const newItem = await registerToFourMLedger(item, currentProfile?.name || "관리자");
+      const newItem = await registerToFourMLedger(
+        {
+          ...item,
+          classifiedBy: currentProfile?.name || "이창엽",
+          registeredBy: currentProfile?.name || "이창엽",
+          isQualityClassified: true,
+          isOfficialLedger: true
+        },
+        currentProfile?.name || "이창엽"
+      );
       if (newItem) {
         setFourMLedgerRecords((prev) => [
           newItem,

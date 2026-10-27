@@ -233,11 +233,6 @@ export const saveHanulQualityIssue = async (issueData) => {
     console.warn("Firestore saveHanulQualityIssue fallback to local:", e);
   }
 
-  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
-  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
-    console.warn("4M ledger sync warning for hanul quality issue:", e);
-  });
-
   return fullItem;
 };
 
@@ -274,9 +269,6 @@ export const resolveHanulQualityIssue = async (id, resolutionNote, resolverName 
   } catch (e) {
     console.warn("Firestore resolveHanulQualityIssue fallback:", e);
   }
-
-  // 🌟 4M 변동점 관리대장에도 조치완료 상태 동기화
-  syncQualityAlertToFourMLedger(updatedItem, "부적합경보").catch(() => {});
 
   return updatedItem;
 };

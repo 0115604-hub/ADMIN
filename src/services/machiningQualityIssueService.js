@@ -202,11 +202,6 @@ export const saveMachiningQualityIssue = async (issueData) => {
     }
   }
 
-  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
-  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
-    console.warn("4M ledger sync warning for machining quality issue:", e);
-  });
-
   return fullItem;
 };
 
@@ -245,11 +240,6 @@ export const resolveMachiningQualityIssue = async (id, resolutionNote, resolverN
       console.warn("Firestore resolveMachiningQualityIssue fallback:", e);
     }
   }
-
-  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
-  syncQualityAlertToFourMLedger(updatedItem, "부적합경보").catch((e) => {
-    console.warn("4M ledger sync warning for machining quality issue resolve:", e);
-  });
 
   return updatedItem;
 };

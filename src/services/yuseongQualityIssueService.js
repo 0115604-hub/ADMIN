@@ -169,11 +169,6 @@ export const saveYuseongQualityIssue = async (issueData) => {
     }
   }
 
-  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
-  syncQualityAlertToFourMLedger(record, "부적합경보").catch((e) => {
-    console.warn("4M ledger sync warning for yuseong quality issue:", e);
-  });
-
   return record;
 };
 

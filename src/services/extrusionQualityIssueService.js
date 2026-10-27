@@ -232,10 +232,6 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     }
   }
 
-  // 🌟 공식 4M 변동점 관리대장에 즉시 자동 동기화
-  syncQualityAlertToFourMLedger(fullItem, "부적합경보").catch((e) => {
-    console.warn("4M ledger sync warning for extrusion quality issue:", e);
-  });
 
   return fullItem;
 };

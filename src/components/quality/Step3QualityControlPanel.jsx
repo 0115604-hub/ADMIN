@@ -210,10 +210,22 @@ export default function Step3QualityControlPanel({
     });
   }, [extractedWorkReportItems]);
 
-  // 4. Official 4M Change Point Ledger items
+  // 4. Official 4M Change Point Ledger items (오직 이창엽이 하단 패널 등에서 분류/등록한 건만 정식 등재)
   const official4MItems = useMemo(() => {
     return fourMRecords.filter((rec) => {
-      return rec.isOfficialLedger || String(rec.id || "").startsWith("ledger_") || rec.sourceType === "WORK_REPORT_NC" || rec.origin === "변동점";
+      if (!rec) return false;
+      const isOfficial = rec.isOfficialLedger || String(rec.id || "").startsWith("ledger_");
+      // 🔒 [품질 단일 원천 원칙] 이창엽(품질관리자)이 정식 분류/등록한 건 및 전자결재 승인 진행/완료건만 공식 대장에 표출
+      const isLeeClassified =
+        rec.classifiedBy === "이창엽" ||
+        rec.registeredBy === "이창엽" ||
+        rec.author === "이창엽" ||
+        String(rec.writer || "").includes("이창엽") ||
+        rec.isQualityClassified === true ||
+        rec.sourceType === "WORK_REPORT_NC" ||
+        rec.approvalStatus === "PENDING_APPROVAL" ||
+        rec.approvalStatus === "APPROVED";
+      return isOfficial && isLeeClassified;
     });
   }, [fourMRecords]);
 

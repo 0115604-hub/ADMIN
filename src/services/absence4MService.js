@@ -278,24 +278,8 @@ export const save4MAbsenceLog = async (entryData) => {
         ? `[${cleanComp}] ${absentName}(${absentPos}, ${absentDept}) 결근 ➔ [라인비가동]`
         : `[${cleanComp}] ${absentName}(${absentPos}, ${absentDept}) 결근 ➔ ${isSub ? `${subName}(${subPos}) 대체투입` : "대체 미투입"}`;
 
-      await registerToFourMLedger({
-        id: `man_log_${id}`,
-        originalId: id,
-        rawId: id,
-        fourM: "Man",
-        origin: isSub ? "4M 대체투입" : "결근발생",
-        sourceType: "MAN_ABSENCE_LOG",
-        badgeColor: "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border-purple-300 dark:border-purple-700",
-        plant,
-        line: `${entryData.process || "압출"} 공정`,
-        writer: entryData.checkpoints?.supervisorName || `${cleanComp} 관리자`,
-        title,
-        date: dateStr,
-        content: fullData.oneLineLog || title,
-        actionResult: isLineStopped ? "라인 비가동 (공정 정지/품질영향 없음)" : (isSub ? `대체작업자 ${subName}(${subPos}) 투입 완료` : "대체 미투입"),
-        isResolved: isSub || isLineStopped,
-        severity: risk.level === "HIGH" ? "HIGH" : "NORMAL"
-      }, "관리자");
+      // 🔒 [품질 단일 원천 원칙] 결근/대체투입 내역은 하단 통합 취합 패널에서 실시간 수합되며,
+      // 공식 4M 관리대장에는 이창엽(품질관리자)이 검토 후 직접 분류/등록한 건만 등재됩니다.
     } catch (syncErr) {
       console.warn("Auto sync to fourM change points error:", syncErr);
     }
