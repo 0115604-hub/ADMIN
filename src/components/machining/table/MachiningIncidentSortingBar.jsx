@@ -4,7 +4,7 @@ export const MachiningIncidentSortingBar = ({
   incidentStats,
   machiningIncidents = [],
   handleSortIncident,
-  title = "당일 가공동 비가동 · 부적합 1차 소팅",
+  title = "당일 가공동 비가동 · 부적합 1차 분류",
   emptyText = "🟢 오늘 접수된 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
 }) => {
   return (
@@ -19,11 +19,11 @@ export const MachiningIncidentSortingBar = ({
           </span>
           {incidentStats.unsorted > 0 ? (
             <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black font-black text-[10.5px] animate-pulse">
-              ⏳ 미소팅 {incidentStats.unsorted}건
+              ⏳ 분류 {incidentStats.unsorted}건
             </span>
           ) : (
             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-bold text-[10.5px]">
-              🟢 소팅완료
+              🟢 분류완료
             </span>
           )}
           <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10.5px]">
@@ -34,7 +34,7 @@ export const MachiningIncidentSortingBar = ({
           </span>
         </div>
         <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-          ※ 관리자 검토 후 원클릭 소팅 ➡️ 품질 변동점 대장 자동 이관
+          ※ 관리자 검토 후 원클릭 분류 ➡️ 품질 변동점 대장 자동 이관
         </span>
       </div>
 
@@ -64,7 +64,7 @@ export const MachiningIncidentSortingBar = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     {isUnsorted && (
                       <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">
-                        미소팅
+                        분류
                       </span>
                     )}
                     {isQuality && (
@@ -141,9 +141,9 @@ export const MachiningIncidentSortingBar = ({
                         type="button"
                         onClick={() => handleSortIncident(inc, "UNREGISTERED")}
                         className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
-                        title="소팅 취소 및 재설정"
+                        title="분류 취소 및 재설정"
                       >
-                        ↩️ 재소팅
+                        ↩️ 재분류
                       </button>
                     </div>
                   )}

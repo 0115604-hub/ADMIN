@@ -21,7 +21,7 @@ const COLLECTION_NAME = "machining_work_reports";
 export const MACHINING_PROJECTS = [
   { id: "HR", name: "HR G/RUN", carModel: "HR", partName: "G/RUN (포터)", icon: "🚚", color: "amber" },
   { id: "JA", name: "JA G/RUN", carModel: "JA", partName: "G/RUN (모닝/레이)", icon: "🚗", color: "indigo" },
-  { id: "NX5A", name: "NX5a G/RUN", carModel: "NX5a", partName: "G/RUN (투싼 PE)", icon: "⚡", color: "teal" },
+  { id: "NX5A", name: "NX5a PTR", carModel: "NX5a", partName: "PTR (투싼 PE)", icon: "⚡", color: "teal" },
   { id: "NX4", name: "NX4 G/RUN", carModel: "NX4", partName: "G/RUN (투싼)", icon: "🚙", color: "blue" }
 ];
 

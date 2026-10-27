@@ -78,7 +78,7 @@ export const MachiningTemplateAssignmentModal = ({
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                {pk === "HR" ? "🚚 HR G/RUN" : pk === "JA" ? "🚗 JA G/RUN" : "⚡ NX5a G/RUN"}
+                {pk === "HR" ? "🚚 HR G/RUN" : pk === "JA" ? "🚗 JA G/RUN" : "⚡ NX5a PTR"}
               </button>
             ))}
           </div>

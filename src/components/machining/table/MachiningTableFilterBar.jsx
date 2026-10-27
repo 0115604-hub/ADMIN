@@ -28,7 +28,7 @@ export const MachiningTableFilterBar = ({
             <option value="all">전체 차종</option>
             <option value="HR">🚚 HR G/RUN</option>
             <option value="JA">🚗 JA G/RUN</option>
-            <option value="NX5A">⚡ NX5a G/RUN</option>
+            <option value="NX5A">⚡ NX5a PTR</option>
             <option value="NX4">🚙 NX4 G/RUN</option>
           </select>
         </div>

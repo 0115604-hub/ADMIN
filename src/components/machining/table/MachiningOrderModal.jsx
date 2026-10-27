@@ -16,7 +16,7 @@ export const MachiningOrderModal = ({
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-xl bg-indigo-600 text-white font-black text-sm">🎯</span>
             <h4 className="font-black text-sm text-white">
-              [{orderModalProject} G/RUN] 생산오더 설정
+              [{orderModalProject === "NX5A" ? "NX5a PTR" : `${orderModalProject} G/RUN`}] 생산오더 설정
             </h4>
           </div>
           <button

@@ -380,7 +380,7 @@ export default function Step2ProductionManagerPanel({
     } else {
       await unregisterFromFourMLedger(item.id);
       await unregisterFromFourMLedger(`ledger_${item.id}`);
-      setToastMessage(`↩️ [${item.line}] 항목이 [미소팅 상태]로 재설정되었습니다.`);
+      setToastMessage(`↩️ [${item.line}] 항목이 [분류 대기 상태]로 재설정되었습니다.`);
     }
     setTimeout(() => setToastMessage(""), 4000);
   };
@@ -441,7 +441,7 @@ export default function Step2ProductionManagerPanel({
               </h2>
             </div>
             <p className="text-xs text-indigo-200/90 mt-0.5">
-              관리자: <strong className="text-white font-black">{managerName} {currentProfile?.title || "책임"}</strong> • {effectiveProcess === "machining" ? "가공 3대 아이템(HR · JA · NX5a)" : "압출 1~4호기 라인"} 오더/실적 달성률 관리 및 당일 비가동/부적합 1차 소팅
+              관리자: <strong className="text-white font-black">{managerName} {currentProfile?.title || "책임"}</strong> • {effectiveProcess === "machining" ? "가공 3대 아이템(HR · JA G/RUN, NX5a PTR)" : "압출 1~4호기 라인"} 오더/실적 달성률 관리 및 당일 비가동/부적합 1차 분류
             </p>
           </div>
         </div>
@@ -491,17 +491,6 @@ export default function Step2ProductionManagerPanel({
               <>
                 <button
                   type="button"
-                  onClick={() => setSelectedItemBadge("ALL")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    selectedItemBadge === "ALL"
-                      ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md ring-2 ring-slate-400"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                  }`}
-                >
-                  전체 아이템 보기
-                </button>
-                <button
-                  type="button"
                   onClick={() => setSelectedItemBadge(selectedItemBadge === "HR" ? "ALL" : "HR")}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
                     selectedItemBadge === "HR"
@@ -533,7 +522,7 @@ export default function Step2ProductionManagerPanel({
                       : "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 hover:bg-teal-100"
                   }`}
                 >
-                  <span>⚡</span> <span>NX5a G/RUN</span>
+                  <span>⚡</span> <span>NX5a PTR</span>
                   {selectedItemBadge === "NX5A" && <span className="bg-teal-900 text-teal-200 px-1.5 py-0.2 rounded-full text-[9px]">선택됨</span>}
                 </button>
               </>
@@ -715,7 +704,7 @@ export default function Step2ProductionManagerPanel({
               <div className="flex items-center justify-between">
                 <span className="font-black text-xs text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
                   <span>⚡</span>
-                  <span>NX5a G/RUN (투싼 PE)</span>
+                  <span>NX5a PTR (투싼 PE)</span>
                   {selectedItemBadge === "NX5A" && (
                     <span className="px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[9px] font-black">
                       선택됨
@@ -899,7 +888,7 @@ export default function Step2ProductionManagerPanel({
                   : "bg-slate-100 text-slate-500"
               }`}
             >
-              ⏳ 미소팅 {incidentCounts.unsorted}건
+              ⏳ 분류 {incidentCounts.unsorted}건
             </button>
 
             <button
@@ -962,7 +951,7 @@ export default function Step2ProductionManagerPanel({
                       </span>
                       {isUnsorted && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">
-                          미소팅
+                          분류
                         </span>
                       )}
                       {isQuality && (

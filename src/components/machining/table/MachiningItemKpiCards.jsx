@@ -23,17 +23,6 @@ export const MachiningItemKpiCards = ({
           </span>
           <button
             type="button"
-            onClick={() => setProjectFilter("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              projectFilter === "all"
-                ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md ring-2 ring-slate-400"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
-          >
-            전체 아이템 보기 ({reportsCount}건)
-          </button>
-          <button
-            type="button"
             onClick={() => setProjectFilter(projectFilter === "HR" ? "all" : "HR")}
             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
               projectFilter === "HR"
@@ -73,7 +62,7 @@ export const MachiningItemKpiCards = ({
                 : "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 hover:bg-teal-100"
             }`}
           >
-            <span>⚡</span> <span>NX5a G/RUN</span>
+            <span>⚡</span> <span>NX5a PTR</span>
             {projectFilter === "NX5A" && (
               <span className="bg-teal-900 text-teal-200 px-1.5 py-0.2 rounded-full text-[9px]">
                 선택됨
@@ -246,7 +235,7 @@ export const MachiningItemKpiCards = ({
           <div className="flex items-center justify-between">
             <span className="font-black text-xs text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
               <span>⚡</span>
-              <span>NX5a G/RUN (투싼 PE)</span>
+              <span>NX5a PTR (투싼 PE)</span>
               {projectFilter === "NX5A" && (
                 <span className="px-1.5 py-0.5 rounded-full bg-teal-600 text-white text-[9px] font-black">
                   선택됨

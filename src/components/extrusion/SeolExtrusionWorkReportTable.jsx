@@ -497,7 +497,7 @@ export const SeolExtrusionWorkReportTable = ({
             </span>
             {incidentStats.unsorted > 0 ? (
               <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black font-black text-[10.5px] animate-pulse">
-                ⏳ 미소팅 {incidentStats.unsorted}건
+                ⏳ 분류 {incidentStats.unsorted}건
               </span>
             ) : (
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-bold text-[10.5px]">
@@ -542,7 +542,7 @@ export const SeolExtrusionWorkReportTable = ({
                     <div className="flex items-center gap-2 flex-wrap">
                       {isUnsorted && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">
-                          미소팅
+                          분류
                         </span>
                       )}
                       {isQuality && (

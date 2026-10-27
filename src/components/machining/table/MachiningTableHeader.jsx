@@ -19,7 +19,7 @@ export const MachiningTableHeader = ({
             </span>
           </h3>
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            HR • JA • NX5a(NX4) G/RUN 가공 4대 공정 실시간 보고서 관리
+            HR • JA (G/RUN) · NX5a (PTR) 가공 4대 공정 실시간 보고서 관리
           </span>
         </div>
       </div>
