@@ -555,7 +555,12 @@ export default function Step3QualityControlPanel({
   // ⭐ [4단계 전자결재 상신] : 4M 변동점 공식 결재라인 (이창엽 책임 ➔ 이명재 이사 ➔ 권태형 대표이사)
   const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
-    if (!capaForm.correctiveAction.trim()) {
+    const effectiveAction =
+      capaForm.correctiveAction?.trim() ||
+      capaModalItem.actionResult?.trim() ||
+      capaModalItem.correctiveAction?.trim();
+
+    if (!effectiveAction) {
       alert("시정 및 재발방지대책(조치결과) 내용을 입력해주세요.");
       return;
     }
@@ -575,7 +580,7 @@ export default function Step3QualityControlPanel({
       const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
 
       // ⭐ 4M 변동점 공식 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)
-      const drafterName = managerName || "이창엽";
+      const drafterName = "이창엽";
       const reviewerName = "이명재";
       const approverName = "권태형";
       const approverTitle = "대표이사";
@@ -593,7 +598,7 @@ export default function Step3QualityControlPanel({
           title: "책임",
           status: "APPROVED",
           date: nowStr,
-          comment: "4M 변동점 및 시정대책(CAPA) 기안 상신"
+          comment: `4M 변동점 및 시정대책(CAPA) 기안 상신 (${managerName || "품질관리"})`
         },
         {
           role: "검토",
@@ -622,8 +627,9 @@ export default function Step3QualityControlPanel({
         typeName: "4M 변동점 및 CAPA 승인 품의서",
         plant: plant,
         department: "품질보증팀",
-        drafter: managerName || "이창엽",
+        drafter: "이창엽",
         drafterTitle: "책임",
+        submittedByManager: managerName || "관리자",
         fourM: capaForm.fourM,
         isSqNotice: capaForm.isSqNotice,
         line: capaModalItem.line || "",
@@ -637,10 +643,11 @@ export default function Step3QualityControlPanel({
           capaModalItem.scrapKg > 0 ? `• 폐기량: ${capaModalItem.scrapKg}kg` : "",
           ``,
           `[조치결과 및 시정/예방대책 (CAPA)]`,
-          `${capaForm.correctiveAction}`,
+          `${effectiveAction}`,
           ``,
           `[조치 담당자 및 기한]`,
-          `• 담당자: ${capaForm.author}`,
+          `• 조치 담당자: ${capaForm.author || managerName || "이창엽"}`,
+          `• 상신 관리자: ${managerName || "관리자"}`,
           `• 조치완료(예정)일: ${capaForm.targetDate}`,
           `• 증빙사진: 조치 전 ${capaForm.beforePhotos.length}장 / 조치 후 ${capaForm.afterPhotos.length}장 첨부됨`
         ].filter(Boolean).join("\n"),

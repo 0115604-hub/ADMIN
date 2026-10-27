@@ -1053,7 +1053,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     // 2️⃣ 특근일(주말/공휴일): 5개사 개별 특근보고서 작성 및 상신 (0ms 낙관적 즉시 반영 + 백그라운드 병렬 동기화)
     const workDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const plant = getPlantForCompany(cleanComp);
-    const compSlugMap = { "오륙": "oryuk", "유성": "yuseong", "조영": "joyoung", "한울": "hanul", "부림텍": "burim" };
+    const compSlugMap = { "오륙": "oryuk", "유성": "yuseong", "조영": "joyoung", "한울": "hanul", "부림텍": "burimtech" };
     const compSlug = compSlugMap[cleanComp] || "oryuk";
     const reportId = `report_ot_${compSlug}_${workDateStr.replace(/-/g, "_")}`;
 

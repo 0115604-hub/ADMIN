@@ -351,10 +351,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     )
   );
 
-  // 🌟 부림텍 관리자 (대표이사 hal_br 등)
+  // 🌟 부림텍 관리자 (김동훈 책임, 대표이사 hal_br 등)
   const isBurimtechManager = Boolean(
     currentProfile?.name === "부림텍" ||
     currentProfile?.id === "hal_br" ||
+    currentProfile?.name === "김동훈" ||
     (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("부림") || currentProfile?.company === "부림텍"))
   );
 
@@ -363,14 +364,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       currentProfile?.portalType === "bulimtech" ||
       currentProfile?.company?.includes("부림") ||
       currentProfile?.name === "부림텍" ||
+      currentProfile?.name === "김동훈" ||
       String(currentProfile?.id || "").startsWith("hal_br_")
     )
   );
 
-  // 🌟 유성 관리자 (대표이사 sam_ys 등)
+  // 🌟 유성 관리자 (이성기 선임, 대표이사 sam_ys 등)
   const isYuseongManager = Boolean(
     currentProfile?.name === "유성" ||
     currentProfile?.id === "sam_ys" ||
+    currentProfile?.name === "이성기" ||
     (!currentProfile?.isFieldWorker && (currentProfile?.company?.includes("유성") || currentProfile?.company === "유성"))
   );
 

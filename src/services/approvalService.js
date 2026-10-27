@@ -100,9 +100,13 @@ export const APPROVAL_MANAGERS = {
     { name: "유동길", title: "선임", plant: "삼랑진공장", process: "가공동 관리", isManager: true },
     { name: "조인주", title: "선임", plant: "삼랑진공장", process: "경리업무", isManager: true },
     { name: "이상기", title: "주임", plant: "삼랑진공장", process: "품질관리", isManager: true },
+    // 협력업체 관리자 (삼랑진/유성)
+    { name: "이성기", title: "선임", plant: "삼랑진공장", process: "유성 관리자", company: "유성", isManager: true },
     // 한림공장 관리/책임/선임/사원
     { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리", isManager: true },
-    { name: "오상민", title: "선임", plant: "한림공장", process: "가공동 관리", isManager: true },
+    { name: "오상민", title: "선임", plant: "한림공장", process: "조영 관리자", company: "조영", isManager: true },
+    { name: "황수현", title: "선임", plant: "한림공장", process: "한울 관리자", company: "한울", isManager: true },
+    { name: "김동훈", title: "책임", plant: "한림공장", process: "부림텍 관리자", company: "부림텍", isManager: true },
     { name: "정현규", title: "사원", plant: "한림공장", process: "가공동 관리", isManager: true },
     // 압출동 작업자
     { name: "공영국", title: "대리", plant: "삼랑진공장", process: "압출동", isManager: false },
@@ -124,11 +128,14 @@ export const APPROVAL_MANAGERS = {
     { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리" },
     { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리" },
     { name: "전재율", title: "책임", plant: "삼랑진공장", process: "설비보전" },
+    { name: "이성기", title: "선임", plant: "삼랑진공장", process: "유성 관리자", company: "유성" },
     { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리" },
+    { name: "오상민", title: "선임", plant: "한림공장", process: "조영 관리자", company: "조영" },
+    { name: "황수현", title: "선임", plant: "한림공장", process: "한울 관리자", company: "한울" },
+    { name: "김동훈", title: "책임", plant: "한림공장", process: "부림텍 관리자", company: "부림텍" },
     { name: "양인나", title: "선임", plant: "삼랑진공장", process: "가공동 관리" },
     { name: "유동길", title: "선임", plant: "삼랑진공장", process: "가공동 관리" },
     { name: "조인주", title: "선임", plant: "삼랑진공장", process: "경리업무" },
-    { name: "오상민", title: "선임", plant: "한림공장", process: "가공동 관리" },
     { name: "공영국", title: "대리", plant: "삼랑진공장", process: "압출동" },
     { name: "심임대", title: "반장", plant: "삼랑진공장", process: "압출동" },
     { name: "이상은", title: "반장", plant: "삼랑진공장", process: "압출동" }
@@ -593,53 +600,102 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
   const stepRole = activeStep?.role || "";
   const stepName = activeStep?.name || "";
 
-  // 프로필 정보가 없으면 전사 미결 여부로 기본 반환
-  if (!currentProfile) return true;
+  // 1. 프로필 없거나 최고 관리자(ADMIN):
+  // 전사 진행 중인 결재 서류는 최고 관리자에게 즉시 미결(Pending) 건수로 카운트되어
+  // 뱃지에 빨간색 및 정확한 미결 건수가 표기됨 (전결/상신 감시 권한)
+  const isProfileAdmin = Boolean(
+    isAdmin ||
+    currentProfile?.role === "ADMIN" ||
+    currentProfile?.id === "admin" ||
+    currentProfile?.id === "admin_choi"
+  );
+  if (!currentProfile || isProfileAdmin) {
+    return true;
+  }
 
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
-  const userRole = currentProfile?.role || "";
   const userPlant = currentProfile?.plant || "";
+  const docPlant = doc.plant || "";
+  const docCompany = cleanCompanyName(doc.company || "");
 
-  // 1. 최고 경영진 (권태형 대표이사 / 본사 ADMIN) -> 4단계 (대표/승인) 최종 승인 차례 문서
-  if (userName === "권태형" || userTitle === "대표" || userTitle === "대표이사" || (userRole === "ADMIN" && userName !== "최미영")) {
-    return stepRole === "대표" || stepRole === "승인";
+  // 2. 최고 경영진 (권태형 대표이사) -> 전사 상신/진행 중인 모든 결재 서류 미결 뱃지 표기
+  if (userName === "권태형" || userTitle === "대표이사" || userTitle === "대표") {
+    return true;
   }
 
-  // 2. 최고 경영진 (최미영 전무) -> 4단계 (대표/승인) 또는 배정된 3단계 (이사/전무) 결재 대기 문서
+  // 3. 경영총괄 (최미영 전무)
   if (userName === "최미영" || userTitle === "전무") {
     if (stepRole === "대표" || stepRole === "승인") return true;
-    if (stepRole === "이사" && (!stepName || stepName.includes("최미영"))) return true;
-    return false;
+    if (stepRole === "이사" && (!stepName || stepName.includes("최미영") || docPlant !== "삼랑진공장")) return true;
+    return true;
   }
 
-  // 3. 삼랑진공장 총괄 / 이사 (이명재 이사) -> 3단계 (이사) 결재 대기 문서
-  if (userName === "이명재" || userTitle === "이사") {
-    if (stepRole !== "이사") return false;
-    return !stepName || stepName.includes("이명재") || doc.plant === "삼랑진공장";
-  }
-
-  // 4. 한림공장 총괄 / 책임 (김동욱 책임) -> 한림공장 2단계 (책임) 또는 지정된 이사 결재 대기 문서
-  if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
-    if (stepRole === "책임" && (doc.plant === "한림공장" || !stepName || stepName.includes("김동욱"))) return true;
-    if (stepRole === "이사" && stepName && stepName.includes("김동욱")) return true;
-    return false;
-  }
-
-  // 5. 공장별 책임/선임 (윤경수, 설유철, 이창엽, 전재율, 조인주, 오상민 등) -> 해당 공장 2단계 (책임/검토)
-  if (stepRole === "책임" || stepRole === "검토") {
-    if (stepName && (stepName.includes(userName) || userName.includes(stepName))) return true;
-    if (userPlant && doc.plant && userPlant === doc.plant && (userTitle === "책임" || userTitle === "선임" || userTitle === "대리" || userTitle === "반장")) return true;
-    return false;
-  }
-
-  // 6. 1단계 담당 (작성자)
-  if (stepRole === "담당") {
-    return Boolean(stepName && (stepName.includes(userName) || userName.includes(stepName)));
-  }
-
-  // 7. 직접 지정된 결재자 일치 시
+  // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
   if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
+    return true;
+  }
+
+  // 5. 4M 변동점 결재 서류 전용 결재라인: 이창엽(상신/기안) ➔ 이명재(검토) ➔ 권태형(최종승인)
+  if (isFourMApprovalDoc(doc)) {
+    if (activeStepIdx === 1 && (userName === "이명재" || userTitle === "이사")) {
+      return true;
+    }
+    if (activeStepIdx === 2 && (userName === "권태형" || userTitle.includes("대표"))) {
+      return true;
+    }
+    if (userName === "이창엽" || userName === (doc.drafter || "")) {
+      return true;
+    }
+  }
+
+  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사)
+  if (userName === "이명재" || userTitle === "이사") {
+    if (stepRole === "이사" || stepRole === "검토") {
+      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || isFourMApprovalDoc(doc);
+    }
+    return false;
+  }
+
+  // 7. 한림공장 총괄 / 책임 (김동욱 책임)
+  if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
+    if (docPlant === "한림공장") {
+      if (stepRole === "책임" || stepRole === "검토") return true;
+      if (stepRole === "이사" && (!stepName || stepName.includes("김동욱"))) return true;
+    }
+    return false;
+  }
+
+  // 8. 협력업체 관리자 (황수현: 한울, 김동훈: 부림텍, 이성기: 유성, 오상민: 조영)
+  // 소속 업체의 결재 서류가 진행 중이면 해당 관리자의 결재 대기 뱃지에 즉시 카운트
+  const isHanulManager = userName === "황수현" || currentProfile?.id?.startsWith("hal_hu");
+  const isBurimManager = userName === "김동훈" || currentProfile?.id?.startsWith("hal_br");
+  const isYuseongManager = userName === "이성기" || currentProfile?.id?.startsWith("sam_ys");
+  const isJoyoungManager = userName === "오상민";
+
+  if (isHanulManager && (docCompany === "한울" || doc.title?.includes("한울"))) return true;
+  if (isBurimManager && (docCompany === "부림텍" || doc.title?.includes("부림텍") || doc.title?.includes("부림"))) return true;
+  if (isYuseongManager && (docCompany === "유성" || doc.title?.includes("유성"))) return true;
+  if (isJoyoungManager && (docCompany === "조영" || doc.title?.includes("조영"))) return true;
+
+  // 9. 공장별 책임/선임/관리자 (윤경수, 설유철, 이창엽, 전재율, 조인주, 양인나, 유동길 등)
+  if (stepRole === "책임" || stepRole === "검토") {
+    if (userPlant && docPlant && userPlant === docPlant) {
+      if (
+        userTitle === "책임" ||
+        userTitle === "선임" ||
+        userTitle === "대리" ||
+        userTitle === "반장" ||
+        userTitle === "대표" ||
+        userTitle.includes("관리자")
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // 10. 기안자 본인이 작성한 문서가 진행 중인 경우 본인 확인
+  if (doc.drafter === userName || (doc.drafter && doc.drafter.includes(userName))) {
     return true;
   }
 
@@ -942,19 +998,17 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
   // ⭐ 4M 변동점 결재서류 전용 결재라인 권한 판정: 이창엽(상신/기안) ➔ 이명재(검토) ➔ 권태형(최종승인)
   if (isFourMApprovalDoc(docItem)) {
     if (activeStepIdx === 0) {
-      if (userName === "이창엽" || isDirectTarget) {
-        return {
-          canApprove: true,
-          stepIndex: activeStepIdx,
-          stepRole,
-          approverName: "이창엽"
-        };
-      }
-      return { canApprove: false, reason: "[기안/상신] 이창엽 책임 결재 권한이 필요합니다." };
+      // 4M 변동점 기안/상신은 현장 및 공장 모든 관리자가 상신할 수 있으며, 결재선에는 공식 담당자인 이창엽 책임으로 상신 기록됨
+      return {
+        canApprove: true,
+        stepIndex: activeStepIdx,
+        stepRole,
+        approverName: "이창엽"
+      };
     }
 
     if (activeStepIdx === 1) {
-      if (userName === "이명재" || userTitle.includes("이사") || isDirectTarget) {
+      if (userName === "이명재" || userTitle.includes("이사") || isDirectTarget || isAdmin) {
         return {
           canApprove: true,
           stepIndex: activeStepIdx,
@@ -966,7 +1020,7 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
     }
 
     if (activeStepIdx === 2) {
-      if (userName === "권태형" || userTitle.includes("대표") || isDirectTarget) {
+      if (userName === "권태형" || userTitle.includes("대표") || isDirectTarget || isAdmin) {
         return {
           canApprove: true,
           stepIndex: activeStepIdx,
@@ -992,13 +1046,26 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
   // 3. Step 2: 책임 / 검토 (지정된 관리자/책임자 또는 공정 관리 직급)
   if (stepRole === "책임" || stepRole === "검토") {
     const isStepTarget = isDirectTarget;
-    const isLeadTitle = userTitle === "책임" || userTitle === "총괄" || userTitle === "선임" || userTitle === "대리" || userTitle === "반장";
+    const isLeadTitle =
+      userTitle === "책임" ||
+      userTitle === "총괄" ||
+      userTitle === "선임" ||
+      userTitle === "대리" ||
+      userTitle === "반장" ||
+      userTitle === "대표" ||
+      userTitle.includes("대표") ||
+      userTitle.includes("관리자");
+
+    const userComp = cleanCompanyName(currentProfile?.company || "");
+    const docComp = cleanCompanyName(docItem.company || "");
+    const isSameCompanyLead = userComp && docComp && userComp === docComp;
+
     const isPlantLead =
-      (docItem.plant === "한림공장" && (userName === "김동욱" || userName === "오상민" || isLeadTitle)) ||
-      (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || userName === "양인나" || userName === "유동길" || userName === "조인주" || isLeadTitle)) ||
+      (docItem.plant === "한림공장" && (userName === "김동욱" || userName === "오상민" || userName === "황수현" || userName === "김동훈" || isLeadTitle)) ||
+      (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || userName === "양인나" || userName === "유동길" || userName === "조인주" || userName === "이성기" || isLeadTitle)) ||
       userName === "이명재" || userName === "최미영" || userName === "권태형" || userName === "김동욱"; // 상위 결재자/임원 전결 가능
 
-    if (isStepTarget || isPlantLead || isLeadTitle || isAdmin) {
+    if (isStepTarget || isPlantLead || isSameCompanyLead || isLeadTitle || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
