@@ -155,7 +155,16 @@ export const ElectronicApprovalView = ({
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, GENERAL
-  const [selectedTab, setSelectedTab] = useState("ALL"); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
+  const [selectedTab, setSelectedTab] = useState(() => {
+    try {
+      const initTab = sessionStorage.getItem("approval_initial_tab");
+      if (initTab) {
+        sessionStorage.removeItem("approval_initial_tab");
+        return initTab;
+      }
+    } catch (e) {}
+    return "ALL";
+  }); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlant, setSelectedPlant] = useState(() => {
     if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
@@ -968,6 +977,7 @@ export const ElectronicApprovalView = ({
             onClick={() => {
               setSelectedTab("PENDING");
               setDocCategoryFilter("ALL");
+              setSelectedPlant("ALL");
             }}
             className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selectedTab === "PENDING" && docCategoryFilter === "ALL"
@@ -990,6 +1000,7 @@ export const ElectronicApprovalView = ({
                       e.stopPropagation();
                       setSelectedTab("COMPANY_IN_PROGRESS");
                       setDocCategoryFilter("ALL");
+                      setSelectedPlant("ALL");
                     }}
                     className="text-[9.5px] font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-mono bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs hover:border-slate-400 transition-all"
                     title="클릭하여 전사 미결(진행중) 목록 전체 보기"
@@ -1008,6 +1019,7 @@ export const ElectronicApprovalView = ({
                 onClick={() => {
                   setSelectedTab("PENDING");
                   setDocCategoryFilter("GENERAL");
+                  setSelectedPlant("ALL");
                 }}
                 className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                   selectedTab === "PENDING" && docCategoryFilter === "GENERAL"
@@ -1029,6 +1041,7 @@ export const ElectronicApprovalView = ({
                 onClick={() => {
                   setSelectedTab("PENDING");
                   setDocCategoryFilter("FOUR_M");
+                  setSelectedPlant("ALL");
                 }}
                 className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                   selectedTab === "PENDING" && docCategoryFilter === "FOUR_M"
@@ -1050,6 +1063,7 @@ export const ElectronicApprovalView = ({
                 onClick={() => {
                   setSelectedTab("PENDING");
                   setDocCategoryFilter("OVERTIME");
+                  setSelectedPlant("ALL");
                 }}
                 className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                   selectedTab === "PENDING" && docCategoryFilter === "OVERTIME"

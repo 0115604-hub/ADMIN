@@ -104,6 +104,11 @@ export const WorkerScheduleCalendarSection = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    try {
+                      if (pendingCount > 0) {
+                        sessionStorage.setItem("approval_initial_tab", "PENDING");
+                      }
+                    } catch (err) {}
                     if (onNavigateTab) onNavigateTab("electronic_approval");
                   }}
                   className={`px-2 py-1 rounded-lg border text-[10.5px] font-black transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 group/appr ${
