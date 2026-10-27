@@ -28,6 +28,7 @@ import {
   registerToFourMLedger,
   unregisterFromFourMLedger
 } from "../../../services/fourMChangePointService";
+import { useCapaActionModalState } from "../../quality/step3/useCapaActionModalState";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -380,7 +381,24 @@ export const useMachiningWorkReportTableState = ({
     };
   }, [machiningIncidents]);
 
+  const capaModalState = useCapaActionModalState({
+    managerName: currentWorkerName || "가공동 관리자",
+    defaultPlant: "삼랑진공장",
+    ledgerState,
+    setLedgerState,
+    onAfterSave: (item) => {
+      setAssignToast(`🚨 [${item.line || item.project || "가공동"}] 조치결과가 전체취합대장(품질 이관)으로 정상 등록되었습니다.`);
+      setTimeout(() => setAssignToast(""), 4000);
+    }
+  });
+
   const handleSortIncident = async (item, targetType) => {
+    if (targetType === "CHANGE_POINT") {
+      // ⭐ 품질변동점이관 탭 시: 이창엽의 수정&결재 팝업창과 동일한 CAPA 모달을 열어 조치결과까지 입력 후 전체취합대장으로 이관
+      capaModalState.handleOpenCapaModal(item, currentWorkerName || "가공동 관리자");
+      return;
+    }
+
     const nowStr = new Date().toLocaleString("ko-KR", {
       year: "numeric",
       month: "2-digit",
@@ -408,37 +426,7 @@ export const useMachiningWorkReportTableState = ({
     setLedgerState(nextState);
     await saveWorkReportNcLedger(nextState);
 
-    if (targetType === "CHANGE_POINT") {
-      await registerToFourMLedger(
-        {
-          id: `ledger_${item.id}`,
-          originalId: item.id,
-          rawId: item.id,
-          fourM: "Method",
-          origin: "가공동 작업일보 부적합",
-          sourceType: "WORK_REPORT_NC",
-          plant: "삼랑진공장",
-          line: `${item.project} ${item.processId || "가공라인"}`,
-          writer: item.worker || managerName,
-          title: `[가공동 부적합] ${item.project} - ${item.defectType}`,
-          date: item.date,
-          time: item.time || "",
-          content: item.content || item.defectType || "",
-          actionResult: item.actionResult || "",
-          actionAuthor: item.actionResult ? managerName : "",
-          actionAt: item.actionResult ? nowStr : "",
-          images: item.beforePhoto ? [item.beforePhoto] : [],
-          actionImages: item.afterPhoto ? [item.afterPhoto] : [],
-          isResolved: Boolean(item.actionResult || item.afterPhoto),
-          scrapKg: Number(item.scrapKg) || 0,
-          downtimeMinutes: Number(item.minutes) || 0,
-          registrationBadge: "변동점등록",
-          isOfficialLedger: true
-        },
-        managerName
-      );
-      setAssignToast(`🚨 [${item.project} ${item.defectType}] 건이 3단계 품질관리자(이창엽 책임) 4M 대장으로 이관되었습니다.`);
-    } else if (targetType === "INTERNAL") {
+    if (targetType === "INTERNAL") {
       await unregisterFromFourMLedger(item.id);
       await unregisterFromFourMLedger(`ledger_${item.id}`);
       setAssignToast(`🟢 [${item.project} ${item.defectType}] 건이 사내 내부관리로 종결 처리되었습니다.`);
@@ -536,6 +524,7 @@ export const useMachiningWorkReportTableState = ({
     handleSortIncident,
     handleOpenOrderEdit,
     handleSaveOrderModal,
-    handleDelete
+    handleDelete,
+    ...capaModalState
   };
 };

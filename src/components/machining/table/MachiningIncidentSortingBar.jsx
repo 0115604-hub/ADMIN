@@ -124,14 +124,26 @@ export const MachiningIncidentSortingBar = ({
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSortIncident(inc, "UNREGISTERED")}
-                      className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
-                      title="소팅 취소 및 재설정"
-                    >
-                      ↩️ 재소팅
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {isQuality && (
+                        <button
+                          type="button"
+                          onClick={() => handleSortIncident(inc, "CHANGE_POINT")}
+                          className="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-[10.5px] font-bold cursor-pointer transition flex items-center gap-1"
+                          title="시정조치 및 조치결과 수정"
+                        >
+                          <span>✏️ 조치수정</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSortIncident(inc, "UNREGISTERED")}
+                        className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
+                        title="소팅 취소 및 재설정"
+                      >
+                        ↩️ 재소팅
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

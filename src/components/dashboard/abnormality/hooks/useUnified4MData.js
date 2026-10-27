@@ -881,7 +881,7 @@ export const useUnified4MData = (workLogs = []) => {
         downtimeMinutes: Number(rec.downtimeMinutes) || 0,
         scrapKg: Number(rec.scrapKg) || 0,
         raw: rec,
-        isOfficialLedger: true
+        isOfficialLedger: Boolean(rec.isOfficialLedger)
       };
     });
 

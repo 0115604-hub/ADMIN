@@ -28,15 +28,20 @@ export const Step3CapaActionModal = ({
   handleSaveProgress,
   handleSubmitToElectronicApproval,
   isSubmittingCapa,
-  setPreviewImage
+  setPreviewImage,
+  modalTitle = "4M 시정조치 수정&결재",
+  submitButtonText = null,
+  saveButtonText = "수정"
 }) => {
   if (!capaModalItem) return null;
 
-  const isApproved = checkIsCeoApproved(capaModalItem);
+  const isApproved = typeof checkIsCeoApproved === "function" ? checkIsCeoApproved(capaModalItem) : false;
+  const currentPlant = modalApproverInfo?.plant || capaModalItem.plant || capaForm.plant || "삼랑진공장";
+  const approverLine = modalApproverInfo?.lineDisplay || "생산팀장 ➔ 품질부서장(이창엽) ➔ 대표이사(권태형)";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto p-5 sm:p-7 space-y-4 text-left">
+      <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto p-5 sm:p-7 space-y-4 text-left animate-fadeIn">
         {/* Modal Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-3">
@@ -53,10 +58,10 @@ export const Step3CapaActionModal = ({
                   }`}
                 >
                   {isApproved && <span>✅</span>}
-                  <span>4M 시정조치 수정&결재</span>
+                  <span>{modalTitle}</span>
                 </span>
                 <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
-                  [{modalApproverInfo.plant}] {capaModalItem.line}
+                  [{currentPlant}] {capaModalItem.line || capaForm.line || "생산라인"}
                 </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -64,7 +69,7 @@ export const Step3CapaActionModal = ({
                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                   {String(capaModalItem.id).replace(/^ledger_/, "")}
                 </span>{" "}
-                • 발생일자: {capaModalItem.date} {capaModalItem.time}
+                • 발생일자: {capaModalItem.date} {capaModalItem.time || ""}
               </p>
             </div>
           </div>
@@ -86,7 +91,7 @@ export const Step3CapaActionModal = ({
               <span>
                 {isApproved
                   ? "대표이사 결재완료 (권태형 최종승인)"
-                  : `결재라인: ${modalApproverInfo.lineDisplay}`}
+                  : `결재라인: ${approverLine}`}
               </span>
             </div>
             <button
@@ -396,7 +401,7 @@ export const Step3CapaActionModal = ({
             ) : (
               <>
                 💡 <span className="font-bold text-purple-600 dark:text-purple-400">결재라인: </span>
-                <span>{modalApproverInfo.lineDisplay} (4M 변동점 전용 전자결재)</span>
+                <span>{approverLine} (4M 변동점 전용 전자결재)</span>
               </>
             )}
           </div>
@@ -417,7 +422,7 @@ export const Step3CapaActionModal = ({
               className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs transition cursor-pointer flex items-center gap-1.5"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>수정</span>
+              <span>{saveButtonText || "수정"}</span>
             </button>
 
             <button
@@ -427,7 +432,7 @@ export const Step3CapaActionModal = ({
               className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ring-2 ring-purple-400/40"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isApproved ? "임원결재 재상신" : "임원결재"}</span>
+              <span>{submitButtonText || (isApproved ? "임원결재 재상신" : "임원결재")}</span>
             </button>
           </div>
         </div>

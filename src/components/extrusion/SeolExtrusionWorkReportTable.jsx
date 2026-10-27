@@ -34,6 +34,9 @@ import {
   registerToFourMLedger,
   unregisterFromFourMLedger
 } from "../../services/fourMChangePointService";
+import { useCapaActionModalState } from "../quality/step3/useCapaActionModalState";
+import Step3CapaActionModal from "../quality/step3/Step3CapaActionModal";
+import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -224,7 +227,24 @@ export const SeolExtrusionWorkReportTable = ({
     };
   }, [extrusionIncidents]);
 
+  const capaModalState = useCapaActionModalState({
+    managerName: currentWorkerName || "설유철 책임",
+    defaultPlant: "삼랑진공장",
+    ledgerState,
+    setLedgerState,
+    onAfterSave: (item) => {
+      setAssignToast(`🚨 [${item.line || "압출라인"}] 조치결과가 전체취합대장(품질 이관)으로 정상 등록되었습니다.`);
+      setTimeout(() => setAssignToast(""), 4000);
+    }
+  });
+
   const handleSortIncident = async (item, targetType) => {
+    if (targetType === "CHANGE_POINT") {
+      // ⭐ 품질변동점이관 탭 시: 이창엽의 수정&결재 팝업창과 동일한 CAPA 모달을 열어 조치결과까지 입력 후 전체취합대장으로 이관
+      capaModalState.handleOpenCapaModal(item, currentWorkerName || "설유철 책임");
+      return;
+    }
+
     const nowStr = new Date().toLocaleString("ko-KR", {
       year: "numeric",
       month: "2-digit",
@@ -252,37 +272,7 @@ export const SeolExtrusionWorkReportTable = ({
     setLedgerState(nextState);
     await saveWorkReportNcLedger(nextState);
 
-    if (targetType === "CHANGE_POINT") {
-      await registerToFourMLedger(
-        {
-          id: `ledger_${item.id}`,
-          originalId: item.id,
-          rawId: item.id,
-          fourM: "Machine",
-          origin: "압출동 작업일보 부적합",
-          sourceType: "WORK_REPORT_NC",
-          plant: "삼랑진공장",
-          line: `${item.line || "압출라인"}`,
-          writer: item.worker || managerName,
-          title: `[압출동 비가동] ${item.line} - ${item.defectType}`,
-          date: item.date,
-          time: item.time || "",
-          content: item.content || item.defectType || "",
-          actionResult: item.actionResult || "",
-          actionAuthor: item.actionResult ? managerName : "",
-          actionAt: item.actionResult ? nowStr : "",
-          images: item.beforePhoto ? [item.beforePhoto] : [],
-          actionImages: item.afterPhoto ? [item.afterPhoto] : [],
-          isResolved: Boolean(item.actionResult || item.afterPhoto),
-          scrapKg: Number(item.scrapKg) || 0,
-          downtimeMinutes: Number(item.minutes) || 0,
-          registrationBadge: "변동점등록",
-          isOfficialLedger: true
-        },
-        managerName
-      );
-      setAssignToast(`🚨 [${item.line} ${item.defectType}] 건이 3단계 품질관리자(이창엽 책임) 4M 대장으로 이관되었습니다.`);
-    } else if (targetType === "INTERNAL") {
+    if (targetType === "INTERNAL") {
       await unregisterFromFourMLedger(item.id);
       await unregisterFromFourMLedger(`ledger_${item.id}`);
       setAssignToast(`🟢 [${item.line} ${item.defectType}] 건이 사내 내부관리로 종결 처리되었습니다.`);
@@ -608,14 +598,26 @@ export const SeolExtrusionWorkReportTable = ({
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSortIncident(inc, "UNREGISTERED")}
-                        className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
-                        title="소팅 취소 및 재설정"
-                      >
-                        ↩️ 재소팅
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {isQuality && (
+                          <button
+                            type="button"
+                            onClick={() => handleSortIncident(inc, "CHANGE_POINT")}
+                            className="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-[10.5px] font-bold cursor-pointer transition flex items-center gap-1"
+                            title="시정조치 및 조치결과 수정"
+                          >
+                            <span>✏️ 조치수정</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleSortIncident(inc, "UNREGISTERED")}
+                          className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
+                          title="소팅 취소 및 재설정"
+                        >
+                          ↩️ 재소팅
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -825,6 +827,39 @@ export const SeolExtrusionWorkReportTable = ({
           }
         }}
       />
+
+      {/* ⭐ 4M 시정조치 수정&결재 및 전체취합대장 이관 모달 (설유철 책임 - 이창엽 수정&결재 팝업과 100% 동일) */}
+      {capaModalState.capaModalItem && (
+        <Step3CapaActionModal
+          capaModalItem={capaModalState.capaModalItem}
+          setCapaModalItem={capaModalState.setCapaModalItem}
+          capaForm={capaModalState.capaForm}
+          setCapaForm={capaModalState.setCapaForm}
+          modalApproverInfo={capaModalState.modalApproverInfo}
+          checkIsCeoApproved={capaModalState.checkIsCeoApproved}
+          handleAddBeforePhotos={capaModalState.handleAddBeforePhotos}
+          handleSetBeforePhotoSlot={capaModalState.handleSetBeforePhotoSlot}
+          handleRemoveBeforePhoto={capaModalState.handleRemoveBeforePhoto}
+          handleAddAfterPhotos={capaModalState.handleAddAfterPhotos}
+          handleSetAfterPhotoSlot={capaModalState.handleSetAfterPhotoSlot}
+          handleRemoveAfterPhoto={capaModalState.handleRemoveAfterPhoto}
+          handleSaveProgress={() => capaModalState.handleSaveAndTransferToUnifiedLedger(currentWorkerName)}
+          handleSubmitToElectronicApproval={() => capaModalState.handleSaveAndTransferToUnifiedLedger(currentWorkerName)}
+          isSubmittingCapa={capaModalState.isSubmittingCapa}
+          setPreviewImage={capaModalState.setPreviewImage}
+          modalTitle="4M 시정조치 수정&결재"
+          submitButtonText="전체취합대장 이관 등록"
+          saveButtonText="수정"
+        />
+      )}
+
+      {/* 이미지 라이트박스 미리보기 모달 */}
+      {capaModalState.previewImage && (
+        <ImagePreviewModal
+          previewImage={capaModalState.previewImage}
+          onClose={() => capaModalState.setPreviewImage(null)}
+        />
+      )}
     </div>
   );
 };

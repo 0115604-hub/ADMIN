@@ -196,6 +196,9 @@ export const useStep3QualityState = ({
   const official4MItems = useMemo(() => {
     return fourMRecords.filter((rec) => {
       if (!rec) return false;
+      // ⭐ If explicitly false, this is an incoming/transferred item from 2nd stage managers (전체취합대장 소속), NOT yet official!
+      if (rec.isOfficialLedger === false) return false;
+
       const isOfficial =
         rec.isOfficialLedger === true ||
         String(rec.id || "").startsWith("ledger_") ||

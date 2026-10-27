@@ -43,6 +43,8 @@ import {
   unregisterFromFourMLedger,
   determineFourMCategory
 } from "../../services/fourMChangePointService";
+import { useCapaActionModalState } from "../quality/step3/useCapaActionModalState";
+import Step3CapaActionModal from "../quality/step3/Step3CapaActionModal";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 
 /**
@@ -280,8 +282,25 @@ export default function Step2ProductionManagerPanel({
     };
   }, [allIncidents, effectiveProcess]);
 
+  const capaModalState = useCapaActionModalState({
+    managerName: managerName || "생산관리자",
+    defaultPlant: managerPlant || "삼랑진공장",
+    ledgerState,
+    setLedgerState,
+    onAfterSave: (item) => {
+      setToastMessage(`🚨 [${item.line || "생산라인"}] 조치결과가 전체취합대장(품질 이관)으로 정상 등록되었습니다.`);
+      setTimeout(() => setToastMessage(""), 4000);
+    }
+  });
+
   // Handler: 1st Sorting action
   const handleSortIncident = async (item, targetType) => {
+    if (targetType === "CHANGE_POINT") {
+      // ⭐ 품질변동점이관 탭 시: 이창엽의 수정&결재 팝업창과 동일한 CAPA 모달을 열어 조치결과까지 입력 후 전체취합대장으로 이관
+      capaModalState.handleOpenCapaModal(item, managerName);
+      return;
+    }
+
     const nextOverrides = {
       ...(ledgerState.overrides || {}),
       [item.id]: {
@@ -295,31 +314,13 @@ export default function Step2ProductionManagerPanel({
     setLedgerState(nextState);
     await saveWorkReportNcLedger(nextState);
 
-    if (targetType === "CHANGE_POINT") {
-      const fourMItem = {
-        id: item.id,
-        title: `[2단계 ${item.line}] ${item.defectType || item.content}`,
-        origin: "작업일보 부적합",
-        fourM: determineFourMCategory(item.defectType || item.content),
-        content: item.content || item.defectType,
-        actionResult: item.actionResult || "2단계 공정관리자 1차 이관 완료",
-        date: item.date,
-        time: item.time,
-        plant: item.plant || managerPlant,
-        images: item.beforePhoto ? [item.beforePhoto] : [],
-        actionImages: item.afterPhoto ? [item.afterPhoto] : [],
-        writer: item.worker || managerName,
-        scrapKg: item.scrapKg || 0,
-        minutes: item.downtimeMinutes || 0
-      };
-      await registerToFourMLedger(fourMItem, managerName);
-      setToastMessage(`🚨 [${item.line}] 항목이 3단계 품질관리자(이창엽 책임) 접수함으로 이관되었습니다.`);
-    } else if (targetType === "INTERNAL") {
+    if (targetType === "INTERNAL") {
       await unregisterFromFourMLedger(item.id);
       await unregisterFromFourMLedger(`ledger_${item.id}`);
       setToastMessage(`🟢 [${item.line}] 항목이 [사내관리 종결]로 소팅 완료되었습니다.`);
     } else {
       await unregisterFromFourMLedger(item.id);
+      await unregisterFromFourMLedger(`ledger_${item.id}`);
       setToastMessage(`↩️ [${item.line}] 항목이 [미소팅 상태]로 재설정되었습니다.`);
     }
     setTimeout(() => setToastMessage(""), 4000);
@@ -917,14 +918,26 @@ export default function Step2ProductionManagerPanel({
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSortIncident(inc, "UNREGISTERED")}
-                        className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
-                        title="소팅 취소 및 재설정"
-                      >
-                        ↩️ 재소팅
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {isQuality && (
+                          <button
+                            type="button"
+                            onClick={() => handleSortIncident(inc, "CHANGE_POINT")}
+                            className="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-[10.5px] font-bold cursor-pointer transition flex items-center gap-1"
+                            title="시정조치 및 조치결과 수정"
+                          >
+                            <span>✏️ 조치수정</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleSortIncident(inc, "UNREGISTERED")}
+                          className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10.5px] font-bold cursor-pointer"
+                          title="소팅 취소 및 재설정"
+                        >
+                          ↩️ 재소팅
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -991,9 +1004,40 @@ export default function Step2ProductionManagerPanel({
         </div>
       )}
 
+      {/* ⭐ 4M 시정조치 수정&결재 및 전체취합대장 이관 모달 (2단계 생산관리자 - 이창엽 수정&결재 팝업과 100% 동일) */}
+      {capaModalState.capaModalItem && (
+        <Step3CapaActionModal
+          capaModalItem={capaModalState.capaModalItem}
+          setCapaModalItem={capaModalState.setCapaModalItem}
+          capaForm={capaModalState.capaForm}
+          setCapaForm={capaModalState.setCapaForm}
+          modalApproverInfo={capaModalState.modalApproverInfo}
+          checkIsCeoApproved={capaModalState.checkIsCeoApproved}
+          handleAddBeforePhotos={capaModalState.handleAddBeforePhotos}
+          handleSetBeforePhotoSlot={capaModalState.handleSetBeforePhotoSlot}
+          handleRemoveBeforePhoto={capaModalState.handleRemoveBeforePhoto}
+          handleAddAfterPhotos={capaModalState.handleAddAfterPhotos}
+          handleSetAfterPhotoSlot={capaModalState.handleSetAfterPhotoSlot}
+          handleRemoveAfterPhoto={capaModalState.handleRemoveAfterPhoto}
+          handleSaveProgress={() => capaModalState.handleSaveAndTransferToUnifiedLedger(managerName)}
+          handleSubmitToElectronicApproval={() => capaModalState.handleSaveAndTransferToUnifiedLedger(managerName)}
+          isSubmittingCapa={capaModalState.isSubmittingCapa}
+          setPreviewImage={(src) => setPreviewImg(src)}
+          modalTitle="4M 시정조치 수정&결재"
+          submitButtonText="전체취합대장 이관 등록"
+          saveButtonText="수정"
+        />
+      )}
+
       {/* Image Preview Modal */}
-      {previewImg && (
-        <ImagePreviewModal imageUrl={previewImg} onClose={() => setPreviewImg(null)} />
+      {(previewImg || capaModalState.previewImage) && (
+        <ImagePreviewModal
+          previewImage={previewImg || capaModalState.previewImage}
+          onClose={() => {
+            setPreviewImg(null);
+            capaModalState.setPreviewImage(null);
+          }}
+        />
       )}
     </div>
   );

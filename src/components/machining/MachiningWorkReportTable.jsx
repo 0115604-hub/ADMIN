@@ -7,6 +7,8 @@ import { MachiningTableFilterBar } from "./table/MachiningTableFilterBar";
 import { MachiningReportDataTable } from "./table/MachiningReportDataTable";
 import { MachiningTemplateAssignmentModal } from "./table/MachiningTemplateAssignmentModal";
 import { MachiningOrderModal } from "./table/MachiningOrderModal";
+import Step3CapaActionModal from "../quality/step3/Step3CapaActionModal";
+import { ImagePreviewModal } from "../common/ImagePreviewModal";
 
 export const MachiningWorkReportTable = ({
   onOpenReportModal,
@@ -116,6 +118,39 @@ export const MachiningWorkReportTable = ({
           orderModalInput={state.orderModalInput}
           setOrderModalInput={state.setOrderModalInput}
           handleSaveOrderModal={state.handleSaveOrderModal}
+        />
+      )}
+
+      {/* ⭐ 4M 시정조치 수정&결재 및 전체취합대장 이관 모달 (이창엽 수정&결재 팝업과 100% 동일) */}
+      {state.capaModalItem && (
+        <Step3CapaActionModal
+          capaModalItem={state.capaModalItem}
+          setCapaModalItem={state.setCapaModalItem}
+          capaForm={state.capaForm}
+          setCapaForm={state.setCapaForm}
+          modalApproverInfo={state.modalApproverInfo}
+          checkIsCeoApproved={state.checkIsCeoApproved}
+          handleAddBeforePhotos={state.handleAddBeforePhotos}
+          handleSetBeforePhotoSlot={state.handleSetBeforePhotoSlot}
+          handleRemoveBeforePhoto={state.handleRemoveBeforePhoto}
+          handleAddAfterPhotos={state.handleAddAfterPhotos}
+          handleSetAfterPhotoSlot={state.handleSetAfterPhotoSlot}
+          handleRemoveAfterPhoto={state.handleRemoveAfterPhoto}
+          handleSaveProgress={() => state.handleSaveAndTransferToUnifiedLedger(currentWorkerName)}
+          handleSubmitToElectronicApproval={() => state.handleSaveAndTransferToUnifiedLedger(currentWorkerName)}
+          isSubmittingCapa={state.isSubmittingCapa}
+          setPreviewImage={state.setPreviewImage}
+          modalTitle="4M 시정조치 수정&결재"
+          submitButtonText="전체취합대장 이관 등록"
+          saveButtonText="수정"
+        />
+      )}
+
+      {/* 이미지 라이트박스 미리보기 모달 */}
+      {state.previewImage && (
+        <ImagePreviewModal
+          previewImage={state.previewImage}
+          onClose={() => state.setPreviewImage(null)}
         />
       )}
     </div>
