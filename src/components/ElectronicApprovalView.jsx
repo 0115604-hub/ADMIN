@@ -1703,7 +1703,7 @@ export const ElectronicApprovalView = ({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className={`grid ${docSteps.length === 3 ? "grid-cols-3" : "grid-cols-4"} gap-2 text-center text-xs`}>
                       {docSteps.map((st, idx) => {
                         const isStepApproved = st.status === "APPROVED";
                         const isStepPending = st.status === "PENDING";

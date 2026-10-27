@@ -30,7 +30,8 @@ import {
   Trash2,
   Eye,
   Building2,
-  Stamp
+  Stamp,
+  Save
 } from "lucide-react";
 import {
   subscribeToExtrusionReports
@@ -493,7 +494,7 @@ export default function Step3QualityControlPanel({
       };
 
       await registerToFourMLedger(updatedRecord, managerName);
-      alert("💾 변동점 내용 및 원인/대책이 성공적으로 임시저장되었습니다.");
+      alert("💾 대책 내용이 성공적으로 수정되었습니다.");
       setCapaModalItem(null);
     } catch (e) {
       console.error("Save progress error:", e);
@@ -503,7 +504,7 @@ export default function Step3QualityControlPanel({
     }
   };
 
-  // ⭐ [4단계 전자결재 상신] : 한림공장 ➔ 김동욱 책임, 삼랑진공장 ➔ 이명재 대표이사
+  // ⭐ [4단계 전자결재 상신] : 4M 변동점 공식 결재라인 (이창엽 책임 ➔ 이명재 이사 ➔ 권태형 대표이사)
   const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
     if (!capaForm.correctiveAction.trim()) {
@@ -525,23 +526,22 @@ export default function Step3QualityControlPanel({
       const plant = capaModalItem.plant || capaForm.plant || "삼랑진공장";
       const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
 
-      // ⭐ 결재선 대상자 지정
-      // 한림공장: 1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)
-      // 삼랑진공장: 1단계 이창엽(상신) ➔ 2단계 공정책임(설유철/윤경수 검토) ➔ 3단계 이명재 대표이사(승인)
-      const reviewerName = isHanlim ? "김동욱" : (String(capaModalItem.line || "").includes("압출") ? "설유철" : "윤경수");
-      const approverName = isHanlim ? "대표 / 전무" : "이명재";
-      const approverTitle = isHanlim ? "대표이사/전무" : "대표이사";
-      const approverRole = isHanlim ? "1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)" : "1단계 이창엽(상신) ➔ 2단계 공정책임(검토) ➔ 3단계 이명재 대표이사(승인)";
+      // ⭐ 4M 변동점 공식 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)
+      const drafterName = managerName || "이창엽";
+      const reviewerName = "이명재";
+      const approverName = "권태형";
+      const approverTitle = "대표이사";
+      const approverRole = "이창엽(상신) ➔ 이명재(검토) ➔ 권태형(승인)";
 
       const docId = `appr_4m_${capaModalItem.id}_${Date.now()}`;
       const docNumber = `4M-${isHanlim ? "HL" : "SRJ"}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
       const docTitle = `[4M 변동점 결재] [${plant}] ${capaModalItem.line || ""} - ${capaModalItem.title || capaForm.content || "변동점 시정대책"}`;
 
-      // 결재 단계 구성 (1단계 기안: 이창엽 -> 2단계 검토: 김동욱/공정책임 -> 3단계 최종승인: 대표또는전무/이명재)
+      // 결재 단계 구성 (1단계 기안: 이창엽 책임 -> 2단계 검토: 이명재 이사 -> 3단계 최종승인: 권태형 대표이사)
       const steps = [
         {
           role: "담당",
-          name: managerName || "이창엽",
+          name: drafterName,
           title: "책임",
           status: "APPROVED",
           date: nowStr,
@@ -550,7 +550,7 @@ export default function Step3QualityControlPanel({
         {
           role: "검토",
           name: reviewerName,
-          title: "책임",
+          title: "이사",
           status: "PENDING",
           date: "",
           comment: ""
@@ -658,7 +658,7 @@ export default function Step3QualityControlPanel({
       setCapaModalItem(null);
       localStorage.setItem("active_approval_doc_id", docId);
 
-      alert(`✅ [4M 변동점 상신 완료]\n\n• 공장: ${plant}\n• 최종 결재자: ${approverRole}\n\n전자결재 문서함으로 이동합니다.`);
+      alert(`✅ [4M 변동점 임원결재 상신 완료]\n\n• 공장: ${plant}\n• 결재라인: ${approverRole}\n\n전자결재 문서함으로 이동합니다.`);
 
       if (typeof onNavigateTab === "function") {
         onNavigateTab("electronic_approval");
@@ -671,17 +671,22 @@ export default function Step3QualityControlPanel({
     }
   };
 
-  // Determine modal approver label
+  // Determine modal approver label (4M 변동점 결재라인: 이창엽 책임 ➔ 이명재 이사 ➔ 권태형 대표이사)
   const modalApproverInfo = useMemo(() => {
-    if (!capaModalItem) return { name: "이명재", role: "삼랑진공장 대표이사 이명재", isHanlim: false };
+    if (!capaModalItem) {
+      return {
+        plant: "전사 4M 변동점",
+        reviewer: "이명재 이사",
+        approver: "권태형 대표이사",
+        lineDisplay: "이창엽(상신) ➔ 이명재(검토) ➔ 권태형(승인)"
+      };
+    }
     const plant = capaModalItem.plant || capaForm.plant || "삼랑진공장";
-    const isHanlim = plant === "한림공장" || String(capaModalItem.line || "").includes("한림");
     return {
       plant,
-      isHanlim,
-      name: isHanlim ? "대표 / 전무" : "이명재",
-      title: isHanlim ? "대표이사/전무" : "대표이사",
-      role: isHanlim ? "1단계 이창엽(상신) ➔ 2단계 김동욱(검토) ➔ 3단계 대표 또는 전무(승인)" : "1단계 이창엽(상신) ➔ 2단계 공정책임(검토) ➔ 3단계 이명재 대표이사(승인)"
+      reviewer: "이명재 이사",
+      approver: "권태형 대표이사",
+      lineDisplay: "이창엽(상신) ➔ 이명재(검토) ➔ 권태형(승인)"
     };
   }, [capaModalItem, capaForm.plant]);
 
@@ -707,7 +712,7 @@ export default function Step3QualityControlPanel({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
               <span>•</span>
-              <span>4단계 전자결재 상신 (한림: 이창엽 상신 ➔ 김동욱 검토 ➔ 대표/전무 승인 / 삼랑진: 이창엽 상신 ➔ 공정책임 검토 ➔ 이명재 승인)</span>
+              <span>4M 변동점 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)</span>
             </p>
           </div>
         </div>
@@ -998,7 +1003,7 @@ export default function Step3QualityControlPanel({
                 <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
                 <th className="py-2.5 px-3 min-w-[240px]">시정대책(CAPA) 및 조치결과</th>
                 <th className="py-2.5 px-2 text-center w-24">진행상태</th>
-                <th className="py-2.5 px-3 text-center w-36">3단계 후속조치</th>
+                <th className="py-2.5 px-3 text-center w-28">대책관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
@@ -1120,31 +1125,14 @@ export default function Step3QualityControlPanel({
 
                       {/* Follow-up Action Buttons */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCapaModal(rec)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[11px] border border-slate-300 dark:border-slate-700 transition cursor-pointer flex items-center gap-1"
-                          >
-                            <Edit3 className="w-3 h-3 text-indigo-500" />
-                            <span>대책수정</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCapaModal(rec)}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] shadow-xs transition cursor-pointer flex items-center gap-1 ${
-                              isApproved
-                                ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
-                                : isPendingApproval
-                                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
-                                : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                            }`}
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>4단계 상신</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCapaModal(rec)}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-300 dark:border-indigo-800 transition cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <span>대책수정</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1169,7 +1157,7 @@ export default function Step3QualityControlPanel({
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 text-xs font-black">
-                      4M 시정/예방조치 및 결재상신
+                      4M 시정조치 대책수정 및 임원결재
                     </span>
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                       [{modalApproverInfo.plant}] {capaModalItem.line}
@@ -1185,7 +1173,7 @@ export default function Step3QualityControlPanel({
               <div className="flex items-center gap-2">
                 <div className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border-2 border-purple-400 dark:border-purple-600 text-purple-900 dark:text-purple-200 text-xs font-black flex items-center gap-1.5">
                   <Stamp className="w-4 h-4 text-purple-600" />
-                  <span>최종 결재자: {modalApproverInfo.role}</span>
+                  <span>결재라인: {modalApproverInfo.lineDisplay}</span>
                 </div>
                 <button
                   type="button"
@@ -1477,8 +1465,8 @@ export default function Step3QualityControlPanel({
             {/* Modal Bottom Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5 border-t border-slate-200 dark:border-slate-800">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                💡 <span className="font-bold text-purple-600 dark:text-purple-400">상신 시: </span>
-                <span>{modalApproverInfo.role} 전자결재 문서함으로 즉시 등록 후 이동합니다.</span>
+                💡 <span className="font-bold text-purple-600 dark:text-purple-400">결재라인: </span>
+                <span>{modalApproverInfo.lineDisplay} (4M 변동점 전용 전자결재)</span>
               </div>
 
               <div className="flex items-center gap-2 justify-end">
@@ -1494,9 +1482,10 @@ export default function Step3QualityControlPanel({
                   type="button"
                   disabled={isSubmittingCapa}
                   onClick={handleSaveProgress}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs transition cursor-pointer flex items-center gap-1.5"
                 >
-                  대책 임시저장
+                  <Save className="w-3.5 h-3.5" />
+                  <span>수정</span>
                 </button>
 
                 <button
@@ -1506,7 +1495,7 @@ export default function Step3QualityControlPanel({
                   className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ring-2 ring-purple-400/40"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>4단계 전자결재 상신 ({modalApproverInfo.role})</span>
+                  <span>임원결재</span>
                 </button>
               </div>
             </div>

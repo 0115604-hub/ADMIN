@@ -395,14 +395,26 @@ export function isApprovalDocOnOrBeforeOct18(d) {
 export const isApprovalDocOnOrBeforeCutoff = isApprovalDocOnOrBeforeOct18;
 
 // Clean and Normalize Document: calculate true step statuses without altering user document data
-// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장 (단, 10월 18일까지의 과거 문서는 모두 결재완료 4/4 보장)
+// ⭐ 결재 자동 승인 방지 & 결재선 구조 무조건 보장 (단, 10월 18일까지의 과거 문서는 모두 결재완료 보장)
+// ⚠️ 4M 변동점 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(승인) 전용 3단계
 export function normalizeApprovalDoc(d) {
   if (!d || typeof d !== "object") return d;
   const isHanlim = d.plant === "한림공장";
+  const is4M = isFourMApprovalDoc(d);
 
-  // Guarantee always exactly 4 steps
+  // Guarantee proper steps (4M = 3 steps strictly, others = 4 steps)
   let rawSteps = null;
-  if (Array.isArray(d.steps) && d.steps.length === 4) {
+  if (is4M) {
+    if (Array.isArray(d.steps) && d.steps.length === 3) {
+      rawSteps = d.steps;
+    } else {
+      rawSteps = [
+        { role: "담당", name: d.drafter || "이창엽", title: "책임", status: "APPROVED", date: d.createdAt || "", comment: "4M 변동점 및 시정대책(CAPA) 기안 상신" },
+        { role: "검토", name: "이명재", title: "이사", status: "PENDING", date: "", comment: "" },
+        { role: "승인", name: "권태형", title: "대표이사", status: "WAITING", date: "", comment: "" }
+      ];
+    }
+  } else if (Array.isArray(d.steps) && d.steps.length === 4) {
     rawSteps = d.steps;
   } else {
     try {
@@ -427,8 +439,36 @@ export function normalizeApprovalDoc(d) {
 
   const fixedSteps = rawSteps.map((st, idx) => {
     if (!st) {
-      const defaultRoles = ["담당", "책임", "이사", "대표"];
-      return { role: defaultRoles[idx] || "책임", name: "", title: "", status: idx === 0 ? "APPROVED" : "WAITING", date: "", comment: "" };
+      const defaultRoles = is4M ? ["담당", "검토", "승인"] : ["담당", "책임", "이사", "대표"];
+      return { role: defaultRoles[idx] || "검토", name: "", title: "", status: idx === 0 ? "APPROVED" : "WAITING", date: "", comment: "" };
+    }
+    if (is4M) {
+      if (idx === 0) {
+        return {
+          ...st,
+          role: "담당",
+          name: st.name || d.drafter || "이창엽",
+          title: "책임",
+          status: st.status || "APPROVED"
+        };
+      }
+      if (idx === 1) {
+        return {
+          ...st,
+          role: "검토",
+          name: st.name || "이명재",
+          title: "이사"
+        };
+      }
+      if (idx === 2) {
+        return {
+          ...st,
+          role: "승인",
+          name: st.name || "권태형",
+          title: "대표이사"
+        };
+      }
+      return st;
     }
     if (st.role === "이사") {
       const isApprovedByChoi = st.name === "최미영";
@@ -466,7 +506,7 @@ export function normalizeApprovalDoc(d) {
     return st;
   });
 
-  // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4) 보장
+  // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4 또는 3/3) 보장
   // 🔒 활성 검토 중인 서류(PENDING 또는 HOLD 단계가 명시된 미결 서류)는 절대 무단 완료 처리하지 않음
   const hasActivePendingStep = fixedSteps.some((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
   const isOnOrBeforeCutoff = isApprovalDocOnOrBeforeCutoff(d) && d.status !== "REJECTED" && !hasActivePendingStep;
@@ -475,16 +515,20 @@ export function normalizeApprovalDoc(d) {
     const docDate = d.workDate ? `${d.workDate} 18:00` : (d.createdAt || "2026-10-18 18:00");
     const completedSteps = fixedSteps.map((st, idx) => ({
       ...st,
-      name: idx === 2 && st.name?.includes("이명재") ? "이명재" : (idx === 3 && (!st.name || st.name === "대표이사") ? "권태형" : st.name),
-      title: idx === 2 ? (st.name === "최미영" ? "전무" : "이사") : (idx === 3 ? (st.name === "최미영" ? "전무" : "대표이사") : st.title),
+      name: is4M
+        ? (idx === 0 ? (st.name || "이창엽") : idx === 1 ? "이명재" : "권태형")
+        : (idx === 2 && st.name?.includes("이명재") ? "이명재" : (idx === 3 && (!st.name || st.name === "대표이사") ? "권태형" : st.name)),
+      title: is4M
+        ? (idx === 0 ? "책임" : idx === 1 ? "이사" : "대표이사")
+        : (idx === 2 ? (st.name === "최미영" ? "전무" : "이사") : (idx === 3 ? (st.name === "최미영" ? "전무" : "대표이사") : st.title)),
       status: "APPROVED",
       date: st.date || docDate,
-      comment: st.comment || (idx === 0 ? "기안 상신" : idx === 3 ? "대표이사 최종 승인" : "승인")
+      comment: st.comment || (idx === 0 ? "기안 상신" : idx === fixedSteps.length - 1 ? "대표이사 최종 승인" : "승인")
     }));
 
     return {
       ...d,
-      currentStep: 4,
+      currentStep: fixedSteps.length,
       status: "APPROVED",
       holdReason: "",
       rejectReason: "",
@@ -492,7 +536,7 @@ export function normalizeApprovalDoc(d) {
     };
   }
 
-  // Calculate true approval step status based strictly on the 4 steps
+  // Calculate true approval step status based strictly on the steps
   const approvedCount = fixedSteps.filter((st) => st && st.status === "APPROVED").length;
   let computedStatus = "IN_PROGRESS";
   let computedStep = approvedCount + 1;
@@ -508,7 +552,7 @@ export function normalizeApprovalDoc(d) {
     computedStep = fixedSteps.findIndex((st) => st && st.status === "HOLD") + 1;
   } else {
     computedStatus = "IN_PROGRESS";
-    computedStep = Math.min(Math.max(1, approvedCount + 1), 4);
+    computedStep = Math.min(Math.max(1, approvedCount + 1), fixedSteps.length);
   }
 
   return {
@@ -895,6 +939,46 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
     };
   }
 
+  // ⭐ 4M 변동점 결재서류 전용 결재라인 권한 판정: 이창엽(상신/기안) ➔ 이명재(검토) ➔ 권태형(최종승인)
+  if (isFourMApprovalDoc(docItem)) {
+    if (activeStepIdx === 0) {
+      if (userName === "이창엽" || isDirectTarget) {
+        return {
+          canApprove: true,
+          stepIndex: activeStepIdx,
+          stepRole,
+          approverName: "이창엽"
+        };
+      }
+      return { canApprove: false, reason: "[기안/상신] 이창엽 책임 결재 권한이 필요합니다." };
+    }
+
+    if (activeStepIdx === 1) {
+      if (userName === "이명재" || userTitle.includes("이사") || isDirectTarget) {
+        return {
+          canApprove: true,
+          stepIndex: activeStepIdx,
+          stepRole,
+          approverName: "이명재"
+        };
+      }
+      return { canApprove: false, reason: "[검토] 이명재 이사 결재 권한이 필요합니다." };
+    }
+
+    if (activeStepIdx === 2) {
+      if (userName === "권태형" || userTitle.includes("대표") || isDirectTarget) {
+        return {
+          canApprove: true,
+          stepIndex: activeStepIdx,
+          stepRole,
+          isRepresentative: true,
+          approverName: "권태형"
+        };
+      }
+      return { canApprove: false, reason: "[최종 승인] 권태형 대표이사 결재 권한이 필요합니다." };
+    }
+  }
+
   // 2. Step 1: 담당 (All Workers / 전작업자)
   if (stepRole === "담당") {
     return {
@@ -1107,7 +1191,8 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
     approverName === "권태형" ||
     approverName === "최미영" ||
     approverName === "대표이사" ||
-    stepIndex === 3;
+    stepIndex === 3 ||
+    (target.steps && stepIndex === target.steps.length - 1 && (approverName === "권태형" || options.isAdmin));
 
   let updatedSteps;
   if (isRepresentative) {
@@ -1172,7 +1257,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
   }
 
   const isAllApproved = updatedSteps.every((st) => st.status === "APPROVED");
-  const nextStep = isAllApproved ? 4 : Math.min(stepIndex + 2, 4);
+  const nextStep = isAllApproved ? updatedSteps.length : Math.min(stepIndex + 2, updatedSteps.length);
 
   const updatedTarget = normalizeApprovalDoc({
     ...target,
@@ -1260,7 +1345,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
                 ...item,
                 approvalStatus: isAllApproved ? "APPROVED" : "PENDING_APPROVAL",
                 approvedBy: approverName,
-                approvedTitle: approverName === "최미영" ? "전무" : approverName === "김동욱" ? "책임" : "대표이사",
+                approvedTitle: approverName === "최미영" ? "전무" : approverName === "이명재" ? "이사" : approverName === "김동욱" ? "책임" : "대표이사",
                 approvedAt: nowStr,
                 approvalComment: comment || (isAllApproved ? "최종 승인 완료" : "검토 승인"),
                 isResolved: true,
