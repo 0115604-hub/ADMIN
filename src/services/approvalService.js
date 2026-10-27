@@ -30,16 +30,28 @@ const PREV_STORAGE_KEYS = [
   "oryuk_approval_documents_v5"
 ];
 
+export const DEFAULT_DELETED_APPROVAL_IDS = [
+  "appr_4m_ledger_man_log_auto_2026-10-12_유성_론나차이_1793058086561",
+  "appr_4m_ledger_man_log_auto_2026-10-12_유성_팔라_1793058214342",
+  "appr_4m_ledger_man_log_auto_2026-10-12_조영_윤의정_1793058413459",
+  "appr_4m_ledger_man_log_auto_2026-10-13_유성_론나차이_1793058873183",
+  "appr_4m_ledger_man_log_auto_2026-10-14_유성_론나차이_1793058904685",
+  "appr_4m_ledger_mach_qual_1792626820469_4r5z_1793060701646"
+];
+
 // ⭐ Helper: Manage permanently deleted document IDs (Tombstone blacklist)
 export const getDeletedApprovalIds = () => {
+  const set = new Set(DEFAULT_DELETED_APPROVAL_IDS);
   try {
     const raw = localStorage.getItem(DELETED_STORAGE_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return new Set(arr);
+      if (Array.isArray(arr)) {
+        arr.forEach((id) => set.add(id));
+      }
     }
   } catch (e) {}
-  return new Set();
+  return set;
 };
 
 export const saveDeletedApprovalIds = (setOrArr) => {
@@ -296,14 +308,14 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
   ];
 }
 
-// ⭐ 2026년 10월 18일 이하(<= 2026-10-18) 전자결재 문서 판별 헬퍼
-export const APPROVAL_AUTO_COMPLETE_CUTOFF_DATE = "2026-10-18";
-export const APPROVAL_AUTO_COMPLETE_CUTOFF_TS = new Date(2026, 9, 18, 23, 59, 59, 999).getTime();
+// ⭐ 2026년 10월 31일 이하(<= 2026-10-31) 전자결재 문서 판별 헬퍼 (기등록된 모든 실무/이력 서류 전건 결재완료 보장)
+export const APPROVAL_AUTO_COMPLETE_CUTOFF_DATE = "2026-10-31";
+export const APPROVAL_AUTO_COMPLETE_CUTOFF_TS = new Date(2026, 9, 31, 23, 59, 59, 999).getTime();
 
 export function isApprovalDocOnOrBeforeOct18(d) {
   if (!d || typeof d !== "object") return false;
 
-  // 1. 명시적 workDate 확인 (예: "2026-10-18", "2026. 10. 17.", "2026-09-28")
+  // 1. 명시적 workDate 확인 (예: "2026-10-31", "2026-10-24", "2026-10-18")
   if (d.workDate && typeof d.workDate === "string") {
     const m = d.workDate.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
     if (m) {
@@ -312,7 +324,7 @@ export function isApprovalDocOnOrBeforeOct18(d) {
     }
   }
 
-  // 1-b. createdAt 문자열 직접 날짜 추출 확인 (예: "2026. 10. 15. 14:30")
+  // 1-b. createdAt 문자열 직접 날짜 추출 확인 (예: "2026. 10. 27. 14:30")
   if (d.createdAt && typeof d.createdAt === "string") {
     const cm = d.createdAt.match(/(\d{4})\s*[-/.년]\s*(\d{1,2})\s*[-/.월]\s*(\d{1,2})/);
     if (cm) {
@@ -321,15 +333,15 @@ export function isApprovalDocOnOrBeforeOct18(d) {
     }
   }
 
-  // 2. 문서 ID 내 날짜(2026MMDD) 확인 (예: appr_ot_oryuk_20261018)
+  // 2. 문서 ID 내 날짜(2026MMDD) 확인 (예: appr_ot_oryuk_20261024)
   if (d.id && typeof d.id === "string") {
     const idDateMatch = d.id.match(/(2026\d{4})/);
     if (idDateMatch) {
-      return Number(idDateMatch[1]) <= 20261018;
+      return Number(idDateMatch[1]) <= 20261031;
     }
   }
 
-  // 3. 제목 내 날짜("10월 18일", "9월 20일" 등) 확인
+  // 3. 제목 내 날짜("10월 24일", "10월 18일" 등) 확인
   if (d.title && typeof d.title === "string") {
     const titleDateMatch = d.title.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
     if (titleDateMatch) {
@@ -338,11 +350,10 @@ export function isApprovalDocOnOrBeforeOct18(d) {
       const day = parseInt(titleDateMatch[3], 10);
       const ymd = `${y}-${String(mon).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       if (ymd <= APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return true;
-      if (d.id?.startsWith("appr_ot_") && ymd > APPROVAL_AUTO_COMPLETE_CUTOFF_DATE) return false;
     }
   }
 
-  // 4. 기안일시(createdAt) 또는 정렬 타임스탬프 기준 확인 (2026-10-18 23:59:59 이하)
+  // 4. 기안일시(createdAt) 또는 정렬 타임스탬프 기준 확인 (2026-10-31 23:59:59 이하)
   if (d.createdAt) {
     const tCreated = parseSafeTimestamp(d.createdAt);
     if (tCreated > 0 && tCreated <= APPROVAL_AUTO_COMPLETE_CUTOFF_TS) {
@@ -357,9 +368,10 @@ export function isApprovalDocOnOrBeforeOct18(d) {
 
   return false;
 }
+export const isApprovalDocOnOrBeforeCutoff = isApprovalDocOnOrBeforeOct18;
 
 // Clean and Normalize Document: calculate true step statuses without altering user document data
-// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장 (단, 10월 18일까지의 문서는 모두 결재완료 4/4 보장)
+// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장 (단, 10월 31일까지의 모든 기등록 문서는 결재완료 4/4 보장)
 export function normalizeApprovalDoc(d) {
   if (!d || typeof d !== "object") return d;
   const isHanlim = d.plant === "한림공장";
@@ -430,11 +442,11 @@ export function normalizeApprovalDoc(d) {
     return st;
   });
 
-  // ⭐ 10월 18일까지(<= 2026-10-18)의 모든 전자결재문서 결재완료(4/4) 보장
-  const isOnOrBeforeOct18 = isApprovalDocOnOrBeforeOct18(d) && d.status !== "REJECTED";
+  // ⭐ 10월 31일까지(<= 2026-10-31)의 모든 전자결재문서 결재완료(4/4) 보장
+  const isOnOrBeforeCutoff = isApprovalDocOnOrBeforeCutoff(d) && d.status !== "REJECTED";
 
-  if (isOnOrBeforeOct18) {
-    const docDate = d.workDate ? `${d.workDate} 18:00` : (d.createdAt || "2026-10-18 18:00");
+  if (isOnOrBeforeCutoff) {
+    const docDate = d.workDate ? `${d.workDate} 18:00` : (d.createdAt || "2026-10-27 18:00");
     const completedSteps = fixedSteps.map((st, idx) => ({
       ...st,
       name: idx === 2 && st.name?.includes("이명재") ? "이명재" : (idx === 3 && (!st.name || st.name === "대표이사") ? "권태형" : st.name),
@@ -662,10 +674,11 @@ export function getLocalApprovalDocs() {
       parsed = [];
     }
 
+    const deletedIds = getDeletedApprovalIds();
     const docMap = new Map();
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
-        if (d && d.id) {
+        if (d && d.id && !deletedIds.has(d.id)) {
           try {
             const normalized = normalizeApprovalDoc(d);
             docMap.set(d.id, normalized);
@@ -760,19 +773,20 @@ export function subscribeApprovalDocs(onUpdate) {
           }
 
           // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so documents are NEVER wiped
-          const localDocs = getLocalApprovalDocs();
+          const deletedIds = getDeletedApprovalIds();
+          const localDocs = getLocalApprovalDocs().filter((d) => d && d.id && !deletedIds.has(d.id));
           const docMap = new Map();
 
           // 1. Seed with local documents
           localDocs.forEach((d) => {
-            if (d && d.id) {
+            if (d && d.id && !deletedIds.has(d.id)) {
               docMap.set(d.id, d);
             }
           });
 
           // 2. Merge remote docs (remote is authoritative or newer, preserving highest approval progress)
           remoteDocs.forEach((r) => {
-            if (r && r.id) {
+            if (r && r.id && !deletedIds.has(r.id)) {
               const existing = docMap.get(r.id);
               if (!existing) {
                 docMap.set(r.id, r);
@@ -802,7 +816,7 @@ export function subscribeApprovalDocs(onUpdate) {
 
           // 3. Keep local fallback in memory without silent cloud writes
           localDocs.forEach((localDoc) => {
-            if (localDoc && localDoc.id && !docMap.has(localDoc.id)) {
+            if (localDoc && localDoc.id && !deletedIds.has(localDoc.id) && !docMap.has(localDoc.id)) {
               docMap.set(localDoc.id, localDoc);
             }
           });
@@ -1650,7 +1664,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const department = `${targetPlant} (${targetComp})`;
       const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetComp}] 특근보고서\n\n1. 특근 요약\n• 소속: ${targetPlant} - ${targetComp}\n• 특근 투입: ${workerCount}명 (${workerHours} M/H) | 예상 노무비: ₩${workerCost.toLocaleString()}\n\n2. 투입 작업자 명단\n• ${workerNames.join(", ") || "특근 투입 인원"}\n\n3. 주요 작업 내용\n• 현대/기아 납품 물량 대응 및 ${targetComp} 주말/공휴일 특근 가동`;
 
-      const isPastOvertime = (workDateStr && workDateStr <= "2026-10-18") || existingDoc?.status === "APPROVED";
+      const isPastOvertime = (workDateStr && workDateStr <= "2026-10-31") || existingDoc?.status === "APPROVED";
       const isAlreadyFullyApproved = existingDoc?.status === "APPROVED" || (Array.isArray(priorSteps) && priorSteps.length === 4 && priorSteps.every((s) => s && s.status === "APPROVED"));
 
       const step0 = {

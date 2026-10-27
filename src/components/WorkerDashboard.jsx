@@ -764,7 +764,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (!rep) return false;
     const isWk = isWeekendByDate(rep.workDate || rep.title || rep.workDateFormatted);
     if (!isWk) return true;
-    if (rep.workDate && String(rep.workDate).slice(0, 10) <= "2026-10-18") return true;
+    if (rep.workDate && String(rep.workDate).slice(0, 10) <= "2026-10-31") return true;
 
     if (rep.approvalStatus === "결재완료" || rep.approvalStatus === "APPROVED" || rep.status === "APPROVED" || rep.status === "결재완료") {
       return true;

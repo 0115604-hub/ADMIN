@@ -1,4 +1,4 @@
-﻿// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
+// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
 import {
   collection,
   doc,
@@ -188,9 +188,9 @@ export const normalizeOvertimeReport = (report) => {
     cleanTitle = cleanTitle.replace(/근태보고서/g, "특근보고서");
   }
   const sortKey = getReportDateSortKey(report);
-  const isOnOrBeforeOct18 = sortKey && sortKey !== "0000-00-00" && sortKey <= "2026-10-18";
+  const isOnOrBeforeCutoff = sortKey && sortKey !== "0000-00-00" && sortKey <= "2026-10-31";
 
-  if (isOnOrBeforeOct18 && report.status !== "REJECTED") {
+  if (isOnOrBeforeCutoff && report.status !== "REJECTED") {
     const drafterName = String(report.author || "").split(" ")[0] || (plantName === "삼랑진공장" ? "조인주" : "오상민");
     const drafterTitle = report.authorTitle || "선임";
     const leadName = plantName === "한림공장" ? "김동욱" : "윤경수";

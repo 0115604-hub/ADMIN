@@ -981,7 +981,7 @@ export const ElectronicApprovalView = ({
                 <span>{isAdmin ? "대표 결재 대기" : "내 결재 대기"}</span>
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono font-black text-xs text-rose-600 dark:text-rose-400">
+                <span className={`font-mono font-black text-xs ${categoryCounts.pendingTotal > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                   {categoryCounts.pendingTotal}건
                 </span>
                 {categoryCounts.companyInProgressTotal > 0 && (
@@ -1306,7 +1306,13 @@ export const ElectronicApprovalView = ({
         <div className="flex items-center gap-1.5 overflow-x-auto w-full">
           {[
             { id: "ALL", label: `전체 (${stats.total})` },
-            { id: "PENDING", label: `🔴 내 결재 대기 (${stats.pending})`, highlight: stats.pending > 0 },
+            {
+              id: "PENDING",
+              label: stats.pending > 0
+                ? `🔴 ${isAdmin ? "대표 결재 대기" : "내 결재 대기"} (${stats.pending})`
+                : `${isAdmin ? "대표 결재 대기" : "내 결재 대기"} (0)`,
+              highlight: stats.pending > 0
+            },
             { id: "COMPANY_IN_PROGRESS", label: `📋 전사 미결 (${stats.companyInProgress})`, inProgressLight: stats.companyInProgress > 0 },
             { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
             { id: "MY_DRAFTS", label: `내 기안함 (${stats.myDrafts})` },
