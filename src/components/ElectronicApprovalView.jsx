@@ -1,45 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import {
-  FileCheck2,
-  FileSignature,
-  Plus,
-  Search,
-  Filter,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Calendar,
-  User,
-  Building2,
-  Printer,
-  ChevronRight,
-  Trash2,
-  Check,
-  X,
-  AlertCircle,
-  FileText,
-  DollarSign,
-  Send,
-  Stamp,
-  PauseCircle,
-  ShieldCheck,
-  Crown,
-  Lock,
-  ArrowRight,
-  Users,
-  Image as ImageIcon,
-  Camera,
-  Eye,
-  Download,
-  ZoomIn,
-  UploadCloud,
-  Edit3,
-  RotateCcw,
-  Layers,
-  Sparkles,
-  ArrowLeft
-} from "lucide-react";
-import { useAuth, PLANTS } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import {
   getLocalApprovalDocs,
   subscribeApprovalDocs,
@@ -51,8 +11,6 @@ import {
   checkApprovalPermission,
   getAutoApprovalSteps,
   APPROVAL_MANAGERS,
-  syncPlantOvertimeToApprovalBox,
-  syncAllOvertimeReportsToApprovalBox,
   isApprovalDocPending,
   isApprovalDocInProgress,
   isApprovalDocHold,
@@ -62,12 +20,17 @@ import {
   isOvertimeApprovalDoc,
   isGeneralApprovalDoc,
   isFourMApprovalDoc,
-  getApprovalDocSortTimestamp,
-  parseSafeTimestamp
+  getApprovalDocSortTimestamp
 } from "../services/approvalService";
-import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
 import { useModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
+import { ApprovalKPIHeader } from "./approval/ApprovalKPIHeader";
+import { ApprovalDocTable, formatConciseApprovalTitle } from "./approval/ApprovalDocTable";
+import { ApprovalDetailModal } from "./approval/ApprovalDetailModal";
+import { ApprovalDraftModal } from "./approval/ApprovalDraftModal";
+
+// Re-export formatConciseApprovalTitle for backward compatibility
+export { formatConciseApprovalTitle };
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -116,45 +79,13 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
   });
 };
 
-// Helper: Format concise approval document title for clean table view
-export const formatConciseApprovalTitle = (rawTitle) => {
-  if (!rawTitle) return "";
-  let str = String(rawTitle).trim();
-
-  // 1. Remove bracket tags like [특근보고서], [근태보고서], [삼랑진공장], [한림공장], [통합]
-  str = str.replace(/^\[(특근보고서|근태보고서|삼랑진공장|한림공장|공장취합|통합)\]\s*/g, "");
-
-  // 2. Remove redundant factory names inside title (plant is already in plant column)
-  str = str.replace(/삼랑진공장\s*/g, "");
-  str = str.replace(/한림공장\s*/g, "");
-
-  // 3. Simplify corporate names (e.g. (주)조영산업 -> 조영, (주)오륙 -> 오륙)
-  str = str.replace(/\(주\)조영산업/g, "조영");
-  str = str.replace(/\(주\)오륙/g, "오륙");
-  str = str.replace(/\(주\)/g, "");
-  str = str.replace(/조영산업/g, "조영");
-  str = str.replace(/유성산업/g, "유성");
-
-  // 4. Simplify repetitive report keywords
-  str = str.replace(/특근실시보고서|특근실시 보고서/g, "특근보고서");
-  str = str.replace(/근태 및 특근보고서|근태 및 특근실시 보고서/g, "근태보고서");
-
-  // 5. Remove trailing "의 건", "의건"
-  str = str.replace(/\s*의\s*건$/, "");
-
-  // Clean excessive spaces
-  str = str.replace(/\s{2,}/g, " ").trim();
-
-  return str;
-};
-
 export const ElectronicApprovalView = ({
   onNavigateTab = null,
   onBack = null
 }) => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
-  const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, GENERAL
+  const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, FOUR_M, GENERAL
   const [selectedTab, setSelectedTab] = useState(() => {
     try {
       const initTab = sessionStorage.getItem("approval_initial_tab");
@@ -164,7 +95,7 @@ export const ElectronicApprovalView = ({
       }
     } catch (e) {}
     return "ALL";
-  }); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
+  }); // ALL, PENDING, COMPANY_IN_PROGRESS, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlant, setSelectedPlant] = useState(() => {
     if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
@@ -173,7 +104,7 @@ export const ElectronicApprovalView = ({
     return currentProfile?.plant || "ALL";
   });
 
-  // 🌟 사용자 전환(Admin <-> 공장총괄) 시 공장 선택 필터가 오염되지 않도록 완벽 자동 동기화
+  // 사용자 전환(Admin <-> 공장총괄) 시 공장 선택 필터 자동 동기화
   useEffect(() => {
     if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
       setSelectedPlant("ALL");
@@ -182,7 +113,7 @@ export const ElectronicApprovalView = ({
     }
   }, [isAdmin, currentProfile?.name, currentProfile?.plant]);
 
-  // Modals
+  // Modals & Action States
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [editingDocId, setEditingDocId] = useState(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -192,13 +123,11 @@ export const ElectronicApprovalView = ({
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
 
-  // 🌟 Document Detail Modal Close Handler (문서 모달 닫기 - 전자결재 목록 화면 100% 유지)
+  // Document Detail Modal Close Handler
   const handleCloseDocModal = () => {
     setSelectedDoc(null);
     setActionType("APPROVE");
     setApprovalComment("");
-
-    // 모달 닫기 시 화면 전환 없이 전자결재 목록을 그대로 유지 & 잔류 스토리지 키 완전 정리
     sessionStorage.removeItem("approval_return_to_tab");
     localStorage.removeItem("approval_return_to_tab");
     sessionStorage.removeItem("approval_external_direct_open");
@@ -206,7 +135,7 @@ export const ElectronicApprovalView = ({
     localStorage.removeItem("active_approval_doc_id");
   };
 
-  // 🌟 Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  // Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
       handleCloseDocModal();
@@ -230,7 +159,7 @@ export const ElectronicApprovalView = ({
     setPreviewImageModal(null);
   }, "approval_img_preview");
 
-  // ⭐ 기안서 수정 가능 여부 판단: 최종 승인(APPROVED)되지 않은 문서는 기안자(본인) 및 ADMIN이 수정 가능
+  // 기안서 수정 가능 여부 판단: 최종 승인(APPROVED)되지 않은 문서는 기안자(본인) 및 ADMIN이 수정 가능
   const canEditDoc = (doc) => {
     if (!doc || doc.status === "APPROVED") return false;
     return isAdmin || isApprovalDocMyDraft(doc, currentProfile, isAdmin);
@@ -262,7 +191,7 @@ export const ElectronicApprovalView = ({
     setIsDraftModalOpen(true);
   };
 
-  // ⭐ 기안서 수정 모달 열기 (기존 문서 내용 및 첨부사진, 결재선 완벽 로드)
+  // 기안서 수정 모달 열기
   const handleOpenEditModal = (doc, e) => {
     if (e) e.stopPropagation();
     if (!canEditDoc(doc)) {
@@ -305,7 +234,7 @@ export const ElectronicApprovalView = ({
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
-  // All eligible workers and managers for Drafter dropdown (전관리자 및 작업자 기안 가능)
+  // All eligible workers and managers for Drafter dropdown
   const allWorkers = useMemo(() => {
     return APPROVAL_MANAGERS.DRAFTERS || [];
   }, []);
@@ -315,7 +244,7 @@ export const ElectronicApprovalView = ({
     currentProfile?.name === "최미영" ? "최미영" : "권태형"
   );
 
-  // New Draft Form State (담당: 전작업자 / 관리자)
+  // New Draft Form State
   const defaultLeadName = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(currentProfile?.name)
     ? currentProfile.name
     : (currentProfile?.plant === "한림공장" ? "김동욱" : "설유철");
@@ -327,9 +256,9 @@ export const ElectronicApprovalView = ({
     department: currentProfile?.assignedProcess || "압출동 관리",
     drafter: currentProfile?.name || "권태형",
     drafterTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
-    leadName: defaultLeadName, // Step 2 (책임)
-    directorName: "이명재", // Step 3 (이사)
-    ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형", // Step 4 (대표/전무)
+    leadName: defaultLeadName,
+    directorName: "이명재",
+    ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형",
     title: "",
     content: "",
     amount: "",
@@ -341,7 +270,7 @@ export const ElectronicApprovalView = ({
     selectedDocRef.current = selectedDoc;
   }, [selectedDoc]);
 
-  // Real-time Cloud Synchronization & Instant Local Event Sync
+  // Real-time Cloud Synchronization
   useEffect(() => {
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
@@ -399,7 +328,6 @@ export const ElectronicApprovalView = ({
     }
   }, [currentProfile]);
 
-  // When plant/process changes in draft form, auto-suggest the responsible lead
   const handlePlantChange = (newPlant) => {
     let autoLead = newPlant === "한림공장" ? "김동욱" : "설유철";
     setDraftForm((prev) => ({
@@ -409,51 +337,6 @@ export const ElectronicApprovalView = ({
     }));
   };
 
-  // 🌟 서류 구분별 통계 집계 (일반결재 vs 4M변동점 vs 특근보고서, 공장 필터 연동)
-  // 🌟 서류 구분별 통계 집계 (일반결재 vs 4M변동점 vs 특근보고서, 공장 필터 연동)
-  const categoryCounts = useMemo(() => {
-    const plantScoped = approvalDocs.filter((doc) => {
-      if (!doc) return false;
-      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
-        return false;
-      }
-      return true;
-    });
-    const total = plantScoped.length;
-    const overtimeList = plantScoped.filter(isOvertimeApprovalDoc);
-    const fourMList = plantScoped.filter(isFourMApprovalDoc);
-    const generalList = plantScoped.filter(isGeneralApprovalDoc);
-    const overtime = overtimeList.length;
-    const fourM = fourMList.length;
-    const general = generalList.length;
-    const overtimePending = overtimeList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const fourMPending = fourMList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const pendingTotal = overtimePending + fourMPending + generalPending;
-    // ⭐ 전사 전체 미결은 공장 필터와 무관하게 회사 전체(9건) 기준 영구 고정
-    const companyInProgressTotal = approvalDocs.filter(isApprovalDocInProgress).length;
-    const plantInProgressTotal = plantScoped.filter(isApprovalDocInProgress).length;
-    const approvedTotal = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
-    const holdTotal = plantScoped.filter(isApprovalDocHold).length;
-    const rejectedTotal = plantScoped.filter(isApprovalDocRejected).length;
-
-    return {
-      total,
-      overtime,
-      fourM,
-      general,
-      pendingTotal,
-      companyInProgressTotal,
-      plantInProgressTotal,
-      overtimePending,
-      fourMPending,
-      generalPending,
-      approvedTotal,
-      holdTotal,
-      rejectedTotal
-    };
-  }, [approvalDocs, selectedPlant, currentProfile, isAdmin]);
-
   // Scoped documents according to selected category
   const categoryScopedDocs = useMemo(() => {
     if (docCategoryFilter === "OVERTIME") return approvalDocs.filter(isOvertimeApprovalDoc);
@@ -461,6 +344,46 @@ export const ElectronicApprovalView = ({
     if (docCategoryFilter === "GENERAL") return approvalDocs.filter(isGeneralApprovalDoc);
     return approvalDocs;
   }, [approvalDocs, docCategoryFilter]);
+
+  // Statistics (unified with category and plant scope + 3-way badges)
+  const stats = useMemo(() => {
+    const plantScoped = categoryScopedDocs.filter((doc) => {
+      if (!doc) return false;
+      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+        return false;
+      }
+      return true;
+    });
+
+    const total = plantScoped.length;
+    const pending = plantScoped.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const companyInProgress = approvalDocs.filter(isApprovalDocInProgress).length;
+    const hold = plantScoped.filter(isApprovalDocHold).length;
+    const approved = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
+    const rejected = plantScoped.filter(isApprovalDocRejected).length;
+    const myDrafts = plantScoped.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
+
+    // Sub-counts for Pending 3-way badges
+    const overtimeList = approvalDocs.filter(isOvertimeApprovalDoc);
+    const fourMList = approvalDocs.filter(isFourMApprovalDoc);
+    const generalList = approvalDocs.filter(isGeneralApprovalDoc);
+    const overtimePending = overtimeList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const fourMPending = fourMList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+    const generalPending = generalList.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
+
+    return {
+      total,
+      pending,
+      companyInProgress,
+      hold,
+      approved,
+      rejected,
+      myDrafts,
+      overtimePending,
+      fourMPending,
+      generalPending
+    };
+  }, [approvalDocs, categoryScopedDocs, selectedPlant, currentProfile, isAdmin]);
 
   // Filtered Documents
   const filteredDocs = useMemo(() => {
@@ -472,7 +395,7 @@ export const ElectronicApprovalView = ({
         return false;
       }
 
-      // 2. Tab filter (결재 상태)
+      // 2. Tab filter
       if (selectedTab === "PENDING" && !isApprovalDocPending(doc, currentProfile, isAdmin)) return false;
       if (selectedTab === "COMPANY_IN_PROGRESS" && !isApprovalDocInProgress(doc)) return false;
       if (selectedTab === "HOLD" && !isApprovalDocHold(doc)) return false;
@@ -495,7 +418,6 @@ export const ElectronicApprovalView = ({
       return true;
     });
 
-    // ⭐ 최근 등록순(최신 기안일시/발생일자 기준 내림차순) 정렬
     list.sort((a, b) => {
       const tA = getApprovalDocSortTimestamp(a);
       const tB = getApprovalDocSortTimestamp(b);
@@ -505,39 +427,12 @@ export const ElectronicApprovalView = ({
     return list;
   }, [categoryScopedDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
 
-  // Statistics (100% unified with current category and plant scope)
-  const stats = useMemo(() => {
-    const plantScoped = categoryScopedDocs.filter((doc) => {
-      if (!doc) return false;
-      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
-        return false;
-      }
-      return true;
-    });
-    const total = plantScoped.length;
-    const pending = plantScoped.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-    const companyInProgress = plantScoped.filter(isApprovalDocInProgress).length;
-    const hold = plantScoped.filter(isApprovalDocHold).length;
-    const approved = plantScoped.filter((d) => isApprovalDocApproved(d, currentProfile, isAdmin)).length;
-    const rejected = plantScoped.filter(isApprovalDocRejected).length;
-    const myDrafts = plantScoped.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
-    return {
-      total,
-      pending,
-      companyInProgress,
-      hold,
-      approved,
-      rejected,
-      myDrafts
-    };
-  }, [categoryScopedDocs, selectedPlant, currentProfile, isAdmin]);
-
   // Permission evaluation for currently opened document
   const currentPermission = useMemo(() => {
     return checkApprovalPermission(selectedDoc, currentProfile, isAdmin);
   }, [selectedDoc, currentProfile, isAdmin]);
 
-  // Image upload and drag handlers for draft form
+  // Image upload and drag handlers
   const handleImageFiles = async (files) => {
     if (!files || files.length === 0) return;
     setIsProcessingImages(true);
@@ -587,7 +482,7 @@ export const ElectronicApprovalView = ({
     }));
   };
 
-  // Handle Save Draft (전작업자 작성 및 수정/재상신 가능)
+  // Handle Save Draft
   const handleSaveDraft = async (e) => {
     e.preventDefault();
     if (!draftForm.title.trim()) {
@@ -663,7 +558,7 @@ export const ElectronicApprovalView = ({
     alert(isEdit ? "결재 기안서가 성공적으로 수정(재상신)되었습니다." : "결재 기안서(사진 첨부 포함)가 성공적으로 상신되었습니다.");
   };
 
-  // Handle Approve Step (직급/대표 권한 체크)
+  // Handle Approve Step
   const handleApprove = async () => {
     if (!selectedDoc) return;
     if (isProcessingAction) return;
@@ -714,7 +609,7 @@ export const ElectronicApprovalView = ({
     }
   };
 
-  // Handle Batch Approve All Pending (ADMIN/대표 일괄 결재 승인)
+  // Handle Batch Approve All Pending
   const handleBatchApprovePending = async () => {
     if (!isAdmin) {
       alert("일괄 결재 권한이 없습니다. (총괄관리자 ADMIN 전용)");
@@ -760,7 +655,7 @@ export const ElectronicApprovalView = ({
     }
   };
 
-  // Handle Hold Step (보류)
+  // Handle Hold Step
   const handleHold = async () => {
     if (!selectedDoc) return;
     if (isProcessingAction) return;
@@ -795,7 +690,7 @@ export const ElectronicApprovalView = ({
     }
   };
 
-  // Handle Reject Step (반려)
+  // Handle Reject Step
   const handleReject = async () => {
     if (!selectedDoc) return;
     if (isProcessingAction) return;
@@ -848,6 +743,7 @@ export const ElectronicApprovalView = ({
     }
   };
 
+  // Template change handler
   const handleTemplateChange = (type) => {
     let typeName = "특근 신청서";
     let defaultTitle = "";
@@ -882,1776 +778,95 @@ export const ElectronicApprovalView = ({
 
   return (
     <div className="space-y-3.5 animate-fadeIn pb-16">
-      {/* ========================================================================= */}
-      {/* 1. Header & Quick Stat Bar */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20 shrink-0">
-              <FileSignature className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  (주)오륙 스마트 전자결재 목록 현황
-                </h1>
-                {isAdmin && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 flex items-center gap-1 shadow-xs">
-                    <Crown className="w-3 h-3" />
-                    <span>대표 결재 권한 활성</span>
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재 / 한림공장: 최미영 전무 승인가능) ➔ 대표(대표이사) 자동결재선 적용
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                const returnTab = sessionStorage.getItem("approval_return_to_tab") || localStorage.getItem("approval_return_to_tab");
-                sessionStorage.removeItem("approval_return_to_tab");
-                localStorage.removeItem("approval_return_to_tab");
-                if (typeof onNavigateTab === "function") {
-                  onNavigateTab(returnTab || "worker_dashboard");
-                } else if (typeof onBack === "function") {
-                  onBack();
-                }
-              }}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer border border-slate-300 dark:border-slate-700 transition shadow-2xs"
-              title="전 화면(대시보드)으로 돌아가기"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>전 화면으로 돌아가기</span>
-            </button>
-            {isAdmin && stats.pending > 0 && (
-              <button
-                type="button"
-                onClick={handleBatchApprovePending}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                title="미결 문서 전체를 대표이사 최종 결재(전결)로 일괄 승인"
-              >
-                <Crown className="w-3.5 h-3.5" />
-                <span>대표 최종 승인 ({stats.pending}건 일괄 결재)</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleOpenDraftModal}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-            >
-              <span>새 결재 기안서 작성</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 5 KPI Summary Status Cards (미결 3분할 뱃지: 일반결재 / 4M변동점 / 특근보고서 심플 통합) */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
-          {/* 1. 미결 결재함 (삼분할 뱃지: 일반결재 / 4M변동점 / 특근보고서) */}
-          <div
-            onClick={() => {
-              setSelectedTab("PENDING");
-              setDocCategoryFilter("ALL");
-              setSelectedPlant("ALL");
-            }}
-            className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "PENDING" && docCategoryFilter === "ALL"
-                ? "bg-rose-100 dark:bg-rose-950/60 border-rose-500 ring-2 ring-rose-500/40 shadow-xs"
-                : "border-rose-300/80 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100/60"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-1 px-0.5">
-              <span className="flex items-center gap-1 font-black">
-                <Clock className="w-3.5 h-3.5" />
-                <span>{isAdmin ? "대표 결재 대기" : "내 결재 대기"}</span>
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className={`font-mono font-black text-xs ${categoryCounts.pendingTotal > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  {categoryCounts.pendingTotal}건
-                </span>
-                {categoryCounts.companyInProgressTotal > 0 && (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedTab("COMPANY_IN_PROGRESS");
-                      setDocCategoryFilter("ALL");
-                      setSelectedPlant("ALL");
-                    }}
-                    className="text-[9.5px] font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-mono bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs hover:border-slate-400 transition-all"
-                    title="클릭하여 전사 미결(진행중) 목록 전체 보기"
-                  >
-                    전사 {categoryCounts.companyInProgressTotal}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* 삼분할 뱃지 */}
-            <div className="grid grid-cols-3 gap-1" onClick={(e) => e.stopPropagation()}>
-              {/* ① 일반결재 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("GENERAL");
-                  setSelectedPlant("ALL");
-                }}
-                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
-                  selectedTab === "PENDING" && docCategoryFilter === "GENERAL"
-                    ? "bg-teal-600 text-white border-teal-600 shadow-xs"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
-              >
-                <span className="block text-[9.5px] font-bold truncate">일반결재</span>
-                <span className={`block text-xs font-black font-mono ${
-                  selectedTab === "PENDING" && docCategoryFilter === "GENERAL" ? "text-white" : "text-teal-600 dark:text-teal-400"
-                }`}>
-                  {categoryCounts.generalPending}건
-                </span>
-              </button>
-
-              {/* ② 4M변동점 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("FOUR_M");
-                  setSelectedPlant("ALL");
-                }}
-                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
-                  selectedTab === "PENDING" && docCategoryFilter === "FOUR_M"
-                    ? "bg-rose-600 text-white border-rose-600 shadow-xs"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
-              >
-                <span className="block text-[9.5px] font-bold truncate">4M변동점</span>
-                <span className={`block text-xs font-black font-mono ${
-                  selectedTab === "PENDING" && docCategoryFilter === "FOUR_M" ? "text-white" : "text-rose-600 dark:text-rose-400"
-                }`}>
-                  {categoryCounts.fourMPending}건
-                </span>
-              </button>
-
-              {/* ③ 특근보고서 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("OVERTIME");
-                  setSelectedPlant("ALL");
-                }}
-                className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
-                  selectedTab === "PENDING" && docCategoryFilter === "OVERTIME"
-                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
-              >
-                <span className="block text-[9.5px] font-bold truncate">특근보고서</span>
-                <span className={`block text-xs font-black font-mono ${
-                  selectedTab === "PENDING" && docCategoryFilter === "OVERTIME" ? "text-white" : "text-purple-600 dark:text-purple-400"
-                }`}>
-                  {categoryCounts.overtimePending}건
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. 보류 문서 */}
-          <div
-            onClick={() => {
-              setSelectedTab("HOLD");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "HOLD" && docCategoryFilter === "ALL"
-                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                <PauseCircle className="w-3.5 h-3.5" />
-                <span>보류 문서</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
-              {categoryCounts.holdTotal}건
-            </div>
-          </div>
-
-          {/* 3. 최종 승인 완료 */}
-          <div
-            onClick={() => {
-              setSelectedTab("APPROVED");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "APPROVED" && docCategoryFilter === "ALL"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>승인 완료</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
-              {categoryCounts.approvedTotal}건
-            </div>
-          </div>
-
-          {/* 4. 반려 문서 */}
-          <div
-            onClick={() => {
-              setSelectedTab("REJECTED");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-              selectedTab === "REJECTED" && docCategoryFilter === "ALL"
-                ? "bg-slate-200 dark:bg-slate-700 border-slate-400 ring-2 ring-slate-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                <XCircle className="w-3.5 h-3.5" />
-                <span>반려 문서</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-300 mt-0.5 font-mono">
-              {categoryCounts.rejectedTotal}건
-            </div>
-          </div>
-
-          {/* 5. 전체 문서 목록 */}
-          <div
-            onClick={() => {
-              setSelectedTab("ALL");
-              setDocCategoryFilter("ALL");
-            }}
-            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer col-span-2 sm:col-span-1 flex flex-col justify-between ${
-              selectedTab === "ALL" && docCategoryFilter === "ALL"
-                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
-                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
-            }`}
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" />
-                <span>전체 문서</span>
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 mt-0.5 font-mono">
-              {categoryCounts.total}건
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. Document Category Switcher: [전체] vs [4M변동점] vs [일반결재] vs [특근보고서] */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-        {/* Category Switcher Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 overflow-x-auto">
-          {/* 1. 전체 서류 */}
-          <button
-            type="button"
-            onClick={() => setDocCategoryFilter("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              docCategoryFilter === "ALL"
-                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm scale-102"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>전체 결재서류</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
-              docCategoryFilter === "ALL"
-                ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
-                : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-            }`}>
-              {categoryCounts.total}
-            </span>
-          </button>
-
-          {/* 2. 4M변동점결재 */}
-          <button
-            type="button"
-            onClick={() => setDocCategoryFilter("FOUR_M")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              docCategoryFilter === "FOUR_M"
-                ? "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-500/20 scale-102 ring-2 ring-rose-400/40"
-                : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300"
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>🛡️ 4M변동점</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
-              docCategoryFilter === "FOUR_M"
-                ? "bg-rose-900/80 text-rose-200 border border-rose-400/50"
-                : "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
-            }`}>
-              {categoryCounts.fourM}
-            </span>
-            {categoryCounts.fourMPending > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("FOUR_M");
-                  setSelectedPlant("ALL");
-                }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
-                title="클릭하여 4M변동점 미결 목록 바로보기"
-              >
-                미결 {categoryCounts.fourMPending}
-              </span>
-            )}
-          </button>
-
-          {/* 3. 일반결재서류 */}
-          <button
-            type="button"
-            onClick={() => setDocCategoryFilter("GENERAL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              docCategoryFilter === "GENERAL"
-                ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20 scale-102 ring-2 ring-teal-400/40"
-                : "text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-300"
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>📄 일반결재</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
-              docCategoryFilter === "GENERAL"
-                ? "bg-teal-900/80 text-teal-200 border border-teal-400/50"
-                : "bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300"
-            }`}>
-              {categoryCounts.general}
-            </span>
-            {categoryCounts.generalPending > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("GENERAL");
-                  setSelectedPlant("ALL");
-                }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
-                title="클릭하여 일반결재 미결 목록 바로보기"
-              >
-                미결 {categoryCounts.generalPending}
-              </span>
-            )}
-          </button>
-
-          {/* 4. 특근보고서 */}
-          <button
-            type="button"
-            onClick={() => setDocCategoryFilter("OVERTIME")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              docCategoryFilter === "OVERTIME"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 scale-102 ring-2 ring-purple-400/40"
-                : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>🌙 특근보고서</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
-              docCategoryFilter === "OVERTIME"
-                ? "bg-purple-900/80 text-purple-200 border border-purple-400/50"
-                : "bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300"
-            }`}>
-              {categoryCounts.overtime}
-            </span>
-            {categoryCounts.overtimePending > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedTab("PENDING");
-                  setDocCategoryFilter("OVERTIME");
-                  setSelectedPlant("ALL");
-                }}
-                className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white cursor-pointer hover:bg-rose-600 shadow-xs"
-                title="클릭하여 특근보고서 미결 목록 바로보기"
-              >
-                미결 {categoryCounts.overtimePending}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Right Plant & Search Filters */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
-            {["ALL", "삼랑진공장", "한림공장"].map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setSelectedPlant(p)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedPlant === p
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-black"
-                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                {p === "ALL" ? "전체공장" : p === "삼랑진공장" ? "삼랑진" : "한림"}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="문서명/기안자 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-400 w-36 sm:w-44 font-bold"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. Status Filter Tabs Bar (미결/대기, 승인완료, 내 기안함, 보류, 반려) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center overflow-x-auto">
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full">
-          {[
-            { id: "ALL", label: `전체 (${stats.total})` },
-            {
-              id: "PENDING",
-              label: stats.pending > 0
-                ? `🔴 ${isAdmin ? "대표 결재 대기" : "내 결재 대기"} (${stats.pending})`
-                : `${isAdmin ? "대표 결재 대기" : "내 결재 대기"} (0)`,
-              highlight: stats.pending > 0
-            },
-            { id: "COMPANY_IN_PROGRESS", label: `📋 전사 미결 (${stats.companyInProgress})`, inProgressLight: stats.companyInProgress > 0 },
-            { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
-            { id: "MY_DRAFTS", label: `내 기안함 (${stats.myDrafts})` },
-            { id: "HOLD", label: `⏸️ 보류 (${stats.hold})`, holdLight: stats.hold > 0 },
-            { id: "REJECTED", label: `✕ 반려 (${stats.rejected})` }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setSelectedTab(tab.id);
-                if (tab.id === "PENDING" || tab.id === "COMPANY_IN_PROGRESS") {
-                  setSelectedPlant("ALL");
-                }
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
-                selectedTab === tab.id
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs"
-                  : tab.highlight
-                  ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300"
-                  : tab.inProgressLight
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                  : tab.holdLight
-                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. 1-Line Row Approval Table List */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        {filteredDocs.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-400 space-y-3">
-            <FileText className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
-            <p className="font-bold text-sm text-slate-600 dark:text-slate-300">
-              현재 필터 조건에 해당하는 결재 문서가 없습니다.
-            </p>
-            <p className="text-xs text-slate-400">
-              선택 분류: {docCategoryFilter === "ALL" ? "전체 서류" : docCategoryFilter === "FOUR_M" ? "4M변동점" : docCategoryFilter === "GENERAL" ? "일반결재" : "특근보고서"} / 
-              상태: {selectedTab === "ALL" ? "전체" : selectedTab === "PENDING" ? "미결/대기" : selectedTab === "APPROVED" ? "승인완료" : selectedTab === "HOLD" ? "보류" : selectedTab === "MY_DRAFTS" ? "내 기안함" : "반려"}
-            </p>
-            {(docCategoryFilter !== "ALL" || selectedTab !== "ALL" || selectedPlant !== "ALL" || searchQuery.trim()) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDocCategoryFilter("ALL");
-                  setSelectedTab("ALL");
-                  setSelectedPlant("ALL");
-                  setSearchQuery("");
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-sm cursor-pointer inline-flex items-center gap-1.5"
-              >
-                <span>🔄 전체 결재문서 목록 보기 (필터 초기화)</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
-                  <th className="py-3 px-3 w-20 whitespace-nowrap text-center">공장</th>
-                  <th className="py-3 px-4 min-w-[240px]">문서제목</th>
-                  <th className="py-3 px-3 w-28 whitespace-nowrap">기안자</th>
-                  <th className="py-3 px-3 w-28 whitespace-nowrap text-right">소요금액</th>
-                  <th className="py-3 px-3 w-28 text-center whitespace-nowrap">문서상태</th>
-                  <th className="py-3 px-3 w-24 text-center whitespace-nowrap">관리</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                {filteredDocs.map((doc) => {
-                  const isApproved = isApprovalDocApproved(doc, currentProfile, isAdmin);
-                  const isPending = isApprovalDocPending(doc, currentProfile, isAdmin);
-                  const isHold = isApprovalDocHold(doc);
-                  const isRejected = isApprovalDocRejected(doc);
-                  const isSignedByMe = Boolean(currentProfile?.name && Array.isArray(doc.steps) && doc.steps.some((st) => st?.name === currentProfile.name && st?.status === "APPROVED"));
-
-                  return (
-                    <tr
-                      key={doc.id}
-                      onClick={() => handleOpenDocModal(doc)}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${
-                        isPending ? "bg-rose-50/20 dark:bg-rose-950/10" : isHold ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
-                      }`}
-                    >
-                      {/* 1. 공장 */}
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                          doc.plant === "삼랑진공장"
-                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                            : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                        }`}>
-                          {doc.plant === "삼랑진공장" ? "삼랑진" : doc.plant === "한림공장" ? "한림" : (doc.plant || "전사")}
-                        </span>
-                      </td>
-
-                      {/* 2. 문서제목 (문서 종류 뱃지 + 간결 제목) */}
-                      <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {isOvertimeApprovalDoc(doc) ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 shrink-0">
-                              특근보고서
-                            </span>
-                          ) : isFourMApprovalDoc(doc) ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-0.5">
-                              🛡️ 4M변동점
-                            </span>
-                          ) : doc.type === "LEAVE" || doc.title?.includes("휴가") || doc.title?.includes("휴무") ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 shrink-0">
-                              휴가/연차
-                            </span>
-                          ) : doc.type === "EXPENSE" || doc.title?.includes("품의") || doc.title?.includes("구매") || doc.title?.includes("교체") ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shrink-0">
-                              품의/지출
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-800 shrink-0">
-                              일반기안
-                            </span>
-                          )}
-                          <span className="hover:underline text-slate-900 dark:text-white text-xs font-bold leading-tight">
-                            {formatConciseApprovalTitle(doc.title)}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 3. 기안자 */}
-                      <td className="py-3 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300 font-bold text-xs">
-                        {doc.drafter} <span className="text-slate-400 font-normal text-[11px]">{doc.drafterTitle}</span>
-                      </td>
-
-                      {/* 4. 소요금액 */}
-                      <td className="py-3 px-3 whitespace-nowrap font-mono font-black text-xs text-right text-emerald-600 dark:text-emerald-400">
-                        {doc.amount || "-"}
-                      </td>
-
-                      {/* 5. 문서상태 */}
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {(() => {
-                          const totalSteps = doc.steps?.length || 4;
-                          if (isApproved) {
-                            return (
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs">
-                                <span>✓</span>
-                                <span>결재완료 ({totalSteps}/{totalSteps})</span>
-                              </span>
-                            );
-                          }
-                          if (isHold) {
-                            const holdIdx = (doc.steps || []).findIndex((s) => s.status === "HOLD");
-                            const holdStepNum = holdIdx >= 0 ? holdIdx + 1 : 1;
-                            return (
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                                <span>⏸️</span>
-                                <span>보류중 [{holdStepNum}/{totalSteps}단계]</span>
-                              </span>
-                            );
-                          }
-                          if (isRejected) {
-                            return (
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 inline-flex items-center gap-1 shadow-2xs">
-                                <span>✕</span>
-                                <span>반려됨</span>
-                              </span>
-                            );
-                          }
-                          const pendingIdx = (doc.steps || []).findIndex((s) => s.status === "PENDING");
-                          const pendingStep = pendingIdx >= 0 ? doc.steps[pendingIdx] : null;
-                          const currentStepNum = pendingIdx >= 0 ? pendingIdx + 1 : 1;
-                          const role = pendingStep?.role || "검토";
-                          const name = pendingStep?.name || "";
-
-                          const isCeo = role === "대표" || role === "승인";
-                          const isDirector = role === "이사";
-                          const isLead = role === "책임" || role === "검토";
-
-                          const badgeStyle = isCeo
-                            ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 ring-1 ring-rose-400/30"
-                            : isDirector
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-400/30"
-                            : isLead
-                            ? "bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 ring-1 ring-sky-400/30"
-                            : "bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
-
-                          const userName = currentProfile?.name || "";
-                          const isMyDraftDoc = Boolean(
-                            userName &&
-                            doc.drafter &&
-                            (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))
-                          );
-                          const isMyTurn = Boolean(name && userName && (name === userName || name.includes(userName) || userName.includes(name)));
-
-                          return (
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-black border inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
-                              <Clock className="w-3 h-3 shrink-0" />
-                              {isMyDraftDoc && !isMyTurn ? (
-                                <span>[상신 진행중] {role}{name ? ` (${name})` : ""} 대기</span>
-                              ) : (
-                                <span>[{currentStepNum}/{totalSteps}단계] {role}{name ? ` (${name})` : ""} 대기</span>
-                              )}
-                            </span>
-                          );
-                        })()}
-                      </td>
-
-                      {/* 6. 관리 */}
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDocModal(doc)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all shadow-xs"
-                            title="상세 열람 및 결재"
-                          >
-                            상세
-                          </button>
-                          {canEditDoc(doc) && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleOpenEditModal(doc, e)}
-                              className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-600 hover:text-white dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1 border border-teal-200 dark:border-teal-800"
-                              title="기안서 수정 (결재 전 내용/금액/사진 수정)"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>수정</span>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleDelete(doc.id, e)}
-                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
-                              title="결재 문서 삭제 (ADMIN 전용)"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>삭제</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. Official Document Detail & Approval Popup Dialog */}
-      {/* ========================================================================= */}
-      {selectedDoc && (
-        <div
-          onClick={handleCloseDocModal}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 text-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-slate-800 shadow-2xl space-y-4 animate-scaleUp my-4 cursor-default"
-          >
-            {/* 1. Header: Clean Title + Status Badge + Actions (Print / Delete / Close) */}
-            {(() => {
-              const isFourMDoc = isFourMApprovalDoc(selectedDoc);
-              const isOvertimeDoc =
-                !isFourMDoc &&
-                (selectedDoc.type === "OVERTIME" ||
-                  (selectedDoc.typeName && selectedDoc.typeName.includes("특근")) ||
-                  (selectedDoc.title && selectedDoc.title.includes("특근"))) &&
-                !selectedDoc.title?.includes("근태") &&
-                !selectedDoc.typeName?.includes("근태");
-              const isAttendanceDoc =
-                !isFourMDoc &&
-                (selectedDoc.type === "ATTENDANCE" ||
-                  (selectedDoc.typeName && selectedDoc.typeName.includes("근태")) ||
-                  (selectedDoc.title && selectedDoc.title.includes("근태")));
-              const cleanTitle = isFourMDoc
-                ? selectedDoc.title
-                : isAttendanceDoc
-                ? `근태보고서결재(${selectedDoc.plant || "삼랑진공장"})`
-                : isOvertimeDoc
-                ? `특근보고서결재(${selectedDoc.plant || "삼랑진공장"})`
-                : selectedDoc.title;
-
-              const cleanDept = selectedDoc.department
-                ? `${selectedDoc.plant} • ${selectedDoc.department.replace(/\s*\([^)]*\)/g, "")}`
-                : selectedDoc.plant;
-
-              const cleanDate = selectedDoc.createdAt
-                ? selectedDoc.createdAt.replace(/\. /g, "-").replace(/\./g, "").slice(0, 10)
-                : "-";
-
-              const isApproved = selectedDoc.status === "APPROVED";
-              const isHold = selectedDoc.status === "HOLD";
-              const isRejected = selectedDoc.status === "REJECTED";
-              const docSteps = Array.isArray(selectedDoc.steps) ? selectedDoc.steps : [];
-              const pendingStep = docSteps.find((s) => s.status === "PENDING");
-
-              return (
-                <>
-                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-800">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
-                          {cleanTitle}
-                        </h2>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black border flex items-center gap-1 shadow-xs shrink-0 ${
-                          isApproved
-                            ? "bg-emerald-950 text-emerald-300 border-emerald-700"
-                            : isHold
-                            ? "bg-amber-950 text-amber-300 border-amber-700"
-                            : isRejected
-                            ? "bg-rose-950 text-rose-300 border-rose-700"
-                            : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            isApproved ? "bg-emerald-400" : isHold ? "bg-amber-400" : isRejected ? "bg-rose-400" : "bg-yellow-400"
-                          }`}></span>
-                          <span>
-                            {isApproved
-                              ? `결재완료 (${docSteps.length}/${docSteps.length})`
-                              : isHold
-                              ? "보류중"
-                              : isRejected
-                              ? "반려됨"
-                              : `결재진행중 (${pendingStep ? `${pendingStep.role} 대기` : "대기"})`}
-                          </span>
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono text-slate-500 block">
-                        문서번호: {selectedDoc.docNumber}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {canEditDoc(selectedDoc) && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(selectedDoc)}
-                          className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-teal-950/80 hover:bg-teal-600 text-teal-300 hover:text-white font-bold text-xs flex items-center gap-1 border border-teal-800/80 transition-all cursor-pointer shadow-xs"
-                          title="기안서 수정 (결재 전 내용/금액/사진 수정)"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">기안 수정</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                        title="인쇄"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">인쇄</span>
-                      </button>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDelete(selectedDoc.id, e)}
-                          className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1 border border-rose-800/80 transition-all cursor-pointer"
-                          title="문서 삭제 (ADMIN 전용)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">삭제</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleCloseDocModal}
-                        className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-black"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2. Compact 1-Line Meta Chips Bar (기안부서, 기안자, 기안일시, 소요금액) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
-                      <span className="text-[10px] text-slate-500 font-bold block">기안 부서</span>
-                      <span className="font-bold text-cyan-300 text-[11.5px] truncate block">{cleanDept}</span>
-                    </div>
-                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
-                      <span className="text-[10px] text-slate-500 font-bold block">기안자(담당)</span>
-                      <span className="font-bold text-slate-200 text-[11.5px] truncate block">{selectedDoc.drafter} {selectedDoc.drafterTitle}</span>
-                    </div>
-                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
-                      <span className="text-[10px] text-slate-500 font-bold block">기안 일시</span>
-                      <span className="font-mono font-bold text-slate-300 text-[11.5px] truncate block">{cleanDate}</span>
-                    </div>
-                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
-                      <span className="text-[10px] text-slate-500 font-bold block">소요 금액</span>
-                      <span className="font-mono font-black text-rose-400 text-[11.5px] truncate block">{selectedDoc.amount || "-"}</span>
-                    </div>
-                  </div>
-
-                  {/* 3. Streamlined 4-Step Approval Seal Line */}
-                  <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-black px-1">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                        <span>전자결재 승인선</span>
-                      </span>
-                      <span className={`text-[10px] font-bold ${isApproved ? "text-emerald-400" : "text-yellow-400"}`}>
-                        {isApproved ? "최종 재가 완료" : "결재 진행중"}
-                      </span>
-                    </div>
-
-                    <div className={`grid ${docSteps.length === 3 ? "grid-cols-3" : "grid-cols-4"} gap-2 text-center text-xs`}>
-                      {docSteps.map((st, idx) => {
-                        const isStepApproved = st.status === "APPROVED";
-                        const isStepPending = st.status === "PENDING";
-                        const isStepHold = st.status === "HOLD";
-                        const isStepRejected = st.status === "REJECTED";
-
-                        return (
-                          <div
-                            key={idx}
-                            className={`p-2 rounded-xl border flex flex-col items-center justify-between space-y-1 min-h-[90px] ${
-                              isStepApproved
-                                ? "bg-slate-900 border-slate-700/80 shadow-xs"
-                                : isStepPending
-                                ? "bg-rose-950/20 border-rose-600/70 ring-1 ring-rose-500/30"
-                                : "bg-slate-900/60 border-slate-800/80"
-                            }`}
-                          >
-                            <span className="text-[10px] font-bold text-slate-400">
-                              {idx + 1}. {st.role}
-                            </span>
-
-                            {isStepApproved ? (
-                              st.name === "권태형" || (st.role === "대표" && st.name !== "최미영") ? (
-                                <div className="w-14 h-9 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
-                                  <img
-                                    src={KWON_SIGNATURE_BLACK}
-                                    alt="권태형 대표이사 친필 서명"
-                                    className="w-full h-full object-contain filter invert drop-shadow-xs"
-                                  />
-                                </div>
-                              ) : (
-                                <div className={`w-9 h-9 rounded-full border-2 ${idx === 0 ? "border-blue-400 text-blue-400" : "border-rose-400 text-rose-400"} flex flex-col items-center justify-center font-black leading-none bg-slate-950 animate-scaleUp`}>
-                                  <span className="text-[6.5px]">오륙</span>
-                                  <span className="text-[9px]">{st.name?.slice(0, 3)}</span>
-                                  <span className="text-[6.5px]">{idx === 0 ? "기안" : "승인"}</span>
-                                </div>
-                              )
-                            ) : isStepHold ? (
-                              <div className="w-9 h-9 rounded-full border-2 border-amber-500 text-amber-400 flex flex-col items-center justify-center font-black text-[8px] bg-slate-950">
-                                <span>보류</span>
-                                <span className="text-[6.5px]">{st.name?.slice(0, 3)}</span>
-                              </div>
-                            ) : isStepRejected ? (
-                              <div className="w-9 h-9 rounded-full border-2 border-slate-600 text-slate-400 flex flex-col items-center justify-center font-black text-[8px] bg-slate-950">
-                                <span>반려</span>
-                                <span className="text-[6.5px]">{st.name?.slice(0, 3)}</span>
-                              </div>
-                            ) : isStepPending ? (
-                              <div className="h-9 flex items-center justify-center">
-                                <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-600 text-[10px] font-black">
-                                  결재대기
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="h-9 flex items-center justify-center">
-                                <span className="text-[10px] text-slate-500 font-bold">- (대기)</span>
-                              </div>
-                            )}
-
-                            <span className="text-[9.5px] text-slate-400 font-mono">
-                              {st.date ? st.date.split(" ")[0].slice(5) : st.name || "-"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-
-            {/* 4. Document Content Body */}
-            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
-              <span className="text-[11px] font-black text-slate-400 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-cyan-400" />
-                <span>기안 내용</span>
-              </span>
-              <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed whitespace-pre-wrap">
-                {selectedDoc.content}
-              </p>
-            </div>
-
-            {/* Attached Photos View Section (4M 변동점 조치 전 5장 / 조치 후 5장 구조화 지원) */}
-            {((selectedDoc.causeImages && selectedDoc.causeImages.length > 0) || (selectedDoc.actionImages && selectedDoc.actionImages.length > 0)) ? (
-              <div className="space-y-3">
-                {/* 1. 조치 전 사진 (원인 분석 및 이상 현장) */}
-                {selectedDoc.causeImages && selectedDoc.causeImages.length > 0 && (
-                  <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-800/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
-                        <Camera className="w-3.5 h-3.5 text-rose-400" />
-                        <span>📸 조치 전 (이상발생 및 현장 원인) - {selectedDoc.causeImages.length}장</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400">클릭하여 확대보기</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {selectedDoc.causeImages.map((img, idx) => {
-                        const imgUrl = typeof img === "string" ? img : img.dataUrl || img.url || "";
-                        const imgName = typeof img === "object" ? img.name || `조치전_${idx + 1}` : `조치전_${idx + 1}`;
-                        return (
-                          <div
-                            key={img.id || idx}
-                            onClick={() => handleOpenImagePreview({ url: imgUrl, name: imgName })}
-                            className="group cursor-pointer rounded-xl overflow-hidden border border-rose-700/60 hover:border-rose-400 bg-slate-900 transition-all shadow-xs flex flex-col"
-                          >
-                            <div className="relative aspect-square w-full bg-slate-950 overflow-hidden">
-                              <img
-                                src={imgUrl}
-                                alt={imgName}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold flex items-center gap-1">
-                                  <ZoomIn className="w-2.5 h-2.5" />
-                                  <span>확대</span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="p-1 px-1.5 bg-slate-950 text-[9.5px] flex items-center justify-between border-t border-slate-800">
-                              <span className="font-bold text-rose-300 truncate max-w-[70px]">
-                                {imgName}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. 조치 후 사진 (시정조치 및 개선대책 완료) */}
-                {selectedDoc.actionImages && selectedDoc.actionImages.length > 0 && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-800/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-                        <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>📸 조치 후 (시정조치 및 개선대책 완료) - {selectedDoc.actionImages.length}장</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400">클릭하여 확대보기</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {selectedDoc.actionImages.map((img, idx) => {
-                        const imgUrl = typeof img === "string" ? img : img.dataUrl || img.url || "";
-                        const imgName = typeof img === "object" ? img.name || `조치후_${idx + 1}` : `조치후_${idx + 1}`;
-                        return (
-                          <div
-                            key={img.id || idx}
-                            onClick={() => handleOpenImagePreview({ url: imgUrl, name: imgName })}
-                            className="group cursor-pointer rounded-xl overflow-hidden border border-emerald-700/60 hover:border-emerald-400 bg-slate-900 transition-all shadow-xs flex flex-col"
-                          >
-                            <div className="relative aspect-square w-full bg-slate-950 overflow-hidden">
-                              <img
-                                src={imgUrl}
-                                alt={imgName}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold flex items-center gap-1">
-                                  <ZoomIn className="w-2.5 h-2.5" />
-                                  <span>확대</span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="p-1 px-1.5 bg-slate-950 text-[9.5px] flex items-center justify-between border-t border-slate-800">
-                              <span className="font-bold text-emerald-300 truncate max-w-[70px]">
-                                {imgName}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : selectedDoc.images && selectedDoc.images.length > 0 ? (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <ImageIcon className="w-4 h-4 text-emerald-600" />
-                    <span>첨부 사진 및 현장 증빙자료 ({selectedDoc.images.length}장)</span>
-                  </span>
-                  <span className="text-[10.5px] text-slate-400">클릭하여 확대 및 다운로드</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {selectedDoc.images.map((img, idx) => (
-                    <div
-                      key={img.id || idx}
-                      onClick={() => handleOpenImagePreview({ url: img.dataUrl || img.url || img, name: img.name || `첨부사진_${idx + 1}` })}
-                      className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 bg-white dark:bg-slate-900 transition-all shadow-xs flex flex-col"
-                    >
-                      <div className="relative aspect-video sm:aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <img
-                          src={img.dataUrl || img.url || img}
-                          alt={img.name || `첨부사진 ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="px-2 py-1 rounded-lg bg-slate-900/80 text-white text-[10px] font-bold flex items-center gap-1">
-                            <ZoomIn className="w-3 h-3" />
-                            <span>확대보기</span>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-1.5 px-2 bg-white dark:bg-slate-900 text-[10px] flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-                        <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[90px]">
-                          {img.name || `사진 ${idx + 1}`}
-                        </span>
-                        <span className="text-slate-400 font-mono text-[9px]">{img.size || ""}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Hold Reason Box */}
-            {selectedDoc.holdReason && (
-              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs space-y-1">
-                <span className="font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                  <PauseCircle className="w-3.5 h-3.5" />
-                  <span>결재 보류 사유</span>
-                </span>
-                <p className="text-amber-950 dark:text-amber-200 font-medium">
-                  {selectedDoc.holdReason}
-                </p>
-              </div>
-            )}
-
-            {/* Rejection Notice */}
-            {selectedDoc.rejectReason && (
-              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs space-y-1">
-                <span className="font-black text-rose-700 dark:text-rose-300 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>반려 사유 안내</span>
-                </span>
-                <p className="text-rose-900 dark:text-rose-200 font-medium">
-                  {selectedDoc.rejectReason}
-                </p>
-              </div>
-            )}
-
-            {/* Step Comments History */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-bold text-slate-500">결재 의견 및 결재 이력:</span>
-              <div className="space-y-1">
-                {(selectedDoc.steps || []).filter((s) => s && s.date).map((st, idx) => (
-                  <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="font-bold">
-                      [{st.role}] {st.name} {st.status === "APPROVED" ? "✓ 승인" : st.status === "HOLD" ? "⏸️ 보류" : "✕ 반려"} : {st.comment || "의견 없음"}
-                    </span>
-                    <span className="font-mono text-slate-400">{st.date}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Approval Execution Controls */}
-            {(selectedDoc.status === "IN_PROGRESS" || selectedDoc.status === "HOLD") && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                    <Stamp className="w-4 h-4 text-emerald-600" />
-                    <span>
-                      {isAdmin ? "ADMIN 최고 결재 승인 및 도장 날인" : "전자결재 처리 (승인/보류/반려)"}
-                    </span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {isAdmin ? (
-                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-emerald-300 dark:border-emerald-700 shadow-2xs">
-                        <span className="text-[10px] font-bold text-slate-500 px-1">결재자 선택:</span>
-                        <button
-                          type="button"
-                          onClick={() => setAdminApprover("권태형")}
-                          className={`px-2 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                            adminApprover === "권태형"
-                              ? "bg-blue-600 text-white shadow-xs"
-                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          <span>👑</span>
-                          <span>권태형 대표이사</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAdminApprover("최미영")}
-                          className={`px-2 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                            adminApprover === "최미영"
-                              ? "bg-indigo-600 text-white shadow-xs"
-                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          <span>💎</span>
-                          <span>최미영 전무</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300">
-                        현재 사용자: <strong>{`${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {currentPermission.canApprove ? (
-                  <>
-                    {actionType === "APPROVE" && (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="결재 의견 (예: 이상 없음 승인)"
-                          value={approvalComment}
-                          onChange={(e) => setApprovalComment(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                        />
-
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => setActionType("HOLD")}
-                            className="px-3.5 py-2 rounded-xl border border-amber-400 text-amber-700 hover:bg-amber-50 text-xs font-bold transition-all"
-                          >
-                            ⏸️ 보류 처리
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActionType("REJECT")}
-                            className="px-3.5 py-2 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all"
-                          >
-                            ✕ 반려 처리
-                          </button>
-                          {(() => {
-                            const totalSteps = selectedDoc?.steps?.length || 4;
-                            const activeStepIdx = currentPermission.stepIndex;
-                            const isFinal = activeStepIdx >= totalSteps - 1;
-                            const currentApprover = isAdmin ? adminApprover : (currentPermission.approverName || currentProfile?.name || "결재자");
-                            const nextStep = !isFinal && selectedDoc?.steps ? selectedDoc.steps[activeStepIdx + 1] : null;
-                            const currentRole = currentPermission.stepRole || "승인";
-
-                            return (
-                              <button
-                                type="button"
-                                onClick={handleApprove}
-                                className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Stamp className="w-3.5 h-3.5" />
-                                <span>
-                                  {isFinal
-                                    ? `👑 [${activeStepIdx + 1}/${totalSteps}단계] ${currentRole} (${currentApprover}) 최종 승인 및 완료`
-                                    : `✓ [${activeStepIdx + 1}/${totalSteps}단계] ${currentRole} (${currentApprover}) 승인 ➔ 다음 단계(${nextStep?.name ? `${nextStep.name} ${nextStep.role}` : nextStep?.role || "다음"}) 인계`}
-                                </span>
-                              </button>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-
-                    {actionType === "HOLD" && (
-                      <div className="space-y-2">
-                        <textarea
-                          rows="2"
-                          placeholder="보류 사유를 구체적으로 입력하세요 (추가 확인 사항 등)."
-                          value={holdReason}
-                          onChange={(e) => setHoldReason(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border-2 border-amber-300 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                        ></textarea>
-
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setActionType("APPROVE")}
-                            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleHold}
-                            className="px-5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md shadow-amber-500/20"
-                          >
-                            보류 확정
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {actionType === "REJECT" && (
-                      <div className="space-y-2">
-                        <textarea
-                          rows="2"
-                          placeholder="반려 사유를 구체적으로 작성해 주세요."
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border-2 border-rose-300 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                        ></textarea>
-
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setActionType("APPROVE")}
-                            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleReject}
-                            className="px-5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-500/20"
-                          >
-                            반려 확정
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
-                    <div>
-                      <span className="font-black text-slate-800 dark:text-slate-200">
-                        {currentPermission.reason}
-                      </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        상위 결재자의 승인이 완료된 후 다음 단계 결재선으로 자동 인계됩니다.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={(e) => handleDelete(selectedDoc.id, e)}
-                    className="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
-                    title="결재 문서 삭제 (ADMIN 전용)"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>문서 삭제 (ADMIN)</span>
-                  </button>
-                )}
-                {canEditDoc(selectedDoc) && (
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditModal(selectedDoc)}
-                    className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black flex items-center gap-1.5 shadow-sm shadow-teal-600/30 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>기안서 내용 수정 / 재상신</span>
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleCloseDocModal}
-                className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto cursor-pointer"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. New Draft Registration Modal (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
-      {/* ========================================================================= */}
-      {isDraftModalOpen && (
-        <div
-          onClick={() => setIsDraftModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6 cursor-default"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className={`p-2 rounded-xl ${editingDocId ? "bg-teal-600 text-white shadow-xs" : "bg-emerald-500 text-white shadow-xs"}`}>
-                  {editingDocId ? <Edit3 className="w-4 h-4" /> : <FileSignature className="w-4 h-4" />}
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    {editingDocId ? "전자결재 기안서 수정 (재상신)" : "새 전자결재 기안서 작성"}
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    {editingDocId
-                      ? "기안 내용, 소요금액, 첨부사진 및 결재선을 수정한 후 재상신합니다."
-                      : "담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 결재선"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDraftModalOpen(false);
-                  setEditingDocId(null);
-                }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1.5">
-                결재 양식 선택
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                {[
-                  { key: "OVERTIME", label: "특근 신청서", icon: Clock },
-                  { key: "LEAVE", label: "휴가/연차 신청", icon: Calendar },
-                  { key: "EXPENSE", label: "자재/부품 품의", icon: DollarSign },
-                  { key: "GENERAL", label: "일반 업무기안", icon: FileText }
-                ].map((tmpl) => (
-                  <button
-                    type="button"
-                    key={tmpl.key}
-                    onClick={() => handleTemplateChange(tmpl.key)}
-                    className={`p-2.5 rounded-xl border text-center font-black transition-all flex flex-col items-center justify-center gap-1 ${
-                      draftForm.type === tmpl.key
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs"
-                        : "border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <tmpl.icon className="w-4 h-4 text-emerald-600" />
-                    <span>{tmpl.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveDraft} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                {/* 소속 공장 */}
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    소속 공장
-                  </label>
-                  <select
-                    value={draftForm.plant}
-                    onChange={(e) => handlePlantChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                  >
-                    <option value="삼랑진공장">삼랑진공장</option>
-                    <option value="한림공장">한림공장</option>
-                  </select>
-                </div>
-
-                {/* 1. 담당 (기안자) */}
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    기안자 (작성자 선택)
-                  </label>
-                  <select
-                    value={draftForm.drafter}
-                    onChange={(e) => {
-                      const sel = allWorkers.find((w) => w.name === e.target.value);
-                      setDraftForm({
-                        ...draftForm,
-                        drafter: e.target.value,
-                        drafterTitle: sel?.title || "선임",
-                        plant: sel?.plant || sel?.plantName || draftForm.plant,
-                        department: sel?.process || sel?.assignedProcess || draftForm.department
-                      });
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                  >
-                    <optgroup label="임원 및 관리자">
-                      {allWorkers.filter((w) => w.isManager).map((w) => (
-                        <option key={w.name} value={w.name}>
-                          {w.name} ({w.title} • {w.plant})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="현장 작업자 / 반장">
-                      {allWorkers.filter((w) => !w.isManager).map((w) => (
-                        <option key={w.name} value={w.name}>
-                          {w.name} ({w.title ? `${w.title} • ` : ""}{w.plant})
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-              </div>
-
-              {/* 기안 제목 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  기안 제목
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 9월 1주차 주말 생산라인 특근 신청의 건"
-                  value={draftForm.title}
-                  onChange={(e) => setDraftForm({ ...draftForm, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs"
-                />
-              </div>
-
-              {/* 소요 금액 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  소요 금액 / 특근비 (선택 사항)
-                </label>
-                <input
-                  type="text"
-                  placeholder="예: ₩1,248,000 (해당사항 없을 시 비워둠)"
-                  value={draftForm.amount}
-                  onChange={(e) => setDraftForm({ ...draftForm, amount: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-slate-900 dark:text-white text-xs"
-                />
-              </div>
-
-              {/* 상세 내용 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  기안 상세 내용
-                </label>
-                <textarea
-                  rows="4"
-                  required
-                  placeholder="구체적인 사유 및 내역을 입력해 주세요."
-                  value={draftForm.content}
-                  onChange={(e) => setDraftForm({ ...draftForm, content: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs"
-                ></textarea>
-              </div>
-
-              {/* 사진 및 현장 증빙자료 첨부 (선택) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 text-xs">
-                    <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>사진 및 현장 증빙자료 첨부 (선택)</span>
-                  </label>
-                  <span className="text-[10.5px] text-slate-400 font-medium">
-                    {draftForm.images?.length || 0}/10장 첨부됨
-                  </span>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleImageFiles(e.target.files)}
-                />
-
-                {/* Drag & Drop Upload Zone */}
-                <div
-                  onDragEnter={handleImageDrag}
-                  onDragOver={handleImageDrag}
-                  onDragLeave={handleImageDrag}
-                  onDrop={handleImageDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
-                    imageDragActive
-                      ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 scale-[1.01]"
-                      : "border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 hover:border-emerald-400 hover:bg-emerald-50/20"
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shadow-xs">
-                    {isProcessingImages ? (
-                      <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <Camera className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      {isProcessingImages ? "사진 압축 및 처리 중..." : "사진을 드래그하거나 클릭하여 첨부하세요"}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      스마트폰 현장 사진, 영수증, 설비 고장/수리 부위 등 (JPG, PNG, WebP 지원)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Attached Image Thumbnails */}
-                {draftForm.images && draftForm.images.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
-                    {draftForm.images.map((img, idx) => (
-                      <div
-                        key={img.id || idx}
-                        className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
-                      >
-                        <img
-                          src={img.dataUrl}
-                          alt={img.name || `첨부사진 ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPreviewImageModal({ url: img.dataUrl, name: img.name });
-                            }}
-                            className="p-1 rounded-lg bg-white/90 text-slate-800 hover:bg-white shadow-xs"
-                            title="크게보기"
-                          >
-                            <ZoomIn className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveDraftImage(idx);
-                            }}
-                            className="p-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700 shadow-xs"
-                            title="삭제"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <span className="absolute bottom-1 left-1 right-1 px-1 py-0.5 rounded bg-slate-900/70 text-white text-[9px] truncate text-center font-mono">
-                          {img.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* 자동 결재선 지정 (기안자, 책임, 이사, 대표 뱃지에서 관리자 및 결재자 선택) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>자동 결재선 지정 (기안자 및 결재선 관리자 선택)</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">4단계 결재자 배정</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {/* 1. 기안자 (담당) 뱃지 - 전체 관리자 및 작업자 선택 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">1. 기안자 (담당)</span>
-                    <select
-                      value={draftForm.drafter}
-                      onChange={(e) => {
-                        const sel = allWorkers.find((w) => w.name === e.target.value);
-                        const selTitle = sel?.title || "선임";
-                        const isLead = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(e.target.value) || selTitle === "책임";
-                        setDraftForm({
-                          ...draftForm,
-                          drafter: e.target.value,
-                          drafterTitle: selTitle,
-                          leadName: isLead ? e.target.value : draftForm.leadName,
-                          plant: sel?.plant || sel?.plantName || draftForm.plant,
-                          department: sel?.process || sel?.assignedProcess || draftForm.department
-                        });
-                      }}
-                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
-                    >
-                      <optgroup label="임원 및 관리자">
-                        {allWorkers.filter((w) => w.isManager).map((w) => (
-                          <option key={w.name} value={w.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                            {w.name} ({w.title})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="현장 작업자 / 반장">
-                        {allWorkers.filter((w) => !w.isManager).map((w) => (
-                          <option key={w.name} value={w.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                            {w.name} {w.title ? `(${w.title})` : ""}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">기안 상신자</span>
-                  </div>
-
-                  {/* 2. 책임 (관리자) 뱃지 - 전체 관리자 선택 (공정관리자 기안 시 책임 전결 자동 승인 안내) */}
-                  {(() => {
-                    const isLeadDrafter =
-                      ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(draftForm.drafter) ||
-                      draftForm.drafterTitle === "책임";
-                    return (
-                      <div className={`p-2 rounded-xl border ring-1 transition-all ${
-                        isLeadDrafter
-                          ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-600 ring-emerald-500/30"
-                          : "bg-white dark:bg-slate-700 border-emerald-300 dark:border-emerald-700 ring-emerald-500/20"
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (관리자)</span>
-                          {isLeadDrafter && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500 text-white font-black">
-                              전결 대상
-                            </span>
-                          )}
-                        </div>
-                        <select
-                          value={draftForm.leadName}
-                          onChange={(e) => setDraftForm({ ...draftForm, leadName: e.target.value })}
-                          className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
-                        >
-                          <optgroup label="삼랑진공장 관리자">
-                            {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "삼랑진공장").map((m) => (
-                              <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                                {m.name} ({m.title} • {m.process})
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="한림공장 관리자">
-                            {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "한림공장").map((m) => (
-                              <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                                {m.name} ({m.title} • {m.process})
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                        <span className={`text-[9px] font-medium block truncate ${isLeadDrafter ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-blue-600 dark:text-blue-400"}`}>
-                          {isLeadDrafter ? "✅ 책임 전결 (기안 즉시 승인)" : "책임/중간 결재"}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 3. 이사 (임원) 뱃지 - 임원 선택 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-700 ring-1 ring-purple-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">3. 이사 (임원)</span>
-                    <select
-                      value={draftForm.directorName || (draftForm.plant === "한림공장" ? "이명재 / 최미영" : "이명재")}
-                      onChange={(e) => setDraftForm({ ...draftForm, directorName: e.target.value })}
-                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
-                    >
-                      {APPROVAL_MANAGERS.DIRECTORS.map((m) => (
-                        <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                          {m.name} ({m.title})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">총괄/임원 승인</span>
-                  </div>
-
-                  {/* 4. 대표 (CEO/전무) 뱃지 - 최종 결재자 선택 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (최종)</span>
-                    <select
-                      value={draftForm.ceoName || "권태형"}
-                      onChange={(e) => setDraftForm({ ...draftForm, ceoName: e.target.value })}
-                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
-                    >
-                      {APPROVAL_MANAGERS.CEO.map((m) => (
-                        <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                          {m.name} ({m.title})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">최종 결재자</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDraftModalOpen(false);
-                    setEditingDocId(null);
-                  }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-2.5 rounded-xl ${
-                    editingDocId
-                      ? "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 shadow-teal-500/25"
-                      : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
-                  } text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer`}
-                >
-                  {editingDocId ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>기안서 수정 완료 (재상신)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      <span>결재 상신 (기안 요청)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox / High-Res Image Preview Modal */}
+      {/* 1. Header, KPI & Filter Bar */}
+      <ApprovalKPIHeader
+        isAdmin={isAdmin}
+        stats={stats}
+        selectedTab={selectedTab}
+        setSelectedTab={setSelectedTab}
+        docCategoryFilter={docCategoryFilter}
+        setDocCategoryFilter={setDocCategoryFilter}
+        selectedPlant={selectedPlant}
+        setSelectedPlant={setSelectedPlant}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onNavigateTab={onNavigateTab}
+        onBack={onBack}
+        handleOpenDraftModal={handleOpenDraftModal}
+        handleBatchApprovePending={handleBatchApprovePending}
+      />
+
+      {/* 2. Documents Table / Cards */}
+      <ApprovalDocTable
+        filteredDocs={filteredDocs}
+        handleOpenDocModal={handleOpenDocModal}
+        handleOpenEditModal={handleOpenEditModal}
+        handleDelete={handleDelete}
+        canEditDoc={canEditDoc}
+        isAdmin={isAdmin}
+        currentProfile={currentProfile}
+        docCategoryFilter={docCategoryFilter}
+        selectedTab={selectedTab}
+        selectedPlant={selectedPlant}
+        searchQuery={searchQuery}
+        setDocCategoryFilter={setDocCategoryFilter}
+        setSelectedTab={setSelectedTab}
+        setSelectedPlant={setSelectedPlant}
+        setSearchQuery={setSearchQuery}
+      />
+
+      {/* 3. Document Detail & Action Modal */}
+      <ApprovalDetailModal
+        selectedDoc={selectedDoc}
+        handleCloseDocModal={handleCloseDocModal}
+        currentPermission={currentPermission}
+        isAdmin={isAdmin}
+        adminApprover={adminApprover}
+        setAdminApprover={setAdminApprover}
+        currentProfile={currentProfile}
+        handleApprove={handleApprove}
+        handleHold={handleHold}
+        handleReject={handleReject}
+        handleDelete={handleDelete}
+        handleOpenEditModal={handleOpenEditModal}
+        canEditDoc={canEditDoc}
+        approvalComment={approvalComment}
+        setApprovalComment={setApprovalComment}
+        holdReason={holdReason}
+        setHoldReason={setHoldReason}
+        rejectReason={rejectReason}
+        setRejectReason={setRejectReason}
+        actionType={actionType}
+        setActionType={setActionType}
+        handleOpenImagePreview={handleOpenImagePreview}
+        isProcessingAction={isProcessingAction}
+      />
+
+      {/* 4. New Draft Registration / Edit Modal */}
+      <ApprovalDraftModal
+        isOpen={isDraftModalOpen}
+        onClose={() => {
+          setIsDraftModalOpen(false);
+          setEditingDocId(null);
+        }}
+        editingDocId={editingDocId}
+        draftForm={draftForm}
+        setDraftForm={setDraftForm}
+        allWorkers={allWorkers}
+        handleTemplateChange={handleTemplateChange}
+        handlePlantChange={handlePlantChange}
+        handleSaveDraft={handleSaveDraft}
+        fileInputRef={fileInputRef}
+        handleImageFiles={handleImageFiles}
+        handleImageDrag={handleImageDrag}
+        handleImageDrop={handleImageDrop}
+        imageDragActive={imageDragActive}
+        isProcessingImages={isProcessingImages}
+        handleRemoveDraftImage={handleRemoveDraftImage}
+        setPreviewImageModal={setPreviewImageModal}
+      />
+
+      {/* 5. Lightbox Image Preview Modal */}
       {previewImageModal && (
         <ImagePreviewModal
           previewImage={previewImageModal}
@@ -2661,3 +876,5 @@ export const ElectronicApprovalView = ({
     </div>
   );
 };
+
+export default ElectronicApprovalView;
