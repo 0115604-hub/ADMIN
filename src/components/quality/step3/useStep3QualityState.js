@@ -613,6 +613,15 @@ export const useStep3QualityState = ({
   // Submit to Electronic Approval
   const handleSubmitToElectronicApproval = async () => {
     if (!capaModalItem) return;
+
+    // ⭐ 엄격한 결재 상신 권한 및 자동상신금지 (품질관리 책임자 이창엽 전용)
+    const isLeeChangYeop = managerName === "이창엽" || currentProfile?.name === "이창엽";
+    const isAdmin = currentProfile?.role === "ADMIN" || currentProfile?.id === "admin" || currentProfile?.name === "권태형";
+    if (!isLeeChangYeop && !isAdmin) {
+      alert("4M 변동점 전자결재 상신은 품질관리 책임자(이창엽)만 상신할 수 있습니다.\n자동상신 및 비인가 상신의 결재함 등록은 엄격히 금지되어 있습니다.");
+      return;
+    }
+
     const effectiveAction =
       capaForm.correctiveAction?.trim() ||
       capaModalItem.actionResult?.trim() ||
@@ -654,7 +663,7 @@ export const useStep3QualityState = ({
           title: "책임",
           status: "APPROVED",
           date: nowStr,
-          comment: `4M 변동점 및 시정대책(CAPA) 기안 상신 (${managerName || "품질관리"})`
+          comment: `4M 변동점 및 시정대책(CAPA) 기안 상신 (품질관리 책임 이창엽)`
         },
         {
           role: "검토",
@@ -685,7 +694,7 @@ export const useStep3QualityState = ({
         department: "품질보증팀",
         drafter: "이창엽",
         drafterTitle: "책임",
-        submittedByManager: managerName || "관리자",
+        submittedByManager: "이창엽",
         fourM: capaForm.fourM,
         isSqNotice: capaForm.isSqNotice,
         line: capaModalItem.line || "",
@@ -702,8 +711,8 @@ export const useStep3QualityState = ({
           `${effectiveAction}`,
           ``,
           `[조치 담당자 및 기한]`,
-          `• 조치 담당자: ${capaForm.author || managerName || "이창엽"}`,
-          `• 상신 관리자: ${managerName || "관리자"}`,
+          `• 조치 담당자: ${capaForm.author || "이창엽"}`,
+          `• 상신 관리자: 이창엽 (품질책임)`,
           `• 조치완료(예정)일: ${capaForm.targetDate}`,
           `• 증빙사진: 조치 전 ${capaForm.beforePhotos.length}장 / 조치 후 ${capaForm.afterPhotos.length}장 첨부됨`
         ].filter(Boolean).join("\n"),
@@ -728,7 +737,7 @@ export const useStep3QualityState = ({
         whyAnalysis: capaForm.rootCause,
         actionResult: capaForm.correctiveAction,
         correctiveAction: capaForm.correctiveAction,
-        actionAuthor: capaForm.author || managerName,
+        actionAuthor: capaForm.author || "이창엽",
         actionAt: nowStr,
         isSqNotice: capaForm.isSqNotice,
         targetDate: capaForm.targetDate,
@@ -745,7 +754,7 @@ export const useStep3QualityState = ({
         approvalRequestedAt: nowStr
       };
 
-      await registerToFourMLedger(updatedRecord, managerName);
+      await registerToFourMLedger(updatedRecord, "이창엽");
 
       const origId = capaModalItem.originalId || capaModalItem.rawId || String(capaModalItem.id).replace(/^ledger_/, "");
       if (ncLedgerState.overrides?.[origId]) {

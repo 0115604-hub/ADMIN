@@ -37,14 +37,7 @@ export function getDeletedApprovalIds() {
     const raw = localStorage.getItem("deleted_approval_doc_ids");
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
-    const set = new Set(Array.isArray(arr) ? arr : []);
-    // 4M 변동점 공식 결재문서는 영구 보존 대상이므로 삭제 블랙리스트에서 자동 제외
-    set.forEach((id) => {
-      if (id && (id.startsWith("appr_4m_") || id.includes("man_log_auto_"))) {
-        set.delete(id);
-      }
-    });
-    return set;
+    return new Set(Array.isArray(arr) ? arr : []);
   } catch (e) {
     return new Set();
   }
@@ -437,6 +430,17 @@ export function subscribeApprovalDocs(callback) {
 }
 
 export async function saveApprovalDocument(docData, options = {}) {
+  const is4M = isFourMApprovalDoc(docData);
+  // ⭐ 자동상신금지: 4M 변동점 전자결재 문서는 품질관리 책임자(이창엽)의 명시적 수동 상신만 엄격 허용
+  if (is4M && !options.isStepAction) {
+    const isManualDraft = Boolean(options.isDirectManualDraft);
+    const isDrafterLeeChangYeop = docData.drafter === "이창엽" || docData.submittedByManager?.includes("이창엽");
+    if (!isManualDraft || !isDrafterLeeChangYeop) {
+      console.warn("[자동상신금지 차단] 4M 변동점 문서는 이창엽 품질관리 책임자의 직접 상신 외 자동 생성이 차단되었습니다:", docData);
+      return null;
+    }
+  }
+
   const id = docData.id || `appr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",

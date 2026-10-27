@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   getDocs,
@@ -110,8 +111,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-08:41",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_유성_론나차이_1793058086561",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-12",
     registeredAt: "2026-10-27 08:41"
   },
@@ -140,8 +141,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-08:43",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_유성_팔라_1793058214342",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-12",
     registeredAt: "2026-10-27 08:43"
   },
@@ -170,8 +171,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-08:46",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-12_조영_윤의정_1793058413459",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-12",
     registeredAt: "2026-10-27 08:46"
   },
@@ -200,8 +201,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-08:54",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-13_유성_론나차이_1793058873183",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-13",
     registeredAt: "2026-10-27 08:54"
   },
@@ -230,8 +231,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-08:55",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_man_log_auto_2026-10-14_유성_론나차이_1793058904685",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-14",
     registeredAt: "2026-10-27 08:55"
   },
@@ -260,8 +261,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-27-09:25",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_mach_qual_1792626820469_4r5z_1793060701646",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-22",
     registeredAt: "2026-10-27 09:25"
   },
@@ -290,8 +291,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-26-16:37",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_mach_qual_1792545529692_5r70_1793000275067",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-08",
     registeredAt: "2026-10-26 16:37"
   },
@@ -320,8 +321,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-26-14:19",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
-    approvalDocId: "appr_4m_ledger_hanul_qual_1791757670265_1792991956764",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-12",
     registeredAt: "2026-10-26 14:19"
   },
@@ -350,7 +351,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-06",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "PENDING_APPROVAL",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-06",
     registeredAt: "2026-10-06"
   },
@@ -382,7 +384,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-09-30 10:00",
     isResolved: true,
     severity: "CRITICAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-09-30",
     registeredAt: "2026-09-30 08:44"
   },
@@ -411,7 +414,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-09-15 11:30",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-09-15",
     registeredAt: "2026-09-15 10:30"
   },
@@ -440,7 +444,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-09-22 15:30",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-09-22",
     registeredAt: "2026-09-22 14:20"
   },
@@ -469,7 +474,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-09-29 17:15",
     isResolved: true,
     severity: "CRITICAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-09-30",
     registeredAt: "2026-09-30 17:15"
   },
@@ -498,7 +504,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-06 11:00",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-06",
     registeredAt: "2026-10-06 10:00"
   },
@@ -527,7 +534,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-06 12:00",
     isResolved: true,
     severity: "NORMAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-06",
     registeredAt: "2026-10-06 11:00"
   },
@@ -556,7 +564,8 @@ export const DEFAULT_OFFICIAL_4M_RECORDS = [
     actionAt: "2026-10-14 17:30",
     isResolved: true,
     severity: "CRITICAL",
-    approvalStatus: "APPROVED",
+    approvalStatus: "",
+    approvalDocId: "",
     targetDate: "2026-10-14",
     registeredAt: "2026-10-14 16:20"
   }
@@ -664,15 +673,15 @@ export const mergeUnified4MRecords = (existing, incoming) => {
       (r, idx, arr) => arr.findIndex((other) => other.id === r.id || other.createdAt === r.createdAt) === idx
     ),
     // 👑 경영진 결재 및 CAPA 필드 불변 보존
-    approvalStatus: incoming.approvalStatus || existing.approvalStatus || "",
-    approvalDocId: incoming.approvalDocId || existing.approvalDocId || "",
-    approvedBy: incoming.approvedBy || existing.approvedBy || "",
-    approvedTitle: incoming.approvedTitle || existing.approvedTitle || "",
-    approvedAt: incoming.approvedAt || existing.approvedAt || "",
-    approvalSignature: incoming.approvalSignature || existing.approvalSignature || "",
-    approvalComment: incoming.approvalComment || existing.approvalComment || "",
-    targetApprover: incoming.targetApprover || existing.targetApprover || "",
-    approvalRequestedAt: incoming.approvalRequestedAt || existing.approvalRequestedAt || "",
+    approvalStatus: incoming.approvalStatus !== undefined ? incoming.approvalStatus : (existing.approvalStatus || ""),
+    approvalDocId: incoming.approvalDocId !== undefined ? incoming.approvalDocId : (existing.approvalDocId || ""),
+    approvedBy: incoming.approvedBy !== undefined ? incoming.approvedBy : (existing.approvedBy || ""),
+    approvedTitle: incoming.approvedTitle !== undefined ? incoming.approvedTitle : (existing.approvedTitle || ""),
+    approvedAt: incoming.approvedAt !== undefined ? incoming.approvedAt : (existing.approvedAt || ""),
+    approvalSignature: incoming.approvalSignature !== undefined ? incoming.approvalSignature : (existing.approvalSignature || ""),
+    approvalComment: incoming.approvalComment !== undefined ? incoming.approvalComment : (existing.approvalComment || ""),
+    targetApprover: incoming.targetApprover !== undefined ? incoming.targetApprover : (existing.targetApprover || ""),
+    approvalRequestedAt: incoming.approvalRequestedAt !== undefined ? incoming.approvalRequestedAt : (existing.approvalRequestedAt || ""),
     rootCause: incoming.rootCause || existing.rootCause || "",
     whyAnalysis: incoming.whyAnalysis || existing.whyAnalysis || "",
     correctiveAction: incoming.correctiveAction || existing.correctiveAction || "",
@@ -713,13 +722,16 @@ export const getLocalFourMChangePoints = () => {
   }
 };
 
-// Firestore 동기화 보완 헬퍼 (공식 대장 기본 레코드 영구 보장)
+// Firestore 동기화 보완 헬퍼 (공식 대장 기본 레코드 영구 보장 - 기존 결재 상태 보존 및 자동 덮어쓰기 금지)
 export const syncDefaultFourMRecordsToFirestore = async () => {
   if (!db) return;
   try {
     for (const item of DEFAULT_OFFICIAL_4M_RECORDS) {
       const docRef = doc(db, COLLECTION_NAME, item.id);
-      await setDoc(docRef, item, { merge: true });
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        await setDoc(docRef, { ...item, approvalDocId: "", approvalStatus: "" });
+      }
     }
   } catch (e) {
     console.warn("syncDefaultFourMRecordsToFirestore error:", e);
@@ -1204,15 +1216,15 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     isQualityClassified: record.isQualityClassified !== undefined ? Boolean(record.isQualityClassified) : (existing?.isQualityClassified !== undefined ? existing.isQualityClassified : true),
     isOfficialLedger: record.isOfficialLedger !== undefined ? Boolean(record.isOfficialLedger) : (existing?.isOfficialLedger !== undefined ? existing.isOfficialLedger : true),
     // 👑 4단계 전자결재 및 경영진 승인 동기화 필드
-    approvalStatus: record.approvalStatus || existing?.approvalStatus || "",
-    approvalDocId: record.approvalDocId || existing?.approvalDocId || "",
-    approvedBy: record.approvedBy || existing?.approvedBy || "",
-    approvedTitle: record.approvedTitle || existing?.approvedTitle || "",
-    approvedAt: record.approvedAt || existing?.approvedAt || "",
-    approvalSignature: record.approvalSignature || existing?.approvalSignature || "",
-    approvalComment: record.approvalComment || existing?.approvalComment || "",
-    targetApprover: record.targetApprover || existing?.targetApprover || "",
-    approvalRequestedAt: record.approvalRequestedAt || existing?.approvalRequestedAt || "",
+    approvalStatus: record.approvalStatus !== undefined ? record.approvalStatus : (existing?.approvalStatus || ""),
+    approvalDocId: record.approvalDocId !== undefined ? record.approvalDocId : (existing?.approvalDocId || ""),
+    approvedBy: record.approvedBy !== undefined ? record.approvedBy : (existing?.approvedBy || ""),
+    approvedTitle: record.approvedTitle !== undefined ? record.approvedTitle : (existing?.approvedTitle || ""),
+    approvedAt: record.approvedAt !== undefined ? record.approvedAt : (existing?.approvedAt || ""),
+    approvalSignature: record.approvalSignature !== undefined ? record.approvalSignature : (existing?.approvalSignature || ""),
+    approvalComment: record.approvalComment !== undefined ? record.approvalComment : (existing?.approvalComment || ""),
+    targetApprover: record.targetApprover !== undefined ? record.targetApprover : (existing?.targetApprover || ""),
+    approvalRequestedAt: record.approvalRequestedAt !== undefined ? record.approvalRequestedAt : (existing?.approvalRequestedAt || ""),
     // 🔍 3단계 5-Why 원인분석 및 CAPA 대책 필드
     rootCause: record.rootCause || existing?.rootCause || "",
     whyAnalysis: record.whyAnalysis || existing?.whyAnalysis || "",
