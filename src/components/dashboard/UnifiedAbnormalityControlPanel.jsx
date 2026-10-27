@@ -697,7 +697,7 @@ export const UnifiedAbnormalityControlPanel = ({
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
         plant: alert.plant || "한림공장",
         line: alert.line || "가공/협력업체(한울)",
-        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "황수현 선임",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "황수현 대표",
         title: title,
         date: dateStr,
         time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),

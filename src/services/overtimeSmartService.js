@@ -261,9 +261,9 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "한울": {
     company: "한울",
     plant: "한림공장",
-    author: "황수현 선임",
+    author: "황수현 대표",
     drafter: "황수현",
-    drafterRole: "선임",
+    drafterRole: "대표",
     lead: "김동욱",
     leadRole: "책임",
     director: "이명재",
@@ -274,9 +274,9 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "부림텍": {
     company: "부림텍",
     plant: "한림공장",
-    author: "김동훈 책임",
+    author: "김동훈 대표",
     drafter: "김동훈",
-    drafterRole: "책임",
+    drafterRole: "대표",
     lead: "김동욱",
     leadRole: "책임",
     director: "이명재",
@@ -307,11 +307,11 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "(주)조영": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
   "(주)조영산업": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
   "조영산업": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "주)한울": { company: "한울", plant: "한림공장", author: "황수현 선임", drafter: "황수현", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "(주)한울": { company: "한울", plant: "한림공장", author: "황수현 선임", drafter: "황수현", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "(주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "부림": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" }
+  "주)한울": { company: "한울", plant: "한림공장", author: "황수현 대표", drafter: "황수현", drafterRole: "대표", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)한울": { company: "한울", plant: "한림공장", author: "황수현 대표", drafter: "황수현", drafterRole: "대표", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 대표", drafter: "김동훈", drafterRole: "대표", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 대표", drafter: "김동훈", drafterRole: "대표", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "부림": { company: "부림텍", plant: "한림공장", author: "김동훈 대표", drafter: "김동훈", drafterRole: "대표", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" }
 };
 
 export const COMPANY_THEMES = {
