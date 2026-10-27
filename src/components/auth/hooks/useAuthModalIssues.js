@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth, ALL_DESIGNATED_USERS } from "../../../context/AuthContext";
 import {
   getLocalUrgentIssues,
   subscribeUrgentIssues,
@@ -60,7 +60,7 @@ import { useModalHistory } from "../../../utils/modalHistory";
  * - Telegram test & daily closing briefing dispatch
  * - Modal history back button registration
  */
-export const useAuthModalIssues = ({ todayDateStr, allWorkers = [] }) => {
+export const useAuthModalIssues = ({ todayDateStr, currentKstTimeStr, allWorkers = [] }) => {
   const { currentProfile } = useAuth();
 
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
@@ -2200,7 +2200,6 @@ export const useAuthModalIssues = ({ todayDateStr, allWorkers = [] }) => {
   useModalHistory(isTelegramModalOpen, () => setIsTelegramModalOpen(false), "telegramConfigModal");
   useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
-  useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
 
 
   return {

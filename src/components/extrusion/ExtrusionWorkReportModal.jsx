@@ -1597,22 +1597,24 @@ export const ExtrusionWorkReportModal = ({
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
           onClose={onClose}
-          handleExportExcel={handleExportExcel}
+          handleSetAllTpmOk={handleSetAllTpmOk}
+          handleDownloadCheckSheet={handleDownloadCheckSheet}
         />
 
         {/* Scrollable Form Body */}
         {currentStep === "tpm" ? (
           /* STEP 1: TPM 점검일지 화면 */
           <ExtrusionReportTpmPanel
-            formData={formData}
-            handleTpmStatusToggle={handleTpmStatusToggle}
-            handleTpmNotesChange={handleTpmNotesChange}
+            tpmChecks={tpmChecks}
+            handleTpmStatusChange={handleTpmStatusChange}
+            handleTpmNoteChange={handleTpmNoteChange}
             fileInputRef={fileInputRef}
             handlePhotoCapture={handlePhotoCapture}
-            isUploadingPhoto={isUploadingPhoto}
-            handleRemovePhoto={handleRemovePhoto}
+            isCapturingPhoto={isCapturingPhoto}
+            formData={formData}
+            setFormData={setFormData}
             setSelectedPhotoPreview={setSelectedPhotoPreview}
-            TPM_CHECK_ITEMS={TPM_CHECK_ITEMS}
+            handleRemovePhoto={handleRemovePhoto}
           />
         ) : (
           /* STEP 2: 압출 작업일보 및 체크시트 화면 */
@@ -1628,20 +1630,12 @@ export const ExtrusionWorkReportModal = ({
             {/* Section 2: 품목별 생산 실적 및 투입원료 LOT */}
             <ExtrusionReportItemProduction
               formData={formData}
-              setFormData={setFormData}
-              isTPELine={isTPELine}
-              isPVCLine={isPVCLine}
-              itemsList={itemsList}
-              handleItemSelect={handleItemSelect}
-              handleItemDetailChange={handleItemDetailChange}
-              handleItemRawMaterialChange={handleItemRawMaterialChange}
+              errors={errors}
+              activeLineItems={activeLineItems}
               handleRemoveItem={handleRemoveItem}
+              handleItemFieldChange={handleItemFieldChange}
+              handleItemRawMaterialChange={handleItemRawMaterialChange}
               handleAddItem={handleAddItem}
-              totalQtyMeters={totalQtyMeters}
-              totalWeightProducedKg={totalWeightProducedKg}
-              totalScrapWeightKg={totalScrapWeightKg}
-              lineTotalMaterialWeightKg={lineTotalMaterialWeightKg}
-              lossRatePercent={lossRatePercent}
             />
 
             {/* Section 3: 압출기 속도 & 온도 작업조건 */}
@@ -1653,9 +1647,9 @@ export const ExtrusionWorkReportModal = ({
               handleBatchWaterZones={handleBatchWaterZones}
               handleWaterZone110Change={handleWaterZone110Change}
               handleWaterZone70Change={handleWaterZone70Change}
-              handleTpeZoneChange={handleTpeZoneChange}
-              handlePvcZoneChange={handlePvcZoneChange}
-              handlePvcDryingZoneChange={handlePvcDryingZoneChange}
+              handleTpeZoneChange={handleTpeTempChange}
+              handlePvcZoneChange={handlePvcTempChange}
+              handlePvcDryingZoneChange={handlePvcDryerZoneChange}
               setFormData={setFormData}
               EXTRUSION_STANDARD_SPECS={EXTRUSION_STANDARD_SPECS}
             />

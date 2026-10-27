@@ -293,7 +293,7 @@ export const AuthModal = () => {
   };
 
   // 📢 Issue Management Hook (All issue states, memos, operations, telegram & modal history)
-  const issues = useAuthModalIssues({ todayDateStr, allWorkers });
+  const issues = useAuthModalIssues({ todayDateStr, currentKstTimeStr, allWorkers });
 
   // Modal History (Back Button Support) for portals
   useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
