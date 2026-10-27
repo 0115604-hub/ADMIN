@@ -1167,12 +1167,34 @@ export default function Step3QualityControlPanel({
                         {isCeoApproved ? (
                           <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-black text-[10.5px] inline-flex items-center gap-1 shadow-xs">
                             <span className="text-xs">✅</span>
-                            <span>대표이사 승인</span>
+                            <span>대표이사 승인 (3/3)</span>
                           </span>
                         ) : isPendingApproval ? (
-                          <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 font-bold text-[10.5px]">
-                            🚀 승인대기
-                          </span>
+                          (() => {
+                            const docMatch =
+                              (rec.approvalDocId && approvalDocsMap[rec.approvalDocId]) ||
+                              approvalDocsMap[rec.id] ||
+                              approvalDocsMap[String(rec.id).replace(/^ledger_/, "")] ||
+                              (approvalDocs || []).find((d) =>
+                                d.id === rec.approvalDocId ||
+                                (d.id && rec.id && d.id.includes(rec.id)) ||
+                                (d.id && rec.id && d.id.includes(String(rec.id).replace(/^ledger_/, ""))) ||
+                                (rec.originalId && d.id && d.id.includes(rec.originalId))
+                              );
+                            const pendingStep = (docMatch?.steps || []).find((s) => s.status === "PENDING");
+                            const pendingIdx = (docMatch?.steps || []).findIndex((s) => s.status === "PENDING");
+                            const totalSteps = docMatch?.steps?.length || 3;
+                            const stepText = pendingIdx >= 0
+                              ? `[${pendingIdx + 1}/${totalSteps}단계] ${pendingStep?.name ? `${pendingStep.name} ${pendingStep.role}` : pendingStep?.role || "검토"} 대기`
+                              : "[2/3단계] 이명재 이사 검토대기";
+
+                            return (
+                              <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 font-bold text-[10.5px] inline-flex items-center gap-1">
+                                <span>🚀</span>
+                                <span>{stepText}</span>
+                              </span>
+                            );
+                          })()
                         ) : isResolved ? (
                           <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-[10.5px]">
                             🟢 조치완료

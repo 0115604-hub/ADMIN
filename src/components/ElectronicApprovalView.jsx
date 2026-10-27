@@ -700,20 +700,34 @@ export const ElectronicApprovalView = ({
         ? adminApprover
         : (currentPermission.approverName || currentProfile?.name || "결재자");
 
-      const isRep = isAdmin || approverName === "권태형" || approverName === "최미영" || approverName === "대표이사";
+      const isRep = approverName === "권태형" || approverName === "최미영" || approverName === "대표이사";
+      const totalSteps = selectedDoc?.steps?.length || 4;
+      const isFinal = currentPermission.stepIndex >= totalSteps - 1;
+      const defaultComment = isFinal
+        ? (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "최종 승인")
+        : `${currentPermission.stepRole || "검토"} 승인`;
+
       const updated = await approveDocumentStep(
         selectedDoc.id,
         currentPermission.stepIndex,
         approverName,
-        approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인"),
-        { isAdmin, isRepresentative: isRep }
+        approvalComment || defaultComment,
+        { isAdmin, isRepresentative: isRep, isBatchCompleteAll: false }
       );
 
       setSelectedDoc(updated);
       setApprovalDocs(getLocalApprovalDocs());
       setApprovalComment("");
       setActionType("APPROVE");
-      alert(`[${approverName}] 전자 도장 날인 및 결재 승인이 완료되었습니다.`);
+
+      if (updated.status === "APPROVED") {
+        alert(`🎉 [${approverName}] 최종 승인 날인이 완료되었습니다. (서류가 결재완료 처리되었습니다.)`);
+      } else {
+        const nextStepIdx = currentPermission.stepIndex + 1;
+        const nextStepObj = updated.steps && updated.steps[nextStepIdx];
+        const nextStepName = nextStepObj?.name ? `${nextStepObj.name} ${nextStepObj.role}` : (nextStepObj?.role || "다음 결재자");
+        alert(`[${approverName}] 전자 도장 날인 및 [${currentPermission.stepIndex + 1}/${totalSteps}단계] 승인이 완료되었습니다.\n다음 단계(${nextStepName})로 결재가 인계되었습니다.`);
+      }
     } catch (err) {
       console.error("Approval error:", err);
       alert("결재 승인 중 오류가 발생했습니다: " + err.message);
@@ -736,7 +750,7 @@ export const ElectronicApprovalView = ({
 
     if (
       !window.confirm(
-        `현재 미결 상태인 결재 문서 ${pendingList.length}건을 [${adminApprover} ${adminApprover === "최미영" ? "전무" : "대표이사"}] 최종 결재(전결)로 일괄 승인 처리하시겠습니까?\n모든 결재선이 완료(4/4) 처리되어 최종 결재완료 상태로 즉시 변경됩니다.`
+        `현재 미결 상태인 결재 문서 ${pendingList.length}건을 [${adminApprover} ${adminApprover === "최미영" ? "전무" : "대표이사"}] 최종 결재(전결)로 일괄 승인 처리하시겠습니까?\n모든 결재선이 완료 처리되어 최종 결재완료 상태로 즉시 변경됩니다.`
       )
     ) {
       return;
@@ -747,10 +761,10 @@ export const ElectronicApprovalView = ({
       for (const docItem of pendingList) {
         await approveDocumentStep(
           docItem.id,
-          3,
+          (docItem.steps?.length || 4) - 1,
           adminApprover,
           `${adminApprover === "최미영" ? "전무" : "대표이사"} 일괄 최종 승인`,
-          { isAdmin: true, isRepresentative: true }
+          { isAdmin: true, isRepresentative: true, isBatchCompleteAll: true }
         );
       }
       const refreshed = getLocalApprovalDocs();
@@ -1485,24 +1499,59 @@ export const ElectronicApprovalView = ({
 
                       {/* 5. 문서상태 */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {isApproved ? (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                            ✓ 결재완료
-                          </span>
-                        ) : isHold ? (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
-                            ⏸️ 보류중
-                          </span>
-                        ) : isRejected ? (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
-                            ✕ 반려됨
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
-                            <Clock className="w-3 h-3 text-rose-500" />
-                            <span>미결 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "대표"} 대기)</span>
-                          </span>
-                        )}
+                        {(() => {
+                          const totalSteps = doc.steps?.length || 4;
+                          if (isApproved) {
+                            return (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs">
+                                <span>✓</span>
+                                <span>결재완료 ({totalSteps}/{totalSteps})</span>
+                              </span>
+                            );
+                          }
+                          if (isHold) {
+                            const holdIdx = (doc.steps || []).findIndex((s) => s.status === "HOLD");
+                            const holdStepNum = holdIdx >= 0 ? holdIdx + 1 : 1;
+                            return (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
+                                <span>⏸️</span>
+                                <span>보류중 [{holdStepNum}/{totalSteps}단계]</span>
+                              </span>
+                            );
+                          }
+                          if (isRejected) {
+                            return (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 inline-flex items-center gap-1 shadow-2xs">
+                                <span>✕</span>
+                                <span>반려됨</span>
+                              </span>
+                            );
+                          }
+                          const pendingIdx = (doc.steps || []).findIndex((s) => s.status === "PENDING");
+                          const pendingStep = pendingIdx >= 0 ? doc.steps[pendingIdx] : null;
+                          const currentStepNum = pendingIdx >= 0 ? pendingIdx + 1 : 1;
+                          const role = pendingStep?.role || "검토";
+                          const name = pendingStep?.name || "";
+
+                          const isCeo = role === "대표" || role === "승인";
+                          const isDirector = role === "이사";
+                          const isLead = role === "책임" || role === "검토";
+
+                          const badgeStyle = isCeo
+                            ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 ring-1 ring-rose-400/30"
+                            : isDirector
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-400/30"
+                            : isLead
+                            ? "bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 ring-1 ring-sky-400/30"
+                            : "bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+
+                          return (
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-black border inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
+                              <Clock className="w-3 h-3 shrink-0" />
+                              <span>[{currentStepNum}/{totalSteps}단계] {role}{name ? ` (${name})` : ""} 대기</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* 6. 관리 */}
@@ -2041,18 +2090,29 @@ export const ElectronicApprovalView = ({
                           >
                             ✕ 반려 처리
                           </button>
-                          <button
-                            type="button"
-                            onClick={handleApprove}
-                            className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Stamp className="w-3.5 h-3.5" />
-                            <span>
-                              {isAdmin
-                                ? `👑 ${adminApprover === "최미영" ? "전무 최미영" : "대표이사 권태형"} 최종 승인 및 날인`
-                                : "✓ 승인 및 도장 날인"}
-                            </span>
-                          </button>
+                          {(() => {
+                            const totalSteps = selectedDoc?.steps?.length || 4;
+                            const activeStepIdx = currentPermission.stepIndex;
+                            const isFinal = activeStepIdx >= totalSteps - 1;
+                            const currentApprover = isAdmin ? adminApprover : (currentPermission.approverName || currentProfile?.name || "결재자");
+                            const nextStep = !isFinal && selectedDoc?.steps ? selectedDoc.steps[activeStepIdx + 1] : null;
+                            const currentRole = currentPermission.stepRole || "승인";
+
+                            return (
+                              <button
+                                type="button"
+                                onClick={handleApprove}
+                                className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Stamp className="w-3.5 h-3.5" />
+                                <span>
+                                  {isFinal
+                                    ? `👑 [${activeStepIdx + 1}/${totalSteps}단계] ${currentRole} (${currentApprover}) 최종 승인 및 완료`
+                                    : `✓ [${activeStepIdx + 1}/${totalSteps}단계] ${currentRole} (${currentApprover}) 승인 ➔ 다음 단계(${nextStep?.name ? `${nextStep.name} ${nextStep.role}` : nextStep?.role || "다음"}) 인계`}
+                                </span>
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}

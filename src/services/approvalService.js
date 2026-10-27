@@ -386,52 +386,8 @@ export function getAutoApprovalSteps(
     }
   }
 
-  // 2. [공정 관리자(책임) 직접 기안 결재라인] (책임 전결형 4단계)
-  const PROCESS_LEAD_NAMES = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"];
-  const isProcessManagerLead =
-    PROCESS_LEAD_NAMES.includes(drafterName) ||
-    drafterTitle === "책임" ||
-    drafterName === step2Name ||
-    APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
-
-  if (isProcessManagerLead) {
-    return [
-      {
-        role: "담당",
-        name: drafterName || "기안자",
-        title: drafterTitle || "책임",
-        status: "APPROVED",
-        date: nowStr,
-        comment: "기안 상신"
-      },
-      {
-        role: "책임",
-        name: drafterName,
-        title: drafterTitle || "책임",
-        status: "APPROVED",
-        date: nowStr,
-        comment: "책임 전결"
-      },
-      {
-        role: "이사",
-        name: step3Name,
-        title: step3Title,
-        status: "PENDING",
-        date: "",
-        comment: ""
-      },
-      {
-        role: "대표",
-        name: finalCeoName,
-        title: ceoTitle,
-        status: "WAITING",
-        date: "",
-        comment: ""
-      }
-    ];
-  }
-
-  // 3. [일반 사원 / 선임 / 작업자 기안 결재라인] (표준 4단계)
+  // 3. [표준 4단계 결재라인 (담당 ➔ 책임 ➔ 이사 ➔ 대표)]
+  // ⭐ 모든 일반 결재 서류는 관리자/책임자 기안 여부와 무관하게 4단계를 순차적으로 정석 진행합니다.
   return [
     {
       role: "담당",
@@ -698,32 +654,6 @@ export function normalizeApprovalDoc(d) {
     return st;
   });
 
-  // ⭐ 공정 관리자(책임) 직접 기안 서류 자동 전결 치유:
-  // 일반 결재 서류에서 기안자가 책임자인데 2단계(책임)가 미결(PENDING)로 멈춰있는 경우 자동 책임 전결 승인 및 3단계(이명재 이사)로 전환
-  if (!is4M && fixedSteps.length === 4) {
-    const drafterName = d.drafter || "";
-    const drafterTitle = d.drafterTitle || "";
-    const isProcessLead =
-      ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(drafterName) ||
-      drafterTitle === "책임" ||
-      APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
-
-    if (isProcessLead && fixedSteps[1].status === "PENDING" && fixedSteps[2].status === "WAITING") {
-      fixedSteps[1] = {
-        ...fixedSteps[1],
-        name: drafterName,
-        title: drafterTitle || "책임",
-        status: "APPROVED",
-        date: fixedSteps[1].date || d.createdAt || fixedSteps[0]?.date || "",
-        comment: fixedSteps[1].comment || "책임 전결"
-      };
-      fixedSteps[2] = {
-        ...fixedSteps[2],
-        status: "PENDING"
-      };
-    }
-  }
-
   // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4 또는 3/3) 보장
   // 🔒 활성 검토 중인 서류(PENDING 또는 HOLD 단계가 명시된 미결 서류)는 절대 무단 완료 처리하지 않음
   const hasActivePendingStep = fixedSteps.some((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
@@ -852,11 +782,6 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
 
   // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
   if (stepName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
-    return true;
-  }
-
-  // ⭐ 4-1. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽 등 관리자 기안건 즉시 노출)
-  if (doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
     return true;
   }
 
@@ -1479,53 +1404,32 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
-  const isRepresentative =
-    options.isRepresentative ||
-    options.isAdmin ||
-    approverName === "권태형" ||
-    approverName === "최미영" ||
-    approverName === "대표이사" ||
-    stepIndex === 3 ||
-    (target.steps && stepIndex === target.steps.length - 1 && (approverName === "권태형" || options.isAdmin));
+  const lastIdx = target.steps.length - 1;
+  const isFinalStep = stepIndex >= lastIdx;
+  const isBatchAll = Boolean(options.isBatchCompleteAll);
 
   let updatedSteps;
-  if (isRepresentative) {
-    // ⭐ 대표/ADMIN 최종 결재 시: 1단계부터 4단계까지의 모든 미결재 단계를 대표 전결로 일괄 최종 승인 완료 처리
+  if (isBatchAll) {
+    // ADMIN 일괄 결재 버튼 전용 (전체 미결 단계 일괄 승인 완료)
     const ceoTitle = approverName === "최미영" ? "전무" : approverName === "김동욱" ? "책임" : "대표이사";
-    const ceoComment = comment || (approverName === "최미영" ? "전무 최종 승인" : approverName === "김동욱" ? "한림 총괄 김동욱 책임 승인" : "대표이사 최종 승인");
-    const lastIdx = target.steps.length - 1;
+    const ceoComment = comment || "대표 전결 일괄 최종 승인";
 
     updatedSteps = target.steps.map((st, idx) => {
-      if (st && st.status === "APPROVED" && st.date && idx < lastIdx) {
+      if (st && st.status === "APPROVED" && st.date) {
         return st;
-      }
-      if (idx === lastIdx) {
-        return {
-          ...st,
-          name: approverName || "권태형",
-          title: ceoTitle,
-          status: "APPROVED",
-          date: nowStr,
-          comment: ceoComment
-        };
-      }
-      if (idx === 0) {
-        return {
-          ...st,
-          status: "APPROVED",
-          date: st?.date || nowStr,
-          comment: st?.comment || "기안 상신"
-        };
       }
       return {
         ...st,
+        name: idx === lastIdx ? (approverName || "권태형") : (st.name || approverName),
+        title: idx === lastIdx ? ceoTitle : (st.title || "검토"),
         status: "APPROVED",
-        date: st?.date || nowStr,
-        comment: st?.comment || "승인"
+        date: st.date || nowStr,
+        comment: st.comment || (idx === 0 ? "기안 상신" : (idx === lastIdx ? ceoComment : "승인"))
       };
     });
   } else {
-    // 중간 결재자 (책임, 이사) 단계별 개별 승인
+    // ⭐ 정석 단계별 순차 승인 (담당 ➔ 책임 ➔ 이사 ➔ 대표)
+    // 현재 단계(stepIndex)만 APPROVED 처리하고, 다음 단계(stepIndex + 1)를 PENDING으로 활성화합니다.
     updatedSteps = target.steps.map((st, idx) => {
       if (idx === stepIndex) {
         let finalTitle = st.title;
@@ -1533,6 +1437,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
         else if (approverName === "이명재") finalTitle = "이사";
         else if (approverName === "김동욱") finalTitle = "책임";
         else if (approverName === "권태형") finalTitle = "대표이사";
+        else if (approverName === "설유철" || approverName === "윤경수" || approverName === "이창엽" || approverName === "전재율") finalTitle = "책임";
 
         return {
           ...st,
@@ -1540,7 +1445,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
           title: finalTitle || st.title,
           status: "APPROVED",
           date: nowStr,
-          comment: comment || "승인"
+          comment: comment || (idx === 0 ? "기안 상신" : (idx === lastIdx ? "대표이사 최종 승인" : "승인"))
         };
       }
       if (idx === stepIndex + 1 && (st.status === "WAITING" || st.status === "HOLD")) {
