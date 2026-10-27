@@ -138,7 +138,6 @@ export const MajorProcessTemplateSelectModal = ({
   return (
     <div
       className="fixed inset-0 z-[250] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-5 animate-fadeIn"
-      onClick={onClose}
     >
       <div
         className="bg-slate-900 border-2 border-indigo-500/80 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl text-left"

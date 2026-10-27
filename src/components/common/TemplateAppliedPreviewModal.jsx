@@ -25,7 +25,6 @@ export const TemplateAppliedPreviewModal = ({
   return (
     <div
       className="fixed inset-0 z-[280] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn"
-      onClick={onClose}
     >
       <div
         className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-scaleUp text-left"

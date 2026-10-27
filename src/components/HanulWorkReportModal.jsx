@@ -420,13 +420,12 @@ export const HanulWorkReportModal = ({
   const activeSubSlot = useMemo(() => {
     const normProj = String(project || "").toUpperCase() === "LQ2A" ? "LQ2A" : "9BQC";
     if (processId === "소재준비") {
-      if (currentStep === "tpm") return "TPM";
-      return normProj === "9BQC" ? subProcess : "작업일보";
+      return normProj === "9BQC" ? (subProcess || "정치절단") : "작업일보";
     }
     if (processId === "조인트") return jointType || "FRT";
     if (processId === "검사") return inspectionType || "LENGTH";
     return "MAIN";
-  }, [project, processId, currentStep, subProcess, jointType, inspectionType]);
+  }, [project, processId, subProcess, jointType, inspectionType]);
 
   const activeSlotKey = useMemo(() => {
     return buildHanulProcessSlotKey(project, processId, activeSubSlot);
@@ -462,23 +461,7 @@ export const HanulWorkReportModal = ({
   }, [editReport, effectiveWorkerName, date, allReports, project, processId, subProcess, jointType, inspectionType]);
 
   const activeAssignedTemplate = useMemo(() => {
-    // 1순위: 현재 작업자가 오늘 해당 공정에서 이미 작성 중이거나 저장한 일보가 있으면 그 데이터를 로드 (초/중/종 연속 기록)
-    if (existingWorkerReport?.legoConfig) {
-      return {
-        id: existingWorkerReport.assignedTemplateId || existingWorkerReport.id || "edit_lego_tpl",
-        reportDocId: existingWorkerReport.id,
-        title: existingWorkerReport.processName || existingWorkerReport.title || "작업일보",
-        carModel: existingWorkerReport.carModel || project,
-        partName: existingWorkerReport.partName || "G/RUN",
-        processName: existingWorkerReport.processId || processId || "소재준비",
-        targetQty: existingWorkerReport.targetQty || existingWorkerReport.orderQty || existingWorkerReport.legoConfig?.targetQty || 350,
-        orderQty: existingWorkerReport.orderQty || existingWorkerReport.targetQty || existingWorkerReport.legoConfig?.orderQty || 350,
-        legoConfig: existingWorkerReport.legoConfig,
-        isExistingDraft: true
-      };
-    }
-    // 2순위: 관리자가 지정한 슬롯 템플릿 (8단계 다단계 티어 폴백: 날짜 변경/재로그인 시에도 절대 리셋되지 않음)
-    return getAssignedTemplateForWorker({
+    const baseAssigned = getAssignedTemplateForWorker({
       company: companyMode,
       project,
       processId,
@@ -488,6 +471,24 @@ export const HanulWorkReportModal = ({
       allTemplates: allCatalogTemplates,
       assignments: templateAssignments
     });
+
+    // 1순위: 현재 작업자가 오늘 해당 공정에서 이미 작성 중이거나 저장한 일보가 있으면 그 데이터를 로드 (초/중/종 연속 기록)
+    if (existingWorkerReport) {
+      return {
+        id: existingWorkerReport.assignedTemplateId || baseAssigned?.id || existingWorkerReport.id || "edit_lego_tpl",
+        reportDocId: existingWorkerReport.id,
+        title: existingWorkerReport.processName || existingWorkerReport.title || baseAssigned?.title || "작업일보",
+        carModel: existingWorkerReport.carModel || project,
+        partName: existingWorkerReport.partName || baseAssigned?.partName || "G/RUN",
+        processName: existingWorkerReport.processId || processId || baseAssigned?.processName || "소재준비",
+        targetQty: existingWorkerReport.targetQty || existingWorkerReport.orderQty || existingWorkerReport.legoConfig?.targetQty || baseAssigned?.targetQty || 350,
+        orderQty: existingWorkerReport.orderQty || existingWorkerReport.targetQty || existingWorkerReport.legoConfig?.orderQty || baseAssigned?.orderQty || 350,
+        legoConfig: existingWorkerReport.legoConfig || baseAssigned?.legoConfig || null,
+        isExistingDraft: true
+      };
+    }
+    // 2순위: 관리자가 지정한 슬롯 템플릿 (8단계 다단계 티어 폴백: 날짜 변경/재로그인 시에도 절대 리셋되지 않음)
+    return baseAssigned;
   }, [
     existingWorkerReport,
     templateAssignments,
@@ -613,8 +614,8 @@ export const HanulWorkReportModal = ({
       if (editReport.notes) setNotes(editReport.notes);
     } else {
       const isSojae = (initialProcess || processId) === "소재준비";
-      // 🌟 신규 일보 작성 진입 시 1단계 TPM 설비점검을 최우선으로 표시
-      setCurrentStep(isSojae ? "tpm" : "report");
+      // 🌟 신규 일보 작성 진입 시 1단계 TPM 설비점검 표시 (이미 완료된 경우 바로 일보 작성 화면 유지)
+      setCurrentStep(isSojae && !alreadyDone ? "tpm" : "report");
       setTpmChecks(createDefaultHanulTpmChecks());
       setTpmActionNote("");
 
@@ -1173,9 +1174,6 @@ export const HanulWorkReportModal = ({
   return (
     <div
       ref={overlayRef}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
       className="fixed inset-0 z-[200] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-4 overflow-y-auto overflow-x-auto mobile-pan-free animate-fadeIn"
     >
       <div

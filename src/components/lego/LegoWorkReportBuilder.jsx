@@ -1421,7 +1421,10 @@ export const LegoWorkReportBuilder = ({
     try {
       const now = new Date().toISOString();
       const fullLegoConfig = buildFullLegoConfig();
-      const reportId = `lego_report_${fullLegoConfig.carModel || "JA"}_${Date.now()}`;
+      const reportId =
+        initialTemplateData?.reportDocId ||
+        (initialTemplateData?.isExistingDraft ? initialTemplateData?.id : null) ||
+        `lego_report_${fullLegoConfig.carModel || "JA"}_${Date.now()}`;
 
       // Compute total production metrics across active Lego blocks
       let totalGenuine = 0;
@@ -1534,7 +1537,9 @@ export const LegoWorkReportBuilder = ({
         blockOrder: fullLegoConfig.blockOrder,
         totals: computedTotals,
         legoConfig: fullLegoConfig,
-        createdAt: now,
+        assignedTemplateId: initialTemplateData?.id || initialTemplateData?.assignedTemplateId || null,
+        assignedSlotKey: initialTemplateData?.assignedSlotKey || null,
+        createdAt: initialTemplateData?.createdAt || now,
         updatedAt: now
       };
 

@@ -46,13 +46,21 @@ import {
   saveMachiningWorkReport,
   deleteMachiningWorkReport,
   exportMachiningReportToExcel,
-  isExcludedFromMachiningWorkReport
+  isExcludedFromMachiningWorkReport,
+  subscribeMachiningWorkReports,
+  getLocalMachiningWorkReports
 } from "../../services/machiningWorkReportService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { useModalHistory } from "../../utils/modalHistory";
 import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
 import CommonDowntimeDefectPanel from "../common/CommonDowntimeDefectPanel";
-import { getAssignedTemplateForWorker } from "../../services/workReportTemplateService";
+import {
+  getAssignedTemplateForWorker,
+  subscribeWorkReportTemplates,
+  getLocalWorkReportTemplates,
+  subscribeHanulTemplateAssignments,
+  getLocalHanulTemplateAssignments
+} from "../../services/workReportTemplateService";
 
 // 치수 공차 실시간 판정 헬퍼
 const isDimOk = (val, target, tol) => {
@@ -86,9 +94,31 @@ export const MachiningWorkReportModal = ({
   const [endTime, setEndTime] = useState("17:30");
   const [machineNo, setMachineNo] = useState("");
   const [dollyNo, setDollyNo] = useState("");
-  const [isLegoMode, setIsLegoMode] = useState(false);
+  const [isLegoMode, setIsLegoMode] = useState(true);
 
-  // 🌟 관리자가 5대 공정에 지정한 작업일보 양식 자동 로드 (날짜/재로그인 무관 영구 유지)
+  // 🌟 관리자 지정 양식 카탈로그 및 슬롯 할당 실시간 구독
+  const [allCatalogTemplates, setAllCatalogTemplates] = useState(() => getLocalWorkReportTemplates());
+  const [templateAssignments, setTemplateAssignments] = useState(() => getLocalHanulTemplateAssignments());
+  const [allMachiningReports, setAllMachiningReports] = useState(() => getLocalMachiningWorkReports());
+
+  useEffect(() => {
+    const unsubTpl = subscribeWorkReportTemplates((list) => {
+      if (Array.isArray(list)) setAllCatalogTemplates(list);
+    });
+    const unsubAssign = subscribeHanulTemplateAssignments((map) => {
+      if (map) setTemplateAssignments(map);
+    });
+    const unsubReports = subscribeMachiningWorkReports((list) => {
+      if (Array.isArray(list)) setAllMachiningReports(list);
+    });
+    return () => {
+      unsubTpl();
+      unsubAssign();
+      unsubReports();
+    };
+  }, []);
+
+  // 🌟 관리자가 5대 공정에 지정한 작업일보 양식 자동 로드 (날짜/재로그인/두번째 접속 무관 영구 유지)
   const assignedTemplate = useMemo(() => {
     return getAssignedTemplateForWorker({
       company: "ORYUK",
@@ -96,15 +126,54 @@ export const MachiningWorkReportModal = ({
       processId,
       subProcess,
       jointType,
-      inspectionType
+      inspectionType,
+      allTemplates: allCatalogTemplates,
+      assignments: templateAssignments
     });
-  }, [project, processId, subProcess, jointType, inspectionType]);
+  }, [project, processId, subProcess, jointType, inspectionType, allCatalogTemplates, templateAssignments]);
+
+  const effectiveWorkerName = (customWorker.trim() || worker || "").trim();
+
+  // 🌟 오늘 해당 작업자가 이미 작성/저장한 일보가 있으면 로드
+  const existingWorkerReport = useMemo(() => {
+    if (editReport) return editReport;
+    if (!effectiveWorkerName || !date || !allMachiningReports || allMachiningReports.length === 0) return null;
+    return allMachiningReports.find((r) => {
+      if (!r) return false;
+      const matchWorker = String(r.worker || "").trim() === effectiveWorkerName;
+      const matchDate = r.date === date;
+      const matchProj = String(r.project || "").toUpperCase() === String(project || "").toUpperCase();
+      const matchProc = r.processId === processId;
+      return matchWorker && matchDate && matchProj && matchProc;
+    }) || null;
+  }, [editReport, effectiveWorkerName, date, allMachiningReports, project, processId]);
+
+  // 🌟 활성 레고 양식 데이터 (이전 작성 데이터 또는 관리자 지정 슬롯 양식)
+  const activeAssignedTemplate = useMemo(() => {
+    if (existingWorkerReport) {
+      return {
+        id: existingWorkerReport.assignedTemplateId || assignedTemplate?.id || existingWorkerReport.id || "edit_lego_tpl",
+        reportDocId: existingWorkerReport.id,
+        title: existingWorkerReport.processName || existingWorkerReport.title || assignedTemplate?.title || "가공동 작업일보",
+        carModel: existingWorkerReport.carModel || project,
+        partName: existingWorkerReport.partName || assignedTemplate?.partName || "G/RUN",
+        processName: existingWorkerReport.processId || processId || assignedTemplate?.processName || "소재준비",
+        targetQty: existingWorkerReport.targetQty || existingWorkerReport.orderQty || existingWorkerReport.legoConfig?.targetQty || assignedTemplate?.targetQty || 350,
+        orderQty: existingWorkerReport.orderQty || existingWorkerReport.targetQty || existingWorkerReport.legoConfig?.orderQty || assignedTemplate?.orderQty || 350,
+        legoConfig: existingWorkerReport.legoConfig || assignedTemplate?.legoConfig || null,
+        isExistingDraft: true
+      };
+    }
+    return assignedTemplate;
+  }, [existingWorkerReport, assignedTemplate, project, processId]);
 
   useEffect(() => {
-    if (isOpen && assignedTemplate && !editReport) {
-      setIsLegoMode(true);
+    if (isOpen) {
+      if (activeAssignedTemplate || editReport?.legoConfig) {
+        setIsLegoMode(true);
+      }
     }
-  }, [isOpen, assignedTemplate, editReport]);
+  }, [isOpen, activeAssignedTemplate, editReport]);
 
   // Lot tracking
   const [materialLot, setMaterialLot] = useState({
@@ -388,7 +457,6 @@ export const MachiningWorkReportModal = ({
 
   return (
     <div
-      onClick={onClose}
       className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn"
     >
       <div
@@ -668,18 +736,53 @@ export const MachiningWorkReportModal = ({
               {isLegoMode ? (
                 <div className="p-1 sm:p-2">
                   <LegoWorkReportBuilder
+                    key={`${project}_${processId}_${effectiveWorkerName}_${date}_${activeAssignedTemplate?.id || "default"}`}
                     initialPresetId={processId === "소재준비" ? "REPORT_CUTTING" : processId === "조인트" ? "REPORT_JOINT" : processId === "검사" ? "REPORT_RIGHT_ANGLE" : "REPORT_CUTTING"}
-                    initialTemplateData={assignedTemplate}
-                    isWorkerRecordingMode={Boolean(assignedTemplate)}
-                    initialWorkerName={worker}
+                    initialTemplateData={activeAssignedTemplate}
+                    isWorkerRecordingMode={Boolean(activeAssignedTemplate)}
+                    initialWorkerName={effectiveWorkerName}
                     initialWorkDate={date}
-                    onSaveWorkReport={() => {
+                    onSaveWorkReport={async (reportPayload) => {
+                      try {
+                        const targetDocId =
+                          editReport?.id ||
+                          activeAssignedTemplate?.reportDocId ||
+                          existingWorkerReport?.id ||
+                          `mwr_${project}_${reportPayload?.workDate || date}_${processId}_${effectiveWorkerName}`.replace(/[\s/]/g, "_");
+                        
+                        const machiningPayload = {
+                          id: targetDocId,
+                          project,
+                          carModel: reportPayload?.carModel || project,
+                          partName: reportPayload?.partName || "G/RUN",
+                          processId: processId || reportPayload?.processName || "소재준비",
+                          subProcess,
+                          jointType,
+                          inspectionType,
+                          date: reportPayload?.workDate || date,
+                          shift: reportPayload?.shift || shift,
+                          worker: effectiveWorkerName,
+                          startTime: reportPayload?.startTime || startTime,
+                          endTime: reportPayload?.finishTime || endTime,
+                          totals: reportPayload?.totals || { genuine: 0, bad: 0, rework: 0 },
+                          notes: reportPayload?.remarks || "",
+                          downtimeEvents: reportPayload?.downtimeEvents || [],
+                          legoConfig: reportPayload?.legoConfig || null,
+                          assignedTemplateId: activeAssignedTemplate?.id || null,
+                          createdAt: editReport?.createdAt || existingWorkerReport?.createdAt || new Date().toISOString(),
+                          updatedAt: new Date().toISOString()
+                        };
+                        await saveMachiningWorkReport(machiningPayload);
+                      } catch (err) {
+                        console.error("Save machining report error:", err);
+                      }
                       onClose();
                     }}
-                    onDeleteWorkReport={editReport?.id ? async () => {
+                    onDeleteWorkReport={(editReport?.id || existingWorkerReport?.id) ? async () => {
+                      const targetId = editReport?.id || existingWorkerReport?.id;
                       if (!window.confirm("정말로 이 가공동 작업일보를 영구 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
                       try {
-                        await deleteMachiningWorkReport(editReport.id);
+                        await deleteMachiningWorkReport(targetId);
                         onClose();
                       } catch (err) {
                         alert("삭제 중 오류가 발생했습니다: " + err.message);

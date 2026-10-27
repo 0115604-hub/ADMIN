@@ -424,7 +424,18 @@ export const getLocalWorkReportTemplates = () => {
       });
     }
 
-    const merged = Array.from(tplMap.values());
+    // 🌟 [핵심] 관리자가 등록/수정한 사용자 정의 양식이 기본양식보다 항상 최우선 정렬 (두번째 접속 시에도 영구 보존)
+    const isBuiltInBase = (t) => {
+      const id = String(t?.id || "");
+      return id.startsWith("tpl_mat_") || id.startsWith("tpl_joint_") || id.startsWith("tpl_post_") || id.startsWith("tpl_insp_");
+    };
+
+    const merged = Array.from(tplMap.values()).sort((a, b) => {
+      const aCustom = (a?.isDatabaseBacked || a?.isLegoModular || String(a?.id || "").startsWith("tpl_lego_") || !isBuiltInBase(a)) ? 1 : 0;
+      const bCustom = (b?.isDatabaseBacked || b?.isLegoModular || String(b?.id || "").startsWith("tpl_lego_") || !isBuiltInBase(b)) ? 1 : 0;
+      if (aCustom !== bCustom) return bCustom - aCustom; // 커스텀 양식이 항상 인덱스 0번대 우선
+      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+    });
     memoryTemplatesCache = merged;
     return merged;
   } catch (e) {
@@ -1052,6 +1063,31 @@ export const getAssignedTemplateForWorker = ({
     const found = tplList.find((t) => t.id === candidateId);
     if (found) return found;
   }
+
+  // Tier 7.5: 슬롯 매칭 ID가 없거나 카탈로그에 없는 경우, 해당 차종(normProj)과 공정명(cleanProc)에 등록된 관리자 커스텀 템플릿 우선 매칭
+  const customProjMatch = tplList.find((t) => {
+    if (!t) return false;
+    const isCustom = t.isDatabaseBacked || t.isLegoModular || String(t.id || "").startsWith("tpl_lego_") || Boolean(t.legoConfig);
+    const matchModel = normalizeHanulProjectKey(t.carModel) === normProj;
+    const matchProc =
+      String(t.processName || "").includes(cleanProc) ||
+      String(t.categoryName || "").includes(cleanProc) ||
+      String(t.title || "").includes(cleanProc);
+    return isCustom && matchModel && matchProc;
+  });
+  if (customProjMatch) return customProjMatch;
+
+  // Tier 7.6: 해당 공정(cleanProc)에 등록된 관리자 커스텀 템플릿 우선 매칭 (예: 소재준비/단컷팅/정치절단 커스텀 양식)
+  const customProcMatch = tplList.find((t) => {
+    if (!t) return false;
+    const isCustom = t.isDatabaseBacked || t.isLegoModular || String(t.id || "").startsWith("tpl_lego_") || Boolean(t.legoConfig);
+    const matchProc =
+      String(t.processName || "").includes(cleanProc) ||
+      String(t.categoryName || "").includes(cleanProc) ||
+      String(t.title || "").includes(cleanProc);
+    return isCustom && matchProc;
+  });
+  if (customProcMatch) return customProcMatch;
 
   // Tier 8: 차종(carModel)과 공정명(processName)이 일치하는 카탈로그 기본 양식 자동 매칭
   const catalogMatch = tplList.find((t) => {

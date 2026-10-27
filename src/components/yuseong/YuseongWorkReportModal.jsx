@@ -34,7 +34,13 @@ import {
   exportYuseongReportToExcel
 } from "../../services/yuseongWorkReportService";
 import LegoWorkReportBuilder from "../lego/LegoWorkReportBuilder";
-import { getAssignedTemplateForWorker } from "../../services/workReportTemplateService";
+import {
+  getAssignedTemplateForWorker,
+  subscribeWorkReportTemplates,
+  getLocalWorkReportTemplates,
+  subscribeHanulTemplateAssignments,
+  getLocalHanulTemplateAssignments
+} from "../../services/workReportTemplateService";
 
 export const YuseongWorkReportModal = ({
   isOpen,
@@ -59,7 +65,24 @@ export const YuseongWorkReportModal = ({
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("17:00");
   const [machineNo, setMachineNo] = useState("1호기");
-  const [isLegoMode, setIsLegoMode] = useState(false);
+  const [isLegoMode, setIsLegoMode] = useState(true);
+
+  // 🌟 관리자 지정 양식 카탈로그 및 슬롯 할당 실시간 구독
+  const [allCatalogTemplates, setAllCatalogTemplates] = useState(() => getLocalWorkReportTemplates());
+  const [templateAssignments, setTemplateAssignments] = useState(() => getLocalHanulTemplateAssignments());
+
+  useEffect(() => {
+    const unsubTpl = subscribeWorkReportTemplates((list) => {
+      if (Array.isArray(list)) setAllCatalogTemplates(list);
+    });
+    const unsubAssign = subscribeHanulTemplateAssignments((map) => {
+      if (map) setTemplateAssignments(map);
+    });
+    return () => {
+      unsubTpl();
+      unsubAssign();
+    };
+  }, []);
 
   // 🌟 유성 관리자가 지정한 5대 공정 작업일보 양식 (JK1, CE1, DT) 자동 연동
   const assignedTemplate = useMemo(() => {
@@ -67,15 +90,37 @@ export const YuseongWorkReportModal = ({
       company: "YUSEONG",
       project,
       processId,
-      subProcess
+      subProcess,
+      allTemplates: allCatalogTemplates,
+      assignments: templateAssignments
     });
-  }, [project, processId, subProcess]);
+  }, [project, processId, subProcess, allCatalogTemplates, templateAssignments]);
+
+  const activeAssignedTemplate = useMemo(() => {
+    if (editReport?.legoConfig) {
+      return {
+        id: editReport.assignedTemplateId || assignedTemplate?.id || editReport.id || "edit_lego_tpl",
+        reportDocId: editReport.id,
+        title: editReport.processName || editReport.title || assignedTemplate?.title || "유성 작업일보",
+        carModel: editReport.carModel || project,
+        partName: editReport.partName || assignedTemplate?.partName || "G/RUN",
+        processName: editReport.processId || processId || assignedTemplate?.processName || "외주가공",
+        targetQty: editReport.targetQty || editReport.orderQty || editReport.legoConfig?.targetQty || assignedTemplate?.targetQty || 350,
+        orderQty: editReport.orderQty || editReport.targetQty || editReport.legoConfig?.orderQty || assignedTemplate?.orderQty || 350,
+        legoConfig: editReport.legoConfig || assignedTemplate?.legoConfig || null,
+        isExistingDraft: true
+      };
+    }
+    return assignedTemplate;
+  }, [editReport, assignedTemplate, project, processId]);
 
   useEffect(() => {
-    if (isOpen && assignedTemplate && !editReport) {
-      setIsLegoMode(true);
+    if (isOpen) {
+      if (activeAssignedTemplate || editReport?.legoConfig) {
+        setIsLegoMode(true);
+      }
     }
-  }, [isOpen, assignedTemplate, editReport]);
+  }, [isOpen, activeAssignedTemplate, editReport]);
   const [dollyNo, setDollyNo] = useState("");
 
   // Material & Blade
@@ -546,7 +591,8 @@ export const YuseongWorkReportModal = ({
               </div>
 
               <LegoWorkReportBuilder
-                initialTemplateData={assignedTemplate}
+                key={`${project}_${processId}_${customWorker.trim() || worker}_${date}_${activeAssignedTemplate?.id || "default"}`}
+                initialTemplateData={activeAssignedTemplate}
                 isWorkerRecordingMode={true}
                 initialWorkerName={customWorker.trim() || worker}
                 initialWorkDate={date}
