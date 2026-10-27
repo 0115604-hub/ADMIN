@@ -773,49 +773,20 @@ export function subscribeApprovalDocs(onUpdate) {
             });
           }
 
-          // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so documents are NEVER wiped
+          // ⭐ MERGE STRATEGY: Remote Firestore snapshot is authoritative.
+          // Fallback to local storage ONLY for un-synced offline drafts that don't exist in Firestore yet.
           const deletedIds = getDeletedApprovalIds();
           const localDocs = getLocalApprovalDocs().filter((d) => d && d.id && !deletedIds.has(d.id));
           const docMap = new Map();
 
-          // 1. Seed with local documents
-          localDocs.forEach((d) => {
-            if (d && d.id && !deletedIds.has(d.id)) {
-              docMap.set(d.id, d);
-            }
-          });
-
-          // 2. Merge remote docs (remote is authoritative or newer, preserving highest approval progress)
+          // 1. Remote Firestore documents are the single authoritative source of truth
           remoteDocs.forEach((r) => {
             if (r && r.id && !deletedIds.has(r.id)) {
-              const existing = docMap.get(r.id);
-              if (!existing) {
-                docMap.set(r.id, r);
-              } else {
-                const countR = (r.steps || []).filter((s) => s?.status === "APPROVED").length;
-                const countL = (existing.steps || []).filter((s) => s?.status === "APPROVED").length;
-                if (r.status === "APPROVED" && existing.status !== "APPROVED") {
-                  docMap.set(r.id, r);
-                } else if (existing.status === "APPROVED" && r.status !== "APPROVED") {
-                  docMap.set(r.id, existing);
-                } else if (countR > countL) {
-                  docMap.set(r.id, r);
-                } else if (countL > countR) {
-                  docMap.set(r.id, existing);
-                } else {
-                  const tR = parseSafeTimestamp(r.updatedAt || r.createdAt);
-                  const tL = parseSafeTimestamp(existing.updatedAt || existing.createdAt);
-                  if (tR >= tL) {
-                    docMap.set(r.id, r);
-                  } else {
-                    docMap.set(r.id, existing);
-                  }
-                }
-              }
+              docMap.set(r.id, r);
             }
           });
 
-          // 3. Keep local fallback in memory without silent cloud writes
+          // 2. Keep local offline documents ONLY if they do not exist in Firestore at all
           localDocs.forEach((localDoc) => {
             if (localDoc && localDoc.id && !deletedIds.has(localDoc.id) && !docMap.has(localDoc.id)) {
               docMap.set(localDoc.id, localDoc);
@@ -1653,9 +1624,20 @@ export const syncPlantOvertimeToApprovalBox = async ({
       } catch (e) {}
 
       const existingDoc = cloudDoc || localDoc;
-      const priorSteps = Array.isArray(cloudDoc?.steps) && cloudDoc.steps.length > 0
-        ? cloudDoc.steps
-        : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0 ? localDoc.steps : []);
+
+      const isPastOvertime = Boolean(workDateStr && workDateStr <= "2026-10-18");
+
+      const repApproval = (Array.isArray(compRep.approval) && compRep.approval.length === 4)
+        ? compRep.approval
+        : ((Array.isArray(compRep.steps) && compRep.steps.length === 4) ? compRep.steps : null);
+
+      const isRepPendingCEO = (repApproval && repApproval[3]?.status === "PENDING") || compRep.status === "IN_PROGRESS" || compRep.approvalStatus === "결재진행중";
+
+      const priorSteps = (isRepPendingCEO && repApproval)
+        ? repApproval
+        : (Array.isArray(cloudDoc?.steps) && cloudDoc.steps.length > 0
+          ? cloudDoc.steps
+          : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0 ? localDoc.steps : (repApproval || [])));
 
       const drafterName = compRep.author?.split(" ")[0] || (targetPlant === "삼랑진공장" ? "조인주" : "오상민");
       const drafterTitle = compRep.authorTitle || "선임";
@@ -1665,8 +1647,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const department = `${targetPlant} (${targetComp})`;
       const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetComp}] 특근보고서\n\n1. 특근 요약\n• 소속: ${targetPlant} - ${targetComp}\n• 특근 투입: ${workerCount}명 (${workerHours} M/H) | 예상 노무비: ₩${workerCost.toLocaleString()}\n\n2. 투입 작업자 명단\n• ${workerNames.join(", ") || "특근 투입 인원"}\n\n3. 주요 작업 내용\n• 현대/기아 납품 물량 대응 및 ${targetComp} 주말/공휴일 특근 가동`;
 
-      const isPastOvertime = (workDateStr && workDateStr <= "2026-10-18") || existingDoc?.status === "APPROVED";
-      const isAlreadyFullyApproved = existingDoc?.status === "APPROVED" || (Array.isArray(priorSteps) && priorSteps.length === 4 && priorSteps.every((s) => s && s.status === "APPROVED"));
+      const isAlreadyFullyApproved = isPastOvertime || (!isRepPendingCEO && existingDoc?.status === "APPROVED" && Array.isArray(priorSteps) && priorSteps.length === 4 && priorSteps.every((s) => s && s.status === "APPROVED" && s.date));
 
       const step0 = {
         role: "담당",
@@ -1702,7 +1683,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         comment: priorSteps[2]?.comment || (isStep2Approved ? "승인" : "")
       };
 
-      const isStep3Approved = isAlreadyFullyApproved || isPastOvertime || priorSteps[3]?.status === "APPROVED";
+      const isStep3Approved = isAlreadyFullyApproved || (!isRepPendingCEO && priorSteps[3]?.status === "APPROVED" && Boolean(priorSteps[3]?.date));
       const isStep3Hold = !isPastOvertime && priorSteps[3]?.status === "HOLD";
       const isStep3Rejected = !isPastOvertime && priorSteps[3]?.status === "REJECTED";
       const step3 = {
@@ -1710,8 +1691,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         name: priorSteps[3]?.name === "최미영" ? "최미영" : "권태형",
         title: priorSteps[3]?.title || (priorSteps[3]?.name === "최미영" ? "전무" : "대표이사"),
         status: isStep3Approved ? "APPROVED" : (isStep3Hold ? "HOLD" : (isStep3Rejected ? "REJECTED" : (isStep2Approved ? "PENDING" : "WAITING"))),
-        date: priorSteps[3]?.date || (isStep3Approved ? `${workDateStr} 19:30:00` : ""),
-        comment: priorSteps[3]?.comment || (isStep3Approved ? "대표이사 최종 승인" : "")
+        date: isStep3Approved ? (priorSteps[3]?.date || `${workDateStr} 19:30:00`) : "",
+        comment: isStep3Approved ? (priorSteps[3]?.comment || "대표이사 최종 승인") : (priorSteps[3]?.comment || "")
       };
 
       const steps = [step0, step1, step2, step3];
@@ -1719,7 +1700,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
       let finalDocStatus = "IN_PROGRESS";
       let finalCurrentStep = 2;
-      if (approvedCount === 4 || isPastOvertime || isAlreadyFullyApproved) {
+      if (approvedCount === 4) {
         finalDocStatus = "APPROVED";
         finalCurrentStep = 4;
       } else if (steps.some((st) => st.status === "REJECTED")) {

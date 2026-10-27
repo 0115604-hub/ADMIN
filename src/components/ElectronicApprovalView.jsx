@@ -1335,7 +1335,12 @@ export const ElectronicApprovalView = ({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSelectedTab(tab.id)}
+              onClick={() => {
+                setSelectedTab(tab.id);
+                if (tab.id === "PENDING" || tab.id === "COMPANY_IN_PROGRESS") {
+                  setSelectedPlant("ALL");
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
                 selectedTab === tab.id
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs"
