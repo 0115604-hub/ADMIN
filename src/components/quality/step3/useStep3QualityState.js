@@ -222,14 +222,19 @@ export const useStep3QualityState = ({
     });
   }, [extrusionReports, machiningReports, hanulReports, yuseongReports, workLogs, ncLedgerState]);
 
-  // 3. Filter items that 2nd stage managers transferred to Quality (CHANGE_POINT)
+  // 3. Filter items that 2nd stage managers transferred to Quality (CHANGE_POINT) -> 위 패널 (Step3IncomingTransferredSection)
   const incomingTransferredItems = useMemo(() => {
     const map = new Map();
 
     // 1) From extracted work report items with registrationType === "CHANGE_POINT"
     extractedWorkReportItems.forEach((item) => {
       if (item && item.registrationType === "CHANGE_POINT") {
-        map.set(item.id, item);
+        const key = item.id;
+        const ov = ncLedgerState?.overrides?.[key] || ncLedgerState?.overrides?.[String(key).replace(/^ledger_/, "")] || {};
+        if (ov.registrationType === "INTERNAL" || ov.registrationType === "OFFICIAL_LEDGER" || ov.isDeleted) {
+          return;
+        }
+        map.set(key, item);
       }
     });
 
@@ -263,7 +268,7 @@ export const useStep3QualityState = ({
     // 3) Direct fallback from ncLedgerState.overrides where registrationType === "CHANGE_POINT"
     const overrides = ncLedgerState?.overrides || {};
     Object.entries(overrides).forEach(([key, ov]) => {
-      if (ov && ov.registrationType === "CHANGE_POINT" && !ov.isDeleted && !map.has(key)) {
+      if (ov && ov.registrationType === "CHANGE_POINT" && !ov.isDeleted && ov.registrationType !== "OFFICIAL_LEDGER" && ov.registrationType !== "INTERNAL" && !map.has(key)) {
         const rId = key.replace(/^wr_nc_def_/, "").replace(/^wr_nc_/, "").split("_")[0];
         const allReps = [...extrusionReports, ...machiningReports, ...hanulReports, ...yuseongReports, ...(workLogs || [])];
         const matchedRep = allReps.find((r) => String(r.id || "") === rId || key.includes(String(r.id || "")));
@@ -273,8 +278,8 @@ export const useStep3QualityState = ({
           reportId: rId,
           date: ov.actionAt || matchedRep?.date || new Date().toISOString().slice(0, 10),
           time: matchedRep?.time || "",
-          company: matchedRep?.company || "오륙",
-          plant: matchedRep?.plant || "삼랑진공장",
+          company: matchedRep?.company || ov.company || "오륙",
+          plant: matchedRep?.plant || ov.plant || "삼랑진공장",
           line: matchedRep?.line || matchedRep?.project || ov.line || "생산라인",
           worker: ov.actionAuthor || matchedRep?.worker || ov.registeredBy || "생산관리자",
           defectType: ov.defectType || "공정 부적합",
@@ -302,24 +307,21 @@ export const useStep3QualityState = ({
     });
   }, [extractedWorkReportItems, fourMRecords, ncLedgerState, extrusionReports, machiningReports, hanulReports, yuseongReports, workLogs]);
 
-  // 4. Official 4M Change Point Ledger items (9월/10월 전체 공식대장 및 이창엽 책임 등록 건 100% 영구 보존/노출)
+  // 4. Official 4M Change Point Ledger items (오직 이창엽 책임자 공식 등록분만 100% 영구 보존/노출)
   const official4MItems = useMemo(() => {
     return fourMRecords.filter((rec) => {
       if (!rec) return false;
-      // ⭐ If explicitly false, this is an incoming/transferred item from 2nd stage managers (전체취합대장 소속), NOT yet official!
+      // 🔒 생산관리자 이관 건(WORK_REPORT_NC)은 이창엽의 공식 등록 이전에는 절대 공식대장에 노출 금지
       if (rec.isOfficialLedger === false) return false;
+      if (rec.sourceType === "WORK_REPORT_NC" && rec.isOfficialLedger !== true) return false;
+      if (rec.registrationType === "CHANGE_POINT" && rec.isOfficialLedger !== true) return false;
 
+      // 4M 공식대장 등록권한은 오직 이창엽에게만 있음
       const isOfficial =
         rec.isOfficialLedger === true ||
-        String(rec.id || "").startsWith("ledger_") ||
-        String(rec.id || "").startsWith("man_log_") ||
-        Boolean(rec.approvalDocId) ||
-        rec.isQualityClassified === true ||
         rec.classifiedBy === "이창엽" ||
         rec.registeredBy === "이창엽" ||
-        rec.author === "이창엽" ||
-        rec.actionAuthor === "이창엽" ||
-        String(rec.writer || "").includes("이창엽");
+        rec.qualityReviewer === "이창엽";
 
       return Boolean(isOfficial);
     });

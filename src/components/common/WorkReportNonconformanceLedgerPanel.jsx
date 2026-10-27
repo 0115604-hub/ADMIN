@@ -444,36 +444,43 @@ export default function WorkReportNonconformanceLedgerPanel({
     await saveWorkReportNcLedger(nextState);
 
     if (targetBadgeType === "CHANGE_POINT") {
-      // 🌟 변동점등록뱃지로 등록 시 변동점관리대장(4M)에 즉시 함께 등록!
-      const fourM = item.fourM || determineFourMCategory(item);
-      await registerToFourMLedger(
-        {
-          id: `ledger_${item.id}`,
-          originalId: item.id,
-          rawId: item.id,
-          fourM,
-          origin: "작업일보 부적합",
-          sourceType: "WORK_REPORT_NC",
-          plant: item.plant || "삼랑진공장",
-          line: item.line || item.company || "생산라인",
-          writer: item.worker || managerName,
-          title: item.title || `[작업일보 부적합] ${item.line} - ${item.defectType}`,
-          date: item.date,
-          time: item.time || "",
-          content: item.content || item.defectType || "",
-          actionResult: item.actionResult || "",
-          actionAuthor: item.actionResult ? managerName : "",
-          actionAt: item.actionResult ? nowStr : "",
-          images: item.beforePhoto ? [item.beforePhoto] : [],
-          actionImages: item.afterPhoto ? [item.afterPhoto] : [],
-          isResolved: Boolean(item.actionResult || item.afterPhoto || item.status === "RESOLVED"),
-          scrapKg: Number(item.scrapKg) || 0,
-          downtimeMinutes: Number(item.downtimeMinutes) || 0,
-          registrationBadge: "변동점등록",
-          isOfficialLedger: true
-        },
-        managerName
-      );
+      // 🌟 4M 공식대장 등록권한은 오직 이창엽에게만 있음
+      // 이창엽 품질책임자만 네이티브 4M 공식대장(four_m_change_points)에 등록하고,
+      // 생산관리자는 Step 3 상단 접수함(위 패널)으로 이관됩니다.
+      if (managerName === "이창엽" || managerName === "권태형") {
+        const fourM = item.fourM || determineFourMCategory(item);
+        await registerToFourMLedger(
+          {
+            id: `ledger_${item.id}`,
+            originalId: item.id,
+            rawId: item.id,
+            fourM,
+            origin: "작업일보 부적합",
+            sourceType: "WORK_REPORT_NC",
+            plant: item.plant || "삼랑진공장",
+            line: item.line || item.company || "생산라인",
+            writer: item.worker || managerName,
+            title: item.title || `[작업일보 부적합] ${item.line} - ${item.defectType}`,
+            date: item.date,
+            time: item.time || "",
+            content: item.content || item.defectType || "",
+            actionResult: item.actionResult || "",
+            actionAuthor: item.actionResult ? managerName : "",
+            actionAt: item.actionResult ? nowStr : "",
+            images: item.beforePhoto ? [item.beforePhoto] : [],
+            actionImages: item.afterPhoto ? [item.afterPhoto] : [],
+            isResolved: Boolean(item.actionResult || item.afterPhoto || item.status === "RESOLVED"),
+            scrapKg: Number(item.scrapKg) || 0,
+            downtimeMinutes: Number(item.downtimeMinutes) || 0,
+            registrationBadge: "변동점등록",
+            isOfficialLedger: true
+          },
+          managerName
+        );
+      } else {
+        await unregisterFromFourMLedger(item.id);
+        await unregisterFromFourMLedger(`ledger_${item.id}`);
+      }
     } else if (targetBadgeType === "INTERNAL") {
       // 🌟 사내관리등록뱃지로 등록 시 사내 부적합관리대장으로만 관리 (4M 변동점관리대장에서는 제외)
       await unregisterFromFourMLedger(item.id);

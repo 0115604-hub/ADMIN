@@ -708,6 +708,8 @@ export const getLocalFourMChangePoints = () => {
     });
     localList.forEach((r) => {
       if (r && r.id) {
+        // 생산관리자가 이관한 미공식 건은 공식대장 로컬 캐시에 남지 않도록 필터링
+        if (r.isOfficialLedger === false || (r.sourceType === "WORK_REPORT_NC" && !r.isOfficialLedger)) return;
         const existing = map.get(r.id);
         map.set(r.id, existing ? { ...existing, ...r } : r);
       }
@@ -808,6 +810,8 @@ export const subscribeFourMChangePoints = (onUpdate) => {
           });
           remoteList.forEach((r) => {
             if (r && r.id) {
+              // 생산관리자가 이관한 미공식 건은 공식대장 캐시에 남지 않도록 필터링
+              if (r.isOfficialLedger === false || (r.sourceType === "WORK_REPORT_NC" && !r.isOfficialLedger)) return;
               const existing = map.get(r.id);
               map.set(r.id, existing ? { ...existing, ...r } : r);
             }
@@ -1158,6 +1162,20 @@ export const updateFourMClassification = async (itemOrId, newFourM, modifierName
 // Register (Copy) a Record into Official 4M Change Point Ledger
 export const registerToFourMLedger = async (record, registeredBy = "관리자") => {
   if (!record) return null;
+
+  // 🔒 4M 공식대장 등록권한은 오직 이창엽에게만 있음 (생산관리자의 직접 등록 차단)
+  const isLeeChangYeop =
+    registeredBy === "이창엽" ||
+    record.registeredBy === "이창엽" ||
+    record.classifiedBy === "이창엽" ||
+    record.qualityReviewer === "이창엽" ||
+    registeredBy === "권태형" ||
+    record.registeredBy === "권태형";
+
+  if (!isLeeChangYeop) {
+    console.warn("[4M 공식대장 등록권한 차단] 생산관리자는 4M 공식대장에 직접 등록할 권한이 없습니다. (이창엽 품질책임자 전용):", registeredBy, record);
+    return getLocalFourMChangePoints();
+  }
 
   const now = new Date();
   const nowStr = now.toLocaleString("ko-KR", {

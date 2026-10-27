@@ -263,52 +263,19 @@ export const useCapaActionModalState = ({
         await saveWorkReportNcLedger(nextState);
       }
 
-      // 2. Register to four_m_change_points for 전체취합대장 (with isOfficialLedger: false)
-      const fourMPayload = {
-        id: capaModalItem.id,
-        originalId: capaModalItem.id,
-        rawId: capaModalItem.id,
-        fourM: capaForm.fourM,
-        origin:
-          capaModalItem.origin ||
-          (String(capaModalItem.line || "").includes("압출") ? "압출동 작업일보 부적합" : "가공동 작업일보 부적합"),
-        sourceType: "WORK_REPORT_NC",
-        plant: capaForm.plant || capaModalItem.plant || defaultPlant,
-        line: capaForm.line || capaModalItem.line || "생산라인",
-        writer: capaModalItem.worker || actualWorker,
-        title:
-          capaForm.title ||
-          `[품질이관] ${capaModalItem.line || ""} - ${capaModalItem.defectType || capaForm.content || ""}`.trim(),
-        date: capaModalItem.date,
-        time: capaModalItem.time || "",
-        content: capaForm.content,
-        actionResult: capaForm.correctiveAction,
-        actionAuthor: capaForm.author || actualWorker,
-        actionAt: capaForm.targetDate || nowStr,
-        targetDate: capaForm.targetDate,
-        beforePhotos: capaForm.beforePhotos,
-        afterPhotos: capaForm.afterPhotos,
-        images: capaForm.beforePhotos,
-        actionImages: capaForm.afterPhotos,
-        beforePhoto: capaForm.beforePhotos[0] || null,
-        afterPhoto: capaForm.afterPhotos[0] || null,
-        isResolved: Boolean(capaForm.correctiveAction || capaForm.afterPhotos.length > 0),
-        scrapKg: Number(capaModalItem.scrapKg) || 0,
-        downtimeMinutes: Number(capaModalItem.downtimeMinutes || capaModalItem.minutes) || 0,
-        registrationBadge: "변동점등록",
-        isSqNotice: capaForm.isSqNotice,
-        registrationType: "CHANGE_POINT",
-        // ⭐ CRITICAL REQUIREMENT 1: 이창엽의 공식4m대장이 아닌 전체취합대장으로 이동!
-        isOfficialLedger: false
-      };
-
-      await registerToFourMLedger(fourMPayload, actualWorker);
-
-      // Clean up any stale copy prefixed with ledger_
+      // ⭐ CRITICAL RULE: 생산관리자는 4M 공식대장(four_m_change_points)에 등록할 권한이 없음 (오직 이창엽만 등록 권한 보유)
+      // 생산관리자의 변동점 이관은 work_report_nonconformance_ledger_v1의 registrationType: "CHANGE_POINT"로 저장되어
+      // 3단계 품질관리 패널의 [위 패널](Step3IncomingTransferredSection)로만 등록됩니다.
+      // four_m_change_points(공식대장)에는 절대 직접 등록되지 않으며, 이전 사본이 있다면 안전하게 제거합니다.
+      await unregisterFromFourMLedger(capaModalItem.id);
       await unregisterFromFourMLedger(`ledger_${capaModalItem.id}`);
 
       if (typeof onAfterSave === "function") {
-        onAfterSave(capaModalItem, fourMPayload);
+        onAfterSave(capaModalItem, {
+          id: capaModalItem.id,
+          registrationType: "CHANGE_POINT",
+          registeredBy: actualWorker
+        });
       }
 
       setCapaModalItem(null);
