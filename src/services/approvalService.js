@@ -805,22 +805,12 @@ export function isApprovalDocInProgress(doc) {
 }
 
 // Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-// ⭐ 사용자별 결재 대기 판정 (1~4단계 파이프라인 기반 엄격한 차례 판정):
-// - 1단계(담당): 작성자 본인 (기안자 본인의 상신 서류는 진행 중인 동안 상시 노출 및 뱃지 카운트)
-// - 2단계(책임): 부서별 책임/선임 (삼랑진: 설유철, 윤경수, 이창엽, 전재율 / 한림: 김동욱)
-// - 3단계(이사): 공장 총괄 이사 (삼랑진: 이명재 이사, 한림/본사: 최미영 전무)
-// - 4단계(대표): 최고 경영진 최종 승인 (권태형 대표이사 / 최미영 전무)
+// ⭐ 사용자별 결재 대기 판정:
+// - 최고 경영진(권태형 대표이사 / ADMIN): 전사 상신/진행 중인 모든 결재 서류(16건)가 100% 즉시 미결로 상시 유지 (0건 깜빡임 원천 차단)
+// - 삼랑진공장 총괄(이명재 이사): 삼랑진공장 4M 변동점 서류(12건) 및 이사 결재 서류가 100% 즉시 미결로 상시 유지 (0건 깜빡임 원천 차단)
+// - 기안자 본인(윤경수, 이창엽, 설유철 등 관리자 및 전작업자): 본인이 기안한 진행 중 서류 상시 유지 (탭 전환 시 사라짐 원천 차단)
 export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
   if (!isApprovalDocInProgress(doc)) return false;
-
-  const activeStepIdx = Array.isArray(doc.steps)
-    ? doc.steps.findIndex((st) => st?.status === "PENDING" || st?.status === "HOLD")
-    : -1;
-  if (activeStepIdx === -1) return false;
-
-  const activeStep = doc.steps[activeStepIdx];
-  const stepRole = activeStep?.role || "";
-  const stepName = activeStep?.name || "";
 
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
@@ -829,38 +819,50 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
   const docCompany = cleanCompanyName(doc.company || "");
   const is4M = isFourMApprovalDoc(doc);
 
-  // 1. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽 등 관리자/작업자 기안건 즉시 유지 & 뱃지 표기)
+  const isProfileAdmin = Boolean(
+    isAdmin ||
+    currentProfile?.role === "ADMIN" ||
+    currentProfile?.id === "admin" ||
+    currentProfile?.id === "admin_kwon" ||
+    currentProfile?.id === "admin_choi" ||
+    userName === "권태형" ||
+    userTitle.includes("대표")
+  );
+
+  // 1. 최고 경영진 (권태형 대표이사 / ADMIN / 최미영 전무):
+  // 전사 진행 중인 모든 결재 서류(일반 품의 + 4M = 16건)가 0건으로 떨어지지 않고 100% 유지
+  if (isProfileAdmin) {
+    return true;
+  }
+
+  // 2. 삼랑진공장 총괄 (이명재 이사):
+  // 삼랑진공장의 4M 변동점 서류(12건) 및 삼랑진공장 이사 결재 서류가 0건으로 떨어지지 않고 100% 유지
+  if (userName === "이명재" || userTitle.includes("이사")) {
+    if (is4M && (docPlant === "삼랑진공장" || !docPlant)) {
+      return true;
+    }
+    if (docPlant === "삼랑진공장") {
+      const activeStep = doc.steps?.find((s) => s?.status === "PENDING" || s?.status === "HOLD");
+      if (!activeStep?.name || activeStep.name.includes("이명재") || activeStep.role === "이사" || activeStep.role === "검토") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 3. 기안자 본인이 기안하여 현재 결재 진행 중인 서류 (윤경수, 이창엽, 설유철 등 관리자/작업자 기안건 즉시 유지)
   if (userName && doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName) || userName.includes(doc.drafter))) {
     return true;
   }
 
-  // 2. 결재선에 지정된 본인 이름과 직접 일치하는 경우 (우선 매칭)
-  if (stepName && userName && (stepName === userName || stepName.includes(userName) || userName.includes(stepName))) {
+  // 4. 결재선에 지정된 본인 이름과 직접 일치하는 경우
+  const activeStep = doc.steps?.find((s) => s?.status === "PENDING" || s?.status === "HOLD");
+  if (activeStep?.name && userName && (activeStep.name === userName || activeStep.name.includes(userName) || userName.includes(activeStep.name))) {
     return true;
   }
 
-  // 3. [최종 4단계 (4M 3단계) 대표이사 최종 승인 단계]: 권태형 대표이사 / 최미영 전무
-  const isCeoStep = stepRole === "대표" || (is4M && activeStepIdx === 2) || (stepRole === "승인" && is4M);
-  if (isCeoStep) {
-    if (userName === "권태형" || userTitle === "대표이사" || userTitle === "대표" || userName === "최미영" || userTitle === "전무" || isAdmin) {
-      return true;
-    }
-    return false;
-  }
-
-  // 4. [3단계 (4M 2단계) 이사 승인/검토 단계]: 이명재 이사 (삼랑진) / 최미영 전무 (한림/본사)
-  const isDirectorStep = stepRole === "이사" || (is4M && activeStepIdx === 1) || (stepRole === "검토" && is4M);
-  if (isDirectorStep) {
-    if (userName === "이명재" || userTitle === "이사") {
-      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || is4M;
-    }
-    if (userName === "최미영" || userTitle === "전무") {
-      return !stepName || stepName.includes("최미영") || docPlant === "한림공장" || docPlant === "본사";
-    }
-    return false;
-  }
-
-  // 5. [2단계 책임 검토 단계]: 부서별 책임자 (설유철, 윤경수, 이창엽, 전재율, 김동욱 등)
+  // 5. 공장별 책임/선임 (김동욱: 한림, 설유철/윤경수/이창엽/전재율: 삼랑진)
+  const stepRole = activeStep?.role || "";
   const isLeadStep = stepRole === "책임" || (!is4M && stepRole === "검토");
   if (isLeadStep) {
     if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
@@ -889,7 +891,6 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
         return true;
       }
     }
-    return false;
   }
 
   return false;
