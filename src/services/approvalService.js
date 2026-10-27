@@ -267,28 +267,11 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
     if (plant === "한림공장") {
       step2Name = "김동욱";
     } else {
-      if (department?.includes("품질") || drafterName === "이창엽") step2Name = "이창엽";
-      else if (department?.includes("설비") || drafterName === "전재율") step2Name = "전재율";
-      else if (department?.includes("가공") || drafterName === "윤경수") step2Name = "윤경수";
+      if (department?.includes("품질")) step2Name = "이창엽";
+      else if (department?.includes("설비")) step2Name = "전재율";
+      else if (department?.includes("가공")) step2Name = "윤경수";
       else step2Name = "설유철";
     }
-  }
-
-  // ⭐ 기안자 본인이 이미 해당 공정의 책임/관리자이거나 step2Name과 동일한 경우:
-  // 본인의 1단계 책임 승인은 기안과 동시에 즉시 완료(전결) 처리되어
-  // 다음 상위 결재자(2단계 이명재 이사)에게 PENDING 상태로 즉시 직행!
-  const isManagerDrafter =
-    (drafterName && step2Name && drafterName === step2Name) ||
-    (drafterName === "윤경수" && (step2Name === "윤경수" || step2Name === "설유철")) ||
-    (drafterName === "이창엽" && (step2Name === "이창엽" || step2Name === "설유철")) ||
-    (drafterName === "전재율" && (step2Name === "전재율" || step2Name === "설유철")) ||
-    (drafterName === "설유철" && step2Name === "설유철") ||
-    (drafterName === "김동욱" && step2Name === "김동욱") ||
-    (drafterTitle === "책임" && drafterName === step2Name);
-
-  if (isManagerDrafter && (drafterName === "윤경수" || drafterName === "이창엽" || drafterName === "전재율")) {
-    step2Name = drafterName;
-    step2Title = "책임";
   }
 
   const isHanlim = plant === "한림공장";
@@ -305,6 +288,7 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
   }
 
   const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
+
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -313,6 +297,142 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
     minute: "2-digit",
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
+
+  // ⭐ 공정 관리자(책임) 직접 기안 판정:
+  // 윤경수, 이창엽, 설유철, 전재율, 김동욱 등 공정 관리자(책임)가 직접 기안할 경우,
+  // 본인의 2단계 책임 단계는 기안과 동시에 '책임 전결'로 자동 승인 처리되어
+  // 타 책임자에게 불필요하게 대기하지 않고 상위 결재권자(이명재 이사)에게 즉시 도달하도록 결재선 자동 생성
+  const PROCESS_LEAD_NAMES = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"];
+  const isProcessManagerLead =
+    PROCESS_LEAD_NAMES.includes(drafterName) ||
+    drafterTitle === "책임" ||
+    drafterName === step2Name ||
+    APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
+
+  // 이사급 직접 기안인 경우 (이명재 이사)
+  const isDirectorDrafter =
+    drafterName === "이명재" ||
+    drafterTitle === "이사" ||
+    (drafterName && step3Name && step3Name.includes(drafterName));
+
+  // 대표/전무 직접 기안인 경우 (권태형 대표이사, 최미영 전무)
+  const isCeoDrafter =
+    drafterName === "권태형" ||
+    drafterName === "최미영" ||
+    drafterTitle === "대표이사" ||
+    drafterTitle === "대표" ||
+    drafterTitle === "전무";
+
+  if (isCeoDrafter) {
+    return [
+      {
+        role: "담당",
+        name: drafterName || "대표이사",
+        title: drafterTitle || "대표이사",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "기안 상신"
+      },
+      {
+        role: "책임",
+        name: drafterName || "대표이사",
+        title: "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "대표 전결"
+      },
+      {
+        role: "이사",
+        name: drafterName || "대표이사",
+        title: "이사",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "대표 전결"
+      },
+      {
+        role: "대표",
+        name: drafterName || "대표이사",
+        title: ceoTitle,
+        status: "APPROVED",
+        date: nowStr,
+        comment: "대표이사 최종 승인"
+      }
+    ];
+  }
+
+  if (isDirectorDrafter) {
+    return [
+      {
+        role: "담당",
+        name: drafterName || "이명재",
+        title: drafterTitle || "이사",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "기안 상신"
+      },
+      {
+        role: "책임",
+        name: drafterName || "이명재",
+        title: "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "책임 전결"
+      },
+      {
+        role: "이사",
+        name: drafterName || "이명재",
+        title: step3Title || "이사",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "이사 전결"
+      },
+      {
+        role: "대표",
+        name: ceoName === "최미영" ? "최미영" : "대표이사",
+        title: ceoTitle,
+        status: "PENDING",
+        date: "",
+        comment: ""
+      }
+    ];
+  }
+
+  if (isProcessManagerLead) {
+    return [
+      {
+        role: "담당",
+        name: drafterName || "기안자",
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "기안 상신"
+      },
+      {
+        role: "책임",
+        name: drafterName,
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: nowStr,
+        comment: "책임 전결"
+      },
+      {
+        role: "이사",
+        name: step3Name,
+        title: step3Title,
+        status: "PENDING",
+        date: "",
+        comment: ""
+      },
+      {
+        role: "대표",
+        name: ceoName === "최미영" ? "최미영" : "대표이사",
+        title: ceoTitle,
+        status: "WAITING",
+        date: "",
+        comment: ""
+      }
+    ];
+  }
 
   return [
     {
@@ -327,15 +447,15 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
       role: "책임",
       name: step2Name,
       title: step2Title,
-      status: isManagerDrafter ? "APPROVED" : "PENDING",
-      date: isManagerDrafter ? nowStr : "",
-      comment: isManagerDrafter ? "기안 상신 (책임 전결)" : ""
+      status: "PENDING",
+      date: "",
+      comment: ""
     },
     {
       role: "이사",
       name: step3Name,
       title: step3Title,
-      status: isManagerDrafter ? "PENDING" : "WAITING",
+      status: "WAITING",
       date: "",
       comment: ""
     },
@@ -667,21 +787,19 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
     }
   }
 
-  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사) -> 삼랑진공장 모든 진행 중인 결재 서류 및 이사/검토 단계 미결 뱃지 반영
+  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사)
   if (userName === "이명재" || userTitle === "이사") {
-    if (docPlant === "삼랑진공장" || !docPlant || isFourMApprovalDoc(doc)) {
-      return true;
-    }
     if (stepRole === "이사" || stepRole === "검토") {
-      return !stepName || stepName.includes("이명재");
+      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || isFourMApprovalDoc(doc);
     }
     return false;
   }
 
-  // 7. 한림공장 총괄 / 책임 (김동욱 책임) -> 한림공장 모든 진행 중인 결재 서류 미결 뱃지 반영
+  // 7. 한림공장 총괄 / 책임 (김동욱 책임)
   if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
-    if (docPlant === "한림공장" || !docPlant) {
-      return true;
+    if (docPlant === "한림공장") {
+      if (stepRole === "책임" || stepRole === "검토") return true;
+      if (stepRole === "이사" && (!stepName || stepName.includes("김동욱"))) return true;
     }
     return false;
   }
@@ -758,15 +876,10 @@ export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
 export function isOvertimeApprovalDoc(doc) {
   if (!doc) return false;
   if (doc.id && String(doc.id).startsWith("appr_4m_")) return false; // 4M 변동점 결재서류 우선 배제
-  const title = doc.title || "";
-  // 구매, 품의, 자재, 소모품 등 일반 결재 서류는 특근보고서로 오분류되지 않도록 필터링
-  if (title.includes("구매") || title.includes("구입") || title.includes("품의") || title.includes("소모품") || title.includes("수리") || title.includes("견적")) {
-    return false;
-  }
   if (doc.id && String(doc.id).startsWith("appr_ot_")) return true;
-  if (doc.category === "특근보고서" || doc.typeName?.includes("특근")) return true;
   if (doc.type === "OVERTIME" || doc.docType === "OVERTIME") return true;
-  if (title.includes("특근") || title.includes("특근보고서")) return true;
+  if (doc.category === "특근보고서" || doc.typeName?.includes("특근")) return true;
+  if (doc.title && (doc.title.includes("특근") || doc.title.includes("특근보고서"))) return true;
   return false;
 }
 
@@ -1834,16 +1947,20 @@ export const syncPlantOvertimeToApprovalBox = async ({
         comment: priorSteps[0]?.comment || "특근보고서 개별 상신"
       };
 
-      const isStep1Approved = isAlreadyFullyApproved || isPastOvertime || priorSteps[1]?.status === "APPROVED";
+      const isLeadDrafter =
+        ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(drafterName) ||
+        drafterTitle === "책임" ||
+        drafterName === leadName;
+      const isStep1Approved = isAlreadyFullyApproved || isPastOvertime || isLeadDrafter || priorSteps[1]?.status === "APPROVED";
       const isStep1Hold = !isPastOvertime && priorSteps[1]?.status === "HOLD";
       const isStep1Rejected = !isPastOvertime && priorSteps[1]?.status === "REJECTED";
       const step1 = {
         role: "책임",
-        name: priorSteps[1]?.name || leadName,
+        name: isLeadDrafter ? drafterName : (priorSteps[1]?.name || leadName),
         title: priorSteps[1]?.title || "책임",
         status: isStep1Approved ? "APPROVED" : (isStep1Hold ? "HOLD" : (isStep1Rejected ? "REJECTED" : "PENDING")),
         date: priorSteps[1]?.date || (isStep1Approved ? `${workDateStr} 18:30:00` : ""),
-        comment: priorSteps[1]?.comment || (isStep1Approved ? "승인" : "")
+        comment: priorSteps[1]?.comment || (isStep1Approved ? (isLeadDrafter ? "책임 전결" : "승인") : "")
       };
 
       const isStep2Approved = isAlreadyFullyApproved || isPastOvertime || priorSteps[2]?.status === "APPROVED";

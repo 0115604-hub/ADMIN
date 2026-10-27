@@ -316,6 +316,10 @@ export const ElectronicApprovalView = ({
   );
 
   // New Draft Form State (담당: 전작업자 / 관리자)
+  const defaultLeadName = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(currentProfile?.name)
+    ? currentProfile.name
+    : (currentProfile?.plant === "한림공장" ? "김동욱" : "설유철");
+
   const [draftForm, setDraftForm] = useState({
     type: "OVERTIME",
     typeName: "특근 신청서",
@@ -323,7 +327,7 @@ export const ElectronicApprovalView = ({
     department: currentProfile?.assignedProcess || "압출동 관리",
     drafter: currentProfile?.name || "권태형",
     drafterTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
-    leadName: "설유철", // Step 2 (책임)
+    leadName: defaultLeadName, // Step 2 (책임)
     directorName: "이명재", // Step 3 (이사)
     ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형", // Step 4 (대표/전무)
     title: "",
@@ -2258,25 +2262,12 @@ export const ElectronicApprovalView = ({
                     value={draftForm.drafter}
                     onChange={(e) => {
                       const sel = allWorkers.find((w) => w.name === e.target.value);
-                      const targetPlant = sel?.plant || sel?.plantName || draftForm.plant;
-                      let autoLead = draftForm.leadName;
-                      if (e.target.value === "윤경수" || sel?.process?.includes("가공")) autoLead = "윤경수";
-                      else if (e.target.value === "설유철" || sel?.process?.includes("압출")) autoLead = "설유철";
-                      else if (e.target.value === "이창엽" || sel?.process?.includes("품질")) autoLead = "이창엽";
-                      else if (e.target.value === "전재율" || sel?.process?.includes("설비")) autoLead = "전재율";
-                      else if (e.target.value === "김동욱" || targetPlant === "한림공장") autoLead = "김동욱";
-                      else if (e.target.value === "황수현" || sel?.company === "한울") autoLead = "황수현";
-                      else if (e.target.value === "김동훈" || sel?.company === "부림텍") autoLead = "김동훈";
-                      else if (e.target.value === "이성기" || sel?.company === "유성") autoLead = "이성기";
-                      else if (e.target.value === "오상민" || sel?.company === "조영") autoLead = "오상민";
-
                       setDraftForm({
                         ...draftForm,
                         drafter: e.target.value,
                         drafterTitle: sel?.title || "선임",
-                        plant: targetPlant,
-                        department: sel?.process || sel?.assignedProcess || draftForm.department,
-                        leadName: autoLead
+                        plant: sel?.plant || sel?.plantName || draftForm.plant,
+                        department: sel?.process || sel?.assignedProcess || draftForm.department
                       });
                     }}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
@@ -2458,25 +2449,15 @@ export const ElectronicApprovalView = ({
                       value={draftForm.drafter}
                       onChange={(e) => {
                         const sel = allWorkers.find((w) => w.name === e.target.value);
-                        const targetPlant = sel?.plant || sel?.plantName || draftForm.plant;
-                        let autoLead = draftForm.leadName;
-                        if (e.target.value === "윤경수" || sel?.process?.includes("가공")) autoLead = "윤경수";
-                        else if (e.target.value === "설유철" || sel?.process?.includes("압출")) autoLead = "설유철";
-                        else if (e.target.value === "이창엽" || sel?.process?.includes("품질")) autoLead = "이창엽";
-                        else if (e.target.value === "전재율" || sel?.process?.includes("설비")) autoLead = "전재율";
-                        else if (e.target.value === "김동욱" || targetPlant === "한림공장") autoLead = "김동욱";
-                        else if (e.target.value === "황수현" || sel?.company === "한울") autoLead = "황수현";
-                        else if (e.target.value === "김동훈" || sel?.company === "부림텍") autoLead = "김동훈";
-                        else if (e.target.value === "이성기" || sel?.company === "유성") autoLead = "이성기";
-                        else if (e.target.value === "오상민" || sel?.company === "조영") autoLead = "오상민";
-
+                        const selTitle = sel?.title || "선임";
+                        const isLead = ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(e.target.value) || selTitle === "책임";
                         setDraftForm({
                           ...draftForm,
                           drafter: e.target.value,
-                          drafterTitle: sel?.title || "선임",
-                          plant: targetPlant,
-                          department: sel?.process || sel?.assignedProcess || draftForm.department,
-                          leadName: autoLead
+                          drafterTitle: selTitle,
+                          leadName: isLead ? e.target.value : draftForm.leadName,
+                          plant: sel?.plant || sel?.plantName || draftForm.plant,
+                          department: sel?.process || sel?.assignedProcess || draftForm.department
                         });
                       }}
                       className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
@@ -2499,31 +2480,51 @@ export const ElectronicApprovalView = ({
                     <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">기안 상신자</span>
                   </div>
 
-                  {/* 2. 책임 (관리자) 뱃지 - 전체 관리자 선택 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (관리자)</span>
-                    <select
-                      value={draftForm.leadName}
-                      onChange={(e) => setDraftForm({ ...draftForm, leadName: e.target.value })}
-                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
-                    >
-                      <optgroup label="삼랑진공장 관리자">
-                        {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "삼랑진공장").map((m) => (
-                          <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                            {m.name} ({m.title} • {m.process})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="한림공장 관리자">
-                        {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "한림공장").map((m) => (
-                          <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                            {m.name} ({m.title} • {m.process})
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">책임/중간 결재</span>
-                  </div>
+                  {/* 2. 책임 (관리자) 뱃지 - 전체 관리자 선택 (공정관리자 기안 시 책임 전결 자동 승인 안내) */}
+                  {(() => {
+                    const isLeadDrafter =
+                      ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(draftForm.drafter) ||
+                      draftForm.drafterTitle === "책임";
+                    return (
+                      <div className={`p-2 rounded-xl border ring-1 transition-all ${
+                        isLeadDrafter
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-600 ring-emerald-500/30"
+                          : "bg-white dark:bg-slate-700 border-emerald-300 dark:border-emerald-700 ring-emerald-500/20"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (관리자)</span>
+                          {isLeadDrafter && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500 text-white font-black">
+                              전결 대상
+                            </span>
+                          )}
+                        </div>
+                        <select
+                          value={draftForm.leadName}
+                          onChange={(e) => setDraftForm({ ...draftForm, leadName: e.target.value })}
+                          className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
+                        >
+                          <optgroup label="삼랑진공장 관리자">
+                            {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "삼랑진공장").map((m) => (
+                              <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                                {m.name} ({m.title} • {m.process})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="한림공장 관리자">
+                            {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "한림공장").map((m) => (
+                              <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                                {m.name} ({m.title} • {m.process})
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                        <span className={`text-[9px] font-medium block truncate ${isLeadDrafter ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-blue-600 dark:text-blue-400"}`}>
+                          {isLeadDrafter ? "✅ 책임 전결 (기안 즉시 승인)" : "책임/중간 결재"}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* 3. 이사 (임원) 뱃지 - 임원 선택 */}
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-700 ring-1 ring-purple-500/20">
