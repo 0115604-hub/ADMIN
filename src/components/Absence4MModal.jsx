@@ -16,7 +16,9 @@ import {
   Trash2,
   RefreshCw,
   Search,
-  Zap
+  Zap,
+  Wrench,
+  Sparkles
 } from "lucide-react";
 import {
   COMPANIES,
@@ -36,11 +38,16 @@ import {
   QUALITY_STATUS_OPTIONS,
   calculate4MRisk,
   generate4MOneLineLog,
+  generate4MActionResult,
   getLocal4MAbsenceLogsMap,
   save4MAbsenceLog,
   delete4MAbsenceLog,
   subscribe4MAbsenceLogs
 } from "../services/absence4MService.js";
+import {
+  getLocalFourMChangePoints,
+  subscribeFourMChangePoints
+} from "../services/fourMChangePointService.js";
 import { useModalHistory } from "../utils/modalHistory";
 
 export default function Absence4MModal({
@@ -105,6 +112,17 @@ export default function Absence4MModal({
     if (!isOpen) return;
     const unsub = subscribe4MAbsenceLogs((map) => {
       setLogsMap(map || {});
+    });
+    return () => unsub();
+  }, [isOpen]);
+
+  // 4M 공식 대장 실시간 구독 (조치결과 동기화)
+  const [fourMPoints, setFourMPoints] = useState(() => getLocalFourMChangePoints());
+  useEffect(() => {
+    if (!isOpen) return;
+    setFourMPoints(getLocalFourMChangePoints());
+    const unsub = subscribeFourMChangePoints((list) => {
+      setFourMPoints(list || []);
     });
     return () => unsub();
   }, [isOpen]);
@@ -179,8 +197,24 @@ export default function Absence4MModal({
         };
       }
 
+      // 4M 대장 및 로컬 동기화된 최신 조치결과(actionResult) 확인
+      const matched4M = (fourMPoints || []).find((fp) =>
+        fp.id === `man_log_${log.id}` ||
+        fp.id === log.id ||
+        fp.rawId === log.id ||
+        fp.originalId === log.id ||
+        (fp.date === log.date && cleanCompanyName(fp.company || fp.plant) === cleanCompanyName(log.company) && fp.title?.includes(log.absentWorker?.name))
+      );
+
+      const defaultAction = generate4MActionResult({
+        ...log,
+        substituteWorker: subWorkerObj
+      });
+      const resolvedAction = (log.actionResult || matched4M?.actionResult || defaultAction || "").trim();
+
       return {
         ...log,
+        actionResult: resolvedAction,
         absentWorker: {
           ...log.absentWorker,
           dept: absentCard.dept || log.absentWorker?.dept || "생산팀",
@@ -219,6 +253,9 @@ export default function Absence4MModal({
         else if (w.dailyCode === "결근") reason = "병결";
 
         const tempId = `auto_${dateStr}_${w.company}_${w.name}`;
+        const matched4M = (fourMPoints || []).find((fp) =>
+          fp.date === dateStr && cleanCompanyName(fp.company || fp.plant) === cleanCompanyName(w.company) && fp.title?.includes(w.name)
+        );
 
         return {
           id: tempId,
@@ -226,6 +263,7 @@ export default function Absence4MModal({
           date: dateStr,
           company: w.company,
           process: card?.mainProcess || "압출",
+          actionResult: matched4M?.actionResult || "",
           absentWorker: {
             name: w.name,
             position: card?.position || w.position || "사원",
@@ -266,7 +304,7 @@ export default function Absence4MModal({
     }
 
     return combined;
-  }, [logsMap, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, modalDay, searchTerm, personnelCardsMap]);
+  }, [logsMap, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, modalDay, searchTerm, personnelCardsMap, fourMPoints]);
 
   // 통계 요약 KPIs (선택된 협력사 독립 기준)
   const metrics = useMemo(() => {
@@ -277,7 +315,7 @@ export default function Absence4MModal({
     const compLogs = Object.values(logsMap).filter(
       (l) => l.date === dateStr && cleanCompanyName(l.company) === cleanTab
     );
-    const completedSubs = compLogs.filter((l) => l.substituteWorker?.name).length;
+    const completedSubs = compLogs.filter((l) => l.substituteWorker?.name || l.actionResult).length;
     const firstPieceDone = compLogs.filter((l) => l.checkpoints?.firstPieceCheck).length;
     const highRisks = compLogs.filter((l) => l.riskLevel === "HIGH").length;
 
@@ -296,7 +334,7 @@ export default function Absence4MModal({
       setLogsMap((prev) => ({ ...prev, [saved.id]: saved }));
       setCopiedId(`saved_${entry.id}`);
       setTimeout(() => setCopiedId(null), 2000);
-      alert("🔄 변동점 MAN과 완벽히 동기화되었습니다.");
+      alert("🔄 결근 관리 및 변동점 MAN 조치결과가 성공적으로 동기화되었습니다.");
     } catch (err) {
       alert("4M 결근 변경점 저장 중 오류가 발생했습니다: " + err.message);
     }
@@ -543,7 +581,7 @@ export default function Absence4MModal({
         {/* ========================================================================= */}
         <div className="bg-slate-950 p-3 sm:p-4 border-t border-slate-800 flex items-center justify-between gap-2 shrink-0">
           <span className="text-[11px] text-slate-400 font-mono">
-            📅 {currentMonth}월 {modalDay}일: 총 <strong className="text-cyan-400 font-bold">{displayEntries.length}건</strong>의 결근 및 대체투입 현황이 표시 중입니다.
+            📅 {currentMonth}월 {modalDay}일: 총 <strong className="text-cyan-400 font-bold">{displayEntries.length}건</strong>의 결근 및 대체투입 현황 (조치완료 <strong className="text-emerald-400 font-bold">{displayEntries.filter((e) => e.actionResult || e.substituteWorker?.name).length}건</strong>)
           </span>
 
           <div className="flex items-center gap-2">
@@ -585,6 +623,22 @@ function Absence4MCardItem({
       qualityStatus: "NORMAL"
     }
   }));
+
+  // 외부 item 변경 시 (동기화/저장/실시간 업데이트) 내부 formState 동기화
+  useEffect(() => {
+    setFormState((prev) => ({
+      ...item,
+      actionResult: item.actionResult !== undefined ? item.actionResult : prev.actionResult,
+      checkpoints: item.checkpoints || prev.checkpoints || {
+        firstPieceCheck: true,
+        firstPieceChecker: "관리감독자",
+        workInstructionTold: true,
+        supervisorApproval: true,
+        supervisorName: "관리감독자",
+        qualityStatus: "NORMAL"
+      }
+    }));
+  }, [item.id, item.updatedAt, item.actionResult, item.substituteWorker?.name]);
 
   const company = cleanCompanyName(formState.company);
   const theme = COMPANY_THEMES[company] || COMPANY_THEMES["오륙"];
@@ -631,6 +685,22 @@ function Absence4MCardItem({
     });
   }, [candidateWorkers, formState.process, formState.absentWorker?.mainProcess, personnelCardsMap]);
 
+  // 표준 조치결과 기본 문구 계산
+  const defaultActionResult = useMemo(() => {
+    return generate4MActionResult(formState);
+  }, [formState.substituteWorker, formState.checkpoints]);
+
+  // 실시간 유효 조치결과 (사용자 입력값 또는 기본 생성 문구 또는 아이템 저장값)
+  const effectiveActionResult = useMemo(() => {
+    if (formState.actionResult !== undefined && formState.actionResult !== null && String(formState.actionResult).trim() !== "") {
+      return String(formState.actionResult).trim();
+    }
+    if (item.actionResult && String(item.actionResult).trim() !== "") {
+      return String(item.actionResult).trim();
+    }
+    return String(defaultActionResult || "").trim();
+  }, [formState.actionResult, item.actionResult, defaultActionResult]);
+
   // 대체 작업자 선택 핸들러
   const handleSelectSubstitute = (workerName) => {
     if (!workerName) {
@@ -638,7 +708,8 @@ function Absence4MCardItem({
         ...formState,
         substituteWorker: null,
         riskLevel: "UNKNOWN",
-        riskWarningText: "대체 투입 작업자를 선택하거나 라인비가동을 지정해주세요."
+        riskWarningText: "대체 투입 작업자를 선택하거나 라인비가동을 지정해주세요.",
+        actionResult: ""
       };
       setFormState(updated);
       return;
@@ -663,11 +734,15 @@ function Absence4MCardItem({
         formState.process || formState.absentWorker?.mainProcess || "압출"
       );
 
+      const nextAction = "라인 비가동 (공정 정지/품질영향 없음)";
+      const shouldUpdate = !formState.actionResult || formState.actionResult === defaultActionResult;
+
       const updated = {
         ...formState,
         substituteWorker: subWorkerData,
         riskLevel: risk.level,
         riskWarningText: risk.warningMsg,
+        actionResult: shouldUpdate ? nextAction : formState.actionResult,
         checkpoints: {
           ...formState.checkpoints,
           firstPieceCheck: false,
@@ -700,11 +775,18 @@ function Absence4MCardItem({
       formState.process || formState.absentWorker?.mainProcess || "압출"
     );
 
+    const nextAction = generate4MActionResult({
+      ...formState,
+      substituteWorker: subWorkerData
+    });
+    const shouldUpdate = !formState.actionResult || formState.actionResult === defaultActionResult;
+
     const updated = {
       ...formState,
       substituteWorker: subWorkerData,
       riskLevel: risk.level,
-      riskWarningText: risk.warningMsg
+      riskWarningText: risk.warningMsg,
+      actionResult: shouldUpdate ? nextAction : formState.actionResult
     };
 
     setFormState(updated);
@@ -895,10 +977,17 @@ function Absence4MCardItem({
           <input
             type="checkbox"
             checked={!!formState.checkpoints?.firstPieceCheck}
-            onChange={(e) => setFormState({
-              ...formState,
-              checkpoints: { ...formState.checkpoints, firstPieceCheck: e.target.checked }
-            })}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              const nextCheckpoints = { ...formState.checkpoints, firstPieceCheck: checked };
+              const nextAction = generate4MActionResult({ ...formState, checkpoints: nextCheckpoints });
+              const shouldUpdate = !formState.actionResult || formState.actionResult === defaultActionResult;
+              setFormState({
+                ...formState,
+                checkpoints: nextCheckpoints,
+                actionResult: shouldUpdate ? nextAction : formState.actionResult
+              });
+            }}
             className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-0 cursor-pointer"
           />
           <span className="text-slate-300 font-bold flex items-center gap-1">
@@ -911,10 +1000,17 @@ function Absence4MCardItem({
           <input
             type="checkbox"
             checked={!!formState.checkpoints?.workInstructionTold}
-            onChange={(e) => setFormState({
-              ...formState,
-              checkpoints: { ...formState.checkpoints, workInstructionTold: e.target.checked }
-            })}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              const nextCheckpoints = { ...formState.checkpoints, workInstructionTold: checked };
+              const nextAction = generate4MActionResult({ ...formState, checkpoints: nextCheckpoints });
+              const shouldUpdate = !formState.actionResult || formState.actionResult === defaultActionResult;
+              setFormState({
+                ...formState,
+                checkpoints: nextCheckpoints,
+                actionResult: shouldUpdate ? nextAction : formState.actionResult
+              });
+            }}
             className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-0 cursor-pointer"
           />
           <span className="text-slate-300 font-bold flex items-center gap-1">
@@ -923,6 +1019,60 @@ function Absence4MCardItem({
           </span>
         </label>
       </div>
+
+      {/* 🛠️ 조치결과 입력란 (대책 및 실행내용 직접 입력 또는 자동완성) */}
+      <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+            <Wrench className="w-3.5 h-3.5 text-cyan-400" />
+            <span>조치결과 및 대체투입 대책</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const autoText = generate4MActionResult(formState);
+              if (autoText) {
+                setFormState((prev) => ({ ...prev, actionResult: autoText }));
+              }
+            }}
+            className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+            title="대체투입 작업자 및 체크포인트 기반 표준 문구 자동완성"
+          >
+            <Sparkles className="w-3 h-3 text-cyan-400" />
+            <span>표준문구 자동입력</span>
+          </button>
+        </div>
+        <input
+          type="text"
+          value={formState.actionResult !== undefined ? formState.actionResult : (item.actionResult || defaultActionResult || "")}
+          onChange={(e) => setFormState({ ...formState, actionResult: e.target.value })}
+          placeholder="예: 대체작업자 홍길동(사원) 투입 완료 (초물검사 완료 / 특별교육 완료) 또는 직접 조치결과 입력"
+          className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+        />
+      </div>
+
+      {/* 🟢 조치결과 실시간 단일행 표기 배너 (결근관리 팝업 내 한줄 표시) */}
+      {effectiveActionResult ? (
+        <div className="bg-emerald-950/70 border border-emerald-500/60 rounded-xl px-3.5 py-2 text-xs flex items-center justify-between gap-2 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-emerald-400 font-black shrink-0 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>↳ 🟢 [조치결과]</span>
+            </span>
+            <span className="text-emerald-100 font-bold truncate">
+              {effectiveActionResult}
+            </span>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 font-mono font-black">
+            조치완료
+          </span>
+        </div>
+      ) : (
+        <div className="bg-slate-900/40 border border-slate-800 rounded-xl px-3.5 py-1.5 text-[11px] text-slate-500 flex items-center gap-1.5">
+          <span className="shrink-0">↳ ⚪ [조치결과]</span>
+          <span>대체 투입 작업자를 선택하거나 조치결과를 입력하면 이곳에 한 줄로 표시됩니다.</span>
+        </div>
+      )}
 
       {/* 🔘 액션 버튼 바 (삭제 및 변동점 MAN 동기화) */}
       <div className="flex items-center justify-end gap-2 pt-1">
@@ -942,7 +1092,9 @@ function Absence4MCardItem({
           onClick={() => {
             const entryToSave = {
               ...formState,
-              absentWorker: absentCard
+              absentWorker: absentCard,
+              actionResult: effectiveActionResult,
+              isResolved: Boolean(formState.substituteWorker?.name || effectiveActionResult)
             };
             onSave(entryToSave);
           }}

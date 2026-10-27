@@ -14,7 +14,8 @@ import { cleanCompanyName } from "./overtimeSmartService.js";
 import { getSkillMeta, STANDARD_PROCESS_LIST } from "./personnelCardService.js";
 import {
   registerToFourMLedger,
-  unregisterFromFourMLedger
+  unregisterFromFourMLedger,
+  getLocalFourMChangePoints
 } from "./fourMChangePointService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_4m_absence_logs_v1";
@@ -152,6 +153,28 @@ export const generate4MOneLineLog = (entry) => {
   return `📌 [4M Man 변경] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체: ${subName}(${subPos} ${subSkill}${isMulti}) 투입 | [${firstPiece} / ${education}]`;
 };
 
+// ⭐ 4M 결근 및 대체투입 조치결과 표준 문구 생성 함수
+export const generate4MActionResult = (entry) => {
+  if (!entry) return "";
+  const subName = entry.substituteWorker?.name;
+  const isLineStopped = subName === "라인비가동" || entry.substituteWorker?.isLineStopped || subName?.includes("라인비가동");
+  const isSub = Boolean(subName && !isLineStopped);
+
+  if (isLineStopped) {
+    return "라인 비가동 (공정 정지/품질영향 없음)";
+  }
+  if (isSub) {
+    const subPos = entry.substituteWorker?.position || "사원";
+    const firstPiece = entry.checkpoints?.firstPieceCheck ? "초물검사 완료" : "초물검사 미실시";
+    const education = entry.checkpoints?.workInstructionTold ? "특별교육 완료" : "특별교육 미실시";
+    return `대체작업자 ${subName}(${subPos}) 투입 완료 (${firstPiece} / ${education})`;
+  }
+  if (entry.actionResult && String(entry.actionResult).trim()) {
+    return String(entry.actionResult).trim();
+  }
+  return "";
+};
+
 // ⭐ 기본 4M 결근 및 대체투입 초기 이력 샘플 데이터 (신규 입력 기준 - 빈 상태)
 export const INITIAL_4M_ABSENCE_LOGS = {};
 
@@ -229,6 +252,11 @@ export const save4MAbsenceLog = async (entryData) => {
       entryData.process || entryData.absentWorker?.mainProcess || "압출"
     );
 
+    const isLineStopped = entryData.substituteWorker?.name === "라인비가동" || entryData.substituteWorker?.isLineStopped;
+    const isSub = Boolean(entryData.substituteWorker && entryData.substituteWorker.name && !isLineStopped);
+    const resolvedActionResult = (entryData.actionResult || generate4MActionResult(entryData) || "").trim();
+    const isResolved = entryData.isResolved !== undefined ? entryData.isResolved : Boolean(isSub || isLineStopped || resolvedActionResult);
+
     const fullData = {
       ...entryData,
       id,
@@ -237,11 +265,14 @@ export const save4MAbsenceLog = async (entryData) => {
       process: entryData.process || entryData.absentWorker?.mainProcess || "압출",
       riskLevel: risk.level,
       riskWarningText: risk.warningMsg,
+      actionResult: resolvedActionResult,
+      isResolved,
       oneLineLog: generate4MOneLineLog({
         ...entryData,
         company: cleanComp,
         date: dateStr,
-        riskLevel: risk.level
+        riskLevel: risk.level,
+        actionResult: resolvedActionResult
       }),
       updatedAt: new Date().toISOString(),
       createdAt: entryData.createdAt || new Date().toISOString()
@@ -264,22 +295,20 @@ export const save4MAbsenceLog = async (entryData) => {
       await setDoc(ref, sanitizeForFirestore(fullData), { merge: true });
     }
 
-    // ⭐ 4. 변동점 관리 MAN 대장에 즉시 동기화 등록
+    // ⭐ 4. 변동점 관리 MAN 대장 동기화 (기존 등록 건 상호 연동)
     try {
-      const plant = cleanComp === "오륙" || cleanComp === "유성" ? "삼랑진공장" : "한림공장";
-      const isSub = Boolean(entryData.substituteWorker && entryData.substituteWorker.name && entryData.substituteWorker.name !== "라인비가동");
-      const isLineStopped = entryData.substituteWorker?.name === "라인비가동" || entryData.substituteWorker?.isLineStopped;
-      const absentPos = entryData.absentWorker?.position || "사원";
-      const absentDept = entryData.absentWorker?.dept || "생산팀";
-      const subPos = entryData.substituteWorker?.position || "사원";
-      const subName = entryData.substituteWorker?.name || "";
-      
-      const title = isLineStopped
-        ? `[${cleanComp}] ${absentName}(${absentPos}, ${absentDept}) 결근 ➔ [라인비가동]`
-        : `[${cleanComp}] ${absentName}(${absentPos}, ${absentDept}) 결근 ➔ ${isSub ? `${subName}(${subPos}) 대체투입` : "대체 미투입"}`;
-
-      // 🔒 [품질 단일 원천 원칙] 결근/대체투입 내역은 하단 통합 취합 패널에서 실시간 수합되며,
-      // 공식 4M 관리대장에는 이창엽(품질관리자)이 검토 후 직접 분류/등록한 건만 등재됩니다.
+      const existingPoints = getLocalFourMChangePoints();
+      const existingMatch = existingPoints.find(
+        (fp) => fp.id === `man_log_${id}` || fp.id === id || fp.originalId === id || fp.rawId === id
+      );
+      if (existingMatch && db) {
+        const fourMRef = doc(db, "four_m_change_points", String(existingMatch.id));
+        await setDoc(fourMRef, sanitizeForFirestore({
+          actionResult: resolvedActionResult,
+          isResolved,
+          updatedAt: new Date().toISOString()
+        }), { merge: true });
+      }
     } catch (syncErr) {
       console.warn("Auto sync to fourM change points error:", syncErr);
     }
