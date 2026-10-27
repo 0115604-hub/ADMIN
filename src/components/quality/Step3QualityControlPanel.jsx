@@ -232,10 +232,14 @@ export default function Step3QualityControlPanel({
 
     return Boolean(
       rec.approvalStatus === "APPROVED" ||
+      rec.approvalStatus === "결재완료" ||
+      rec.status === "APPROVED" ||
+      rec.status === "결재완료" ||
       rec.approvedBy?.includes("권태형") ||
       rec.approvalSignature === "KWON_SIGNATURE_RED" ||
       (docMatch && (
         docMatch.status === "APPROVED" ||
+        docMatch.approvalStatus === "APPROVED" ||
         (docMatch.steps && docMatch.steps.length > 0 && docMatch.steps[docMatch.steps.length - 1]?.status === "APPROVED")
       ))
     );

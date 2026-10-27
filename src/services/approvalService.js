@@ -20,13 +20,14 @@ import { isWeekendByDate } from "./overtimeService";
 
 const COLLECTION_NAME = "approval_documents";
 const DELETED_COLLECTION_NAME = "deleted_approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v9_master";
-const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v9";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v10_unified";
+const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v10";
 
 // ⭐ 과거 레거시 로컬 캐시 키 영구 파기 (오래된 더미데이터 및 좀비 서류 부활 원천 차단)
 if (typeof window !== "undefined") {
   try {
     [
+      "oryuk_approval_documents_v9_master",
       "oryuk_approval_documents_v8_stable",
       "oryuk_approval_documents_v7_clean",
       "oryuk_approval_documents_v6_clean",
@@ -550,8 +551,57 @@ export function normalizeApprovalDoc(d) {
   // Guarantee proper steps (4M = 3 steps strictly, others = 4 steps)
   let rawSteps = null;
   if (is4M) {
+    const isDocFullyApproved =
+      d.status === "APPROVED" ||
+      d.approvalStatus === "APPROVED" ||
+      (Array.isArray(d.steps) && d.steps.length > 0 && d.steps[d.steps.length - 1]?.status === "APPROVED");
+
     if (Array.isArray(d.steps) && d.steps.length === 3) {
       rawSteps = d.steps;
+    } else if (Array.isArray(d.steps) && d.steps.length === 4) {
+      // 🌟 과거 4단계 잔여 찌꺼기를 정식 3단계(이창엽 책임 -> 이명재 이사 -> 권태형 대표이사)로 무결점 마이그레이션!
+      const s0 = d.steps[0] || {};
+      const s1 = d.steps[1] || {};
+      const s2 = d.steps[2] || {};
+      const s3 = d.steps[3] || {};
+
+      const step0Approved = true;
+      const step1Approved = isDocFullyApproved || s2.status === "APPROVED";
+      const step2Approved = isDocFullyApproved || s3.status === "APPROVED";
+      const isRejected = d.status === "REJECTED" || s1.status === "REJECTED" || s2.status === "REJECTED";
+
+      rawSteps = [
+        {
+          role: "담당",
+          name: s0.name || d.drafter || "이창엽",
+          title: "책임",
+          status: "APPROVED",
+          date: s0.date || d.createdAt || "",
+          comment: s0.comment || "4M 변동점 및 시정대책(CAPA) 기안 상신"
+        },
+        {
+          role: "검토",
+          name: s2.name?.includes("최미영") && !s2.name?.includes("이명재") ? s2.name : "이명재",
+          title: s2.title || "이사",
+          status: step1Approved ? "APPROVED" : (isRejected ? "REJECTED" : "PENDING"),
+          date: s2.date || (step1Approved ? (d.updatedAt || d.createdAt || "") : ""),
+          comment: s2.comment || (step1Approved ? "승인" : (s1.comment && s1.comment !== "승인" ? s1.comment : ""))
+        },
+        {
+          role: "승인",
+          name: s3.name === "최미영" ? "최미영" : "권태형",
+          title: s3.title === "전무" ? "전무" : "대표이사",
+          status: step2Approved ? "APPROVED" : (step1Approved ? "PENDING" : "WAITING"),
+          date: s3.date || (step2Approved ? (d.updatedAt || d.createdAt || "") : ""),
+          comment: s3.comment || (step2Approved ? "대표이사 최종 승인" : "")
+        }
+      ];
+    } else if (isDocFullyApproved) {
+      rawSteps = [
+        { role: "담당", name: d.drafter || "이창엽", title: "책임", status: "APPROVED", date: d.createdAt || "", comment: "4M 변동점 및 시정대책(CAPA) 기안 상신" },
+        { role: "검토", name: "이명재", title: "이사", status: "APPROVED", date: d.updatedAt || d.createdAt || "", comment: "승인" },
+        { role: "승인", name: "권태형", title: "대표이사", status: "APPROVED", date: d.updatedAt || d.createdAt || "", comment: "대표이사 최종 승인" }
+      ];
     } else {
       rawSteps = [
         { role: "담당", name: d.drafter || "이창엽", title: "책임", status: "APPROVED", date: d.createdAt || "", comment: "4M 변동점 및 시정대책(CAPA) 기안 상신" },
@@ -602,7 +652,7 @@ export function normalizeApprovalDoc(d) {
           ...st,
           role: "검토",
           name: st.name || "이명재",
-          title: "이사"
+          title: st.title || "이사"
         };
       }
       if (idx === 2) {
@@ -610,7 +660,7 @@ export function normalizeApprovalDoc(d) {
           ...st,
           role: "승인",
           name: st.name || "권태형",
-          title: "대표이사"
+          title: st.title || "대표이사"
         };
       }
       return st;
@@ -650,6 +700,32 @@ export function normalizeApprovalDoc(d) {
     }
     return st;
   });
+
+  // ⭐ 공정 관리자(책임) 직접 기안 서류 자동 전결 치유:
+  // 일반 결재 서류에서 기안자가 책임자인데 2단계(책임)가 미결(PENDING)로 멈춰있는 경우 자동 책임 전결 승인 및 3단계(이명재 이사)로 전환
+  if (!is4M && fixedSteps.length === 4) {
+    const drafterName = d.drafter || "";
+    const drafterTitle = d.drafterTitle || "";
+    const isProcessLead =
+      ["윤경수", "이창엽", "설유철", "전재율", "김동욱", "김동훈"].includes(drafterName) ||
+      drafterTitle === "책임" ||
+      APPROVAL_MANAGERS.LEADS.some((m) => m.name === drafterName && m.title === "책임");
+
+    if (isProcessLead && fixedSteps[1].status === "PENDING" && fixedSteps[2].status === "WAITING") {
+      fixedSteps[1] = {
+        ...fixedSteps[1],
+        name: drafterName,
+        title: drafterTitle || "책임",
+        status: "APPROVED",
+        date: fixedSteps[1].date || d.createdAt || fixedSteps[0]?.date || "",
+        comment: fixedSteps[1].comment || "책임 전결"
+      };
+      fixedSteps[2] = {
+        ...fixedSteps[2],
+        status: "PENDING"
+      };
+    }
+  }
 
   // ⭐ 10월 18일까지(<= 2026-10-18)의 과거 이력 전자결재문서만 결재완료(4/4 또는 3/3) 보장
   // 🔒 활성 검토 중인 서류(PENDING 또는 HOLD 단계가 명시된 미결 서류)는 절대 무단 완료 처리하지 않음
@@ -696,8 +772,14 @@ export function normalizeApprovalDoc(d) {
     computedStatus = "HOLD";
     computedStep = fixedSteps.findIndex((st) => st && st.status === "HOLD") + 1;
   } else {
-    computedStatus = "IN_PROGRESS";
-    computedStep = Math.min(Math.max(1, approvedCount + 1), fixedSteps.length);
+    // 이미 최종 승인(APPROVED) 상태이고 마지막 단계가 승인된 경우 안전 유지
+    if ((d.status === "APPROVED" || d.approvalStatus === "APPROVED") && fixedSteps[fixedSteps.length - 1]?.status === "APPROVED") {
+      computedStatus = "APPROVED";
+      computedStep = fixedSteps.length;
+    } else {
+      computedStatus = "IN_PROGRESS";
+      computedStep = Math.min(Math.max(1, approvedCount + 1), fixedSteps.length);
+    }
   }
 
   return {

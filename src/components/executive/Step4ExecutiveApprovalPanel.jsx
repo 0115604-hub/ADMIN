@@ -37,7 +37,8 @@ import {
 } from "../../services/fourMChangePointService";
 import {
   approveDocumentStep,
-  rejectDocumentStep
+  rejectDocumentStep,
+  getLocalApprovalDocs
 } from "../../services/approvalService";
 import {
   subscribeToExtrusionReports
@@ -214,9 +215,13 @@ export default function Step4ExecutiveApprovalPanel({
       // ⭐ 연동된 전자결재 공식 품의서 문서가 있는 경우 함께 최종 승인 처리
       if (item.approvalDocId) {
         try {
+          const currentDocs = getLocalApprovalDocs();
+          const targetDoc = currentDocs.find((d) => d.id === item.approvalDocId);
+          const lastStepIdx = (targetDoc?.steps && targetDoc.steps.length > 0) ? targetDoc.steps.length - 1 : 2;
+
           await approveDocumentStep(
             item.approvalDocId,
-            3,
+            lastStepIdx,
             executiveName,
             `${executiveName} ${executiveTitle} 최종 승인 및 전자날인 완료`,
             { isAdmin: true, isRepresentative: true }
