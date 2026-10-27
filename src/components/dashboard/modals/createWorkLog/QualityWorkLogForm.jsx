@@ -10,6 +10,7 @@ import {
   FileCheck,
   Sparkles
 } from "lucide-react";
+import { DEFECT_TYPE_GROUPS } from "../../../../hooks/dashboard/useWorkLogCrud";
 
 export default function QualityWorkLogForm({
   setIsModalOpen,

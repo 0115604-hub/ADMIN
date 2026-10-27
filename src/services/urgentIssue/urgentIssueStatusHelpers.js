@@ -27,7 +27,7 @@ export const isMeetingExpired = (item, graceHours = 0) => {
   const todayStr = kstInfo.dateStr; // YYYY-MM-DD
 
   // Normalize date format
-  const cleanStr = String(rawDate).replace(/[.\/]/g, "-").trim();
+  const cleanStr = String(rawDate).replace(/[./]/g, "-").trim();
   const dateMatch = cleanStr.match(/(\d{4})[-년\s]*(\d{1,2})[-월\s]*(\d{1,2})/);
 
   let y, mon, d;

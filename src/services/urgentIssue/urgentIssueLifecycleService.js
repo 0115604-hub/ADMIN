@@ -99,7 +99,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
 };
 
 // Hard Delete (영구 삭제 - DB에서 완전히 제거)
-export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
+export const hardDeleteUrgentIssue = async (id, _deleterName = "") => {
   activeDeletes.delete(id);
   const strId = String(id || "");
   if (!strId) return getLocalUrgentIssues();
@@ -111,7 +111,7 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
         hardDeletedIds.push(strId);
         localStorage.setItem(HARD_DELETED_KEY, JSON.stringify(hardDeletedIds));
       }
-    } catch (_) {}
+    } catch {}
 
     const current = getLocalUrgentIssues();
     const updated = current.filter(

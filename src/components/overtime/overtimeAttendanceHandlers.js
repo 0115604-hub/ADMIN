@@ -526,7 +526,8 @@ export const fillAllFilteredWorkersRegular = async ({
   setHasUnsavedChanges,
   triggerToast,
   selectedMonth,
-  currentProfile
+  currentProfile,
+  selectedCompanyFilter = "전체"
 }) => {
   if (isDayLocked) {
     setIsDayUnlockedForEdit(true);

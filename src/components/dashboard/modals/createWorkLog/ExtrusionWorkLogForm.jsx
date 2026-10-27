@@ -4,6 +4,7 @@ import {
   Camera,
   Save
 } from "lucide-react";
+import { DEFECT_TYPE_GROUPS } from "../../../../hooks/dashboard/useWorkLogCrud";
 
 export default function ExtrusionWorkLogForm({
   setIsModalOpen,
@@ -36,7 +37,7 @@ export default function ExtrusionWorkLogForm({
                       </div>
                       <div>
                         <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>{isInjoo ? "경리업무일지" : isQualityWorker ? "품질관리일지" : isExtrusionWorker ? "압출동 업무일지" : "가공동 업무일지"} 작성</span>
+                          <span>압출동 업무일지 작성</span>
                         </h3>
                         <div className="flex items-center gap-2 flex-wrap mt-0.5">
                           <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">

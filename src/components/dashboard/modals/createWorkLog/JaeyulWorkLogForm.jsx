@@ -8,13 +8,15 @@ import {
 import {
   JAEYUL_EQUIPMENT_CATEGORIES,
   JAEYUL_CATEGORY_EQUIPMENT_MAP
-} from "../../../WorkerDashboard";
+} from "../../../../hooks/dashboard/useWorkLogCrud";
 
 export default function JaeyulWorkLogForm({
   setIsModalOpen,
   formData,
   setFormData,
   handleSaveLog,
+  isSavingLog = false,
+  isProcessingImages = false,
   logSavedToast,
   workerPlant,
   workerFullName,

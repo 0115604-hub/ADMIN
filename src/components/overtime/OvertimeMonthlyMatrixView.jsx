@@ -607,8 +607,8 @@ export const OvertimeMonthlyMatrixView = ({
                         key={d}
                         onClick={() => {
                           setSelectedDay(d);
-                          if (w.company && w.company !== "전체") {
-                            setSelectedCompanyFilter(cleanCompanyName(w.company));
+                          if (w.company && w.company !== "전체" && typeof setMatrixCompanyFilter === "function") {
+                            setMatrixCompanyFilter(cleanCompanyName(w.company));
                           }
                           setIsDayUnlockedForEdit(true);
                           setActiveTab("daily_input");

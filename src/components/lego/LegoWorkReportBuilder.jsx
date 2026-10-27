@@ -1,4 +1,3 @@
-import React from "react";
 import { Sparkles } from "lucide-react";
 import { deleteMachiningWorkReport } from "../../services/machiningWorkReportService";
 import LegoBlockEditorModal from "./LegoBlockEditorModal.jsx";

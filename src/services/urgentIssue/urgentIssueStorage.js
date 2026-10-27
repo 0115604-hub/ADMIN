@@ -33,7 +33,7 @@ export const getLocalUrgentIssues = () => {
     let hardDeletedIds = [];
     try {
       hardDeletedIds = JSON.parse(hardDeletedIdsRaw);
-    } catch (_) {
+    } catch {
       hardDeletedIds = [];
     }
 
