@@ -267,11 +267,28 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
     if (plant === "한림공장") {
       step2Name = "김동욱";
     } else {
-      if (department?.includes("품질")) step2Name = "이창엽";
-      else if (department?.includes("설비")) step2Name = "전재율";
-      else if (department?.includes("가공")) step2Name = "윤경수";
+      if (department?.includes("품질") || drafterName === "이창엽") step2Name = "이창엽";
+      else if (department?.includes("설비") || drafterName === "전재율") step2Name = "전재율";
+      else if (department?.includes("가공") || drafterName === "윤경수") step2Name = "윤경수";
       else step2Name = "설유철";
     }
+  }
+
+  // ⭐ 기안자 본인이 이미 해당 공정의 책임/관리자이거나 step2Name과 동일한 경우:
+  // 본인의 1단계 책임 승인은 기안과 동시에 즉시 완료(전결) 처리되어
+  // 다음 상위 결재자(2단계 이명재 이사)에게 PENDING 상태로 즉시 직행!
+  const isManagerDrafter =
+    (drafterName && step2Name && drafterName === step2Name) ||
+    (drafterName === "윤경수" && (step2Name === "윤경수" || step2Name === "설유철")) ||
+    (drafterName === "이창엽" && (step2Name === "이창엽" || step2Name === "설유철")) ||
+    (drafterName === "전재율" && (step2Name === "전재율" || step2Name === "설유철")) ||
+    (drafterName === "설유철" && step2Name === "설유철") ||
+    (drafterName === "김동욱" && step2Name === "김동욱") ||
+    (drafterTitle === "책임" && drafterName === step2Name);
+
+  if (isManagerDrafter && (drafterName === "윤경수" || drafterName === "이창엽" || drafterName === "전재율")) {
+    step2Name = drafterName;
+    step2Title = "책임";
   }
 
   const isHanlim = plant === "한림공장";
@@ -288,6 +305,14 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
   }
 
   const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
 
   return [
     {
@@ -295,29 +320,22 @@ export function getAutoApprovalSteps(plant, drafterName, drafterTitle, departmen
       name: drafterName || "기안자",
       title: drafterTitle || "선임",
       status: "APPROVED",
-      date: new Date().toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).replace(/\. /g, "-").replace(/\./g, ""),
+      date: nowStr,
       comment: "기안 상신"
     },
     {
       role: "책임",
       name: step2Name,
       title: step2Title,
-      status: "PENDING",
-      date: "",
-      comment: ""
+      status: isManagerDrafter ? "APPROVED" : "PENDING",
+      date: isManagerDrafter ? nowStr : "",
+      comment: isManagerDrafter ? "기안 상신 (책임 전결)" : ""
     },
     {
       role: "이사",
       name: step3Name,
       title: step3Title,
-      status: "WAITING",
+      status: isManagerDrafter ? "PENDING" : "WAITING",
       date: "",
       comment: ""
     },
@@ -649,19 +667,21 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
     }
   }
 
-  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사)
+  // 6. 삼랑진공장 총괄 / 이사 (이명재 이사) -> 삼랑진공장 모든 진행 중인 결재 서류 및 이사/검토 단계 미결 뱃지 반영
   if (userName === "이명재" || userTitle === "이사") {
+    if (docPlant === "삼랑진공장" || !docPlant || isFourMApprovalDoc(doc)) {
+      return true;
+    }
     if (stepRole === "이사" || stepRole === "검토") {
-      return !stepName || stepName.includes("이명재") || docPlant === "삼랑진공장" || isFourMApprovalDoc(doc);
+      return !stepName || stepName.includes("이명재");
     }
     return false;
   }
 
-  // 7. 한림공장 총괄 / 책임 (김동욱 책임)
+  // 7. 한림공장 총괄 / 책임 (김동욱 책임) -> 한림공장 모든 진행 중인 결재 서류 미결 뱃지 반영
   if (userName === "김동욱" || (userPlant === "한림공장" && currentProfile?.assignedProcess === "총괄관리")) {
-    if (docPlant === "한림공장") {
-      if (stepRole === "책임" || stepRole === "검토") return true;
-      if (stepRole === "이사" && (!stepName || stepName.includes("김동욱"))) return true;
+    if (docPlant === "한림공장" || !docPlant) {
+      return true;
     }
     return false;
   }
@@ -738,10 +758,15 @@ export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
 export function isOvertimeApprovalDoc(doc) {
   if (!doc) return false;
   if (doc.id && String(doc.id).startsWith("appr_4m_")) return false; // 4M 변동점 결재서류 우선 배제
+  const title = doc.title || "";
+  // 구매, 품의, 자재, 소모품 등 일반 결재 서류는 특근보고서로 오분류되지 않도록 필터링
+  if (title.includes("구매") || title.includes("구입") || title.includes("품의") || title.includes("소모품") || title.includes("수리") || title.includes("견적")) {
+    return false;
+  }
   if (doc.id && String(doc.id).startsWith("appr_ot_")) return true;
-  if (doc.type === "OVERTIME" || doc.docType === "OVERTIME") return true;
   if (doc.category === "특근보고서" || doc.typeName?.includes("특근")) return true;
-  if (doc.title && (doc.title.includes("특근") || doc.title.includes("특근보고서"))) return true;
+  if (doc.type === "OVERTIME" || doc.docType === "OVERTIME") return true;
+  if (title.includes("특근") || title.includes("특근보고서")) return true;
   return false;
 }
 

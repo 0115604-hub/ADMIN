@@ -2258,12 +2258,25 @@ export const ElectronicApprovalView = ({
                     value={draftForm.drafter}
                     onChange={(e) => {
                       const sel = allWorkers.find((w) => w.name === e.target.value);
+                      const targetPlant = sel?.plant || sel?.plantName || draftForm.plant;
+                      let autoLead = draftForm.leadName;
+                      if (e.target.value === "윤경수" || sel?.process?.includes("가공")) autoLead = "윤경수";
+                      else if (e.target.value === "설유철" || sel?.process?.includes("압출")) autoLead = "설유철";
+                      else if (e.target.value === "이창엽" || sel?.process?.includes("품질")) autoLead = "이창엽";
+                      else if (e.target.value === "전재율" || sel?.process?.includes("설비")) autoLead = "전재율";
+                      else if (e.target.value === "김동욱" || targetPlant === "한림공장") autoLead = "김동욱";
+                      else if (e.target.value === "황수현" || sel?.company === "한울") autoLead = "황수현";
+                      else if (e.target.value === "김동훈" || sel?.company === "부림텍") autoLead = "김동훈";
+                      else if (e.target.value === "이성기" || sel?.company === "유성") autoLead = "이성기";
+                      else if (e.target.value === "오상민" || sel?.company === "조영") autoLead = "오상민";
+
                       setDraftForm({
                         ...draftForm,
                         drafter: e.target.value,
                         drafterTitle: sel?.title || "선임",
-                        plant: sel?.plant || sel?.plantName || draftForm.plant,
-                        department: sel?.process || sel?.assignedProcess || draftForm.department
+                        plant: targetPlant,
+                        department: sel?.process || sel?.assignedProcess || draftForm.department,
+                        leadName: autoLead
                       });
                     }}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
@@ -2445,12 +2458,25 @@ export const ElectronicApprovalView = ({
                       value={draftForm.drafter}
                       onChange={(e) => {
                         const sel = allWorkers.find((w) => w.name === e.target.value);
+                        const targetPlant = sel?.plant || sel?.plantName || draftForm.plant;
+                        let autoLead = draftForm.leadName;
+                        if (e.target.value === "윤경수" || sel?.process?.includes("가공")) autoLead = "윤경수";
+                        else if (e.target.value === "설유철" || sel?.process?.includes("압출")) autoLead = "설유철";
+                        else if (e.target.value === "이창엽" || sel?.process?.includes("품질")) autoLead = "이창엽";
+                        else if (e.target.value === "전재율" || sel?.process?.includes("설비")) autoLead = "전재율";
+                        else if (e.target.value === "김동욱" || targetPlant === "한림공장") autoLead = "김동욱";
+                        else if (e.target.value === "황수현" || sel?.company === "한울") autoLead = "황수현";
+                        else if (e.target.value === "김동훈" || sel?.company === "부림텍") autoLead = "김동훈";
+                        else if (e.target.value === "이성기" || sel?.company === "유성") autoLead = "이성기";
+                        else if (e.target.value === "오상민" || sel?.company === "조영") autoLead = "오상민";
+
                         setDraftForm({
                           ...draftForm,
                           drafter: e.target.value,
                           drafterTitle: sel?.title || "선임",
-                          plant: sel?.plant || sel?.plantName || draftForm.plant,
-                          department: sel?.process || sel?.assignedProcess || draftForm.department
+                          plant: targetPlant,
+                          department: sel?.process || sel?.assignedProcess || draftForm.department,
+                          leadName: autoLead
                         });
                       }}
                       className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
