@@ -628,7 +628,8 @@ export const ElectronicApprovalView = ({
       draftForm.department,
       draftForm.leadName,
       draftForm.ceoName,
-      draftForm.directorName
+      draftForm.directorName,
+      draftForm.type || draftForm.typeName || draftForm.category
     );
 
     const isEdit = Boolean(editingDocId);
