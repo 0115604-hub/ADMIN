@@ -64,6 +64,9 @@ export const runStorageHealthCheck = () => {
     ];
 
     const exactObsoleteKeys = [
+      "auto_open_lego_worklog",
+      "oryuk_system_error_logs_v1",
+      "oryuk_temp_cache",
       "factory_extrusion_downtime_parsed_v2",
       "factory_extrusion_downtime_user_uploaded_v3",
       "factory_extrusion_downtime_user_uploaded_v4",
@@ -98,6 +101,16 @@ export const runStorageHealthCheck = () => {
         } catch (e) {}
       }
     }
+
+    // Trigger automatic purge of dummy / test data on startup
+    try {
+      import("../services/workLogService").then((m) => {
+        if (m.purgeDummyWorkLogs) m.purgeDummyWorkLogs();
+      }).catch(() => {});
+      import("../services/rubberLedgerService").then((m) => {
+        if (m.purgeDummyRubberData) m.purgeDummyRubberData();
+      }).catch(() => {});
+    } catch (e) {}
 
     console.log("[StorageHealthCheck] Local storage health check & cleanup completed successfully.");
   } catch (globalErr) {

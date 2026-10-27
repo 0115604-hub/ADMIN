@@ -14,6 +14,44 @@ import { db } from "../firebase";
 
 export const INITIAL_WORK_LOGS = [];
 
+/**
+ * Identify and filter out dummy / test / mock / seed work log items
+ */
+export function isDummyWorkLog(item) {
+  if (!item || typeof item !== "object") return true;
+  const idStr = String(item.id || "");
+  const authorStr = String(item.author || item.writer || item.userName || "").trim().toUpperCase();
+  const contentStr = String(item.workContent || item.content || "");
+
+  // 1. Seed / Sample / Mock / Dummy prefixes or numeric IDs
+  if (
+    idStr.startsWith("seed_") ||
+    idStr.startsWith("sample_") ||
+    idStr.startsWith("dummy_") ||
+    idStr.startsWith("mock_") ||
+    idStr.startsWith("test_") ||
+    idStr.includes("dummy") ||
+    idStr.includes("mock") ||
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"].includes(idStr)
+  ) {
+    return true;
+  }
+
+  // 2. Test user entries or temporary records
+  if (
+    authorStr === "TEST" ||
+    authorStr === "테스트" ||
+    authorStr.startsWith("TEST ") ||
+    contentStr.includes("[🧱 레고블록 작업일보") ||
+    item.templateType === "LEGO_BLOCK" ||
+    item.isDummy === true
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 const COLLECTION_NAME = "work_logs";
 const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v17_pure_sync";
 
@@ -202,7 +240,11 @@ export const getLocalWorkLogs = () => {
     }
 
     if (Array.isArray(parsed)) {
-      return parsed.map(normalizeWorkLogApproval);
+      const clean = parsed.filter((item) => !isDummyWorkLog(item));
+      if (clean.length !== parsed.length) {
+        saveLocalWorkLogs(clean);
+      }
+      return clean.map(normalizeWorkLogApproval);
     }
     return [];
   } catch (e) {
@@ -243,7 +285,16 @@ const saveLocalWorkLogs = (logs) => {
   }
 };
 
-export const purgeSampleLogsIfNeeded = async () => {};
+export const purgeSampleLogsIfNeeded = async () => {
+  try {
+    const local = getLocalWorkLogs();
+    const clean = local.filter((l) => !isDummyWorkLog(l));
+    if (clean.length !== local.length) {
+      saveLocalWorkLogs(clean);
+    }
+  } catch (e) {}
+};
+export const purgeDummyWorkLogs = purgeSampleLogsIfNeeded;
 export const seedInitialLogsToFirestore = async () => {};
 export const seedInitialLogsIfNeeded = async () => {};
 
@@ -258,8 +309,13 @@ export const subscribeWorkLogs = (onUpdate) => {
     const remoteLogs = [];
     if (!snap.empty) {
       snap.forEach((docSnap) => {
-        const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
-        remoteLogs.push(log);
+        const raw = { id: docSnap.id, ...docSnap.data() };
+        if (isDummyWorkLog(raw)) {
+          // Permanently erase dummy doc from Firestore
+          deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)).catch(() => {});
+        } else {
+          remoteLogs.push(normalizeWorkLogApproval(raw));
+        }
       });
     }
 
@@ -286,8 +342,12 @@ export const subscribeWorkLogs = (onUpdate) => {
         const remoteLogs = [];
         if (!snapshot.empty) {
           snapshot.forEach((docSnap) => {
-            const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
-            remoteLogs.push(log);
+            const raw = { id: docSnap.id, ...docSnap.data() };
+            if (isDummyWorkLog(raw)) {
+              deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)).catch(() => {});
+            } else {
+              remoteLogs.push(normalizeWorkLogApproval(raw));
+            }
           });
         }
 
