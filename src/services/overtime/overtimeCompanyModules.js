@@ -7,6 +7,7 @@ import {
 } from "./overtimeConstants.js";
 import { ensureAllCompaniesPresent } from "./overtimeMatrixSync.js";
 import { INITIAL_SMART_OVERTIME_DATA } from "../../data/masterOvertimeSmartData.js";
+import { masterSeptemberAttendanceData } from "../../data/masterSeptemberAttendanceData.js";
 
 export const STORAGE_KEY = "oryuk_smart_overtime_data_v2_sept";
 
@@ -426,9 +427,9 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
       }
     }
 
-    // 3. 9월 마감 데이터인 경우 마스터 초기 데이터에서 해당 업체만 추출
+    // 3. 9월 마감 데이터인 경우 9월 마스터 실적 데이터에서 해당 업체만 추출하여 100% 온전 복구
     if (ym === "2026-09" || ym === "2026_09") {
-      const normSept = ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
+      const normSept = ensureAllCompaniesPresent(masterSeptemberAttendanceData);
       const septWorkers = applyCompanyRosterOverrides(
         cleanComp,
         (normSept.attendanceMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp)
@@ -437,12 +438,24 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
         company: cleanComp,
         year: 2026,
         month: 9,
-        masterWorkers: septWorkers,
+        masterWorkers: septWorkers.map((w, idx) => ({
+          no: idx + 1,
+          companyNo: idx + 1,
+          company: cleanComp,
+          dept: normalizeDept(w.dept),
+          line: w.line || normalizeDept(w.dept),
+          name: w.name,
+          position: w.position || "사원",
+          employmentType: w.employmentType || "정규직",
+          status: w.status || "재직",
+          note: w.note || ""
+        })),
         attendanceMatrix: septWorkers,
-        companyApprovalStatus: {},
+        companyApprovalStatus: normSept.companyApprovalStatus || {},
         recentAuditLogs: []
       };
       memoryCompanyLedgerCache[cacheKey] = septData;
+      safeSetLocalStorage(compKey, JSON.stringify(septData));
       return septData;
     }
   } catch (err) {

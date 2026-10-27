@@ -7,8 +7,10 @@ import {
   onSnapshot,
   writeBatch
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 import * as XLSX from "xlsx";
+
+import CANONICAL_QUALITY_RECORDS from "../data/canonicalQualityRecords.js";
 
 export const COLLECTION_NAME = "daily_quality_records";
 export const STORAGE_KEY = "factory_daily_quality_records_v4_exact";
@@ -20,7 +22,7 @@ export const QUALITY_CORE_ITEMS = [
   { id: "hr", name: "HR G-RUN", carModel: "HR", defaultUnitPrice: 2372, defaultDefectReason: "직각 떨어짐, 둔각 떨어짐, 스코치" }
 ];
 
-export const INITIAL_QUALITY_RECORDS = [];
+export const INITIAL_QUALITY_RECORDS = CANONICAL_QUALITY_RECORDS;
 
 /**
  * Generate a strict composite key: qual_YYYY-MM-DD_itemId
@@ -120,18 +122,23 @@ export const getPreviousYearMonth = (yearMonth = "2026-09") => {
 export const getLocalQualityRecords = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
+    if (!saved) return INITIAL_QUALITY_RECORDS || [];
     const parsed = JSON.parse(saved);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed
+      // Merge with initial canonical records to guarantee September records are never lost
+      const map = new Map();
+      (INITIAL_QUALITY_RECORDS || []).forEach((r) => { if (r && r.id) map.set(r.id, r); });
+      parsed.forEach((r) => { if (r && r.id) map.set(r.id, { ...(map.get(r.id) || {}), ...r }); });
+
+      return Array.from(map.values())
         .map((r) => sanitizeQualityRecord(r))
         .filter((r) => r && r.id)
         .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     }
-    return [];
+    return INITIAL_QUALITY_RECORDS || [];
   } catch (e) {
     console.error("getLocalQualityRecords error:", e);
-    return [];
+    return INITIAL_QUALITY_RECORDS || [];
   }
 };
 
@@ -177,7 +184,11 @@ export const subscribeQualityRecords = (callback) => {
             remoteRecords.push({ id: d.id, ...d.data() });
           });
         }
-        const finalArray = remoteRecords
+        const map = new Map();
+        (INITIAL_QUALITY_RECORDS || []).forEach((r) => { if (r && r.id) map.set(r.id, r); });
+        remoteRecords.forEach((r) => { if (r && r.id) map.set(r.id, { ...(map.get(r.id) || {}), ...r }); });
+
+        const finalArray = Array.from(map.values())
           .map((r) => sanitizeQualityRecord(r))
           .filter((r) => r && r.id)
           .sort((a, b) => (b.date || "").localeCompare(a.date || ""));

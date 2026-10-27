@@ -192,31 +192,23 @@ export const useStep3QualityState = ({
     });
   }, [extractedWorkReportItems]);
 
-  // 4. Official 4M Change Point Ledger items (이창엽 책임 품질보증 공식대장 등록 건 및 4M 공식대장 전체 복구/노출 보장)
+  // 4. Official 4M Change Point Ledger items (9월/10월 전체 공식대장 및 이창엽 책임 등록 건 100% 영구 보존/노출)
   const official4MItems = useMemo(() => {
     return fourMRecords.filter((rec) => {
       if (!rec) return false;
       const isOfficial =
-        rec.isOfficialLedger ||
+        rec.isOfficialLedger === true ||
         String(rec.id || "").startsWith("ledger_") ||
         String(rec.id || "").startsWith("man_log_") ||
-        Boolean(rec.approvalDocId);
-
-      const isLeeClassified =
+        Boolean(rec.approvalDocId) ||
+        rec.isQualityClassified === true ||
         rec.classifiedBy === "이창엽" ||
         rec.registeredBy === "이창엽" ||
         rec.author === "이창엽" ||
         rec.actionAuthor === "이창엽" ||
-        String(rec.actionAuthor || "").includes("이창엽") ||
-        String(rec.writer || "").includes("이창엽") ||
-        rec.isQualityClassified === true ||
-        rec.sourceType === "WORK_REPORT_NC" ||
-        rec.sourceType === "MAN_ABSENCE_LOG" ||
-        rec.approvalStatus === "PENDING_APPROVAL" ||
-        rec.approvalStatus === "APPROVED" ||
-        Boolean(rec.approvalDocId);
+        String(rec.writer || "").includes("이창엽");
 
-      return isOfficial && isLeeClassified;
+      return Boolean(isOfficial);
     });
   }, [fourMRecords]);
 
