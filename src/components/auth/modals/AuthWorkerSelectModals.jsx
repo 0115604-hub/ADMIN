@@ -261,7 +261,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
 
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {hanulWorkers.map((worker, idx) => {
+                {hanulWorkers.filter((w) => w.name !== "황수현").map((worker, idx) => {
                   const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "박종미";
                   return (
                     <button
@@ -281,7 +281,8 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
                           company: "한울",
                           portalType: "hanul",
                           isFieldWorker: true,
-                          isPartner: false
+                          isPartner: false,
+                          role: "OPERATOR"
                         });
                       }}
                       className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
@@ -355,7 +356,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
 
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {bulimtechWorkers.map((worker, idx) => {
+                {bulimtechWorkers.filter((w) => w.name !== "김동훈").map((worker, idx) => {
                   const isLeader = worker.position === "반장" || worker.position === "조장" || worker.name === "최현영";
                   const displayPos = worker.name === "최현영" ? "반장" : (worker.position || "사원");
                   return (
@@ -376,7 +377,8 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
                           company: "부림텍",
                           portalType: "bulimtech",
                           isFieldWorker: true,
-                          isPartner: false
+                          isPartner: false,
+                          role: "OPERATOR"
                         });
                       }}
                       className={`min-h-[48px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
@@ -448,8 +450,8 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
 
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {yuseongWorkers.map((worker, idx) => {
-                  const isLeader = worker.position === "기사" || worker.position === "반장" || worker.position === "조장" || worker.name === "이성기";
+                {yuseongWorkers.filter((w) => w.name !== "이성기").map((worker, idx) => {
+                  const isLeader = worker.position === "기사" || worker.position === "반장" || worker.position === "조장";
                   const displayPos = worker.position || (isLeader ? "기사" : "사원");
                   return (
                     <button
@@ -469,7 +471,8 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
                           company: "유성",
                           portalType: "yuseong",
                           isFieldWorker: true,
-                          isPartner: false
+                          isPartner: false,
+                          role: "OPERATOR"
                         });
                       }}
                       className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
@@ -543,7 +546,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
 
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {joyoungWorkers.map((worker, idx) => {
+                {joyoungWorkers.filter((w) => w.name !== "김동욱" && w.name !== "오상민").map((worker, idx) => {
                   const isLeader = worker.position === "반장" || worker.position === "조장" || worker.position === "기사";
                   const displayPos = worker.position || "사원";
                   return (
@@ -564,7 +567,8 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
                           portalType: "joyoung",
                           pin: "11",
                           isFieldWorker: true,
-                          isPartner: false
+                          isPartner: false,
+                          role: "OPERATOR"
                         });
                       }}
                       className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${

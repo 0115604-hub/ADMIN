@@ -2,7 +2,9 @@ import {
   FileText,
   Sparkles,
   Camera,
-  Save
+  Save,
+  AlertTriangle,
+  UploadCloud
 } from "lucide-react";
 import { DEFECT_TYPE_GROUPS } from "../../../WorkerDashboard";
 
@@ -12,7 +14,7 @@ export default function GeneralWorkLogForm({
   handleSaveLog,
   isAdmin,
   isGeneralManager,
-  formData,
+  formData = {},
   setFormData,
   workerPlant,
   workerDept,
@@ -77,7 +79,7 @@ export default function GeneralWorkLogForm({
                         <label className="block text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">작성일자</label>
                         <input
                           type="date"
-                          value={formData.date}
+                          value={formData?.date || ""}
                           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                           className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-mono font-bold text-slate-800 dark:text-slate-200 shadow-inner"
                         />
@@ -110,7 +112,7 @@ export default function GeneralWorkLogForm({
                       <textarea
                         rows={6}
                         placeholder="오늘 진행한 주요 작업 내용 및 생산 수량, 품번별 실적을 입력해 주세요."
-                        value={formData.workContent}
+                        value={formData?.workContent || ""}
                         onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
                         className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                       ></textarea>

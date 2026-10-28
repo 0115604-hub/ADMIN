@@ -1,12 +1,13 @@
 import { Sparkles } from "lucide-react";
 import LegoWorkReportBuilder from "../../../lego/LegoWorkReportBuilder";
+import { getKSTDateString } from "../../../../utils/dateUtils";
 
 export default function LegoEmbeddedWorkReport({
   setWorkLogMode,
   assignedTemplateData,
   setIsModalOpen,
   workerFullName,
-  formData,
+  formData = {},
   handleSaveLog
 }) {
   return (
@@ -44,14 +45,14 @@ export default function LegoEmbeddedWorkReport({
 
       <LegoWorkReportBuilder
         initialWorkerName={workerFullName}
-        initialWorkDate={formData.date}
+        initialWorkDate={formData?.date || getKSTDateString()}
         initialTemplateData={assignedTemplateData}
         isWorkerRecordingMode={Boolean(assignedTemplateData)}
         onSaveWorkReport={async (reportPayload) => {
           try {
             if (handleSaveLog) {
               const synthLog = {
-                ...formData,
+                ...(formData || {}),
                 title: reportPayload?.title || "부림텍 가공/협력업체 작업일보",
                 writer: workerFullName || reportPayload?.workerName || "최현영",
                 company: "부림텍",

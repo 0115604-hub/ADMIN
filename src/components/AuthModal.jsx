@@ -139,7 +139,10 @@ export const AuthModal = () => {
 
   const hanulWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => cleanCompanyName(w.company) === "한울" && (!w.status || w.status !== "퇴사")
+      (w) =>
+        cleanCompanyName(w.company) === "한울" &&
+        (!w.status || w.status !== "퇴사") &&
+        w.name !== "황수현"
     );
   }, [allMasterWorkers]);
 
@@ -162,7 +165,10 @@ export const AuthModal = () => {
 
   const bulimtechWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => cleanCompanyName(w.company) === "부림텍" && (!w.status || w.status !== "퇴사")
+      (w) =>
+        cleanCompanyName(w.company) === "부림텍" &&
+        (!w.status || w.status !== "퇴사") &&
+        w.name !== "김동훈"
     );
   }, [allMasterWorkers]);
 
@@ -185,14 +191,21 @@ export const AuthModal = () => {
 
   const yuseongWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => cleanCompanyName(w.company) === "유성" && (!w.status || w.status !== "퇴사")
+      (w) =>
+        cleanCompanyName(w.company) === "유성" &&
+        (!w.status || w.status !== "퇴사") &&
+        w.name !== "이성기"
     );
   }, [allMasterWorkers]);
 
   // 5. (주)조영 (한림공장)
   const joyoungWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => cleanCompanyName(w.company) === "조영" && (!w.status || w.status !== "퇴사")
+      (w) =>
+        cleanCompanyName(w.company) === "조영" &&
+        (!w.status || w.status !== "퇴사") &&
+        w.name !== "김동욱" &&
+        w.name !== "오상민"
     );
   }, [allMasterWorkers]);
 

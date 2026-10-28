@@ -18,7 +18,7 @@ export default function CreateWorkLogModal({
   isGeneralManager,
   logout,
   assignedProcess,
-  formData,
+  formData = {},
   setFormData,
   handleSaveLog,
   isSavingLog,

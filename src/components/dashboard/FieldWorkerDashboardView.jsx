@@ -206,7 +206,7 @@ export default function FieldWorkerDashboardView({
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {targetQualityIssues.map((it) => {
                 const ackList = Array.isArray(it.acknowledgedBy) ? it.acknowledgedBy : [];
-                const isAcked = currentProfile?.name ? ackList.some((a) => a.name === currentProfile.name) : false;
+                const isAcked = currentProfile?.name ? ackList.some((a) => (a?.name || a) === currentProfile.name) : false;
                 return (
                   <div key={it.id} className="p-3 rounded-xl bg-slate-950/80 border border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="space-y-1 min-w-0">

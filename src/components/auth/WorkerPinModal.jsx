@@ -419,7 +419,7 @@ export const WorkerPinModal = ({
   const isYuseongWorker = useMemo(() => {
     if (!selectedUser) return false;
     if (isExtrusionWorker || isMachiningWorker || isHanulOrBurim) return false;
-    if (!selectedUser.isFieldWorker && (selectedUser.id === "sam_ys" || selectedUser.title === "대표이사")) {
+    if (!selectedUser.isFieldWorker && (selectedUser.id === "sam_ys" || selectedUser.name === "이성기" || selectedUser.title === "대표이사")) {
       return false;
     }
     if (selectedUser.portalType === "yuseong") return true;
@@ -431,7 +431,7 @@ export const WorkerPinModal = ({
         comp.includes("유성") ||
         id.startsWith("ys_") ||
         [
-          "이성기", "조마루", "쏘탈", "론나차이", "마리오", "제날드",
+          "조마루", "쏘탈", "론나차이", "마리오", "제날드",
           "팔라", "누리", "데란스", "포티퐁", "린", "넷플립", "제인", "그레이스"
         ].includes(name)
       )
@@ -442,7 +442,7 @@ export const WorkerPinModal = ({
   const isJoyoungWorker = useMemo(() => {
     if (!selectedUser) return false;
     if (isExtrusionWorker || isMachiningWorker || isHanulOrBurim || isYuseongWorker) return false;
-    if (!selectedUser.isFieldWorker && (selectedUser.id === "hal_dw" || selectedUser.name === "김동욱" || selectedUser.title === "대표이사")) {
+    if (!selectedUser.isFieldWorker && (selectedUser.id === "hal_dw" || selectedUser.name === "김동욱" || selectedUser.name === "오상민" || selectedUser.title === "대표이사")) {
       return false;
     }
     if (selectedUser.portalType === "joyoung") return true;
@@ -1103,7 +1103,7 @@ export const WorkerPinModal = ({
         const causeImgs = Array.isArray(eq.causeImages) ? eq.causeImages : [];
         const actionImgs = Array.isArray(eq.actionImages) ? eq.actionImages : [];
         const rawImgs = Array.isArray(eq.images) ? eq.images : [...causeImgs, ...actionImgs];
-        const allImgs = rawImgs.map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = rawImgs.map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `ext_q_${eq.id}`,
@@ -1152,7 +1152,7 @@ export const WorkerPinModal = ({
 
         const causeImgs = Array.isArray(hq.causeImages) ? hq.causeImages : [];
         const actionImgs = Array.isArray(hq.actionImages) ? hq.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `hq_${hq.id}`,
@@ -1204,7 +1204,7 @@ export const WorkerPinModal = ({
 
         const causeImgs = Array.isArray(hq.causeImages) ? hq.causeImages : [];
         const actionImgs = Array.isArray(hq.actionImages) ? hq.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `hq_br_${hq.id}`,
@@ -1255,7 +1255,7 @@ export const WorkerPinModal = ({
 
         const causeImgs = Array.isArray(hq.causeImages) ? hq.causeImages : [];
         const actionImgs = Array.isArray(hq.actionImages) ? hq.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `hq_jy_${hq.id}`,
@@ -1298,7 +1298,7 @@ export const WorkerPinModal = ({
         if (!yq || yq.status === "RESOLVED") return;
         const causeImgs = Array.isArray(yq.causeImages) ? yq.causeImages : [];
         const actionImgs = Array.isArray(yq.actionImages) ? yq.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `yq_${yq.id}`,
@@ -1341,7 +1341,7 @@ export const WorkerPinModal = ({
         if (!mq || mq.status === "RESOLVED") return;
         const causeImgs = Array.isArray(mq.causeImages) ? mq.causeImages : [];
         const actionImgs = Array.isArray(mq.actionImages) ? mq.actionImages : [];
-        const allImgs = [...causeImgs, ...actionImgs].map((img) => (typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
+        const allImgs = [...causeImgs, ...actionImgs].map((img) => (img && typeof img === "object" ? (img.dataUrl || img.url) : img)).filter(Boolean);
 
         issues.push({
           id: `mq_${mq.id}`,
