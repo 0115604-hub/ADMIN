@@ -37,7 +37,7 @@ export const DailyWorkLogTableSection = ({
   handleOpenWorkLogModal,
   customSettings = null
 }) => {
-  const title = customSettings?.customTitle || "5. 일일업무일지 현황";
+  const title = customSettings?.customTitle || "일일업무일지 현황";
 
   return (
     <div className={`bg-white dark:bg-slate-900 ${customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl"} p-3.5 sm:p-5 border ${customSettings?.borderStyle || "border"} border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden`}>

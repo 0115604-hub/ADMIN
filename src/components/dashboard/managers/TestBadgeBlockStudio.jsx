@@ -151,7 +151,7 @@ export const TestBadgeBlockStudio = ({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-              <span>1단계. 커스터마이징할 관리자 선택</span>
+              <span>커스터마이징할 관리자 선택</span>
             </label>
             {/* Factory Plant Filter Pills */}
             <div className="flex items-center gap-1">
@@ -219,7 +219,7 @@ export const TestBadgeBlockStudio = ({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <SlidersHorizontal className="w-3.5 h-3.5 text-teal-400" />
-              <span>2단계. 현재 배치된 패널 블록 (순서 이동 · 제목 및 디자인 수정) - 총 {activePanels.length}개</span>
+              <span>현재 배치된 패널 블록 (순서 이동 · 제목 및 디자인 수정) - 총 {activePanels.length}개</span>
             </label>
             <span className="text-[11px] text-slate-500 font-mono">
               [🎨 제목/디자인] 클릭 시 명칭 수정 및 테마 변경
@@ -250,10 +250,7 @@ export const TestBadgeBlockStudio = ({
                     className="bg-slate-950/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-xs group transition-all"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      {/* Order Badge */}
-                      <div className="w-6 h-6 rounded-xl bg-slate-800 text-slate-300 font-mono text-[11px] font-black flex items-center justify-center shrink-0 border border-slate-700">
-                        #{idx + 1}
-                      </div>
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-black text-xs text-slate-200 truncate">
@@ -328,7 +325,7 @@ export const TestBadgeBlockStudio = ({
           <div className="space-y-2 pt-2 border-t border-slate-800">
             <label className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5 text-emerald-400" />
-              <span>3단계. 추가 가능한 대시보드 블록 풀 ({inactiveBlocks.length}개 선택 가능)</span>
+              <span>추가 가능한 대시보드 블록 풀 ({inactiveBlocks.length}개 선택 가능)</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
               {inactiveBlocks.map((b) => (

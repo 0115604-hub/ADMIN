@@ -157,12 +157,12 @@ export const PanelDesignCustomizerModal = ({
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 text-xs">
 
-          {/* 1. 패널 제목 입력 */}
+          {/* 패널 제목 입력 */}
           <div className="space-y-2.5 bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <label className="font-bold text-slate-300 flex items-center gap-1.5 text-xs">
                 <Type className="w-3.5 h-3.5 text-cyan-400" />
-                <span>1. 패널 제목 직접 수정</span>
+                <span>패널 제목 직접 수정</span>
               </label>
               {isAbnormality4M && (
                 <button
@@ -215,12 +215,12 @@ export const PanelDesignCustomizerModal = ({
             )}
           </div>
 
-          {/* 2. 주석 및 부연설명 숨김 옵션 */}
+          {/* 주석 및 부연설명 숨김 옵션 */}
           <div className="bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="font-bold text-slate-300 text-xs flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>2. 제목 하단 주석 및 부연설명 제거</span>
+                <span>제목 하단 주석 및 부연설명 제거</span>
               </div>
               <p className="text-[11px] text-slate-400">
                 패널 제목 아래의 긴 설명, 결재라인 주석 등을 삭제하여 슬림하고 깔끔하게 유지합니다.
@@ -237,11 +237,11 @@ export const PanelDesignCustomizerModal = ({
             </label>
           </div>
 
-          {/* 3. 디자인 테마 선택 */}
+          {/* 디자인 테마 선택 */}
           <div className="space-y-2 bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
             <label className="font-bold text-slate-300 flex items-center gap-1.5 text-xs">
               <Palette className="w-3.5 h-3.5 text-cyan-400" />
-              <span>3. 디자인 테마 선택</span>
+              <span>디자인 테마 선택</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {Object.values(PANEL_THEMES).map((th) => {

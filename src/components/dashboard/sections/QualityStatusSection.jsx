@@ -12,7 +12,7 @@ export const QualityStatusSection = ({
 }) => {
   const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly?.items || [];
   const themeObj = PANEL_THEMES[customSettings?.theme || "indigo"];
-  const title = customSettings?.customTitle || "3. 중요ITEM 품질현황";
+  const title = customSettings?.customTitle || "중요ITEM 품질현황";
   const radius = customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl";
   const border = customSettings?.borderStyle ? `${customSettings.borderStyle} ${themeObj.borderClass}` : "border border-slate-200/80 dark:border-slate-800";
 

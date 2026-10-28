@@ -751,13 +751,10 @@ export const InternalManagerDashboardView = ({
 
         return (
           <div key={blockKey} className="relative group/panel space-y-2">
-            {/* 🛠️ [TEST 모드]: 각 패널 상단 직관적 실시간 컨트롤 바 */}
+            {/* 🛠️ [TEST 모드]: 각 패널 상단 직관적 실시간 컨트롤 바 (앞 번호 제거하고 패널명 깔끔하게 표시) */}
             {isTest && (
               <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-900/95 border-2 border-cyan-500/40 shadow-lg flex items-center justify-between gap-2 flex-wrap animate-fadeIn">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-5 h-5 rounded-lg bg-cyan-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
-                    #{idx + 1}
-                  </span>
                   <span className="font-black text-xs text-white truncate">
                     {customTitle || meta.label}
                   </span>

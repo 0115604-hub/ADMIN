@@ -16,7 +16,7 @@ export const SalesPurchaseSummarySection = ({
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            1. {monthTitle} 매입매출현황 요약
+            {monthTitle} 매입매출현황 요약
           </h2>
           <span
             className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
