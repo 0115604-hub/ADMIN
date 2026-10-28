@@ -47,7 +47,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isExtrusionModalOpen && (
         <div
           onClick={() => setIsExtrusionModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -135,7 +135,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isMachiningModalOpen && (
         <div
           onClick={() => setIsMachiningModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -223,7 +223,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isHanulModalOpen && (
         <div
           onClick={() => setIsHanulModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -317,7 +317,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isBulimtechModalOpen && (
         <div
           onClick={() => setIsBulimtechModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -410,7 +410,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isYuseongModalOpen && (
         <div
           onClick={() => setIsYuseongModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -505,7 +505,7 @@ export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
       {isJoyoungModalOpen && (
         <div
           onClick={() => setIsJoyoungModalOpen(false)}
-          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-start justify-center p-3 pt-3 sm:pt-6 md:pt-8 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}

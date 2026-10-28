@@ -1802,20 +1802,37 @@ export const WorkerPinModal = ({
     }, 200);
   };
 
+  // 🌟 전 작업자 및 관리자 통합 안전·4M 확인 후 작업개시 액션
+  const handleStartWork = (e) => {
+    if (isExtrusionWorker) {
+      handleOpenExtrusionReportAction(e);
+    } else if (isHanul) {
+      handleOpenHanulReportAction("9BQC", e);
+    } else if (isMachiningWorker) {
+      handleOpenMachiningReportAction("JA", e);
+    } else if (isYuseongWorker) {
+      handleOpenYuseongReportAction("JK1", e);
+    } else if (isBurimtech || isJoyoungWorker || isFieldWorker) {
+      handleOpenGeneralWorkLogAction(e);
+    } else {
+      handleLogin(e);
+    }
+  };
+
   return (
     <>
       <div
         ref={overlayRef}
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex justify-center items-center p-0 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex justify-center items-start p-0 sm:p-3 md:p-4 pt-0 sm:pt-4 md:pt-6 animate-fadeIn overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className={`bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl ${
             isPinVerified
-              ? "h-[100dvh] sm:h-[88vh] sm:max-h-[88vh]"
-              : "h-auto max-h-[92dvh]"
-          } rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden relative flex flex-col m-0 sm:m-auto text-left`}
+              ? "min-h-[100dvh] sm:min-h-0 h-[100dvh] sm:h-[90vh] sm:max-h-[90vh]"
+              : "min-h-[100dvh] sm:min-h-0 h-auto sm:max-h-[92dvh]"
+          } rounded-none sm:rounded-3xl border-0 sm:border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden relative flex flex-col m-0 sm:mx-auto text-left`}
         >
           {/* Top Decorative Accent Line */}
           <div
@@ -1932,7 +1949,7 @@ export const WorkerPinModal = ({
           <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain p-3 sm:p-5 md:p-6 space-y-4">
             {!isPinVerified ? (
               /* 🔒 PIN 입력 전 화면 */
-              <div className="py-16 sm:py-20 px-4 text-center flex flex-col items-center justify-center space-y-4 max-w-lg mx-auto animate-fadeIn">
+              <div className="py-10 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-4 max-w-lg mx-auto animate-fadeIn">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-md">
                   <Lock className="w-8 h-8 sm:w-10 sm:h-10 animate-bounce" />
                 </div>
@@ -1940,16 +1957,39 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || "사원"}님, <br className="hidden sm:inline" />
-                    {isFieldWorker
-                      ? "안전·품질 확인을 위해 비밀번호(PIN)를 입력해 주세요."
-                      : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
+                    안전수칙과 4M 변동점 확인을 위해 PIN을 입력해 주세요.
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    {isFieldWorker
-                      ? "인증 시 [중대재해공유판 + 소속 관리자 품질이슈/긴급공지 + 첫화면 품질경보]가 표시됩니다."
-                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 현황요약 + 근태정보]가 표시됩니다."}
+                    인증 시 [중대재해공유판 + 4M 현황요약 + 품질·안전 공지] 확인 후 작업개시가 가능합니다.
                   </p>
                 </div>
+
+                {/* 모바일 및 터치 환경을 위한 중앙 대형 PIN 입력 폼 */}
+                <form onSubmit={handlePinSubmit} className="w-full max-w-xs space-y-3 pt-2">
+                  <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-blue-400 dark:border-blue-500 bg-white dark:bg-slate-800 shadow-sm focus-within:ring-4 focus-within:ring-blue-400/30">
+                    <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="PIN 4자리 입력"
+                      value={pinInput}
+                      onChange={handlePinChange}
+                      className="w-36 text-center text-lg font-black tracking-widest bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:text-sm placeholder:tracking-normal"
+                    />
+                  </div>
+                  {pinError && (
+                    <p className="text-xs font-bold text-rose-600 dark:text-rose-400 animate-pulse">
+                      {pinError}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-black text-sm shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+                  >
+                    비밀번호 확인
+                  </button>
+                </form>
               </div>
             ) : (
               /* ✅ PIN 인증 완료 시 역할별 통합 화면 */
@@ -2095,6 +2135,103 @@ export const WorkerPinModal = ({
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {!isAdminUser && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
+                      {/* =============================================================== */}
+                      {/* [패널 1] 📋 4M 현황요약 (이창엽 책임 4M 정식 관리대장 최신 5건 시간순) */}
+                      {/* =============================================================== */}
+                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5 flex-1 flex flex-col justify-between">
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between pb-1 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                                <Activity className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  📋 4M 현황요약
+                                </span>
+                                <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
+                                  이창엽 책임 4M 정식 관리대장 (시간순 최신 5건)
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700 shrink-0">
+                              {official4MLedgerTop5.length}건 등재
+                            </span>
+                          </div>
+
+                          {official4MLedgerTop5.length > 0 ? (
+                            <div className="space-y-1.5 max-h-48 sm:max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
+                              {official4MLedgerTop5.map((item) => {
+                                const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.fourM === "Method" || item.sourceType === "QUALITY_ALERT";
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`p-2.5 rounded-xl bg-white dark:bg-slate-900 text-xs space-y-1 shadow-2xs border transition-all ${
+                                      isQuality
+                                        ? "border-rose-300 dark:border-rose-800/90 ring-1 ring-rose-300/40 dark:ring-rose-900/40 bg-rose-50/20"
+                                        : "border-indigo-100 dark:border-indigo-900/60"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
+                                          isQuality
+                                            ? "bg-rose-600 text-white shadow-xs"
+                                            : item.origin === "설비수리" || item.fourM === "Machine"
+                                            ? "bg-indigo-600 text-white shadow-xs"
+                                            : item.origin === "비가동"
+                                            ? "bg-orange-600 text-white shadow-xs"
+                                            : item.origin === "TPM 이상신고"
+                                            ? "bg-amber-600 text-white shadow-xs"
+                                            : item.origin === "불량손실" || item.fourM === "Material"
+                                            ? "bg-rose-500 text-white shadow-xs"
+                                            : item.fourM === "Man"
+                                            ? "bg-purple-600 text-white shadow-xs"
+                                            : "bg-indigo-100 text-indigo-800 border border-indigo-300"
+                                        }`}>
+                                          {item.origin || item.fourM || "4M"}
+                                        </span>
+                                        <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
+                                          {item.company ? `${item.company} • ` : ""}{item.plant ? `${item.plant.replace("공장", "")} • ` : ""}{item.line}
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 font-mono shrink-0">{item.date}</span>
+                                    </div>
+                                    <h6 className="font-black text-slate-900 dark:text-white text-xs leading-snug">{item.title}</h6>
+                                    {item.content && item.content !== item.title && (
+                                      <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed line-clamp-2">
+                                        {item.content}
+                                      </p>
+                                    )}
+                                    {item.actionResult ? (
+                                      <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                        ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
+                                      </div>
+                                    ) : (
+                                      isQuality && (
+                                        <div className="text-[10px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1 rounded-md border border-rose-200 dark:border-rose-800">
+                                          ↳ 🚨 <b>[조치대기]</b> 현장 조치 및 유효성 확인 대기중
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900">
+                              등록된 4M 정식대장 변동점이 없습니다.
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                          <span>품질책임: 이창엽 책임</span>
+                          <span>시간순 최신 5건</span>
+                        </div>
+                      </div>
+
                       {/* =============================================================== */}
                       {/* [패널 2] 소속 관리자 품질이슈 또는 긴급공지 */}
                       {/* =============================================================== */}
@@ -2507,141 +2644,26 @@ export const WorkerPinModal = ({
                     </div>
                   )}
                 </div>
+
+                {/* 🌟 확인완료 작업개시 버튼: 중대재해 및 4M을 모두 확인한 후 스크롤 맨 마지막에서 탭 */}
+                <div className="pt-3 pb-8 sm:pb-4 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleStartWork}
+                    disabled={isLoggingIn}
+                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-[0.99] text-white font-black text-base sm:text-lg shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-200 shrink-0" />
+                    <span>{isLoggingIn ? "작업 개시 처리 중..." : "확인완료 작업개시"}</span>
+                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+                  </button>
+                  <p className="text-center text-[11.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 font-bold">
+                    중대재해 안전수칙과 4M 변동점을 모두 확인하였으며, 안전 작업을 시작합니다.
+                  </p>
+                </div>
               </div>
             )}
           </div>
-
-          {/* 🌟 3. Footer: 핀 인증 완료 후(isPinVerified) 작업자별 일보작성 바로가기 & 관리자 확인완료 뱃지 제공 */}
-          {isPinVerified && (
-            <div className="p-3 sm:p-4 md:px-6 md:py-3.5 border-t-2 border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shrink-0 shadow-[0_-6px_20px_rgba(0,0,0,0.06)] z-20">
-              {isExtrusionWorker ? (
-                /* 압출동 작업자: 압출 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
-                <button
-                  type="button"
-                  onClick={handleOpenExtrusionReportAction}
-                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
-                >
-                  <span>🏭 오늘의 압출 작업일보 작성 바로가기</span>
-                  <ArrowRight className="w-4 h-4 text-teal-200" />
-                </button>
-              ) : isHanul ? (
-                /* 한울 전용: 9BQC 및 LQ2a 일보 작성 뱃지 2개 (확인완료작업개시 뱃지 제거) */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenHanulReportAction("9BQC", e)}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚗 9BQC 작업일보 작성 (TPM 점검)</span>
-                    <ArrowRight className="w-4 h-4 text-indigo-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenHanulReportAction("LQ2A", e)}
-                    className="py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>⚡ LQ2a 작업일보 작성 (TPM 점검)</span>
-                    <ArrowRight className="w-4 h-4 text-purple-200 shrink-0" />
-                  </button>
-                </div>
-              ) : isMachiningWorker ? (
-                /* 가공동 전용: JA, NX4, NX4a, HR G/RUN 4대 차종 일보 작성 뱃지 */
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenMachiningReportAction("JA", e)}
-                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚗 JA 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenMachiningReportAction("NX4", e)}
-                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚙 NX4 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenMachiningReportAction("NX4A", e)}
-                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>⚡ NX4a 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-teal-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenMachiningReportAction("HR", e)}
-                    className="py-3 px-2 sm:px-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚐 HR 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-amber-200 shrink-0" />
-                  </button>
-                </div>
-              ) : isYuseongWorker ? (
-                /* (주)유성 전용: JK1, CE1, DT Hood 3대 아이템 일보 작성 뱃지 (확인완료작업개시 뱃지 제거) */
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenYuseongReportAction("JK1", e)}
-                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚗 JK1 Part'g 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenYuseongReportAction("CE1", e)}
-                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>🚙 CE1 Part'g 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenYuseongReportAction("DT", e)}
-                    className="py-3 px-3 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer truncate"
-                  >
-                    <span>⚡ DT Hood 일보</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-teal-200 shrink-0" />
-                  </button>
-                </div>
-              ) : isBurimtech ? (
-                /* 부림텍 전용: 오늘의 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
-                <button
-                  type="button"
-                  onClick={handleOpenGeneralWorkLogAction}
-                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 transition-all cursor-pointer"
-                >
-                  <span>✍️ 오늘의 부림텍 작업일보 작성 바로가기</span>
-                  <ArrowRight className="w-4 h-4 text-teal-200" />
-                </button>
-              ) : (selectedUser?.isFieldWorker || isFieldWorker) ? (
-                /* 가공동 등 일반 현장작업자: 작업일보 작성 바로가기 (확인완료작업개시 뱃지 제거) */
-                <button
-                  type="button"
-                  onClick={handleOpenGeneralWorkLogAction}
-                  className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-98 transition-all cursor-pointer"
-                >
-                  <span>✍️ 오늘의 작업일보 작성 바로가기</span>
-                  <ArrowRight className="w-4 h-4 text-indigo-200" />
-                </button>
-              ) : (
-                /* 관리자 (본사 임원, 공장 관리자, 협력사 대표이사): 확인완료 작업개시 */
-                <button
-                  type="button"
-                  onClick={handleLogin}
-                  disabled={isLoggingIn}
-                  className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <span>확인완료 작업개시</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
