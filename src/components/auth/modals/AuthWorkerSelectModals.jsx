@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Cpu, Factory, Building2, X } from "lucide-react";
 
 /**
@@ -11,7 +11,7 @@ import { Cpu, Factory, Building2, X } from "lucide-react";
  * 5. (주)유성 가공/협력업체 모달
  * 6. 한림공장 (주)조영 현장작업자 모달
  */
-export const AuthWorkerSelectModals = ({
+export const AuthWorkerSelectModals = memo(function AuthWorkerSelectModals({
   isExtrusionModalOpen,
   setIsExtrusionModalOpen,
   EXTRUSION_WORKERS = [],
@@ -40,7 +40,7 @@ export const AuthWorkerSelectModals = ({
   joyoungWorkers = [],
 
   handleUserClick,
-}) => {
+}) {
   return (
     <>
       {/* 🏭 1. 삼랑진공장 압출동 작업자 전용 팝업 선택 모달 */}
@@ -597,6 +597,6 @@ export const AuthWorkerSelectModals = ({
       )}
     </>
   );
-};
+});
 
 export default AuthWorkerSelectModals;

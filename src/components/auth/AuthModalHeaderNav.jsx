@@ -1,25 +1,11 @@
-import React from "react";
+import React, { memo } from "react";
 import { OryukLogo } from "../OryukLogo";
 
 /**
  * AuthModalHeaderNav
  * Displays (주)오륙 brand header with clickable logo to select admin.
- * (Top company badges removed per user instruction)
  */
-export const AuthModalHeaderNav = ({
-  onAdminClick,
-  onOpenExtrusionModal,
-  onOpenMachiningModal,
-  onOpenHanulModal,
-  onOpenBulimtechModal,
-  onOpenYuseongModal,
-  onOpenJoyoungModal,
-  machiningWorkersCount = 0,
-  hanulWorkersCount = 0,
-  bulimtechWorkersCount = 0,
-  yuseongWorkersCount = 0,
-  joyoungWorkersCount = 0,
-}) => {
+export const AuthModalHeaderNav = memo(function AuthModalHeaderNav({ onAdminClick }) {
   return (
     <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800/80">
       {/* Left: Brand Logo & Title */}
@@ -44,6 +30,6 @@ export const AuthModalHeaderNav = ({
       </div>
     </div>
   );
-};
+});
 
 export default AuthModalHeaderNav;

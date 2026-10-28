@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Factory, Cpu, Building2, Users } from "lucide-react";
 
 /**
@@ -8,7 +8,7 @@ import { Factory, Cpu, Building2, Users } from "lucide-react";
  * 노출순서: 압출동 -> 가공동 -> 유성 -> 조영 -> 한울 -> 부림텍 (한울, 부림텍, 유성은 개인사업자이므로 (주) 삭제)
  * 모바일 최적화: touch-manipulation 및 넉넉한 터치 영역(min-h-[56px]) 적용
  */
-export const FieldWorkerLoginPortalSection = ({
+export const FieldWorkerLoginPortalSection = memo(function FieldWorkerLoginPortalSection({
   onOpenExtrusionModal,
   onOpenMachiningModal,
   onOpenHanulModal,
@@ -22,7 +22,7 @@ export const FieldWorkerLoginPortalSection = ({
   yuseongWorkersCount = 0,
   joyoungWorkersCount = 0,
   className = ""
-}) => {
+}) {
   const totalFieldWorkersCount =
     extrusionWorkersCount +
     machiningWorkersCount +
@@ -176,6 +176,6 @@ export const FieldWorkerLoginPortalSection = ({
       </div>
     </div>
   );
-};
+});
 
 export default FieldWorkerLoginPortalSection;
