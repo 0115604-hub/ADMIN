@@ -22,6 +22,8 @@ export default function Step3QualityControlPanel({
   onOpenIssueModal = null,
   onNavigateTab = null,
   customTitle = null,
+  customBadge = null,
+  hideBadge = false,
   hideSubtitle = true,
   theme = "indigo",
   borderRadius = "rounded-2xl",
@@ -43,6 +45,8 @@ export default function Step3QualityControlPanel({
         setActiveTab={state.setActiveTab}
         stats={state.stats}
         customTitle={customTitle}
+        customBadge={customBadge}
+        hideBadge={hideBadge}
         hideSubtitle={hideSubtitle}
         themeObj={themeObj}
       />

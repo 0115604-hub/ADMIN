@@ -7,6 +7,8 @@ export const DEFAULT_PANEL_SETTING = {
   customTitle: "", // 커스텀 전체 제목 (비어있으면 기본 label 사용)
   customTopTitle: "", // 복합 패널의 상단 타이틀 (예: 이창엽의 4M 정식대장)
   customBottomTitle: "", // 복합 패널의 하단 타이틀 (예: 전사 4M 취합대장)
+  customBadge: "", // 커스텀 뱃지 명칭 (예: '🌟 개인', '전사 통합', '품질' 등)
+  hideBadge: false, // 뱃지 완전 삭제 여부
   hideSubtitle: true, // 제목 하단 주석/부연설명 숨김 여부 (기본: 깔끔하게 숨김)
   theme: "indigo", // 디자인 테마 키: indigo, ocean, emerald, slate, amber, light
   borderRadius: "rounded-2xl", // rounded-2xl | rounded-3xl | rounded-xl

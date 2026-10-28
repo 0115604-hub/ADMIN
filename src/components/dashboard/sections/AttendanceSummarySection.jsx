@@ -9,18 +9,21 @@ export const AttendanceSummarySection = ({
   pendingApprovalCards = [],
   pushModalHistory,
   setSelectedOvertimeReportForModal,
-  formatKoreanWorkDate
+  formatKoreanWorkDate,
+  customSettings = null
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-            <span>근태현황 및 관리</span>
+            <span>{customSettings?.customTitle || "근태현황 및 관리"}</span>
           </h2>
-          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
-            {todayFormattedLabel}
-          </span>
+          {customSettings?.hideBadge !== true && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
+              {customSettings?.customBadge || todayFormattedLabel}
+            </span>
+          )}
           {/* ⭐ 미작성 업체 표기 배지 (통합 완료 뱃지 제거, 미작성 개별사만 안내) */}
           {unwrittenCompanies.length > 0 && (
             <span

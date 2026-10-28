@@ -3,18 +3,21 @@ import { Clock, ArrowRight } from "lucide-react";
 
 export const ExtrusionDowntimeSection = ({
   onNavigateTab,
-  extrusionSummaryList = []
+  extrusionSummaryList = [],
+  customSettings = null
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            압출동 주간 비가동내역 요약
+            {customSettings?.customTitle || "압출동 주간 비가동내역 요약"}
           </h2>
-          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
-            9월 당월 누적
-          </span>
+          {customSettings?.hideBadge !== true && (
+            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+              {customSettings?.customBadge || "9월 당월 누적"}
+            </span>
+          )}
         </div>
 
         {onNavigateTab && (

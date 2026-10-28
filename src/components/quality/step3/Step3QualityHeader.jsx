@@ -7,6 +7,8 @@ export const Step3QualityHeader = ({
   setActiveTab,
   stats,
   customTitle,
+  customBadge,
+  hideBadge = false,
   hideSubtitle = true,
   themeObj
 }) => {
@@ -21,9 +23,11 @@ export const Step3QualityHeader = ({
             <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
               <span>{customTitle || "📋 이창엽의 4M 정식대장"}</span>
             </h3>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
-              {managerName ? `${managerName} 책임 전용` : "품질관리자 전용"}
-            </span>
+            {!hideBadge && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
+                {customBadge || (managerName ? `${managerName} 책임 전용` : "품질관리자 전용")}
+              </span>
+            )}
           </div>
           {!hideSubtitle && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">

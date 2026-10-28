@@ -30,6 +30,8 @@ export const AbnormalityHeader = ({
   setSelectedOriginFilter,
   filteredCount,
   customTitle,
+  customBadge,
+  hideBadge = false,
   hideSubtitle = true,
   theme = "indigo",
   themeObj: propThemeObj
@@ -49,9 +51,11 @@ export const AbnormalityHeader = ({
               <h2 className="font-black text-sm sm:text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>{customTitle || "📋 전사 4M 취합대장"}</span>
               </h2>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj.accentBadge}`}>
-                {currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "전사 통합 관제"}
-              </span>
+              {!hideBadge && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj.accentBadge}`}>
+                  {customBadge || (currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "전사 통합 관제")}
+                </span>
+              )}
             </div>
             {!hideSubtitle && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">

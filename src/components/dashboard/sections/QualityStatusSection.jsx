@@ -24,9 +24,11 @@ export const QualityStatusSection = ({
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
             {title}
           </h2>
-          <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-            {selectedMonth?.slice(5, 7) || "9"}월 실적
-          </span>
+          {customSettings?.hideBadge !== true && (
+            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+              {customSettings?.customBadge || `${selectedMonth?.slice(5, 7) || "9"}월 실적`}
+            </span>
+          )}
         </div>
 
         {onNavigateTab && (

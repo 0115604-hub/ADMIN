@@ -142,6 +142,11 @@ export const DailyWorkLogTableSection = ({
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
             {title}
           </h2>
+          {customSettings?.hideBadge !== true && customSettings?.customBadge && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+              {customSettings.customBadge}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">

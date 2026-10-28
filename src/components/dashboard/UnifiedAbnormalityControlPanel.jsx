@@ -222,6 +222,8 @@ export const UnifiedAbnormalityControlPanel = ({
           onOpenIssueModal={onOpenIssueModal}
           onNavigateTab={onNavigateTab}
           customTitle={customSettings?.customTopTitle || customSettings?.customTitle}
+          customBadge={customSettings?.customBadge}
+          hideBadge={customSettings?.hideBadge === true}
           hideSubtitle={customSettings?.hideSubtitle !== false}
           theme={theme}
           borderRadius={borderRadius}
@@ -251,6 +253,8 @@ export const UnifiedAbnormalityControlPanel = ({
           setSelectedOriginFilter={setSelectedOriginFilter}
           filteredCount={filteredRecords.length}
           customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
+          customBadge={customSettings?.customBadge}
+          hideBadge={customSettings?.hideBadge === true}
           hideSubtitle={customSettings?.hideSubtitle !== false}
           theme={theme}
           themeObj={themeObj}

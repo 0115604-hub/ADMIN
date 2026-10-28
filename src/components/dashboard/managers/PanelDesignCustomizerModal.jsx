@@ -10,7 +10,10 @@ import {
   Eye,
   Sliders,
   ShieldCheck,
-  Check
+  Check,
+  Tag,
+  Plus,
+  Trash2
 } from "lucide-react";
 import {
   PANEL_THEMES,
@@ -28,7 +31,8 @@ export const PanelDesignCustomizerModal = ({
   currentManager,
   initialSettings = {},
   onSave,
-  onReset
+  onReset,
+  onRemoveBlock
 }) => {
   const blockMeta = ALL_DASHBOARD_BLOCKS.find((b) => b.key === blockKey) || {
     label: blockKey || "대시보드 패널",
@@ -41,6 +45,8 @@ export const PanelDesignCustomizerModal = ({
 
   // Form states
   const [customTitle, setCustomTitle] = useState("");
+  const [customBadge, setCustomBadge] = useState("");
+  const [hideBadge, setHideBadge] = useState(false);
   const [customTopTitle, setCustomTopTitle] = useState("");
   const [customBottomTitle, setCustomBottomTitle] = useState("");
   const [hideSubtitle, setHideSubtitle] = useState(true);
@@ -54,6 +60,8 @@ export const PanelDesignCustomizerModal = ({
   useEffect(() => {
     if (isOpen) {
       setCustomTitle(initialSettings.customTitle || "");
+      setCustomBadge(initialSettings.customBadge || "");
+      setHideBadge(initialSettings.hideBadge === true);
       setCustomTopTitle(initialSettings.customTopTitle || (isAbnormality4M ? "📋 이창엽의 4M 정식대장" : ""));
       setCustomBottomTitle(initialSettings.customBottomTitle || (isAbnormality4M ? "📋 전사 4M 취합대장" : ""));
       setHideSubtitle(initialSettings.hideSubtitle !== false); // default: true
@@ -76,6 +84,8 @@ export const PanelDesignCustomizerModal = ({
         customTitle: customTitle.trim(),
         customTopTitle: isAbnormality4M ? customTopTitle.trim() : "",
         customBottomTitle: isAbnormality4M ? customBottomTitle.trim() : "",
+        customBadge: customBadge.trim(),
+        hideBadge,
         hideSubtitle,
         theme,
         borderRadius,
@@ -99,6 +109,8 @@ export const PanelDesignCustomizerModal = ({
         await onReset(blockKey);
       }
       setCustomTitle("");
+      setCustomBadge("");
+      setHideBadge(false);
       setCustomTopTitle(isAbnormality4M ? "📋 이창엽의 4M 정식대장" : "");
       setCustomBottomTitle(isAbnormality4M ? "📋 전사 4M 취합대장" : "");
       setHideSubtitle(true);
@@ -211,6 +223,64 @@ export const PanelDesignCustomizerModal = ({
                 <p className="text-[10.5px] text-slate-500 mt-1">
                   * 비워두면 기본 제목({blockMeta.label})으로 표시됩니다.
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* 패널 뱃지 추가 / 수정 / 삭제 */}
+          <div className="space-y-2.5 bg-slate-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="font-bold text-slate-300 flex items-center gap-1.5 text-xs">
+                <Tag className="w-3.5 h-3.5 text-cyan-400" />
+                <span>패널 뱃지 추가 / 수정 / 삭제</span>
+              </label>
+              {hideBadge ? (
+                <button
+                  type="button"
+                  onClick={() => setHideBadge(false)}
+                  className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-700 text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>뱃지 다시 표시</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHideBadge(true);
+                    setCustomBadge("");
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-rose-950 text-rose-300 hover:bg-rose-900 border border-rose-800 text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>뱃지 완전 삭제</span>
+                </button>
+              )}
+            </div>
+
+            {!hideBadge && (
+              <div className="space-y-2 pt-0.5">
+                <input
+                  type="text"
+                  value={customBadge}
+                  onChange={(e) => setCustomBadge(e.target.value)}
+                  placeholder={`기본 뱃지: ${blockMeta.badge || "패널"}`}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold text-xs outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                />
+                {/* 1클릭 추천 뱃지 프리셋 */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[10px] text-slate-500 font-bold">추천 뱃지:</span>
+                  {["🌟 개인", "📌 공통", "🔬 품질", "⚙️ 가공", "🏭 압출", "🚨 긴급", "💰 경영", "👥 근태", "전사 통합 관제"].map((badgeText) => (
+                    <button
+                      key={badgeText}
+                      type="button"
+                      onClick={() => setCustomBadge(badgeText)}
+                      className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10.5px] font-bold border border-slate-700 transition cursor-pointer active:scale-95"
+                    >
+                      {badgeText}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -350,9 +420,11 @@ export const PanelDesignCustomizerModal = ({
                           ? (customBottomTitle || customTitle || "📋 전사 4M 취합대장")
                           : (customTitle || blockMeta.label)}
                       </h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${currentThemeObj.accentBadge}`}>
-                        {currentManager?.name || "관리자"} 관제
-                      </span>
+                      {!hideBadge && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${currentThemeObj.accentBadge}`}>
+                          {customBadge || blockMeta.badge || `${currentManager?.name || "관리자"} 관제`}
+                        </span>
+                      )}
                     </div>
                     {!hideSubtitle && (
                       <p className="text-[10.5px] text-slate-300/80 mt-0.5">
@@ -371,15 +443,33 @@ export const PanelDesignCustomizerModal = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3.5 sm:p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition border border-slate-800 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>기본값 복원</span>
-          </button>
+        <div className="p-3.5 sm:p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition border border-slate-800 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>기본값 복원</span>
+            </button>
+            {onRemoveBlock && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm(`[${blockMeta.label}] 패널을 현재 화면에서 삭제(제외)하시겠습니까?\n(나중에 블록 관리 스튜디오 풀에서 다시 추가할 수 있습니다)`)) {
+                    await onRemoveBlock(blockKey);
+                    onClose();
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition border border-rose-800/80 cursor-pointer"
+                title="이 패널을 대시보드 화면에서 삭제"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>패널 화면에서 삭제</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button
