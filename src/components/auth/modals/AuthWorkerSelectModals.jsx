@@ -236,7 +236,7 @@ export const AuthWorkerSelectModals = ({
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>한림공장 가공/협력업체 (주)한울</span>
+                    <span>한림공장 가공/협력업체 한울</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
                       총원 {hanulWorkers.length}명
                     </span>
@@ -330,7 +330,7 @@ export const AuthWorkerSelectModals = ({
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>한림공장 가공/협력업체 (주)부림텍</span>
+                    <span>한림공장 가공/협력업체 부림텍</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
                       총원 {bulimtechWorkers.length}명
                     </span>
@@ -423,7 +423,7 @@ export const AuthWorkerSelectModals = ({
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                    <span>가공/협력업체 (주)유성</span>
+                    <span>삼랑진공장 가공/협력업체 유성</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
                       총원 {yuseongWorkers.length}명
                     </span>
