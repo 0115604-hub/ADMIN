@@ -27,6 +27,7 @@ export const TestBadgeBlockStudio = ({
   onChangePanels,
   onSaveLayout,
   onResetLayout,
+  onCloseStudio = null,
   panelCustomSettings = {},
   onSavePanelSetting,
   onResetPanelSetting,
@@ -134,7 +135,7 @@ export const TestBadgeBlockStudio = ({
               onClick={onSaveLayout}
               disabled={isSaving}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-cyan-950/50 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-              title="이 관리자의 커스텀 대시보드 구성을 클라우드 및 전 기기에 영구 저장"
+              title="이 관리자의 커스텀 대시보드 구성을 클라우드 및 전 기기에 영구 저장 후 수정패널 닫기"
             >
               {isSaving ? (
                 <span className="animate-spin text-sm">⏳</span>
@@ -143,6 +144,17 @@ export const TestBadgeBlockStudio = ({
               )}
               <span>[{currentManager.name}] 설정 저장</span>
             </button>
+
+            {onCloseStudio && (
+              <button
+                type="button"
+                onClick={onCloseStudio}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                title="수정패널 닫기"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 

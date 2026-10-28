@@ -323,9 +323,15 @@ export const InternalManagerDashboardView = ({
       if (currentMgr?.name) {
         await saveManagerCustomLayout(currentMgr.name, studioPanels, "TEST");
       }
-      alert(
-        `🎉 [${currentMgr?.plant} • ${currentMgr?.name} ${currentMgr?.title || ""}] 대시보드 블록 및 디자인 설정이 저장되었습니다!\n\n해당 관리자가 로그인 시 저장된 블록 구성, 커스텀 제목, 테마로 즉시 표시됩니다.`
+
+      // ⭐ 설정 저장 즉시 수정패널(상단 스튜디오) 사라지게 처리
+      setIsTopStudioVisible(false);
+
+      // 상단 저장 완료 알림 토스트
+      setSaveSuccessToast(
+        `🎉 [${currentMgr?.plant} • ${currentMgr?.name}] 대시보드 설정이 저장되었으며 수정패널을 닫았습니다.`
       );
+      setTimeout(() => setSaveSuccessToast(null), 3500);
     } catch (e) {
       alert("설정 저장 중 오류가 발생했습니다: " + e.message);
     } finally {
@@ -745,12 +751,35 @@ export const InternalManagerDashboardView = ({
           onChangePanels={setStudioPanels}
           onSaveLayout={handleSaveStudioLayout}
           onResetLayout={handleResetStudioLayout}
+          onCloseStudio={() => setIsTopStudioVisible(false)}
           panelCustomSettings={panelCustomSettings}
           onSavePanelSetting={handleSavePanelSetting}
           onResetPanelSetting={handleResetPanelSetting}
           onBatchApplyTheme={handleBatchApplyTheme}
           isSaving={isSavingStudio}
         />
+      )}
+
+      {/* 🛠️ [TEST 뱃지 전용] 설정저장 또는 닫기로 수정패널이 접혔을 때 펼치기 바 */}
+      {isTest && !isTopStudioVisible && (
+        <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-slate-900/95 border border-cyan-500/40 text-xs shadow-md animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/60">
+              🛠️ TEST 스튜디오
+            </span>
+            <span className="text-slate-300 font-bold text-xs">
+              대시보드 수정패널이 닫혀 있습니다.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsTopStudioVisible(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition cursor-pointer active:scale-95"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>수정패널(스튜디오) 펼치기</span>
+          </button>
+        </div>
       )}
 
       {/* 🌟 압출동 현장작업자 전용 상단 배너 (작업자 모드) */}
