@@ -1,6 +1,8 @@
 export { useCommonSchedule } from "./useCommonSchedule";
 export { useWorkerSchedule } from "./useWorkerSchedule";
 export { useDashboardExcel } from "./useDashboardExcel";
+export { useWorkerCompanyAttendance } from "./useWorkerCompanyAttendance";
+export { useWorkerQualityMetrics } from "./useWorkerQualityMetrics";
 export {
   useWorkLogCrud,
   DEFECT_TYPE_GROUPS,

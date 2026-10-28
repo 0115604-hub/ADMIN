@@ -1,72 +1,38 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import * as XLSX from "xlsx";
-import { useAuth, PLANTS, ADMIN_USERS, isManagerOrAdminUser } from "../../../context/AuthContext";
-import { useMonth, DEFAULT_MONTH_LIST } from "../../../context/MonthContext";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth, isManagerOrAdminUser } from "../../../context/AuthContext";
+import { useMonth } from "../../../context/MonthContext";
 import { useCurrency } from "../../../context/CurrencyContext";
-import {
-  getLocalSmartOvertimeData,
-  calculateDailySummary,
-  subscribeSmartOvertimeData,
-  cleanCompanyName,
-  getReportDateSortKey,
-  reconcileMatrixWithReports
-} from "../../../services/overtimeSmartService.js";
-import {
-  getLocalApprovalDocs,
-  subscribeApprovalDocs,
-  isApprovalDocPending
-} from "../../../services/approvalService";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../../../services/accessLogService";
-import {
-  getLocalOvertimeReports,
-  subscribeOvertimeReports,
-  formatKoreanWorkDate,
-  isWeekendByDate
-} from "../../../services/overtimeService";
-import { isWorkLogApproved } from "../../../services/workLogService";
-import {
-  subscribeQualityRecords,
-  getQualityMonthlyAggregation,
-  getQualityDailyAggregation,
-  getPreviousYearMonth
-} from "../../../services/qualityService";
-import { getKSTDateString, formatKSTDate, formatRelativeAccessTime } from "../../../utils/dateUtils";
-import { pushModalHistory, useModalHistory } from "../../../utils/modalHistory";
-import {
-  isExtrusionWorkerProfile,
-  subscribeExtrusionQualityIssues,
-  getLocalExtrusionQualityIssues
-} from "../../../services/extrusionQualityIssueService";
-import {
-  isHanulWorkerProfile,
-  subscribeHanulQualityIssues,
-  getLocalHanulQualityIssues
-} from "../../../services/hanulQualityIssueService";
-import {
-  isMachiningWorkerProfile,
-  subscribeMachiningQualityIssues,
-  getLocalMachiningQualityIssues
-} from "../../../services/machiningQualityIssueService";
-import {
-  isYuseongWorkerProfile,
-  subscribeYuseongQualityIssues,
-  getLocalYuseongQualityIssues
-} from "../../../services/yuseongQualityIssueService";
+import { formatKoreanWorkDate } from "../../../services/overtimeService";
+import { getKSTDateString, formatRelativeAccessTime } from "../../../utils/dateUtils";
+import { pushModalHistory } from "../../../utils/modalHistory";
+import { isExtrusionWorkerProfile } from "../../../services/extrusionQualityIssueService";
+import { isHanulWorkerProfile } from "../../../services/hanulQualityIssueService";
+import { isMachiningWorkerProfile } from "../../../services/machiningQualityIssueService";
+import { isYuseongWorkerProfile } from "../../../services/yuseongQualityIssueService";
 import { getWorkerPersonnelCard, isWorkerManagerRole } from "../../../services/personnelCardService";
+
 import {
   useCommonSchedule,
   useWorkerSchedule,
   useDashboardExcel,
   useWorkLogCrud,
-  LOGS_PER_PAGE
+  useWorkerCompanyAttendance,
+  useWorkerQualityMetrics
 } from "../../../hooks/dashboard";
-import { TIME_OPTIONS_30MIN, getExtrusionSummaryData } from "./workerDashboardConstants";
 
+/**
+ * useWorkerDashboardState
+ * Main Facade Hook for Worker & Manager Dashboard:
+ * Coordinates worker identity, schedules, work log CRUD, excel processing,
+ * 5-company attendance matrix, and plant quality metrics into a single Lego architecture.
+ */
 export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, allMonthlyData } = useMonth();
   const { formatAmount } = useCurrency();
 
+  // Worker Identity & Role calculations
   const isManagerRole = isWorkerManagerRole(currentProfile);
   const workerPlant = currentProfile?.plant || "삼랑진공장";
   const isSamrangjin = workerPlant === "삼랑진공장" || String(currentProfile?.id || "").startsWith("sam_");
@@ -158,93 +124,6 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     "가공"
   );
 
-  const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
-  const [isHanulWorkReportModalOpen, setIsHanulWorkReportModalOpen] = useState(false);
-  const [isHanulQualityIssueModalOpen, setIsHanulQualityIssueModalOpen] = useState(false);
-  const [hanulQualityIssues, setHanulQualityIssues] = useState(() => getLocalHanulQualityIssues());
-  const [machiningQualityIssues, setMachiningQualityIssues] = useState(() => getLocalMachiningQualityIssues());
-  const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
-  const [hanulReportProject, setHanulReportProject] = useState("9BQC");
-  const [hanulReportProcess, setHanulReportProcess] = useState("소재준비");
-  const [hanulReportEditData, setHanulReportEditData] = useState(null);
-  const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
-  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
-
-  useModalHistory(isHanulSettlementModalOpen, () => setIsHanulSettlementModalOpen(false), "workerDashboardHanulModal");
-  useModalHistory(isHanulWorkReportModalOpen, () => setIsHanulWorkReportModalOpen(false), "workerDashboardHanulReportModal");
-  useModalHistory(isHanulQualityIssueModalOpen, () => setIsHanulQualityIssueModalOpen(false), "workerDashboardHanulQualityModal");
-  useModalHistory(isWorkLogsSummaryModalOpen, () => setIsWorkLogsSummaryModalOpen(false), "workerDashboardWorkLogsSummaryModal");
-
-  useEffect(() => {
-    const unsub = subscribeHanulQualityIssues((list) => {
-      setHanulQualityIssues(list || []);
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const unsub = subscribeMachiningQualityIssues((list) => {
-      setMachiningQualityIssues(list || []);
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const unsub = subscribeExtrusionQualityIssues((list) => {
-      setExtrusionQualityIssues(list || []);
-    });
-    return () => unsub();
-  }, []);
-
-  const activeHanulQualityCount = useMemo(() => {
-    return (hanulQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
-  }, [hanulQualityIssues]);
-
-  const activeMachiningQualityCount = useMemo(() => {
-    return (machiningQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
-  }, [machiningQualityIssues]);
-
-  const activeExtrusionQualityCount = useMemo(() => {
-    return (extrusionQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
-  }, [extrusionQualityIssues]);
-
-  const handleOpenHanulReport = (proj = "9BQC", proc = "소재준비", editData = null) => {
-    setHanulReportProject(proj);
-    setHanulReportProcess(proc);
-    setHanulReportEditData(editData);
-    setIsHanulWorkReportModalOpen(true);
-  };
-
-  const handleOpenHanulSettlementModal = () => {
-    pushModalHistory("hanul_settlement_modal");
-    setIsHanulSettlementModalOpen(true);
-  };
-
-  const [isYuseongWorkReportModalOpen, setIsYuseongWorkReportModalOpen] = useState(false);
-  const [yuseongReportProject, setYuseongReportProject] = useState("JK1");
-  const [yuseongReportEditData, setYuseongReportEditData] = useState(null);
-  const [yuseongQualityIssues, setYuseongQualityIssues] = useState(() => getLocalYuseongQualityIssues());
-  useModalHistory(isYuseongWorkReportModalOpen, () => setIsYuseongWorkReportModalOpen(false), "workerDashboardYuseongReportModal");
-
-  useEffect(() => {
-    const unsub = subscribeYuseongQualityIssues((list) => {
-      setYuseongQualityIssues(list || []);
-    });
-    return () => unsub();
-  }, []);
-
-  const activeYuseongQualityCount = useMemo(() => {
-    return (yuseongQualityIssues || []).filter((i) => i && i.status === "ACTIVE").length;
-  }, [yuseongQualityIssues]);
-
-  const handleOpenYuseongReport = (proj = "JK1", editData = null) => {
-    setYuseongReportProject(proj);
-    setYuseongReportEditData(editData);
-    setIsYuseongWorkReportModalOpen(true);
-  };
-
-  const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
-
   const workerCard = useMemo(() => {
     return getWorkerPersonnelCard(currentProfile || {});
   }, [currentProfile]);
@@ -268,238 +147,39 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
   const isManagerOrAdmin = isManagerOrAdminUser(currentProfile, isAdmin);
   const isExtrusionWorkerOnly = isExtrusionWorkerProfile(currentProfile);
 
-  // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
-  const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
+  // Operator Worker Role Bools
+  const isExtrusionOperatorWorker =
+    isExtrusionWorkerProfile(currentProfile) &&
+    currentProfile?.name !== "설유철" &&
+    currentProfile?.id !== "sam_yc" &&
+    !isAdmin;
 
-  useEffect(() => {
-    const refreshExtrusionData = () => {
-      setExtrusionSummaryList(getExtrusionSummaryData());
-    };
-    window.addEventListener("storage", refreshExtrusionData);
-    window.addEventListener("focus", refreshExtrusionData);
-    window.addEventListener("extrusion-data-updated", refreshExtrusionData);
-    return () => {
-      window.removeEventListener("storage", refreshExtrusionData);
-      window.removeEventListener("focus", refreshExtrusionData);
-      window.removeEventListener("extrusion-data-updated", refreshExtrusionData);
-    };
-  }, []);
+  const isHanulOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
+    isHanulWorkerProfile(currentProfile) &&
+    !isAdmin;
 
-  // 5 Company Smart Overtime Ledger & Reports Subscription (항상 실시간 KST 당월 기준)
-  const [smartOvertimeData, setSmartOvertimeData] = useState(() => {
-    const todayYM = getKSTDateString().slice(0, 7);
-    return getLocalSmartOvertimeData(todayYM);
-  });
-  const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
+  const isMachiningOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
+    isMachiningWorkerProfile(currentProfile) &&
+    !isAdmin;
 
-  useEffect(() => {
-    const todayYM = getKSTDateString().slice(0, 7);
-    setSmartOvertimeData(getLocalSmartOvertimeData(todayYM));
-    const unsubSmart = subscribeSmartOvertimeData((data) => {
-      if (data && data.attendanceMatrix) {
-        setSmartOvertimeData(data);
-      }
-    }, todayYM);
-    const unsubReports = subscribeOvertimeReports((reports) => {
-      setOvertimeReports(reports || []);
-    });
-    const handleOvertimeUpdated = (e) => {
-      if (e.detail?.reports) {
-        setOvertimeReports(e.detail.reports);
-      } else {
-        setOvertimeReports(getLocalOvertimeReports());
-      }
-    };
-    window.addEventListener("oryuk_overtime_reports_updated", handleOvertimeUpdated);
-    return () => {
-      unsubSmart();
-      unsubReports();
-      window.removeEventListener("oryuk_overtime_reports_updated", handleOvertimeUpdated);
-    };
-  }, []);
+  const isYuseongOperatorWorker =
+    Boolean(currentProfile?.isFieldWorker) &&
+    isYuseongWorkerProfile(currentProfile) &&
+    !isAdmin;
 
-  // 당일 작성여부 및 미작성 업체 계산 (보고서와 대장 실시간 통합)
-  const { companyOverviewStats, unwrittenCompanies } = useMemo(() => {
-    const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
-    const todayStr = getKSTDateString();
-    const todayParts = todayStr.split("-");
-    const todayDayNum = todayParts.length === 3 ? parseInt(todayParts[2], 10) : new Date().getDate();
-    const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
-    const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
+  const isOperatorWorker =
+    isExtrusionOperatorWorker ||
+    isHanulOperatorWorker ||
+    isMachiningOperatorWorker ||
+    isYuseongOperatorWorker;
 
-    // 10월 이후는 smart_overtime_ledger가 단일 원천이므로 과거 보고서 보정(reconcile)을 거치지 않음
-    const isNewArchitecture = todayYear > 2026 || (todayYear === 2026 && todayMonth >= 10);
-    const matrix = isNewArchitecture
-      ? rawMatrix
-      : (reconcileMatrixWithReports(rawMatrix, overtimeReports || [], todayYear, todayMonth).matrix || rawMatrix);
+  // Shared Toast states
+  const [logSavedToast, setLogSavedToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("업무일지가 저장되었습니다.");
 
-    const daily = calculateDailySummary(matrix, todayDayNum, todayYear, todayMonth);
-    const companyStyles = {
-      "오륙": { dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
-      "유성": { dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" },
-      "조영": { dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
-      "한울": { dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
-      "부림텍": { dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" }
-    };
-
-    // 순서 표준화: 오륙 -> 유성 -> 조영 -> 한울 -> 부림텍
-    const companies = ["오륙", "유성", "조영", "한울", "부림텍"].map((name) => {
-      const styles = companyStyles[name] || companyStyles["오륙"];
-      const cleanCompName = cleanCompanyName(name);
-      const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
-      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
-
-      // 당일 원장 상의 근태 입력 인원수 (단일 진실 원천)
-      const enteredCount = compWorkers.filter((w) => {
-        const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
-        const str = String(v ?? "").trim();
-        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
-      }).length;
-
-      // 1단계 심플 결재 상태 확인 (APPROVED: 마감, SUBMITTED: 상신대기, DRAFT: 작성중)
-      const approvalKey = `${cleanCompName}_${todayDayNum}`;
-      const approvalInfo = smartOvertimeData?.companyApprovalStatus?.[approvalKey] || {};
-      const approvalStatus = approvalInfo.status || "DRAFT";
-
-      const hasReport = (overtimeReports || []).some((r) => {
-        if (!r) return false;
-        const rDateKey = getReportDateSortKey(r);
-        if (rDateKey !== todayStr) return false;
-        return cleanCompanyName(r.company || "") === cleanCompName;
-      });
-
-      // 작성전/후 2단계 단일화 로직 (1명 이상 입력 or 승인/상신 or 일보보고서 등록 -> 작성후)
-      const hasAnyAttendance = enteredCount > 0;
-      const isApproved = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "APPROVED";
-      const isSubmitted = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "SUBMITTED";
-      const isWritten = hasAnyAttendance || isApproved || isSubmitted || (approvalInfo.attendedCount > 0) || hasReport;
-      const shortName = name.replace(/[()주]/g, "");
-
-      const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
-      const attended = b && b.attended !== undefined ? b.attended : enteredCount;
-      const absent = b && b.absent !== undefined ? b.absent : Math.max(0, workers - attended);
-      const otWorkers = b && b.otWorkers !== undefined ? b.otWorkers : 0;
-      const otHours = b && b.otHours !== undefined ? b.otHours : 0;
-      const totalHours = b && b.totalHours !== undefined ? b.totalHours : (attended * 8 + otHours);
-
-      const statusBadgeText = isWritten ? "작성후" : "작성전";
-      const statusBadgeClass = isWritten
-        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/50 font-black"
-        : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-400/50 font-bold";
-
-      return {
-        name,
-        shortName,
-        isWritten,
-        isApproved,
-        isSubmitted,
-        approvalStatus,
-        statusBadgeText,
-        statusBadgeClass,
-        workers,
-        attended,
-        absent,
-        otWorkers,
-        otHours,
-        totalHours,
-        dot: styles.dot,
-        borderHover: styles.borderHover,
-        badgeColor: styles.badgeColor,
-        isTotal: false
-      };
-    });
-
-    const unwritten = (Array.isArray(companies) ? companies : []).filter((c) => !c.isWritten);
-
-    return {
-      companyOverviewStats: companies,
-      unwrittenCompanies: unwritten
-    };
-  }, [smartOvertimeData, overtimeReports]);
-
-  // 관리자별 맞춤 근태현황: 본인 소속사 우선 정렬
-  const filteredCompanyOverviewStats = useMemo(() => {
-    if (!companyOverviewStats || companyOverviewStats.length === 0) return [];
-
-    if (isHanulManager || isHanul) {
-      const myComp = companyOverviewStats.find((c) => c.name === "한울" || c.shortName === "한울");
-      const others = companyOverviewStats.filter((c) => c !== myComp);
-      return [myComp, ...others].filter(Boolean);
-    }
-    if (isBurimtechManager || isBurimtech) {
-      const myComp = companyOverviewStats.find((c) => c.name === "부림텍" || c.shortName === "부림텍");
-      const others = companyOverviewStats.filter((c) => c !== myComp);
-      return [myComp, ...others].filter(Boolean);
-    }
-    if (isYuseongManager) {
-      const myComp = companyOverviewStats.find((c) => c.name === "유성" || c.shortName === "유성");
-      const others = companyOverviewStats.filter((c) => c !== myComp);
-      return [myComp, ...others].filter(Boolean);
-    }
-
-    return companyOverviewStats;
-  }, [companyOverviewStats, isHanulManager, isHanul, isBurimtechManager, isBurimtech, isYuseongManager]);
-
-  const filteredUnwrittenCompanies = useMemo(() => {
-    return unwrittenCompanies || [];
-  }, [unwrittenCompanies]);
-
-  const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
-
-  useEffect(() => {
-    const unsub = subscribeApprovalDocs((docs) => {
-      setApprovalDocs(docs);
-    });
-    const handleApprovalUpdated = (e) => {
-      if (e.detail?.docs) {
-        setApprovalDocs(e.detail.docs);
-      } else {
-        setApprovalDocs(getLocalApprovalDocs());
-      }
-    };
-    window.addEventListener("oryuk_approval_document_updated", handleApprovalUpdated);
-    return () => {
-      unsub();
-      window.removeEventListener("oryuk_approval_document_updated", handleApprovalUpdated);
-    };
-  }, []);
-
-  const pendingCount = useMemo(() => {
-    return approvalDocs.filter((d) => isApprovalDocPending(d, currentProfile, isAdmin)).length;
-  }, [approvalDocs, currentProfile, isAdmin]);
-
-  const holdCount = useMemo(() => approvalDocs.filter((d) => d.status === "HOLD").length, [approvalDocs]);
-
-  // Plant-specific approval authority
-  const canApproveSamrangjin = isMyeongjae || (currentProfile?.plant === "삼랑진공장" && currentProfile?.assignedProcess === "총괄관리") || isAdmin;
-  const canApproveHallim = isDongwook || (currentProfile?.plant === "한림공장" && currentProfile?.assignedProcess === "총괄관리") || isAdmin;
-
-  const canApproveLog = useCallback((log) => {
-    if (!log) return false;
-    if (isAdmin) return true;
-    if (log.plant === "삼랑진공장" && canApproveSamrangjin) return true;
-    if (log.plant === "한림공장" && canApproveHallim) return true;
-    return false;
-  }, [isAdmin, canApproveSamrangjin, canApproveHallim]);
-
-  // Access Logs State for ADMIN
-  const [selectedWorkerForLogs, setSelectedWorkerForLogs] = useState(null);
-  const [accessLogs, setAccessLogs] = useState(() => getLocalAccessLogs());
-
-  useEffect(() => {
-    if (!selectedWorkerForLogs) return;
-    const unsub = subscribeAccessLogs((logs) => {
-      setAccessLogs(logs);
-    });
-    return () => unsub();
-  }, [selectedWorkerForLogs]);
-
-  const handleOpenWorkerLogs = (worker) => {
-    pushModalHistory("worker_access_logs");
-    const freshLogs = getLocalAccessLogs();
-    setAccessLogs(freshLogs);
-    setSelectedWorkerForLogs(worker);
-  };
+  const todayDateStr = useMemo(() => getKSTDateString(), []);
 
   // 오늘 날짜 포맷 (예: 9월 14일 (월))
   const todayFormattedLabel = useMemo(() => {
@@ -513,184 +193,6 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     }
     return todayStr;
   }, []);
-
-  // 특근보고서 결재 완료 여부 확인
-  const isOvertimeReportApproved = useCallback((rep) => {
-    if (!rep) return false;
-    const isWk = isWeekendByDate(rep.workDate || rep.title || rep.workDateFormatted);
-    if (!isWk) return true;
-    if (rep.workDate && String(rep.workDate).slice(0, 10) <= "2026-10-18") return true;
-
-    if (rep.approvalStatus === "결재완료" || rep.approvalStatus === "APPROVED" || rep.status === "APPROVED" || rep.status === "결재완료") {
-      return true;
-    }
-    if (Array.isArray(rep.approval) && rep.approval.length > 0 && rep.approval.every((st) => st.status === "완료" || st.status === "APPROVED")) {
-      return true;
-    }
-    if (Array.isArray(approvalDocs)) {
-      const isSam = rep.plant === "삼랑진공장" || rep.company === "(주)오륙" || rep.company === "유성" || rep.plant?.includes("삼랑진");
-      const plantKey = isSam ? "samrangjin" : "hanlim";
-      const targetPlant = isSam ? "삼랑진공장" : "한림공장";
-      const dateKey = rep.workDate ? rep.workDate.replace(/-/g, "") : "";
-      const matchedDoc = approvalDocs.find((d) => {
-        const isOt = d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "OVERTIME";
-        if (!isOt) return false;
-        const matchesPlant = d.plant === targetPlant || d.targetPlant === targetPlant || (d.id && d.id.includes(plantKey)) || (d.title && d.title.includes(isSam ? "삼랑진" : "한림"));
-        const matchesDate = (dateKey && d.id && d.id.includes(dateKey)) || d.workDate === rep.workDate || (d.title && rep.workDate && d.title.includes(rep.workDate));
-        return matchesPlant && matchesDate;
-      });
-      if (matchedDoc) {
-        if (matchedDoc.status === "APPROVED" || matchedDoc.status === "결재완료") {
-          return true;
-        }
-        if (Array.isArray(matchedDoc.steps) && matchedDoc.steps.every((st) => st.status === "APPROVED" || st.status === "완료")) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }, [approvalDocs]);
-
-  // 공장별 최신 실시간 미결재 특근보고서 (주말/휴일 특근보고서 대상)
-  const pendingApprovalCards = useMemo(() => {
-    if (!Array.isArray(overtimeReports)) return [];
-    const list = [];
-    const sorted = [...overtimeReports].sort((a, b) => (b.workDate || "").localeCompare(a.workDate || ""));
-
-    const samReport = sorted.find((r) => {
-      const isSam = r.plant === "삼랑진공장" || r.company === "(주)오륙" || r.company === "유성";
-      return isSam && !isOvertimeReportApproved(r);
-    });
-    if (samReport) list.push({ ...samReport, plantName: "삼랑진공장" });
-
-    const halReport = sorted.find((r) => {
-      const isHal = r.plant === "한림공장" || r.company === "조영" || r.company === "한울" || r.company === "부림텍";
-      return isHal && !isOvertimeReportApproved(r);
-    });
-    if (halReport) list.push({ ...halReport, plantName: "한림공장" });
-
-    return list;
-  }, [overtimeReports, isOvertimeReportApproved]);
-
-  // 관리자별 맞춤 미결재 특근보고서
-  const filteredPendingApprovalCards = useMemo(() => {
-    if (isPartnerProfile) return [];
-    if (isAdmin) return pendingApprovalCards;
-    if (isMyeongjae) return pendingApprovalCards.filter((r) => r.plantName === "삼랑진공장");
-    if (isDongwook) return pendingApprovalCards.filter((r) => r.plantName === "한림공장");
-    return [];
-  }, [pendingApprovalCards, isPartnerProfile, isAdmin, isMyeongjae, isDongwook]);
-
-  const getReportWorkersList = useCallback((report) => {
-    if (!report) return [];
-    if (Array.isArray(report.workers) && report.workers.length > 0) {
-      return report.workers;
-    }
-    const cleanComp = cleanCompanyName(report.company || "");
-    const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
-    const matched = rawMatrix.filter((w) => cleanCompanyName(w.company) === cleanComp);
-    if (matched.length > 0) {
-      return matched.map((w, idx) => ({
-        id: idx + 1,
-        name: w.name,
-        company: w.company,
-        line: w.process || "생산",
-        hours: 8,
-        overtimeHours: 2,
-        tasks: report.workContent || "휴일 특근 및 생산라인 가동"
-      }));
-    }
-    return [
-      { id: 1, name: "심임대", company: "(주)오륙", line: "JA G-RUN", hours: 8, overtimeHours: 2.5, tasks: "금형 교체 및 조립" },
-      { id: 2, name: "이상은", company: "(주)오륙", line: "NX4 G-RUN", hours: 8, overtimeHours: 2.0, tasks: "원소재 검사 및 포장" },
-      { id: 3, name: "최현영", company: "(주)오륙", line: "HR G-RUN", hours: 8, overtimeHours: 2.0, tasks: "완제품 적재 및 출하" }
-    ];
-  }, [smartOvertimeData]);
-
-  // Quality Real-time data for Dashboard
-  const [qualityRecords, setQualityRecords] = useState([]);
-  const [qualityPopupItem, setQualityPopupItem] = useState(null);
-
-  useEffect(() => {
-    const unsub = subscribeQualityRecords((recs) => {
-      setQualityRecords(recs);
-    });
-    return () => unsub();
-  }, []);
-
-  const handleOpenQualityPopup = (it) => {
-    pushModalHistory("quality_popup");
-    setQualityPopupItem(it);
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") setQualityPopupItem(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  const prevYearMonth = useMemo(() => {
-    return getPreviousYearMonth(selectedMonth || currentYearMonth || "2026-09");
-  }, [selectedMonth, currentYearMonth]);
-
-  const liveQualityPrevMonthly = useMemo(() => {
-    return getQualityMonthlyAggregation(qualityRecords, prevYearMonth);
-  }, [qualityRecords, prevYearMonth]);
-
-  const liveQualityCurrentMonthly = useMemo(() => {
-    return getQualityMonthlyAggregation(qualityRecords, selectedMonth || "2026-09");
-  }, [qualityRecords, selectedMonth]);
-
-  const liveQualityDaily = useMemo(() => {
-    return getQualityDailyAggregation(qualityRecords, selectedMonth || "2026-09");
-  }, [qualityRecords, selectedMonth]);
-
-  const handleExportQualityItemExcel = useCallback((targetItem) => {
-    if (!targetItem) return;
-    const rows = [
-      [`[${targetItem.name}] ${selectedMonth || "2026-09"} 일자별 품질 검사 & 불량 정리본`],
-      ["차종", targetItem.carModel, "조회기준월", selectedMonth || "2026-09", "품질목표", "0.70% 이하", "출력일시", new Date().toLocaleString("ko-KR")],
-      [],
-      ["검사일자", "요일", "검사수량(EA)", "불량수량(EA)", "아이템 불량률(%)", "품질 손실금액(원)", "주요 불량 사유(WORST)"]
-    ];
-
-    liveQualityDaily.forEach((d) => {
-      const it = d.items?.[targetItem.id] || { inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "-" };
-      rows.push([
-        d.date,
-        `${d.dayOfWeek}요일`,
-        it.inspectQty,
-        it.defectQty,
-        `${it.defectRate}%`,
-        it.lossAmount,
-        it.worstReason || "-"
-      ]);
-    });
-
-    rows.push([]);
-    rows.push([
-      "월간 누계 합계",
-      "-",
-      targetItem.inspectQty,
-      targetItem.defectQty,
-      `${targetItem.defectRate}%`,
-      targetItem.lossAmount,
-      targetItem.worstReason
-    ]);
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, targetItem.carModel);
-    XLSX.writeFile(wb, `${targetItem.carModel}_일자별품질정리본_${selectedMonth || "2026-09"}.xlsx`);
-  }, [selectedMonth, liveQualityDaily]);
-
-  // Shared Toast states
-  const [logSavedToast, setLogSavedToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("업무일지가 저장되었습니다.");
-
-  const todayDateStr = useMemo(() => getKSTDateString(), []);
 
   // Safe selected month & PnL metrics
   const safeSelectedMonth = selectedMonth || "2026-09";
@@ -730,7 +232,105 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
   const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "100.0";
   const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "100.0";
 
-  // 1. Worker Schedule & Weekly Calendar Hook
+  // Access Logs State for ADMIN
+  const [selectedWorkerForLogs, setSelectedWorkerForLogs] = useState(null);
+  const [accessLogs, setAccessLogs] = useState(() => getLocalAccessLogs());
+
+  useEffect(() => {
+    if (!selectedWorkerForLogs) return;
+    const unsub = subscribeAccessLogs((logs) => {
+      setAccessLogs(logs);
+    });
+    return () => unsub();
+  }, [selectedWorkerForLogs]);
+
+  const handleOpenWorkerLogs = (worker) => {
+    pushModalHistory("worker_access_logs");
+    const freshLogs = getLocalAccessLogs();
+    setAccessLogs(freshLogs);
+    setSelectedWorkerForLogs(worker);
+  };
+
+  // Sub-Hook 1: 5-Company Attendance & Overtime Ledger
+  const {
+    extrusionSummaryList,
+    smartOvertimeData,
+    overtimeReports,
+    companyOverviewStats,
+    unwrittenCompanies,
+    filteredCompanyOverviewStats,
+    filteredUnwrittenCompanies,
+    approvalDocs,
+    pendingCount,
+    holdCount,
+    canApproveSamrangjin,
+    canApproveHallim,
+    canApproveLog,
+    isOvertimeReportApproved,
+    pendingApprovalCards,
+    filteredPendingApprovalCards,
+    selectedOvertimeReportForModal,
+    setSelectedOvertimeReportForModal,
+    getReportWorkersList
+  } = useWorkerCompanyAttendance({
+    currentProfile,
+    isAdmin,
+    isMyeongjae,
+    isDongwook,
+    isPartnerProfile,
+    isHanulManager,
+    isHanul,
+    isBurimtechManager,
+    isBurimtech,
+    isYuseongManager
+  });
+
+  // Sub-Hook 2: Quality Issues & Real-time Metrics
+  const {
+    hanulQualityIssues,
+    machiningQualityIssues,
+    extrusionQualityIssues,
+    yuseongQualityIssues,
+    activeHanulQualityCount,
+    activeMachiningQualityCount,
+    activeExtrusionQualityCount,
+    activeYuseongQualityCount,
+    handleOpenHanulReport,
+    handleOpenHanulSettlementModal,
+    handleOpenYuseongReport,
+    isHanulSettlementModalOpen,
+    setIsHanulSettlementModalOpen,
+    isHanulWorkReportModalOpen,
+    setIsHanulWorkReportModalOpen,
+    isHanulQualityIssueModalOpen,
+    setIsHanulQualityIssueModalOpen,
+    hanulReportProject,
+    hanulReportProcess,
+    hanulReportEditData,
+    isYuseongWorkReportModalOpen,
+    setIsYuseongWorkReportModalOpen,
+    yuseongReportProject,
+    yuseongReportEditData,
+    isInspectionModalOpen,
+    setIsInspectionModalOpen,
+    isWorkLogsSummaryModalOpen,
+    setIsWorkLogsSummaryModalOpen,
+    qualityRecords,
+    qualityPopupItem,
+    setQualityPopupItem,
+    handleOpenQualityPopup,
+    prevYearMonth,
+    liveQualityPrevMonthly,
+    liveQualityCurrentMonthly,
+    liveQualityDaily,
+    handleExportQualityItemExcel,
+    getPreviousYearMonth
+  } = useWorkerQualityMetrics({
+    selectedMonth,
+    currentYearMonth
+  });
+
+  // Sub-Hook 3: Worker Schedule & Weekly Calendar
   const workerSchedule = useWorkerSchedule({
     currentProfile,
     workerFullName,
@@ -742,7 +342,7 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     setLogSavedToast
   });
 
-  // 2. Company Common Schedule & Comments Hook
+  // Sub-Hook 4: Company Common Schedule & Comments
   const commonSchedule = useCommonSchedule({
     currentProfile,
     isAdmin,
@@ -751,7 +351,7 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     setLogSavedToast
   });
 
-  // 3. Work Log CRUD, Maintenance Items, and Pagination Hook
+  // Sub-Hook 5: Work Log CRUD, Maintenance Items, and Pagination
   const workLogCrud = useWorkLogCrud({
     currentProfile,
     workerFullName,
@@ -792,7 +392,7 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     return () => window.removeEventListener("open-worker-worklog-modal", handleOpen);
   }, [handleOpenWorkLogModal]);
 
-  // 4. Dashboard Excel (Quality & General PnL) Hook
+  // Sub-Hook 6: Dashboard Excel (Quality & General PnL)
   const dashboardExcel = useDashboardExcel({
     workerFullName,
     workerPlant,
@@ -810,37 +410,6 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     setToastMessage,
     setLogSavedToast
   });
-
-  // 🌟 압출동 일반 현장작업자
-  const isExtrusionOperatorWorker =
-    isExtrusionWorkerProfile(currentProfile) &&
-    currentProfile?.name !== "설유철" &&
-    currentProfile?.id !== "sam_yc" &&
-    !isAdmin;
-
-  // 🌟 한울 가공/협력업체 현장작업자
-  const isHanulOperatorWorker =
-    Boolean(currentProfile?.isFieldWorker) &&
-    isHanulWorkerProfile(currentProfile) &&
-    !isAdmin;
-
-  // 🌟 삼랑진공장 가공동 현장작업자 (JA, NX4, NX4a, HR G/RUN 4대 차종)
-  const isMachiningOperatorWorker =
-    Boolean(currentProfile?.isFieldWorker) &&
-    isMachiningWorkerProfile(currentProfile) &&
-    !isAdmin;
-
-  // 🌟 (주)유성 가공/협력업체 현장작업자 (JK1 Part'g, CE1 Part'g, DT Hood)
-  const isYuseongOperatorWorker =
-    Boolean(currentProfile?.isFieldWorker) &&
-    isYuseongWorkerProfile(currentProfile) &&
-    !isAdmin;
-
-  const isOperatorWorker =
-    isExtrusionOperatorWorker ||
-    isHanulOperatorWorker ||
-    isMachiningOperatorWorker ||
-    isYuseongOperatorWorker;
 
   return {
     // Auth & Identity
@@ -971,7 +540,7 @@ export function useWorkerDashboardState({ onBulkUpload, onNavigateTab }) {
     // Work log summary modal
     isWorkLogsSummaryModalOpen,
     setIsWorkLogsSummaryModalOpen,
-    // 4 Modular Hook returns
+    // 6 Modular Hook returns
     workerSchedule,
     commonSchedule,
     workLogCrud,
