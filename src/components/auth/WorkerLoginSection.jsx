@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Factory, Calendar, Building2 } from "lucide-react";
+import React from "react";
+import { Factory, Calendar } from "lucide-react";
 import { PLANTS } from "../../context/AuthContext";
 import { getUserLeaveStatus } from "../../services/annualLeaveService";
 import { WorkerPinModal } from "./WorkerPinModal";
@@ -35,88 +35,10 @@ export const WorkerLoginSection = ({
   yuseongWorkersCount = 0,
   joyoungWorkersCount = 0
 }) => {
-  // 모바일 편의성 극대화: 공장동 필터 탭 (선택 상태 로컬 저장)
-  const [activePlantTab, setActivePlantTab] = useState(() => {
-    try {
-      return localStorage.getItem("oryuk_firstpage_plant_tab") || "all";
-    } catch (e) {
-      return "all";
-    }
-  });
-
-  const handleSelectPlantTab = (tab) => {
-    setActivePlantTab(tab);
-    try {
-      localStorage.setItem("oryuk_firstpage_plant_tab", tab);
-    } catch (e) {}
-  };
-
-  const totalWorkersCount = (PLANTS[0]?.workers?.length || 0) + (PLANTS[1]?.workers?.length || 0);
-
   return (
     <div id="worker-login-section-root" className="space-y-3 pb-4 sm:pb-2">
-      {/* 🌟 공장동 빠른 선택 탭 (모바일 스크롤 대폭 감소 & 탭 조작성 강화) */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-2xs">
-        <button
-          type="button"
-          onClick={() => handleSelectPlantTab("all")}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation select-none active:scale-95 ${
-            activePlantTab === "all"
-              ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/90 dark:border-slate-700"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>전체공장</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-            activePlantTab === "all"
-              ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-              : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-          }`}>
-            {totalWorkersCount}명
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSelectPlantTab("samrangjin")}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation select-none active:scale-95 ${
-            activePlantTab === "samrangjin"
-              ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md border border-amber-600"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-          }`}
-        >
-          <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>삼랑진공장</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-            activePlantTab === "samrangjin" ? "bg-amber-700/80 text-white" : "bg-slate-200 dark:bg-slate-700"
-          }`}>
-            {PLANTS[0]?.workers?.length || 0}명
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSelectPlantTab("hallim")}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation select-none active:scale-95 ${
-            activePlantTab === "hallim"
-              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md border border-emerald-700"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-          }`}
-        >
-          <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>한림공장</span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-            activePlantTab === "hallim" ? "bg-emerald-800/80 text-white" : "bg-slate-200 dark:bg-slate-700"
-          }`}>
-            {PLANTS[1]?.workers?.length || 0}명
-          </span>
-        </button>
-      </div>
-
       {/* 1. 삼랑진공장 (가공동/품질/관리) */}
-      {(activePlantTab === "all" || activePlantTab === "samrangjin") && (
-        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
+      <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
           <div className="flex items-center justify-between">
             <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5 flex-wrap">
               <div className="p-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
@@ -237,11 +159,9 @@ export const WorkerLoginSection = ({
             })}
           </div>
         </div>
-      )}
 
       {/* 2. 한림공장 (가공/협력업체) */}
-      {(activePlantTab === "all" || activePlantTab === "hallim") && (
-        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
+      <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
           <div className="flex items-center justify-between">
             <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
               <div className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -362,7 +282,6 @@ export const WorkerLoginSection = ({
             })}
           </div>
         </div>
-      )}
 
       {/* 🌟 작업자 이름 탭 시 뜨는 전용 모달 팝업창 */}
       {selectedUser && (
