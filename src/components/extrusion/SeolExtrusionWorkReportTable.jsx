@@ -331,12 +331,10 @@ export const SeolExtrusionWorkReportTable = ({
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white shadow-md shrink-0">
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
+        <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>삼랑진공장 압출동 작업일보 & 생산관리 실시간 현황</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
                 총 {stats.totalCount}건
@@ -357,7 +355,7 @@ export const SeolExtrusionWorkReportTable = ({
             title="탭하면 압출 1~4호 라인에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>⚙️ 양식설정</span>
+            <span>양식설정</span>
           </button>
           <button
             type="button"

@@ -3,11 +3,21 @@
  * 관리자 대시보드 패널의 제목 및 디자인 테마 설정 프리셋
  */
 
+/**
+ * 패널 제목 등에서 불필요한 이모지(이모티콘)를 완전히 제거하고 순수 텍스트만 추출
+ */
+export const cleanTitleWithoutEmoji = (str) => {
+  if (!str || typeof str !== "string") return "";
+  return str
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F100}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
+    .trim();
+};
+
 export const DEFAULT_PANEL_SETTING = {
   customTitle: "", // 커스텀 전체 제목 (비어있으면 기본 label 사용)
-  customTopTitle: "", // 복합 패널의 상단 타이틀 (예: 이창엽의 4M 정식대장)
+  customTopTitle: "", // 복합 패널의 상단 타이틀 (예: 4M 정식등록대장)
   customBottomTitle: "", // 복합 패널의 하단 타이틀 (예: 전사 4M 취합대장)
-  customBadge: "", // 커스텀 뱃지 명칭 (예: '🌟 개인', '전사 통합', '품질' 등)
+  customBadge: "", // 커스텀 뱃지 명칭 (예: '개인', '전사 통합', '품질' 등)
   hideBadge: false, // 뱃지 완전 삭제 여부
   hideSubtitle: true, // 제목 하단 주석/부연설명 숨김 여부 (기본: 깔끔하게 숨김)
   theme: "indigo", // 디자인 테마 키: indigo, ocean, emerald, slate, amber, light

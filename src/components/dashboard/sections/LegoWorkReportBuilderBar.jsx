@@ -64,7 +64,7 @@ export const LegoWorkReportBuilderBar = ({ onNavigateTab, currentProfile }) => {
 
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span className="font-black text-xs sm:text-sm text-white tracking-tight flex items-center gap-1.5 whitespace-nowrap">
-              <span>🧩 레고블록 작업일보 빌더</span>
+              <span>레고블록 작업일보 빌더</span>
             </span>
 
             <button
@@ -166,7 +166,7 @@ export const LegoWorkReportBuilderBar = ({ onNavigateTab, currentProfile }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base leading-tight text-white flex items-center gap-1.5">
-                    <span>🧩 레고블록 작업일보 빌더 & 양식 관리 센터</span>
+                    <span>레고블록 작업일보 빌더 & 양식 관리 센터</span>
                     <span className="px-2 py-0.2 rounded-full text-[10px] font-black bg-cyan-400 text-slate-950">
                       TEST 관제
                     </span>

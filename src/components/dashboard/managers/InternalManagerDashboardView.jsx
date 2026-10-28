@@ -532,7 +532,7 @@ export const InternalManagerDashboardView = ({
                 title="부적합경보 및 품질이슈 등록/관리"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
-                <span>🚨 부적합경보 입력</span>
+                <span>부적합경보 입력</span>
                 {(activeMachiningQualityCount + activeExtrusionQualityCount + activeHanulQualityCount) > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
                     {activeProfile.plant === "한림공장"

@@ -5,9 +5,11 @@ import {
   ArrowRight,
   RotateCcw,
   Plus,
-  X
+  X,
+  BellRing
 } from "lucide-react";
 import { determineFourMCategory } from "../../../services/fourMChangePointService";
+import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const Step3IncomingTransferredSection = ({
   incomingTransferredItems,
@@ -21,6 +23,9 @@ export const Step3IncomingTransferredSection = ({
   customSettings = null,
   onUpdateDraft = null
 }) => {
+  const incomingTitleClean = cleanTitleWithoutEmoji(customSettings?.incomingTitle) || "생산관리자 이관 건 재검토";
+  const incomingBadgeClean = cleanTitleWithoutEmoji(customSettings?.incomingBadge) || "접수함";
+
   return (
     <div className="space-y-3 p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-950/20 border-2 border-amber-500/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-amber-500/20">
@@ -31,8 +36,8 @@ export const Step3IncomingTransferredSection = ({
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-black font-black text-xs">
                   <input
                     type="text"
-                    value={customSettings?.incomingBadge !== undefined ? customSettings.incomingBadge : "접수함"}
-                    onChange={(e) => onUpdateDraft?.({ incomingBadge: e.target.value })}
+                    value={incomingBadgeClean}
+                    onChange={(e) => onUpdateDraft?.({ incomingBadge: cleanTitleWithoutEmoji(e.target.value) })}
                     className="bg-transparent text-black font-black text-xs outline-none w-14 border-b border-black/30 focus:border-black"
                   />
                   <button
@@ -55,22 +60,26 @@ export const Step3IncomingTransferredSection = ({
                 </button>
               )}
 
-              <input
-                type="text"
-                value={customSettings?.incomingTitle !== undefined ? customSettings.incomingTitle : "🔔 생산관리자 이관 건 재검토"}
-                onChange={(e) => onUpdateDraft?.({ incomingTitle: e.target.value })}
-                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-amber-400 text-amber-900 dark:text-amber-200 font-black text-xs sm:text-sm outline-none min-w-[200px]"
-              />
+              <div className="flex items-center gap-1.5">
+                <BellRing className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-500 shrink-0" />
+                <input
+                  type="text"
+                  value={incomingTitleClean}
+                  onChange={(e) => onUpdateDraft?.({ incomingTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-amber-400 text-amber-900 dark:text-amber-200 font-black text-xs sm:text-sm outline-none min-w-[200px]"
+                />
+              </div>
             </>
           ) : (
             <>
               {!customSettings?.hideIncomingBadge && (
                 <span className="px-2 py-0.5 rounded-md bg-amber-500 text-black font-black text-xs">
-                  {customSettings?.incomingBadge || "접수함"}
+                  {incomingBadgeClean}
                 </span>
               )}
               <h4 className="font-black text-sm sm:text-base text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                <span>{customSettings?.incomingTitle || "🔔 생산관리자 이관 건 재검토"}</span>
+                <BellRing className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-500 shrink-0" />
+                <span>{incomingTitleClean}</span>
               </h4>
             </>
           )}

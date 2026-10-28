@@ -1,5 +1,6 @@
 import React from "react";
-import { ArrowRight, X, Plus } from "lucide-react";
+import { TrendingUp, ArrowRight, X, Plus } from "lucide-react";
+import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const SalesPurchaseSummarySection = ({
   monthTitle,
@@ -18,21 +19,28 @@ export const SalesPurchaseSummarySection = ({
     ? `${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준`
     : `${todayFormattedLabel} 기준 (누적)`;
 
+  const rawTitle = customSettings?.customTitle !== undefined ? customSettings.customTitle : `${monthTitle} 매입매출현황 요약`;
+  const titleValue = cleanTitleWithoutEmoji(rawTitle) || `${monthTitle} 매입매출현황 요약`;
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
-            <input
-              type="text"
-              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : `${monthTitle} 매입매출현황 요약`}
-              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
-              placeholder="제목..."
-              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
-            />
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <input
+                type="text"
+                value={titleValue}
+                onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                placeholder="제목..."
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+              />
+            </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              {customSettings?.customTitle || `${monthTitle} 매입매출현황 요약`}
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{titleValue}</span>
             </h2>
           )}
 

@@ -358,23 +358,21 @@ export default function Step4ExecutiveApprovalPanel({
       {/* 1. Header Bar with Step 4 Identity */}
       {/* ========================================================================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-start sm:items-center gap-3">
-          <div className="p-3 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-rose-600 text-white shadow-lg shrink-0">
-            <Crown className="w-6 h-6" />
-          </div>
+        <div className="min-w-0">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-xs font-black">
-                4단계 경영진 전용
+                경영진 전용
               </span>
-              <h3 className="font-black text-lg sm:text-xl text-slate-900 dark:text-white tracking-tight">
-                변동점 관리대장 최종점검 및 전사 종합현황 승인 센터
+              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span>변동점 관리대장 최종점검 및 전사 종합현황 승인 센터</span>
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-purple-600 dark:text-purple-400 font-black">{executiveName} {executiveTitle}</strong></span>
               <span>•</span>
-              <span>3단계 품질 상신건 최종 점검 ➡️ 전자날인 승인(또는 반려) ➡️ 1~4단계 파이프라인 전사 총괄 관제</span>
+              <span>품질 상신건 최종 점검 → 전자날인 승인(또는 반려) → 파이프라인 전사 총괄 관제</span>
             </p>
           </div>
         </div>
@@ -497,11 +495,12 @@ export default function Step4ExecutiveApprovalPanel({
                 결재함
               </span>
               <h4 className="font-black text-sm sm:text-base text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
-                <span>👑 최종 승인 대기 변동점 대장 ({pendingApprovalItems.length}건 결재 대기)</span>
+                <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span>최종 승인 대기 변동점 대장 ({pendingApprovalItems.length}건 결재 대기)</span>
               </h4>
             </div>
             <span className="text-[11.5px] text-slate-500 dark:text-slate-400">
-              ※ 3단계 품질관리자(이창엽 책임)의 시정대책(CAPA) 증빙을 확인 후 최종 승인합니다.
+              ※ 품질관리자(이창엽 책임)의 시정대책(CAPA) 증빙을 확인 후 최종 승인합니다.
             </span>
           </div>
 
@@ -512,7 +511,7 @@ export default function Step4ExecutiveApprovalPanel({
                 현재 경영진 결재 대기 중인 변동점 건이 없습니다.
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                3단계 품질관리자가 조치완료 후 상신하면 실시간으로 결재함에 도착합니다.
+                품질관리자가 조치완료 후 상신하면 실시간으로 결재함에 도착합니다.
               </p>
             </div>
           ) : (
@@ -895,7 +894,7 @@ export default function Step4ExecutiveApprovalPanel({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-rose-500" />
                 <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  3단계 품질관리자(이창엽 책임)에게 보완 요청 (반려)
+                  품질관리자(이창엽 책임)에게 보완 요청 (반려)
                 </h3>
               </div>
               <button

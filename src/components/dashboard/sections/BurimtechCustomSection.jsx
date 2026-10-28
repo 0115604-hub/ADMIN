@@ -62,7 +62,7 @@ export const BurimtechCustomSection = ({
             title="부림텍 부적합경보 및 품질이슈 등록/관리"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>🚨 부적합경보 입력</span>
+            <span>부적합경보 입력</span>
             {activeHanulQualityCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black">
                 {activeHanulQualityCount}
@@ -70,7 +70,7 @@ export const BurimtechCustomSection = ({
             )}
           </button>
 
-          {/* ⚙️ 부림텍일보설정 버튼 (5대 양식 리스트 선택 및 매핑) */}
+          {/* 부림텍일보설정 버튼 (5대 양식 리스트 선택 및 매핑) */}
           <button
             type="button"
             onClick={() => setIsTemplateSettingOpen(true)}
@@ -78,7 +78,7 @@ export const BurimtechCustomSection = ({
             title="탭하면 부림텍 5대 공정 작업일보 양식 리스트를 열어 설정합니다"
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>⚙️ 부림텍일보설정</span>
+            <span>부림텍일보설정</span>
           </button>
         </div>
       </div>

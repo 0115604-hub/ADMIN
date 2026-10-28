@@ -9,9 +9,10 @@ import {
   AlertOctagon,
   TrendingDown,
   X,
-  Plus
+  Plus,
+  Layers
 } from "lucide-react";
-import { PANEL_THEMES } from "../../../config/panelThemeConfig";
+import { PANEL_THEMES, cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 /**
  * AbnormalityHeader
@@ -42,20 +43,22 @@ export const AbnormalityHeader = ({
 }) => {
   const themeObj = propThemeObj || PANEL_THEMES[theme] || PANEL_THEMES.indigo;
 
-  const titleValue =
+  const rawTitle =
     customSettings?.customBottomTitle !== undefined
       ? customSettings.customBottomTitle
       : customSettings?.customTitle !== undefined
       ? customSettings.customTitle
-      : (customTitle || "📋 전사 4M 취합대장");
+      : (customTitle || "전사 4M 취합대장");
+
+  const titleValue = cleanTitleWithoutEmoji(rawTitle) || "전사 4M 취합대장";
 
   const defaultBadgeText = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "전사 통합 관제";
   const badgeValue =
     customSettings?.customBottomBadge !== undefined && customSettings.customBottomBadge !== ""
-      ? customSettings.customBottomBadge
+      ? cleanTitleWithoutEmoji(customSettings.customBottomBadge)
       : customSettings?.customBadge !== undefined && customSettings.customBadge !== ""
-      ? customSettings.customBadge
-      : (customBadge || defaultBadgeText);
+      ? cleanTitleWithoutEmoji(customSettings.customBadge)
+      : cleanTitleWithoutEmoji(customBadge || defaultBadgeText);
 
   const isBadgeHidden =
     customSettings?.hideBottomBadge !== undefined
@@ -66,24 +69,25 @@ export const AbnormalityHeader = ({
 
   return (
     <div className="space-y-3">
-      {/* 1. 패널 상단 타이틀 & 툴바 (이창엽 4M 정식대장과 100% 동일한 통일감 부여) */}
+      {/* 1. 패널 상단 타이틀 & 툴바 (글자크기와 동일한 아이콘 + 이모지 없는 순수 텍스트) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className={`p-2 rounded-xl bg-gradient-to-tr ${themeObj.iconGradient} text-white shadow-md shrink-0`}>
-            <ShieldAlert className="w-5 h-5" />
-          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               {isInlineEditing ? (
-                <input
-                  type="text"
-                  value={titleValue}
-                  onChange={(e) => onUpdateDraft?.({ customBottomTitle: e.target.value })}
-                  placeholder="취합대장 제목 입력..."
-                  className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-sm sm:text-base outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[200px]"
-                />
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={titleValue}
+                    onChange={(e) => onUpdateDraft?.({ customBottomTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                    placeholder="취합대장 제목 입력..."
+                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-sm sm:text-base outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[200px]"
+                  />
+                </div>
               ) : (
                 <h2 className="font-black text-sm sm:text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <span>{titleValue}</span>
                 </h2>
               )}
@@ -95,7 +99,7 @@ export const AbnormalityHeader = ({
                       <input
                         type="text"
                         value={badgeValue}
-                        onChange={(e) => onUpdateDraft?.({ customBottomBadge: e.target.value })}
+                        onChange={(e) => onUpdateDraft?.({ customBottomBadge: cleanTitleWithoutEmoji(e.target.value) })}
                         placeholder="뱃지 명칭..."
                         className="bg-transparent text-white font-black text-[10.5px] outline-none w-24 border-b border-white/40 focus:border-white"
                       />
@@ -205,7 +209,7 @@ export const AbnormalityHeader = ({
         >
           <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold truncate">
             <ShieldAlert className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="truncate">📋 변동점 관리대장</span>
+            <span className="truncate">변동점 관리대장</span>
           </div>
           <div className="mt-1">
             <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{stats.officialLedgerCount}건</span>
@@ -226,7 +230,7 @@ export const AbnormalityHeader = ({
         >
           <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold truncate">
             <Wrench className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="truncate">🔧 MACHINE</span>
+            <span className="truncate">MACHINE</span>
           </div>
           <div className="mt-1">
             <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{stats.machineCount}건</span>
@@ -247,7 +251,7 @@ export const AbnormalityHeader = ({
         >
           <div className="flex items-center gap-1.5 text-xs text-sky-600 dark:text-sky-400 font-bold truncate">
             <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-            <span className="truncate">👥 MAN</span>
+            <span className="truncate">MAN</span>
           </div>
           <div className="mt-1">
             <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{stats.manCount}건</span>
@@ -268,7 +272,7 @@ export const AbnormalityHeader = ({
         >
           <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-bold truncate">
             <AlertOctagon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="truncate">🚨 METHOD</span>
+            <span className="truncate">METHOD</span>
           </div>
           <div className="mt-1">
             <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{stats.methodCount}건</span>
@@ -289,7 +293,7 @@ export const AbnormalityHeader = ({
         >
           <div className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-bold truncate">
             <TrendingDown className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-            <span className="truncate">📉 MATERIAL</span>
+            <span className="truncate">MATERIAL</span>
           </div>
           <div className="mt-1">
             <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white">{stats.materialCount}건</span>

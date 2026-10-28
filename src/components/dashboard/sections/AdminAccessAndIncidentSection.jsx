@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Factory,
@@ -35,18 +35,16 @@ export const AdminAccessAndIncidentSection = ({
       <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
-              <Users className="w-3.5 h-3.5" />
-            </div>
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-              6. 실시간 접속기록 현황
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>실시간 접속기록 현황</span>
             </h3>
             <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
               ADMIN 전용
             </span>
           </div>
           <span className="text-[10.5px] text-slate-400 font-medium truncate">
-            💡 탭하여 상세 접속 이력 조회
+            탭하여 상세 접속 이력 조회
           </span>
         </div>
 
@@ -128,15 +126,13 @@ export const AdminAccessAndIncidentSection = ({
         </div>
       </div>
 
-      {/* 7. 시스템 오류 및 조치 이력 관리 */}
+      {/* 시스템 오류 및 조치 이력 관리 */}
       <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 shrink-0">
-              <AlertTriangle className="w-3.5 h-3.5" />
-            </div>
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-              7. 시스템 오류 및 조치 이력 관리
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span>시스템 오류 및 조치 이력 관리</span>
             </h3>
             <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
               ADMIN 전용

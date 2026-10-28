@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  FileText,
   ArrowRight,
   Camera,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   Plus,
   X
 } from "lucide-react";
+import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const DailyWorkLogTableSection = ({
   isMyeongjae,
@@ -40,7 +42,8 @@ export const DailyWorkLogTableSection = ({
   isInlineEditing = false,
   onUpdateDraft = null
 }) => {
-  const title = customSettings?.customTitle || "일일업무일지 현황";
+  const rawTitle = customSettings?.customTitle !== undefined ? customSettings.customTitle : "일일업무일지 현황";
+  const title = cleanTitleWithoutEmoji(rawTitle) || "일일업무일지 현황";
 
   return (
     <div className={`bg-white dark:bg-slate-900 ${customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl"} p-3.5 sm:p-5 border ${customSettings?.borderStyle || "border"} border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden`}>
@@ -143,16 +146,20 @@ export const DailyWorkLogTableSection = ({
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
-            <input
-              type="text"
-              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "일일업무일지 현황"}
-              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
-              placeholder="제목..."
-              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
-            />
+            <div className="flex items-center gap-1.5">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                placeholder="제목..."
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+              />
+            </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              {title}
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>{title}</span>
             </h2>
           )}
 

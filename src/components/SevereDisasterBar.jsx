@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Camera,
   Eye,
@@ -105,7 +105,7 @@ export const SevereDisasterBar = () => {
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black shadow-xs tracking-tight shrink-0 animate-pulse">
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span className="text-[11px] sm:text-xs">🚨 중대재해공유판</span>
+            <span className="text-[11px] sm:text-xs">중대재해공유판</span>
           </div>
 
           <span className="text-[10.5px] font-bold text-amber-900 dark:text-amber-200 hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100/90 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700">

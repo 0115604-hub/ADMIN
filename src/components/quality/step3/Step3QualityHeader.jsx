@@ -1,5 +1,6 @@
 import React from "react";
-import { ShieldAlert, Layers, UserCheck, Plus, X } from "lucide-react";
+import { ShieldCheck, Layers, UserCheck, Plus, X } from "lucide-react";
+import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const Step3QualityHeader = ({
   managerName,
@@ -15,13 +16,15 @@ export const Step3QualityHeader = ({
   customSettings = null,
   onUpdateDraft = null
 }) => {
-  // Title derivation
-  const titleValue =
+  // Title derivation (Strip any emoji)
+  const rawTitle =
     customSettings?.customTopTitle !== undefined
       ? customSettings.customTopTitle
       : customSettings?.customTitle !== undefined
       ? customSettings.customTitle
-      : (customTitle || "📋 이창엽의 4M 정식대장");
+      : (customTitle || "4M 정식등록대장");
+
+  const titleValue = cleanTitleWithoutEmoji(rawTitle) || "4M 정식등록대장";
 
   // Badge derivation
   const isBadgeHidden =
@@ -32,10 +35,10 @@ export const Step3QualityHeader = ({
   const defaultBadgeText = managerName ? `${managerName} 책임 전용` : "품질관리자 전용";
   const badgeValue =
     customSettings?.customBadge !== undefined && customSettings.customBadge !== ""
-      ? customSettings.customBadge
-      : (customBadge || defaultBadgeText);
+      ? cleanTitleWithoutEmoji(customSettings.customBadge)
+      : cleanTitleWithoutEmoji(customBadge || defaultBadgeText);
 
-  const extraBadges = Array.isArray(customSettings?.extraBadges) ? customSettings.extraBadges : [];
+  const extraBadges = (Array.isArray(customSettings?.extraBadges) ? customSettings.extraBadges : []).map(cleanTitleWithoutEmoji);
 
   // KPI Labels & Hidden KPIs
   const kpiLabels = customSettings?.kpiLabels || {};
@@ -45,24 +48,23 @@ export const Step3QualityHeader = ({
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className={`p-2 rounded-xl bg-gradient-to-tr ${themeObj?.iconGradient || "from-indigo-600 to-rose-600"} text-white shadow-md shrink-0`}>
-          <ShieldAlert className="w-5 h-5" />
-        </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 1. 패널 메인 제목 (직접 수정 vs 일반 표기) */}
+            {/* 1. 패널 메인 제목 (글자크기와 동일한 아이콘 + 이모지 없는 순수 텍스트) */}
             {isInlineEditing ? (
               <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <input
                   type="text"
                   value={titleValue}
-                  onChange={(e) => onUpdateDraft?.({ customTopTitle: e.target.value })}
+                  onChange={(e) => onUpdateDraft?.({ customTopTitle: cleanTitleWithoutEmoji(e.target.value) })}
                   placeholder="패널 제목 입력..."
                   className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-sm sm:text-base outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[220px]"
                 />
               </div>
             ) : (
               <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>{titleValue}</span>
               </h3>
             )}

@@ -1,6 +1,6 @@
 import React from "react";
-import { ArrowRight, X, Plus } from "lucide-react";
-import { PANEL_THEMES } from "../../../config/panelThemeConfig";
+import { Microscope, ArrowRight, X, Plus } from "lucide-react";
+import { PANEL_THEMES, cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const QualityStatusSection = ({
   selectedMonth,
@@ -14,7 +14,8 @@ export const QualityStatusSection = ({
 }) => {
   const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly?.items || [];
   const themeObj = PANEL_THEMES[customSettings?.theme || "indigo"];
-  const title = customSettings?.customTitle || "중요ITEM 품질현황";
+  const rawTitle = customSettings?.customTitle !== undefined ? customSettings.customTitle : "중요ITEM 품질현황";
+  const titleValue = cleanTitleWithoutEmoji(rawTitle) || "중요ITEM 품질현황";
   const radius = customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl";
   const border = customSettings?.borderStyle ? `${customSettings.borderStyle} ${themeObj.borderClass}` : "border border-slate-200/80 dark:border-slate-800";
   const defaultBadgeText = `${selectedMonth?.slice(5, 7) || "9"}월 실적`;
@@ -25,16 +26,20 @@ export const QualityStatusSection = ({
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
-            <input
-              type="text"
-              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "중요ITEM 품질현황"}
-              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
-              placeholder="제목..."
-              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
-            />
+            <div className="flex items-center gap-1.5">
+              <Microscope className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <input
+                type="text"
+                value={titleValue}
+                onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                placeholder="제목..."
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+              />
+            </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-              {title}
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <Microscope className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>{titleValue}</span>
             </h2>
           )}
 

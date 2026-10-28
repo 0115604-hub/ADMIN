@@ -553,7 +553,7 @@ export const TelegramLiveLoungePanel = ({ currentProfile }) => {
           </span>
           <MessageSquare className="w-4 h-4 text-cyan-400 shrink-0" />
           <span className="font-black text-xs sm:text-sm text-white">
-            ✈️ 현장소통방
+            현장소통방
           </span>
           {syncToast && (
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 animate-pulse">

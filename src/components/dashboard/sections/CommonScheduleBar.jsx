@@ -30,17 +30,9 @@ export const CommonScheduleBar = ({
       {/* Mobile Top Header / Desktop Left Section */}
       <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 sm:flex-1 overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
-          <div
-            className={`p-1 rounded-lg text-white shadow-xs shrink-0 ${
-              hasNewScheduleMessage
-                ? "bg-gradient-to-br from-rose-500 to-indigo-600 animate-bounce"
-                : "bg-indigo-600"
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-          </div>
-          <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
-            공통일정
+          <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0 flex items-center gap-1.5">
+            <CalendarDays className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>공통일정</span>
           </span>
           {hasNewScheduleMessage && (
             <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 animate-pulse flex items-center gap-1 shadow-2xs shrink-0">

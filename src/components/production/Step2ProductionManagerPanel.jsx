@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Factory } from "lucide-react";
 import { subscribeMachiningWorkReports } from "../../services/machiningWorkReportService";
 import { subscribeToExtrusionReports } from "../../services/extrusionProductionService";
 import { subscribeHanulWorkReports } from "../../services/hanulWorkReportService";
@@ -402,21 +403,19 @@ export default function Step2ProductionManagerPanel({
       {/* ========================================================================= */}
       {/* 1. Header Banner & Process Switcher */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl border border-indigo-500/40 shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-indigo-800 flex items-center justify-center text-white text-2xl font-black shadow-md shrink-0">
-            🏭
-          </div>
-          <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl border border-indigo-500/40 shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-black tracking-wide shadow-xs border border-indigo-400/40">
-                2단계: 생산·공정관리자
+                생산·공정관리자
               </span>
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                {effectiveProcess === "machining" ? "삼랑진 가공동 생산오더 & 비가동 1차 소팅 센터" : "삼랑진 압출동 압출오더 & 비가동 1차 소팅 센터"}
+              <h2 className="text-sm sm:text-base font-black text-white tracking-tight flex items-center gap-1.5">
+                <Factory className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 shrink-0" />
+                <span>{effectiveProcess === "machining" ? "삼랑진 가공동 생산오더 & 비가동 1차 소팅 센터" : "삼랑진 압출동 압출오더 & 비가동 1차 소팅 센터"}</span>
               </h2>
             </div>
-            <p className="text-xs text-indigo-200/90 mt-0.5">
+            <p className="text-xs text-indigo-200/90 mt-1">
               관리자: <strong className="text-white font-black">{managerName} {currentProfile?.title || "책임"}</strong> • {effectiveProcess === "machining" ? "가공 3대 아이템(HR · JA G/RUN, NX5a PTR)" : "압출 1~4호기 라인"} 오더/실적 달성률 관리 및 당일 비가동/부적합 1차 분류
             </p>
           </div>

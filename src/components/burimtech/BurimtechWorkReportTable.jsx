@@ -282,12 +282,10 @@ export const BurimtechWorkReportTable = ({
     <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-teal-200 dark:border-teal-900/60 shadow-xl overflow-hidden p-3.5 sm:p-5 space-y-4 text-left">
       {/* Header and Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-teal-600 via-emerald-600 to-cyan-600 text-white shadow-md shrink-0">
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
+        <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>(주)부림텍 가공/협력업체 작업일보 실시간 현황</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
                 총 {stats.total}건

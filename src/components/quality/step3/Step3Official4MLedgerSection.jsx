@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Edit3, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { Search, Edit3, ChevronLeft, ChevronRight, Plus, X, ClipboardList } from "lucide-react";
 import { getFourMBadgeColor, getFourMRecordCompany } from "../../../services/fourMChangePointService";
+import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 
 export const Step3Official4MLedgerSection = ({
   official4MItems,
@@ -18,6 +19,8 @@ export const Step3Official4MLedgerSection = ({
   customSettings = null,
   onUpdateDraft = null
 }) => {
+  const officialSubTitleClean = cleanTitleWithoutEmoji(customSettings?.officialSubTitle) || "이창엽의 4M 정식대장 & 시정조치(CAPA)";
+  const officialSubBadgeClean = cleanTitleWithoutEmoji(customSettings?.officialSubBadge) || "4M 정식대장";
   const PAGE_SIZE = 8;
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -76,8 +79,8 @@ export const Step3Official4MLedgerSection = ({
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
                   <input
                     type="text"
-                    value={customSettings?.officialSubBadge !== undefined ? customSettings.officialSubBadge : "4M 정식대장"}
-                    onChange={(e) => onUpdateDraft?.({ officialSubBadge: e.target.value })}
+                    value={officialSubBadgeClean}
+                    onChange={(e) => onUpdateDraft?.({ officialSubBadge: cleanTitleWithoutEmoji(e.target.value) })}
                     className="bg-transparent text-white font-black text-xs outline-none w-20 border-b border-white/40 focus:border-white"
                   />
                   <button
@@ -100,12 +103,15 @@ export const Step3Official4MLedgerSection = ({
                 </button>
               )}
 
-              <input
-                type="text"
-                value={customSettings?.officialSubTitle !== undefined ? customSettings.officialSubTitle : "📋 이창엽의 4M 정식대장 & 시정조치(CAPA)"}
-                onChange={(e) => onUpdateDraft?.({ officialSubTitle: e.target.value })}
-                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-indigo-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[240px]"
-              />
+              <div className="flex items-center gap-1.5">
+                <ClipboardList className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <input
+                  type="text"
+                  value={officialSubTitleClean}
+                  onChange={(e) => onUpdateDraft?.({ officialSubTitle: cleanTitleWithoutEmoji(e.target.value) })}
+                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-indigo-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[240px]"
+                />
+              </div>
               <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                 총 {filteredItems.length}건
               </span>
@@ -114,11 +120,12 @@ export const Step3Official4MLedgerSection = ({
             <>
               {!customSettings?.hideOfficialSubBadge && (
                 <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
-                  {customSettings?.officialSubBadge || "4M 정식대장"}
+                  {officialSubBadgeClean}
                 </span>
               )}
               <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>{customSettings?.officialSubTitle || "📋 이창엽의 4M 정식대장 & 시정조치(CAPA)"}</span>
+                <ClipboardList className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>{officialSubTitleClean}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                   총 {filteredItems.length}건
                 </span>

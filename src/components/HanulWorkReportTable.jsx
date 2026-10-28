@@ -319,12 +319,10 @@ export const HanulWorkReportTable = ({
 
       {/* Header & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md">
-            <FileSpreadsheet className="w-5 h-5" />
-          </div>
+        <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>한울 작업일보현황</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
                 {filteredReports.length}건
