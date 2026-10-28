@@ -1,21 +1,34 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { SevereDisasterBar } from "../../SevereDisasterBar";
-import FieldWorkerDashboardView from "../FieldWorkerDashboardView";
-import { ExtrusionWorkerDashboardView } from "../../extrusion/ExtrusionWorkerDashboardView";
-import { HanulWorkerDashboardView } from "../../hanul/HanulWorkerDashboardView";
-import { MachiningWorkerDashboardView } from "../../machining/MachiningWorkerDashboardView";
-import { YuseongWorkerDashboardView } from "../../yuseong/YuseongWorkerDashboardView";
-import {
-  HanulManagerDashboardView,
-  PartnerManagerDashboardView,
-  InternalManagerDashboardView,
-  AdminDashboardView
-} from "../managers";
+import { SectionErrorBoundary } from "../../ErrorBoundary";
 import { ADMIN_USERS, PLANTS } from "../../../context/AuthContext";
 import { isWorkLogApproved } from "../../../services/workLogService";
 import { formatKSTDate } from "../../../utils/dateUtils";
 import { pushModalHistory } from "../../../utils/modalHistory";
 import { LOGS_PER_PAGE } from "./workerDashboardConstants";
+
+// Lazy-loaded role views to reduce initial bundle by ~800kB
+const FieldWorkerDashboardView = lazy(() => import("../FieldWorkerDashboardView").then(m => ({ default: m.FieldWorkerDashboardView || m.default })));
+const ExtrusionWorkerDashboardView = lazy(() => import("../../extrusion/ExtrusionWorkerDashboardView").then(m => ({ default: m.ExtrusionWorkerDashboardView || m.default })));
+const HanulWorkerDashboardView = lazy(() => import("../../hanul/HanulWorkerDashboardView").then(m => ({ default: m.HanulWorkerDashboardView || m.default })));
+const MachiningWorkerDashboardView = lazy(() => import("../../machining/MachiningWorkerDashboardView").then(m => ({ default: m.MachiningWorkerDashboardView || m.default })));
+const YuseongWorkerDashboardView = lazy(() => import("../../yuseong/YuseongWorkerDashboardView").then(m => ({ default: m.YuseongWorkerDashboardView || m.default })));
+const HanulManagerDashboardView = lazy(() => import("../managers/HanulManagerDashboardView").then(m => ({ default: m.HanulManagerDashboardView || m.default })));
+const PartnerManagerDashboardView = lazy(() => import("../managers/PartnerManagerDashboardView").then(m => ({ default: m.PartnerManagerDashboardView || m.default })));
+const InternalManagerDashboardView = lazy(() => import("../managers/InternalManagerDashboardView").then(m => ({ default: m.InternalManagerDashboardView || m.default })));
+const AdminDashboardView = lazy(() => import("../managers/AdminDashboardView").then(m => ({ default: m.AdminDashboardView || m.default })));
+
+const DashboardViewFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[300px] w-full py-12 animate-fadeIn">
+    <div className="relative w-8 h-8">
+      <div className="absolute inset-0 rounded-full border-2 border-indigo-100 dark:border-indigo-950 opacity-60"></div>
+      <div className="absolute inset-0 rounded-full border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent animate-spin"></div>
+    </div>
+    <span className="mt-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
+      화면을 불러오는 중입니다...
+    </span>
+  </div>
+);
 
 export function DashboardViewRouter({ state }) {
   const {
@@ -81,22 +94,23 @@ export function DashboardViewRouter({ state }) {
     onNavigateTab
   } = state;
 
-  // 1. Operator worker early returns
-  if (isExtrusionOperatorWorker) {
-    return <ExtrusionWorkerDashboardView onNavigateTab={onNavigateTab} />;
-  }
+  const renderDashboardContent = () => {
+    // 1. Operator worker early returns
+    if (isExtrusionOperatorWorker) {
+      return <ExtrusionWorkerDashboardView onNavigateTab={onNavigateTab} />;
+    }
 
-  if (isHanulOperatorWorker) {
-    return <HanulWorkerDashboardView onNavigateTab={onNavigateTab} />;
-  }
+    if (isHanulOperatorWorker) {
+      return <HanulWorkerDashboardView onNavigateTab={onNavigateTab} />;
+    }
 
-  if (isMachiningOperatorWorker) {
-    return <MachiningWorkerDashboardView onNavigateTab={onNavigateTab} />;
-  }
+    if (isMachiningOperatorWorker) {
+      return <MachiningWorkerDashboardView onNavigateTab={onNavigateTab} />;
+    }
 
-  if (isYuseongOperatorWorker) {
-    return <YuseongWorkerDashboardView onNavigateTab={onNavigateTab} />;
-  }
+    if (isYuseongOperatorWorker) {
+      return <YuseongWorkerDashboardView onNavigateTab={onNavigateTab} />;
+    }
 
   // 2. Field worker dashboard view
   if (!isManagerOrAdmin) {
@@ -523,5 +537,14 @@ export function DashboardViewRouter({ state }) {
       activeMachiningQualityCount={activeMachiningQualityCount}
       activeExtrusionQualityCount={activeExtrusionQualityCount}
     />
+  );
+  };
+
+  return (
+    <SectionErrorBoundary title="현황 대시보드">
+      <Suspense fallback={<DashboardViewFallback />}>
+        {renderDashboardContent()}
+      </Suspense>
+    </SectionErrorBoundary>
   );
 }

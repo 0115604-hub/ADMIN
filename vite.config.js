@@ -10,11 +10,14 @@ export default defineConfig({
     open: false,
   },
   build: {
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 4000,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('bundledCustomTemplates.json') || id.includes('multiMonthMasterData.json') || id.includes('sqLevelUpMasterData.js')) {
+          if (id.includes('bundledCustomTemplates.json')) {
+            return 'bundled-templates-data';
+          }
+          if (id.includes('multiMonthMasterData.json') || id.includes('sqLevelUpMasterData.js')) {
             return 'data-large-dataset';
           }
           if (id.includes('node_modules/pdfjs-dist')) {

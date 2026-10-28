@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { AlertTriangle, RefreshCw, Home, RotateCcw, Copy, Check, Camera, User, Smartphone, Layers } from "lucide-react";
 import { OryukLogo } from "./OryukLogo";
 import { captureStateSnapshot, autoReportRuntimeIncident } from "../services/errorSnapshotService";
@@ -278,3 +278,13 @@ export class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+/**
+ * Lightweight Section Error Boundary for isolating specific views, panels, or widgets
+ */
+export const SectionErrorBoundary = ({ children, title = "영역", onReset }) => (
+  <ErrorBoundary inline title={title} onReset={onReset}>
+    {children}
+  </ErrorBoundary>
+);
+

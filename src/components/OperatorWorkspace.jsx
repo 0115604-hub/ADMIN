@@ -17,6 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
 import { getWorkLogText } from "../services/workLogI18nService";
+import { safeJsonParse } from "../utils/storageHealthCheck";
 
 export const OperatorWorkspace = ({ onBulkUpload }) => {
   const { currentProfile } = useAuth();
@@ -36,21 +37,21 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
 
   // Upload History
   const [uploadHistory, setUploadHistory] = useState(() => {
+    const defaultHistory = [
+      {
+        id: 1,
+        fileName: "2026.07 매입매출 내역서.xlsx",
+        month: "2026-07",
+        date: "2026-08-27 15:30",
+        operator: `조인주 (삼랑진공장)`,
+        salesAmount: 2873777826,
+        purchaseAmount: 1831147543.4,
+        status: "동기화 완료"
+      }
+    ];
     const saved = localStorage.getItem("operator_upload_history_clean_v2");
-    return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            id: 1,
-            fileName: "2026.07 매입매출 내역서.xlsx",
-            month: "2026-07",
-            date: "2026-08-27 15:30",
-            operator: `조인주 (삼랑진공장)`,
-            salesAmount: 2873777826,
-            purchaseAmount: 1831147543.4,
-            status: "동기화 완료"
-          }
-        ];
+    const parsed = safeJsonParse(saved, defaultHistory);
+    return Array.isArray(parsed) ? parsed : defaultHistory;
   });
 
   const handleFile = async (file) => {

@@ -158,12 +158,14 @@ export const subscribeCloseAllModals = (callback) => {
 export const useModalHistory = (isOpen, onClose, modalName = "modal") => {
   const modalIdRef = useRef(null);
   const onCloseRef = useRef(onClose);
+  const isModalOpen = Boolean(isOpen);
+
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isModalOpen) {
       const id = pushModalToStack(modalName, () => {
         if (typeof onCloseRef.current === "function") {
           onCloseRef.current();
@@ -183,5 +185,5 @@ export const useModalHistory = (isOpen, onClose, modalName = "modal") => {
         modalIdRef.current = null;
       }
     }
-  }, [Boolean(isOpen), modalName]);
+  }, [isModalOpen, modalName]);
 };

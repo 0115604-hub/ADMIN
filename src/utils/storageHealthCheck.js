@@ -3,6 +3,18 @@
  * 전사 로컬 스토리지 무결성 검증, 구버전 잔여물 청소 및 자동 복구
  */
 
+/**
+ * Universal safe JSON parse with fallback to prevent unhandled runtime exceptions
+ */
+export const safeJsonParse = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") return fallback;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return fallback;
+  }
+};
+
 export const runStorageHealthCheck = () => {
   try {
     // 1. Critical Keys to validate for valid JSON format

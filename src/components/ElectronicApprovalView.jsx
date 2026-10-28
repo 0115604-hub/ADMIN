@@ -111,7 +111,7 @@ export const ElectronicApprovalView = ({
     } else if (currentProfile?.plant && (currentProfile.plant === "삼랑진공장" || currentProfile.plant === "한림공장")) {
       setSelectedPlant(currentProfile.plant);
     }
-  }, [isAdmin, currentProfile?.name, currentProfile?.plant]);
+  }, [isAdmin, currentProfile?.name, currentProfile?.plant, currentProfile?.role]);
 
   // Modals & Action States
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);

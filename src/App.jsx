@@ -153,7 +153,7 @@ export const App = () => {
         window.history.replaceState({ screen: "main", isMain: true }, "");
       } catch (e) {}
     }
-  }, [currentProfile?.id]);
+  }, [currentProfile]);
 
   // 2. Tab Navigation History (상세페이지 진입 시 히스토리 스택 푸시)
   useEffect(() => {
