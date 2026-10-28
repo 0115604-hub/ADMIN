@@ -20,11 +20,21 @@ export const PANEL_KEYS = {
   WORK_LOGS: "work_logs", // 📋 일일업무일지 현황
   TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge", // ✈️ 텔레그램 실시간 소통 라운지
   WORK_REPORT_TEMPLATES: "work_report_templates", // 🧩 레고블록 작업일보 빌더
-  SEVERE_DISASTER: "severe_disaster" // 🚨 중대재해 안전판
+  SEVERE_DISASTER: "severe_disaster", // 🚨 중대재해 안전판
+  INCOMING_INSPECTION: "incoming_inspection" // 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
 };
 
 // 🌟 전체 패널 블록 메타데이터 목록 (TEST 뱃지 스튜디오에서 사용)
 export const ALL_DASHBOARD_BLOCKS = [
+  {
+    key: PANEL_KEYS.INCOMING_INSPECTION,
+    label: "원부자재 수입검사 센터",
+    category: "품질/4M",
+    badge: "🔍 수입검사",
+    icon: "ClipboardCheck",
+    description: "고무/압출 원소재 및 조립/체결 부자재 수입검사 성적서 & 4M 자동연동",
+    color: "from-cyan-600 to-teal-700"
+  },
   {
     key: PANEL_KEYS.COMMON_SCHEDULE,
     label: "사내 공통일정",
@@ -187,6 +197,7 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
+    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
@@ -195,6 +206,7 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
+    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.QUALITY_SUMMARY,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.WORK_LOGS
@@ -400,12 +412,14 @@ export const MANAGER_PANEL_CONFIG = {
 
   // 🛡️ [한림공장 TEST 관리자]
   "hal_test": [
+    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
     PANEL_KEYS.WORK_REPORT_TEMPLATES
   ],
   "TEST": [
+    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
@@ -414,7 +428,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전
-export const PANEL_CONFIG_VERSION = "20261027_v12";
+export const PANEL_CONFIG_VERSION = "20261028_v13";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

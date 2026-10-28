@@ -14,6 +14,7 @@ import {
 import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
 import { MachiningWorkReportTable } from "../../machining/MachiningWorkReportTable";
 import { SeolExtrusionWorkReportTable } from "../../extrusion/SeolExtrusionWorkReportTable";
+import { IncomingInspectionPanel } from "../../inspection/IncomingInspectionPanel";
 import { TestBadgeBlockStudio } from "./TestBadgeBlockStudio";
 import { PanelDesignCustomizerModal } from "./PanelDesignCustomizerModal";
 import { BatchThemeCustomizerModal } from "./BatchThemeCustomizerModal";
@@ -174,9 +175,10 @@ export const InternalManagerDashboardView = ({
   );
 
   // 🛠️ TEST 뱃지 전용: 현재 커스터마이징 & 시뮬레이션 중인 관리자 상태
-  const [selectedStudioManagerId, setSelectedStudioManagerId] = useState("sam_cy"); // 초기값: 품질책임 이창엽
+  const initialStudioManagerId = isTest ? "hal_test" : "sam_cy";
+  const [selectedStudioManagerId, setSelectedStudioManagerId] = useState(initialStudioManagerId);
   const [studioPanels, setStudioPanels] = useState(() => {
-    const targetMgr = STUDIO_MANAGERS.find((m) => m.id === "sam_cy");
+    const targetMgr = STUDIO_MANAGERS.find((m) => m.id === initialStudioManagerId);
     return getPanelsForUser(targetMgr);
   });
   const [isSavingStudio, setIsSavingStudio] = useState(false);
@@ -184,7 +186,7 @@ export const InternalManagerDashboardView = ({
 
   // 🎨 패널별 커스텀 제목 & 디자인 설정 상태
   const [panelCustomSettings, setPanelCustomSettings] = useState(() => {
-    const key = isTest ? "sam_cy" : (currentProfile?.id || currentProfile?.name);
+    const key = isTest ? "hal_test" : (currentProfile?.id || currentProfile?.name);
     return getCustomSettingsForManager(key);
   });
   const [editingBlockKeyFromDashboard, setEditingBlockKeyFromDashboard] = useState(null);
@@ -712,6 +714,18 @@ export const InternalManagerDashboardView = ({
           <LegoWorkReportBuilderBar
             onNavigateTab={onNavigateTab}
             currentProfile={activeProfile}
+          />
+        );
+
+      // 15. 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
+      case PANEL_KEYS.INCOMING_INSPECTION:
+        return (
+          <IncomingInspectionPanel
+            currentProfile={activeProfile}
+            onNavigateTab={onNavigateTab}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 

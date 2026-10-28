@@ -375,14 +375,19 @@ export const updateFourMClassification = async (itemOrId, newFourM, modifierName
 export const registerToFourMLedger = async (record, registeredBy = "관리자") => {
   if (!record) return null;
 
-  // 🔒 4M 공식대장 등록권한은 오직 이창엽에게만 있음 (생산관리자의 직접 등록 차단)
+  // 🔒 4M 공식대장 등록권한: 품질책임자(이창엽), 대표이사(권태형), TEST 뱃지, 수입검사 자동이관
   const isLeeChangYeop =
     registeredBy === "이창엽" ||
     record.registeredBy === "이창엽" ||
     record.classifiedBy === "이창엽" ||
     record.qualityReviewer === "이창엽" ||
     registeredBy === "권태형" ||
-    record.registeredBy === "권태형";
+    record.registeredBy === "권태형" ||
+    registeredBy === "TEST" ||
+    registeredBy === "hal_test" ||
+    record.sourceType === "INCOMING_INSPECTION" ||
+    record.registeredBy === "TEST" ||
+    record.origin === "수입검사";
 
   if (!isLeeChangYeop) {
     console.warn("[4M 공식대장 등록권한 차단] 생산관리자는 4M 공식대장에 직접 등록할 권한이 없습니다. (이창엽 품질책임자 전용):", registeredBy, record);
