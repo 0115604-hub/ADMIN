@@ -321,26 +321,26 @@ export const SeolExtrusionWorkReportTable = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-teal-200 dark:border-teal-900/60 shadow-xl overflow-hidden p-3.5 sm:p-5 space-y-4 text-left">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-teal-200 dark:border-teal-900/60 shadow-xl overflow-hidden p-2.5 sm:p-3.5 space-y-2.5 text-left">
       {assignToast && (
-        <div className="p-3 rounded-2xl bg-teal-600 text-white font-black text-xs sm:text-sm shadow-lg flex items-center justify-between animate-fadeIn">
+        <div className="p-2.5 rounded-xl bg-teal-600 text-white font-black text-xs shadow-lg flex items-center justify-between animate-fadeIn">
           <span>{assignToast}</span>
           <button type="button" onClick={() => setAssignToast("")} className="cursor-pointer text-white font-bold ml-2">✕</button>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 dark:text-teal-400 shrink-0" />
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>삼랑진공장 압출동 작업일보 & 생산관리 실시간 현황</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
+              <span className="text-[9.5px] sm:text-[10px] px-2 py-0.2 sm:py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
                 총 {stats.totalCount}건
               </span>
             </h3>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
               설유철 책임 전용 압출 1~4호 라인 실시간 작업 실적 및 일보 현황
             </span>
           </div>
@@ -351,33 +351,33 @@ export const SeolExtrusionWorkReportTable = ({
           <button
             type="button"
             onClick={() => setIsTemplateSettingOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
             title="탭하면 압출 1~4호 라인에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-3 h-3" />
             <span>양식설정</span>
           </button>
           <button
             type="button"
             onClick={handleExportExcel}
-            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition active:scale-95 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
             <span>엑셀</span>
           </button>
         </div>
       </div>
 
       {/* 2단계 압출라인 선택 뱃지 바 */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pt-1 pb-0.5">
+      <div className="flex items-center justify-between flex-wrap gap-1.5 pt-0.5 pb-0.5">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-black text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-1">
-            <span>🏷️</span> <span>담당 라인 선택:</span>
+          <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-1">
+            <span>담당 라인 선택:</span>
           </span>
           <button
             type="button"
             onClick={() => setLineFilter("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
               lineFilter === "all"
                 ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md ring-2 ring-slate-400"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
@@ -390,14 +390,14 @@ export const SeolExtrusionWorkReportTable = ({
               key={lineKey}
               type="button"
               onClick={() => setLineFilter(lineFilter === lineKey ? "all" : lineKey)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1 ${
                 lineFilter === lineKey
-                  ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 scale-105"
+                  ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 scale-102"
                   : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 hover:bg-indigo-100"
               }`}
             >
-              <span>🏭</span> <span>{lineKey}</span>
-              {lineFilter === lineKey && <span className="bg-indigo-900 text-indigo-200 px-1.5 py-0.2 rounded-full text-[9px]">선택됨</span>}
+              <span>{lineKey}</span>
+              {lineFilter === lineKey && <span className="bg-indigo-900 text-indigo-200 px-1 py-0.2 rounded-full text-[8.5px]">선택됨</span>}
             </button>
           ))}
         </div>
@@ -406,7 +406,7 @@ export const SeolExtrusionWorkReportTable = ({
           <button
             type="button"
             onClick={() => setLineFilter("all")}
-            className="text-xs text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-[11px] text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>✕ 필터 해제 (전체 보기)</span>
           </button>
@@ -414,53 +414,52 @@ export const SeolExtrusionWorkReportTable = ({
       </div>
 
       {/* 요약 통계 카드 (오더 vs 실적 달성률 일체형) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {/* Card 1: 총 일보 건수 */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40 space-y-1.5">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-teal-700 dark:text-teal-300">총 작업일보</span>
-            <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">누적 제출건</span>
+            <span className="font-black text-[11px] text-teal-700 dark:text-teal-300">총 작업일보</span>
+            <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">누적 제출건</span>
           </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {stats.totalCount} <span className="text-xs font-normal text-slate-500">건 접수</span>
+          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono">
+            {stats.totalCount} <span className="text-[11px] font-normal text-slate-500">건 접수</span>
           </div>
-          <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">
             압출 1~4호기 통합 수합 완료
           </div>
         </div>
 
         {/* Card 2: 압출 생산량 & 오더 달성률 */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 border border-indigo-200/80 dark:border-indigo-900/40 space-y-2">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 border border-indigo-200/80 dark:border-indigo-900/40 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-indigo-700 dark:text-indigo-300">압출오더 ↔ 생산실적</span>
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${Number(attainmentRate) >= 100 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-400" : "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-400"}`}>
+            <span className="font-black text-[11px] text-indigo-700 dark:text-indigo-300">압출오더 ↔ 생산실적</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${Number(attainmentRate) >= 100 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-400" : "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-400"}`}>
               달성률 {attainmentRate}%
             </span>
           </div>
           <div className="flex items-baseline justify-between text-xs pt-0.5">
             <div className="space-y-0.5">
-              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">압출오더 (목표)</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block">압출오더 (목표)</span>
               <button
                 type="button"
                 onClick={() => {
                   setOrderModalInput(String(targetMeter));
                   setOrderModalOpen(true);
                 }}
-                className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-sm hover:underline cursor-pointer flex items-center gap-1"
+                className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-xs hover:underline cursor-pointer flex items-center gap-1"
                 title="클릭하여 당일 압출오더(m)를 수정합니다"
               >
                 <span>{targetMeter.toLocaleString()} M</span>
-                <span className="text-[10px] text-slate-400">✏️</span>
               </button>
             </div>
             <div className="text-right space-y-0.5">
-              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block">당일 실적</span>
-              <span className="font-mono font-black text-slate-900 dark:text-white text-base">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block">당일 실적</span>
+              <span className="font-mono font-black text-slate-900 dark:text-white text-sm sm:text-base">
                 {stats.totalOutputM.toLocaleString()} M
               </span>
             </div>
           </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-teal-500 to-indigo-500 h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, Math.max(0, Number(attainmentRate)))}%` }}
@@ -469,54 +468,54 @@ export const SeolExtrusionWorkReportTable = ({
         </div>
 
         {/* Card 3: 스크랩 & 수율 */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-1.5">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-amber-700 dark:text-amber-300">스크랩 폐기</span>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">수율 {yieldRate}%</span>
+            <span className="font-black text-[11px] text-amber-700 dark:text-amber-300">스크랩 폐기</span>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">수율 {yieldRate}%</span>
           </div>
-          <div className="mt-1 text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-400 font-mono">
-            {stats.totalScrapKg.toLocaleString()} <span className="text-xs font-normal text-slate-500">Kg 폐기</span>
+          <div className="mt-0.5 text-base sm:text-lg font-black text-amber-700 dark:text-amber-400 font-mono">
+            {stats.totalScrapKg.toLocaleString()} <span className="text-[11px] font-normal text-slate-500">Kg 폐기</span>
           </div>
-          <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">
             정상 허용 범위 내 관리 중
           </div>
         </div>
       </div>
 
       {/* 2단계 생산공정: 당일 압출동 비가동 · 부적합 1차 소팅 바 */}
-      <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700/60 space-y-2">
-        <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs sm:text-sm">
-              <span>⏱️ 당일 압출동 비가동 · 부적합 1차 소팅</span>
+      <div className="p-2.5 sm:p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700/60 space-y-1.5">
+        <div className="flex items-center justify-between flex-wrap gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1 text-[11px] sm:text-xs">
+              <span>당일 압출동 비가동 · 부적합 1차 소팅</span>
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10.5px]">
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[9.5px]">
               전체 {incidentStats.total}건
             </span>
             {incidentStats.unsorted > 0 ? (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black font-black text-[10.5px] animate-pulse">
-                ⏳ 분류 {incidentStats.unsorted}건
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-black text-[9.5px] animate-pulse">
+                분류 {incidentStats.unsorted}건
               </span>
             ) : (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-bold text-[10.5px]">
-                🟢 소팅완료
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-bold text-[9.5px]">
+                소팅완료
               </span>
             )}
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10.5px]">
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9.5px]">
               사내관리 {incidentStats.internal}건
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10.5px]">
+            <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[9.5px]">
               품질이관 {incidentStats.quality}건
             </span>
           </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-            ※ 설유철 책임 확인 후 원클릭 소팅 ➡️ 품질 변동점 대장 자동 이관
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+            ※ 설유철 책임 확인 후 원클릭 소팅 ➔ 품질 변동점 대장 자동 이관
           </span>
         </div>
 
         {extrusionIncidents.length === 0 ? (
           <div className="p-2 text-center text-xs text-slate-500 dark:text-slate-400">
-            🟢 오늘 접수된 압출동 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)
+            오늘 접수된 압출동 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)
           </div>
         ) : (
           <div className="space-y-2">
@@ -684,14 +683,14 @@ export const SeolExtrusionWorkReportTable = ({
       )}
 
       {/* Filter Bar */}
-      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex items-center gap-1 text-xs">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={lineFilter}
               onChange={(e) => setLineFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200"
+              className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-bold text-slate-700 dark:text-slate-200"
             >
               <option value="all">전체 라인</option>
               <option value="1호기">1호기</option>
@@ -701,54 +700,54 @@ export const SeolExtrusionWorkReportTable = ({
             </select>
           </div>
 
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <input
               type="date"
               value={searchDate}
               onChange={(e) => setSearchDate(e.target.value)}
-              className="text-xs bg-transparent border-0 outline-none text-slate-700 dark:text-slate-200 font-bold"
+              className="text-[11px] bg-transparent border-0 outline-none text-slate-700 dark:text-slate-200 font-bold"
             />
             {searchDate && (
-              <button type="button" onClick={() => setSearchDate("")} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+              <button type="button" onClick={() => setSearchDate("")} className="text-slate-400 hover:text-slate-600 text-[10px]">✕</button>
             )}
           </div>
 
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="작업자/조장 검색"
               value={searchWorker}
               onChange={(e) => setSearchWorker(e.target.value)}
-              className="text-xs bg-transparent border-0 outline-none w-24 sm:w-28 text-slate-700 dark:text-slate-200 font-bold"
+              className="text-[11px] bg-transparent border-0 outline-none w-24 sm:w-28 text-slate-700 dark:text-slate-200 font-bold"
             />
             {searchWorker && (
-              <button type="button" onClick={() => setSearchWorker("")} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+              <button type="button" onClick={() => setSearchWorker("")} className="text-slate-400 hover:text-slate-600 text-[10px]">✕</button>
             )}
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table className="w-full text-xs text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700">
-              <th className="py-2.5 px-3">일자</th>
-              <th className="py-2.5 px-3">라인</th>
-              <th className="py-2.5 px-3">작업자/조장</th>
-              <th className="py-2.5 px-3">차종 / 품명</th>
-              <th className="py-2.5 px-3 text-right">생산량 (M)</th>
-              <th className="py-2.5 px-3 text-right">스크랩 (Kg)</th>
-              <th className="py-2.5 px-3 text-center">승인상태</th>
-              <th className="py-2.5 px-3 text-center">관리</th>
+            <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 text-[10.5px]">
+              <th className="py-1.5 px-2">일자</th>
+              <th className="py-1.5 px-2">라인</th>
+              <th className="py-1.5 px-2">작업자/조장</th>
+              <th className="py-1.5 px-2">차종 / 품명</th>
+              <th className="py-1.5 px-2 text-right">생산량 (M)</th>
+              <th className="py-1.5 px-2 text-right">스크랩 (Kg)</th>
+              <th className="py-1.5 px-2 text-center">승인상태</th>
+              <th className="py-1.5 px-2 text-center">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredReports.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-10 text-center text-slate-400 font-bold">
+                <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
                   등록된 압출 작업일보가 없습니다.
                 </td>
               </tr>
@@ -761,28 +760,28 @@ export const SeolExtrusionWorkReportTable = ({
                 return (
                   <tr
                     key={r.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer text-[10.5px] sm:text-[11px]"
                   >
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="py-1.5 px-2 font-mono font-bold text-slate-900 dark:text-white">
                       {r.date || r.workDate}
                     </td>
-                    <td className="py-2.5 px-3 font-black text-teal-700 dark:text-teal-300">
+                    <td className="py-1.5 px-2 font-black text-teal-700 dark:text-teal-300">
                       {r.line || r.extrusionLine || "1호기"}
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
+                    <td className="py-1.5 px-2 font-bold text-slate-800 dark:text-slate-200">
                       {r.worker || r.author || r.leader || "작업자"}
                     </td>
-                    <td className="py-2.5 px-3 font-medium text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                    <td className="py-1.5 px-2 font-medium text-slate-600 dark:text-slate-400 truncate max-w-xs">
                       {r.carModel || r.vehicleModel || "공통"} {r.productName ? `(${r.productName})` : ""}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                    <td className="py-1.5 px-2 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
                       {outM.toLocaleString()} M
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-600">
+                    <td className="py-1.5 px-2 text-right font-mono font-bold text-rose-600">
                       {scrapKg.toLocaleString()} Kg
                     </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    <td className="py-1.5 px-2 text-center">
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                         isApproved
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                           : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
@@ -790,7 +789,7 @@ export const SeolExtrusionWorkReportTable = ({
                         {isApproved ? "승인완료" : "결재대기"}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-1.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={(e) => handleDelete(r.id, e)}

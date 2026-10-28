@@ -46,41 +46,41 @@ export const Step3QualityHeader = ({
   const extraKpiBadges = Array.isArray(customSettings?.extraKpiBadges) ? customSettings.extraKpiBadges : [];
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-      <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 min-w-0">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {/* 1. 패널 메인 제목 (글자크기와 동일한 아이콘 + 이모지 없는 순수 텍스트) */}
             {isInlineEditing ? (
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <input
                   type="text"
                   value={titleValue}
                   onChange={(e) => onUpdateDraft?.({ customTopTitle: cleanTitleWithoutEmoji(e.target.value) })}
                   placeholder="패널 제목 입력..."
-                  className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-sm sm:text-base outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[220px]"
+                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[180px]"
                 />
               </div>
             ) : (
-              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>{titleValue}</span>
               </h3>
             )}
 
             {/* 2. 패널 상단 뱃지 (수정, 삭제 ✕, 추가 +) */}
             {isInlineEditing ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap">
                 {/* 메인 뱃지 */}
                 {!isBadgeHidden ? (
-                  <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
+                  <div className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9.5px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
                     <input
                       type="text"
                       value={badgeValue}
                       onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
                       placeholder="뱃지 명칭..."
-                      className="bg-transparent text-white font-black text-[10.5px] outline-none w-24 border-b border-white/40 focus:border-white"
+                      className="bg-transparent text-white font-black text-[9.5px] outline-none w-20 border-b border-white/40 focus:border-white"
                     />
                     <button
                       type="button"
@@ -88,14 +88,14 @@ export const Step3QualityHeader = ({
                       title="이 뱃지 삭제(숨김)"
                       className="p-0.5 hover:bg-black/30 rounded-full cursor-pointer transition text-white/80 hover:text-white ml-0.5"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-2 h-2" />
                     </button>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: defaultBadgeText })}
-                    className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-cyan-950 text-cyan-300 border border-dashed border-cyan-500 hover:bg-cyan-900 cursor-pointer flex items-center gap-1 transition"
+                    className="px-2 py-0.2 rounded-full text-[9.5px] font-bold bg-cyan-950 text-cyan-300 border border-dashed border-cyan-500 hover:bg-cyan-900 cursor-pointer flex items-center gap-1 transition"
                   >
                     <Plus className="w-2.5 h-2.5" />
                     <span>+ 상단 뱃지 복원</span>
@@ -106,7 +106,7 @@ export const Step3QualityHeader = ({
                 {extraBadges.map((eb, ebIdx) => (
                   <div
                     key={ebIdx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10.5px] font-black border border-indigo-400/50 shadow-xs"
+                    className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full bg-indigo-600 text-white text-[9.5px] font-black border border-indigo-400/50 shadow-xs"
                   >
                     <input
                       type="text"
@@ -116,7 +116,7 @@ export const Step3QualityHeader = ({
                         next[ebIdx] = e.target.value;
                         onUpdateDraft?.({ extraBadges: next });
                       }}
-                      className="bg-transparent text-white font-black text-[10.5px] outline-none w-20 border-b border-white/40 focus:border-white"
+                      className="bg-transparent text-white font-black text-[9.5px] outline-none w-16 border-b border-white/40 focus:border-white"
                     />
                     <button
                       type="button"
@@ -127,7 +127,7 @@ export const Step3QualityHeader = ({
                       title="추가 뱃지 삭제"
                       className="p-0.5 hover:bg-black/30 rounded-full cursor-pointer transition text-white/80 hover:text-white"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-2 h-2" />
                     </button>
                   </div>
                 ))}
@@ -139,7 +139,7 @@ export const Step3QualityHeader = ({
                     const next = [...extraBadges, "신규 뱃지"];
                     onUpdateDraft?.({ extraBadges: next });
                   }}
-                  className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-800 text-slate-300 border border-dashed border-slate-600 hover:bg-slate-700 hover:text-white cursor-pointer flex items-center gap-1 transition"
+                  className="px-2 py-0.2 rounded-full text-[9.5px] font-bold bg-slate-800 text-slate-300 border border-dashed border-slate-600 hover:bg-slate-700 hover:text-white cursor-pointer flex items-center gap-1 transition"
                   title="뱃지 새로 추가"
                 >
                   <Plus className="w-2.5 h-2.5" />
@@ -147,16 +147,16 @@ export const Step3QualityHeader = ({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap">
                 {!isBadgeHidden && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
+                  <span className={`px-2 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
                     {badgeValue}
                   </span>
                 )}
                 {extraBadges.map((eb, ebIdx) => (
                   <span
                     key={ebIdx}
-                    className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-600 text-white shadow-xs border border-indigo-400/40"
+                    className="px-2 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-indigo-600 text-white shadow-xs border border-indigo-400/40"
                   >
                     {eb}
                   </span>
@@ -166,7 +166,7 @@ export const Step3QualityHeader = ({
           </div>
 
           {!hideSubtitle && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
               <span>•</span>
               <span>4M 변동점 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)</span>
@@ -176,18 +176,18 @@ export const Step3QualityHeader = ({
       </div>
 
       {/* 3. Real-time KPI Counters (직접 수정/삭제 ✕/복원 +/추가 지원) */}
-      <div className="flex items-center gap-2 flex-wrap text-xs font-bold">
+      <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
         {/* KPI 1: 이관 접수 */}
         {!hiddenKpis.includes("incoming") && (
           <div
             onClick={() => setActiveTab("INCOMING")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer text-[10.5px] sm:text-xs ${
               activeTab === "INCOMING"
-                ? "bg-amber-500 text-black border-amber-600 shadow-md font-black"
+                ? "bg-amber-500 text-black border-amber-600 shadow-xs font-black"
                 : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800/60 hover:bg-amber-100"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
             {isInlineEditing ? (
               <input
                 type="text"
@@ -198,13 +198,13 @@ export const Step3QualityHeader = ({
                     kpiLabels: { ...kpiLabels, incoming: e.target.value }
                   });
                 }}
-                className="bg-transparent text-inherit font-black text-xs outline-none w-16 border-b border-amber-500 focus:border-amber-700"
+                className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-14 border-b border-amber-500 focus:border-amber-700"
                 title="KPI 뱃지 명칭 수정"
               />
             ) : (
               <span>{kpiLabels.incoming || "이관 접수"}</span>
             )}
-            <span className="font-mono font-black text-sm">{stats.incomingCount}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{stats.incomingCount}건</span>
             {isInlineEditing && (
               <button
                 type="button"
@@ -215,7 +215,7 @@ export const Step3QualityHeader = ({
                 title="이관 접수 뱃지 삭제(숨김)"
                 className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer ml-0.5 text-black/70 hover:text-black transition"
               >
-                <X className="w-3 h-3" />
+                <X className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
@@ -225,13 +225,13 @@ export const Step3QualityHeader = ({
         {!hiddenKpis.includes("official") && (
           <div
             onClick={() => setActiveTab("4M_LEDGER")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer text-[10.5px] sm:text-xs ${
               activeTab === "4M_LEDGER"
-                ? "bg-indigo-600 text-white border-indigo-700 shadow-md font-black"
+                ? "bg-indigo-600 text-white border-indigo-700 shadow-xs font-black"
                 : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800/60 hover:bg-indigo-100"
             }`}
           >
-            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             {isInlineEditing ? (
               <input
                 type="text"
@@ -242,13 +242,13 @@ export const Step3QualityHeader = ({
                     kpiLabels: { ...kpiLabels, official: e.target.value }
                   });
                 }}
-                className="bg-transparent text-inherit font-black text-xs outline-none w-16 border-b border-indigo-400 focus:border-white"
+                className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-14 border-b border-indigo-400 focus:border-white"
                 title="KPI 뱃지 명칭 수정"
               />
             ) : (
               <span>{kpiLabels.official || "4M 대장"}</span>
             )}
-            <span className="font-mono font-black text-sm">{stats.officialCount}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{stats.officialCount}건</span>
             {isInlineEditing && (
               <button
                 type="button"
@@ -259,7 +259,7 @@ export const Step3QualityHeader = ({
                 title="4M 대장 뱃지 삭제(숨김)"
                 className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer ml-0.5 text-inherit hover:opacity-100 transition"
               >
-                <X className="w-3 h-3" />
+                <X className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
@@ -269,13 +269,13 @@ export const Step3QualityHeader = ({
         {!hiddenKpis.includes("pending") && (
           <div
             onClick={() => setActiveTab("PENDING_APPROVAL")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer text-[10.5px] sm:text-xs ${
               activeTab === "PENDING_APPROVAL"
-                ? "bg-purple-600 text-white border-purple-700 shadow-md font-black"
+                ? "bg-purple-600 text-white border-purple-700 shadow-xs font-black"
                 : "bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800/60 hover:bg-purple-100"
             }`}
           >
-            <UserCheck className="w-3.5 h-3.5 shrink-0" />
+            <UserCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             {isInlineEditing ? (
               <input
                 type="text"
@@ -286,13 +286,13 @@ export const Step3QualityHeader = ({
                     kpiLabels: { ...kpiLabels, pending: e.target.value }
                   });
                 }}
-                className="bg-transparent text-inherit font-black text-xs outline-none w-24 border-b border-purple-400 focus:border-white"
+                className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-20 border-b border-purple-400 focus:border-white"
                 title="KPI 뱃지 명칭 수정"
               />
             ) : (
               <span>{kpiLabels.pending || "경영진 승인대기"}</span>
             )}
-            <span className="font-mono font-black text-sm">{stats.pendingApprovalCount}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{stats.pendingApprovalCount}건</span>
             {isInlineEditing && (
               <button
                 type="button"
@@ -303,7 +303,7 @@ export const Step3QualityHeader = ({
                 title="경영진 승인대기 뱃지 삭제(숨김)"
                 className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer ml-0.5 text-inherit hover:opacity-100 transition"
               >
-                <X className="w-3 h-3" />
+                <X className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
@@ -313,7 +313,7 @@ export const Step3QualityHeader = ({
         {!hiddenKpis.includes("all") && (
           <div
             onClick={() => setActiveTab("ALL")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1 cursor-pointer ${
+            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition flex items-center gap-1 cursor-pointer text-[10.5px] sm:text-xs ${
               activeTab === "ALL"
                 ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-black"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200"
@@ -329,7 +329,7 @@ export const Step3QualityHeader = ({
                     kpiLabels: { ...kpiLabels, all: e.target.value }
                   });
                 }}
-                className="bg-transparent text-inherit font-black text-xs outline-none w-16 border-b border-slate-400"
+                className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-14 border-b border-slate-400"
                 title="전체보기 명칭 수정"
               />
             ) : (
@@ -343,9 +343,9 @@ export const Step3QualityHeader = ({
                   onUpdateDraft?.({ hiddenKpis: [...hiddenKpis, "all"] });
                 }}
                 title="전체보기 뱃지 삭제(숨김)"
-                className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer ml-0.5 text-inherit transition"
+                className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer ml-0.5 text-inherit hover:opacity-100 transition"
               >
-                <X className="w-3 h-3" />
+                <X className="w-2.5 h-2.5" />
               </button>
             )}
           </div>

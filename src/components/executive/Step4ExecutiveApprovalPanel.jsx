@@ -353,23 +353,23 @@ export default function Step4ExecutiveApprovalPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-purple-500/40 shadow-xl p-4 sm:p-6 space-y-5 text-left transition-all">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-purple-500/40 shadow-xl p-2.5 sm:p-3.5 space-y-2.5 text-left transition-all">
       {/* ========================================================================= */}
       {/* 1. Header Bar with Step 4 Identity */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
         <div className="min-w-0">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-xs font-black">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.2 sm:py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-[9.5px] sm:text-[10px] font-black">
                 경영진 전용
               </span>
-              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-                <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400 shrink-0" />
+              <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                 <span>변동점 관리대장 최종점검 및 전사 종합현황 승인 센터</span>
               </h3>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
               <span>담당: <strong className="text-purple-600 dark:text-purple-400 font-black">{executiveName} {executiveTitle}</strong></span>
               <span>•</span>
               <span>품질 상신건 최종 점검 → 전자날인 승인(또는 반려) → 파이프라인 전사 총괄 관제</span>
@@ -378,55 +378,55 @@ export default function Step4ExecutiveApprovalPanel({
         </div>
 
         {/* Action Buttons & Tabs */}
-        <div className="flex items-center gap-2 flex-wrap text-xs font-bold">
+        <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab("PENDING")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-1 rounded-xl border transition flex items-center gap-1 cursor-pointer text-[11px] ${
               activeTab === "PENDING"
                 ? "bg-purple-600 text-white border-purple-700 shadow-md font-black"
                 : "bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800/60 hover:bg-purple-100"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
             <span>최종 승인 대기</span>
-            <span className="font-mono font-black text-sm">{pipelineStats.step4PendingCount}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{pipelineStats.step4PendingCount}건</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("APPROVED")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-1 rounded-xl border transition flex items-center gap-1 cursor-pointer text-[11px] ${
               activeTab === "APPROVED"
                 ? "bg-emerald-600 text-white border-emerald-700 shadow-md font-black"
                 : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/60 hover:bg-emerald-100"
             }`}
           >
-            <Stamp className="w-3.5 h-3.5" />
+            <Stamp className="w-3 h-3" />
             <span>승인 완료</span>
-            <span className="font-mono font-black text-sm">{pipelineStats.step4ApprovedCount}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{pipelineStats.step4ApprovedCount}건</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("ALL_LEDGER")}
-            className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-1 rounded-xl border transition flex items-center gap-1 cursor-pointer text-[11px] ${
               activeTab === "ALL_LEDGER"
                 ? "bg-indigo-600 text-white border-indigo-700 shadow-md font-black"
                 : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800/60 hover:bg-indigo-100"
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Layers className="w-3 h-3" />
             <span>전사 4M 대장</span>
-            <span className="font-mono font-black text-sm">{pipelineStats.totalOfficial4M}건</span>
+            <span className="font-mono font-black text-xs sm:text-sm">{pipelineStats.totalOfficial4M}건</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportExcel}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition flex items-center gap-1 cursor-pointer font-bold"
+            className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition flex items-center gap-1 cursor-pointer text-[11px] font-bold"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            <Download className="w-3 h-3 text-emerald-600" />
             <span>엑셀 다운로드</span>
           </button>
         </div>
@@ -435,52 +435,52 @@ export default function Step4ExecutiveApprovalPanel({
       {/* ========================================================================= */}
       {/* 2. 1 ➡️ 2 ➡️ 3 ➡️ 4단계 전체 파이프라인 실시간 통합 요약 바 */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-        <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 space-y-1">
-          <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 text-xs">
+        <div className="p-2 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 space-y-0.5">
+          <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
             1단계: 현장작업자
           </div>
-          <div className="font-black text-base text-slate-900 dark:text-white flex items-center justify-between">
+          <div className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center justify-between">
             <span>제출 작업일보</span>
             <span className="font-mono">{pipelineStats.step1WorkLogCount}건</span>
           </div>
-          <div className="text-[10px] text-slate-500">실적·초중종·비가동 등록</div>
+          <div className="text-[9.5px] text-slate-500">실적·초중종·비가동 등록</div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-1">
-          <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+        <div className="p-2 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-0.5">
+          <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
             2단계: 생산관리자
           </div>
-          <div className="font-black text-base text-slate-900 dark:text-white flex items-center justify-between">
+          <div className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center justify-between">
             <span>비가동 1차 소팅</span>
             <span className="font-mono text-xs">사내 {pipelineStats.step2InternalCount} / 이관 {pipelineStats.step2TransferredCount}</span>
           </div>
-          <div className="text-[10px] text-slate-500">생산오더 달성률 & 소팅</div>
+          <div className="text-[9.5px] text-slate-500">생산오더 달성률 & 소팅</div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-1">
-          <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+        <div className="p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 space-y-0.5">
+          <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
             3단계: 품질관리자 (이창엽)
           </div>
-          <div className="font-black text-base text-slate-900 dark:text-white flex items-center justify-between">
+          <div className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center justify-between">
             <span>4M CAPA 대책수립</span>
             <span className="font-mono">{pipelineStats.step3CapaCompletedCount}건 완료</span>
           </div>
-          <div className="text-[10px] text-slate-500">CAPA 시정대책 및 조치결과</div>
+          <div className="text-[9.5px] text-slate-500">CAPA 시정대책 및 조치결과</div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border-2 border-purple-400 dark:border-purple-700 space-y-1 shadow-xs">
-          <div className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center justify-between">
+        <div className="p-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border-2 border-purple-400 dark:border-purple-700 space-y-0.5 shadow-xs">
+          <div className="text-[10px] font-bold text-purple-600 dark:text-purple-400 flex items-center justify-between">
             <span>4단계: 경영진 승인</span>
             {pipelineStats.step4PendingCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
             )}
           </div>
-          <div className="font-black text-base text-purple-900 dark:text-purple-200 flex items-center justify-between">
+          <div className="font-black text-sm sm:text-base text-purple-900 dark:text-purple-200 flex items-center justify-between">
             <span>승인 대기 / 완료</span>
-            <span className="font-mono text-xs">{pipelineStats.step4PendingCount}건 대기 / {pipelineStats.step4ApprovedCount}건</span>
+            <span className="font-mono text-xs">{pipelineStats.step4PendingCount}건 / {pipelineStats.step4ApprovedCount}건</span>
           </div>
-          <div className="text-[10px] text-slate-500">최종 점검 및 전자날인</div>
+          <div className="text-[9.5px] text-slate-500">최종 점검 및 전자날인</div>
         </div>
       </div>
 

@@ -56,24 +56,24 @@ export const AbnormalityTableView = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className={`${themeObj.tableThead} font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]`}>
-              <th className="py-2.5 px-2 text-center w-8">NO</th>
-              <th className="py-2.5 px-2 text-center w-36">4M 분류 (수정)</th>
-              <th className="py-2.5 px-2 text-center w-20">출처</th>
-              <th className="py-2.5 px-2 text-center w-24">등록일자 (발생)</th>
-              <th className="py-2.5 px-2 text-center w-14">공장</th>
-              <th className="py-2.5 px-3 min-w-[300px] w-full">변동점내용</th>
-              <th className="py-2.5 px-2 text-center w-14">사진</th>
-              <th className="py-2.5 px-2 text-center w-20">진행상태</th>
-              <th className="py-2.5 px-2 text-center w-28">유효성검증</th>
-              <th className="py-2.5 px-2 text-center w-44">등록구분 (변동점 / 사내관리)</th>
+            <tr className={`${themeObj.tableThead} font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[10.5px]`}>
+              <th className="py-1.5 px-1.5 text-center w-8">NO</th>
+              <th className="py-1.5 px-1 text-center w-32">4M 분류</th>
+              <th className="py-1.5 px-1.5 text-center w-16">출처</th>
+              <th className="py-1.5 px-1.5 text-center w-20">등록일자</th>
+              <th className="py-1.5 px-1 text-center w-12">공장</th>
+              <th className="py-1.5 px-2.5 min-w-[260px] w-full">변동점내용</th>
+              <th className="py-1.5 px-1 text-center w-12">사진</th>
+              <th className="py-1.5 px-1.5 text-center w-16">진행상태</th>
+              <th className="py-1.5 px-1 text-center w-20">유효성검증</th>
+              <th className="py-1.5 px-1 text-center w-36">등록구분</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
             {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-10 text-center text-slate-400">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                <td colSpan={10} className="py-6 text-center text-slate-400">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
                   <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
                     해당 조건의 변동점 내역이 없습니다.
                   </p>
@@ -111,19 +111,19 @@ export const AbnormalityTableView = ({
                     title="클릭하여 상세 내용 및 조치 등록 팝업 열기"
                   >
                     {/* 1. NO (전체 인덱스 반영) */}
-                    <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-[10.5px] whitespace-nowrap">
+                    <td className="py-1 px-1.5 text-center font-mono text-slate-400 text-[10px] whitespace-nowrap">
                       {globalIdx}
                     </td>
 
                     {/* 2. 4M 분류 */}
                     <td
-                      className="py-2 px-1 text-center whitespace-nowrap"
+                      className="py-1 px-1 text-center whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <select
                         value={item.fourM || "Method"}
                         onChange={(e) => onUpdateItemFourM(item, e.target.value)}
-                        className={`text-[11px] font-black py-1 px-1.5 rounded-lg border cursor-pointer outline-none transition-all shadow-2xs font-sans ${
+                        className={`text-[10.5px] font-black py-0.5 px-1.5 rounded-md border cursor-pointer outline-none transition-all shadow-2xs font-sans ${
                           item.fourM === "Machine"
                             ? "bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700"
                             : item.fourM === "Material"
@@ -132,56 +132,56 @@ export const AbnormalityTableView = ({
                             ? "bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700"
                             : "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700"
                         }`}
-                        title="4M 카테고리 수정 (클릭하여 Machine / Material / Man / Method 직접 변경)"
+                        title="4M 카테고리 수정"
                       >
                         <option
                           value="Machine"
                           className="bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-bold"
                         >
-                          ⚙️ Machine (설비)
+                          Machine (설비)
                         </option>
                         <option
                           value="Material"
                           className="bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 font-bold"
                         >
-                          🧱 Material (재료)
+                          Material (재료)
                         </option>
                         <option
                           value="Man"
                           className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-bold"
                         >
-                          👤 Man (작업자)
+                          Man (작업자)
                         </option>
                         <option
                           value="Method"
                           className="bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 font-bold"
                         >
-                          📐 Method (방법)
+                          Method (방법)
                         </option>
                       </select>
                     </td>
 
                     {/* 3. 출처 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${badgeClass}`}>
+                    <td className="py-1 px-1.5 text-center whitespace-nowrap">
+                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black border ${badgeClass}`}>
                         {item.origin}
                       </span>
                     </td>
 
                     {/* 4. 등록일자 */}
-                    <td className="py-2.5 px-2 text-center font-mono text-slate-500 whitespace-nowrap text-[11px]">
+                    <td className="py-1 px-1.5 text-center font-mono text-slate-500 whitespace-nowrap text-[10.5px]">
                       <div className="font-bold text-slate-700 dark:text-slate-300">
                         {item.date || "-"}
                       </div>
                       {item.time && (
-                        <div className="text-[10px] text-slate-400">{item.time}</div>
+                        <div className="text-[9.5px] text-slate-400">{item.time}</div>
                       )}
                     </td>
 
                     {/* 5. 공장 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-1 px-1 text-center whitespace-nowrap">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-1 py-0.2 rounded text-[9.5px] font-bold ${
                           isHallim
                             ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
                             : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
@@ -192,24 +192,24 @@ export const AbnormalityTableView = ({
                     </td>
 
                     {/* 6. 변동점내용 */}
-                    <td className="py-2.5 px-3">
-                      <div className="font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <td className="py-1 px-2.5">
+                      <div className="font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors text-xs">
                         {item.title}
                       </div>
                       {item.content && item.content.trim() !== item.title.trim() && (
-                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                        <div className="text-[10.5px] text-slate-500 line-clamp-1 mt-0.2">
                           {item.content}
                         </div>
                       )}
                       {item.actionResult && (
-                        <div className="text-[10.5px] text-emerald-600 dark:text-emerald-400 line-clamp-1 mt-0.5 font-bold">
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 line-clamp-1 mt-0.2 font-bold">
                           ↳ 조치: {item.actionResult}
                         </div>
                       )}
                     </td>
 
                     {/* 7. 사진 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-1 px-1 text-center whitespace-nowrap">
                       {hasPhotos ? (
                         <button
                           type="button"
@@ -219,23 +219,23 @@ export const AbnormalityTableView = ({
                               item.actionImages?.[0] || item.images?.[0];
                             if (img && onPreviewImage) onPreviewImage(img);
                           }}
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white text-[9.5px] font-bold transition-all cursor-pointer"
                           title="클릭하여 원본 사진 미리보기"
                         >
-                          <Camera className="w-3 h-3" />
+                          <Camera className="w-2.5 h-2.5" />
                           <span>{photoCount}</span>
                         </button>
                       ) : (
-                        <span className="text-[10px] text-slate-300 dark:text-slate-600">
+                        <span className="text-[9.5px] text-slate-300 dark:text-slate-600">
                           -
                         </span>
                       )}
                     </td>
 
                     {/* 8. 진행상태 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-1 px-1.5 text-center whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10.5px] font-bold inline-flex items-center gap-0.5 ${
+                        className={`px-1.5 py-0.2 rounded text-[10px] font-bold inline-flex items-center gap-0.5 ${
                           item.isResolved
                             ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
                             : "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300"
@@ -246,14 +246,14 @@ export const AbnormalityTableView = ({
                     </td>
 
                     {/* 9. 유효성검증 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-1 px-1 text-center whitespace-nowrap">
                       {item.isEffectVerified || item.effectivenessVerified ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9.5px] font-black inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
                           <span>검증완료</span>
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 text-[10px] font-bold">
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9.5px] font-bold">
                           확인대기
                         </span>
                       )}
@@ -261,7 +261,7 @@ export const AbnormalityTableView = ({
 
                     {/* 10. 등록구분 */}
                     <td
-                      className="py-2.5 px-2 text-center whitespace-nowrap"
+                      className="py-1 px-1.5 text-center whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-center gap-1">
@@ -270,23 +270,23 @@ export const AbnormalityTableView = ({
                           <button
                             type="button"
                             onClick={() => onToggleLedger(item)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-rose-600 text-[10px] font-black transition-all cursor-pointer shadow-xs group/btn"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white hover:bg-rose-600 text-[9.5px] font-black transition-all cursor-pointer shadow-xs group/btn"
                             title="변동점관리대장에 등록됨 (클릭 시 등록 해제)"
                           >
                             <Check className="w-2.5 h-2.5 group-hover/btn:hidden" />
                             <X className="w-2.5 h-2.5 hidden group-hover/btn:inline" />
-                            <span className="group-hover/btn:hidden">⭐ 대장등록됨</span>
+                            <span className="group-hover/btn:hidden">대장등록됨</span>
                             <span className="hidden group-hover/btn:inline">등록 해제</span>
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => onToggleLedger(item)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-emerald-600 text-indigo-700 dark:text-indigo-300 hover:text-white border border-indigo-300 dark:border-indigo-700 text-[10px] font-black transition-all cursor-pointer shadow-2xs"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-emerald-600 text-indigo-700 dark:text-indigo-300 hover:text-white border border-indigo-300 dark:border-indigo-700 text-[9.5px] font-black transition-all cursor-pointer shadow-2xs"
                             title="변동점등록 뱃지: 클릭 시 변동점관리대장에 동시 등록됩니다."
                           >
                             <Plus className="w-2.5 h-2.5" />
-                            <span>🔄 변동점등록</span>
+                            <span>변동점등록</span>
                           </button>
                         )}
 
@@ -294,9 +294,9 @@ export const AbnormalityTableView = ({
                         <button
                           type="button"
                           onClick={() => onRegisterAsInternalMgmt(item)}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-2xs border ${
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-black transition-all cursor-pointer shadow-2xs border ${
                             !item.isRegisteredInLedger && internalMgmtMap[item.id]
-                              ? "bg-blue-600 text-white border-blue-500 ring-2 ring-blue-400/40"
+                              ? "bg-blue-600 text-white border-blue-500 ring-1 ring-blue-400/40"
                               : "bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 text-slate-600 dark:text-slate-300 hover:text-white border-slate-300 dark:border-slate-700"
                           }`}
                           title="사내관리등록 뱃지: 부적합관리대장 내 사내관리 항목으로 등록합니다."
@@ -304,10 +304,10 @@ export const AbnormalityTableView = ({
                           {!item.isRegisteredInLedger && internalMgmtMap[item.id] ? (
                             <>
                               <Check className="w-2.5 h-2.5" />
-                              <span>🏢 사내관리됨</span>
+                              <span>사내관리됨</span>
                             </>
                           ) : (
-                            <span>🏢 사내관리등록</span>
+                            <span>사내관리등록</span>
                           )}
                         </button>
                       </div>
@@ -320,10 +320,10 @@ export const AbnormalityTableView = ({
         </table>
       </div>
 
-      {/* 🌟 8개씩 페이지네이션 컨트롤 바 */}
+      {/* 8개씩 페이지네이션 컨트롤 바 */}
       {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 text-xs">
-          <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 text-[11px]">
+          <div className="text-slate-500 dark:text-slate-400 font-bold text-[10.5px]">
             <span>{customTitle ? `${customTitle} 총 ` : "전사 4M 취합대장 총 "}{filteredRecords.length}건 중 </span>
             <span className="text-indigo-600 dark:text-indigo-400 font-black">
               {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredRecords.length)}건
@@ -336,7 +336,7 @@ export const AbnormalityTableView = ({
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              className="p-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
               title="이전 페이지"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -347,7 +347,7 @@ export const AbnormalityTableView = ({
                 key={num}
                 type="button"
                 onClick={() => setCurrentPage(num)}
-                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-black transition cursor-pointer ${
+                className={`min-w-[24px] h-6 px-1.5 rounded-md text-[10.5px] font-black transition cursor-pointer ${
                   currentPage === num
                     ? `${themeObj.accentBadge || "bg-indigo-600 text-white"} shadow-xs`
                     : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -361,7 +361,7 @@ export const AbnormalityTableView = ({
               type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              className="p-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
               title="다음 페이지"
             >
               <ChevronRight className="w-3.5 h-3.5" />

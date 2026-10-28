@@ -243,7 +243,7 @@ export const UnifiedAbnormalityControlPanel = ({
       )}
 
       {/* 2. 하단: [전사 4M 취합대장] 일체형 단일 패널 (헤더 + 5대 KPI + 1줄 대장 목록표가 완전히 하나의 패널로 통합) */}
-      <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all`}>
+      <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-2.5 sm:p-3 space-y-2.5 text-left transition-all`}>
         <AbnormalityHeader
           currentProfile={currentProfile}
           viewMode={viewMode}

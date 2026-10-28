@@ -46,7 +46,7 @@ export const DailyWorkLogTableSection = ({
   const title = cleanTitleWithoutEmoji(rawTitle) || "일일업무일지 현황";
 
   return (
-    <div className={`bg-white dark:bg-slate-900 ${customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl"} p-3.5 sm:p-5 border ${customSettings?.borderStyle || "border"} border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden`}>
+    <div className={`bg-white dark:bg-slate-900 ${customSettings?.borderRadius || "rounded-2xl"} p-2.5 sm:p-3 border ${customSettings?.borderStyle || "border"} border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 min-w-0 max-w-full overflow-hidden`}>
       {/* Manager Dedicated Information Banners (No batch approval - Requires reading details) */}
       {isMyeongjae && pendingSamrangjinCount > 0 && (
         <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
@@ -143,22 +143,22 @@ export const DailyWorkLogTableSection = ({
         </div>
       )}
 
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
             <div className="flex items-center gap-1.5">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 shrink-0" />
               <input
                 type="text"
                 value={title}
                 onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
                 placeholder="제목..."
-                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[150px]"
               />
             </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 shrink-0" />
               <span>{title}</span>
             </h2>
           )}
@@ -166,13 +166,13 @@ export const DailyWorkLogTableSection = ({
           {isInlineEditing ? (
             <div className="inline-flex items-center gap-1">
               {customSettings?.hideBadge !== true ? (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <div className="inline-flex items-center gap-1 px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                   <input
                     type="text"
                     value={customSettings?.customBadge !== undefined ? customSettings.customBadge : "일지"}
                     onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
                     placeholder="뱃지..."
-                    className="bg-transparent text-inherit font-black text-[10px] outline-none w-16 border-b border-indigo-400"
+                    className="bg-transparent text-inherit font-black text-[9.5px] sm:text-[10px] outline-none w-16 border-b border-indigo-400"
                   />
                   <button
                     type="button"
@@ -187,7 +187,7 @@ export const DailyWorkLogTableSection = ({
                 <button
                   type="button"
                   onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: "일지" })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-indigo-400 text-indigo-400 flex items-center gap-1"
+                  className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border border-dashed border-indigo-400 text-indigo-400 flex items-center gap-1"
                 >
                   <Plus className="w-2.5 h-2.5" />
                   <span>+ 뱃지 복원</span>
@@ -196,7 +196,7 @@ export const DailyWorkLogTableSection = ({
             </div>
           ) : (
             customSettings?.hideBadge !== true && customSettings?.customBadge && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+              <span className="px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
                 {customSettings.customBadge}
               </span>
             )
@@ -255,7 +255,7 @@ export const DailyWorkLogTableSection = ({
               if (pushModalHistory) pushModalHistory("recent_work_logs_summary_modal");
               setIsWorkLogsSummaryModalOpen(true);
             }}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-[11px] sm:text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             title="최근일 기준 전작업자 업무일지 종합 요약보기"
           >
             <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">

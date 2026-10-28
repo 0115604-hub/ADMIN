@@ -391,10 +391,10 @@ export default function Step2ProductionManagerPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-xl overflow-hidden p-3.5 sm:p-5 space-y-4 text-left animate-fadeIn">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-xl overflow-hidden p-2.5 sm:p-3.5 space-y-2.5 text-left animate-fadeIn">
       {/* Toast Banner */}
       {toastMessage && (
-        <div className="p-3 rounded-2xl bg-slate-900 text-white font-black text-xs sm:text-sm shadow-xl border border-indigo-400 flex items-center justify-between animate-fadeIn">
+        <div className="p-2.5 rounded-xl bg-slate-900 text-white font-black text-xs shadow-xl border border-indigo-400 flex items-center justify-between animate-fadeIn">
           <span>{toastMessage}</span>
           <button type="button" onClick={() => setToastMessage("")} className="cursor-pointer text-slate-400 hover:text-white ml-2">✕</button>
         </div>
@@ -403,19 +403,19 @@ export default function Step2ProductionManagerPanel({
       {/* ========================================================================= */}
       {/* 1. Header Banner & Process Switcher */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl border border-indigo-500/40 shadow-md">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-2.5 sm:p-3 rounded-xl border border-indigo-500/40 shadow-md">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-black tracking-wide shadow-xs border border-indigo-400/40">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.2 sm:py-0.5 rounded-full bg-indigo-500 text-white text-[9.5px] sm:text-[10px] font-black tracking-wide shadow-xs border border-indigo-400/40">
                 생산·공정관리자
               </span>
-              <h2 className="text-sm sm:text-base font-black text-white tracking-tight flex items-center gap-1.5">
-                <Factory className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 shrink-0" />
+              <h2 className="text-xs sm:text-sm font-black text-white tracking-tight flex items-center gap-1.5">
+                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400 shrink-0" />
                 <span>{effectiveProcess === "machining" ? "삼랑진 가공동 생산오더 & 비가동 1차 소팅 센터" : "삼랑진 압출동 압출오더 & 비가동 1차 소팅 센터"}</span>
               </h2>
             </div>
-            <p className="text-xs text-indigo-200/90 mt-1">
+            <p className="text-[10.5px] text-indigo-200/90 mt-0.5">
               관리자: <strong className="text-white font-black">{managerName} {currentProfile?.title || "책임"}</strong> • {effectiveProcess === "machining" ? "가공 3대 아이템(HR · JA G/RUN, NX5a PTR)" : "압출 1~4호기 라인"} 오더/실적 달성률 관리 및 당일 비가동/부적합 1차 분류
             </p>
           </div>
@@ -423,28 +423,28 @@ export default function Step2ProductionManagerPanel({
 
         {/* Admin Process Switcher (Admin / Executive only) */}
         {isAdminOrExecutive && (
-          <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-800/90 p-1 rounded-xl border border-indigo-500/30">
+          <div className="flex items-center gap-1 self-start sm:self-auto bg-slate-800/90 p-0.5 rounded-lg border border-indigo-500/30">
             <button
               type="button"
               onClick={() => { setActiveProcessTab("machining"); setSelectedItemBadge("ALL"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
                 effectiveProcess === "machining"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              🚗 가공동 관리
+              가공동 관리
             </button>
             <button
               type="button"
               onClick={() => { setActiveProcessTab("extrusion"); setSelectedItemBadge("ALL"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
                 effectiveProcess === "extrusion"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              🏭 압출동 관리
+              압출동 관리
             </button>
           </div>
         )}

@@ -13,23 +13,23 @@ export const ExtrusionDowntimeSection = ({
   const titleValue = cleanTitleWithoutEmoji(rawTitle) || "압출동 주간 비가동내역 요약";
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 min-w-0 max-w-full overflow-hidden">
-      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5 min-w-0">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1.5 min-w-0 max-w-full overflow-hidden">
+      <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800 gap-1.5 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
             <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
               <input
                 type="text"
                 value={titleValue}
                 onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
                 placeholder="제목..."
-                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[150px]"
               />
             </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
+            <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
               <span>{titleValue}</span>
             </h2>
           )}
@@ -37,12 +37,12 @@ export const ExtrusionDowntimeSection = ({
           {isInlineEditing ? (
             <div className="inline-flex items-center gap-1">
               {customSettings?.hideBadge !== true ? (
-                <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <div className="inline-flex items-center gap-1 px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   <input
                     type="text"
                     value={customSettings?.customBadge !== undefined ? customSettings.customBadge : "9월 당월 누적"}
                     onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
-                    className="bg-transparent text-inherit font-black text-[10px] outline-none w-20 border-b border-amber-400"
+                    className="bg-transparent text-inherit font-black text-[9.5px] sm:text-[10px] outline-none w-20 border-b border-amber-400"
                   />
                   <button
                     type="button"
@@ -57,7 +57,7 @@ export const ExtrusionDowntimeSection = ({
                 <button
                   type="button"
                   onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: "9월 당월 누적" })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-amber-500 text-amber-600 flex items-center gap-1"
+                  className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border border-dashed border-amber-500 text-amber-600 flex items-center gap-1"
                 >
                   <Plus className="w-2.5 h-2.5" />
                   <span>+ 뱃지 복원</span>
@@ -66,7 +66,7 @@ export const ExtrusionDowntimeSection = ({
             </div>
           ) : (
             customSettings?.hideBadge !== true && (
-              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+              <span className="px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
                 {customSettings?.customBadge || "9월 당월 누적"}
               </span>
             )
@@ -76,7 +76,7 @@ export const ExtrusionDowntimeSection = ({
         {onNavigateTab && (
           <button
             onClick={() => onNavigateTab("extrusion_downtime")}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
+            className="flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-[11px] sm:text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
           >
             <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -89,22 +89,22 @@ export const ExtrusionDowntimeSection = ({
       </div>
 
       {/* 4 Line Cards with Monthly Mini Graph & Current Month Downtime */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-1.5">
         {extrusionSummaryList.map((ex) => {
           return (
             <div
               key={ex.line}
-              className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xs transition-all space-y-1.5 min-w-0"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xs transition-all space-y-1 min-w-0"
             >
               {/* Tile Top Header: Line Name & LOSS Rate Badge */}
               <div className="flex items-center justify-between pb-1 border-b border-slate-200/70 dark:border-slate-700/70 gap-1">
                 <div className="flex items-center gap-1.5 min-w-0 truncate">
                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
-                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                  <span className="font-black text-[11px] sm:text-xs text-slate-900 dark:text-white truncate">
                     {ex.line}
                   </span>
                 </div>
-                <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
+                <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
                   LOSS {ex.lossRate}
                 </span>
               </div>
@@ -113,17 +113,17 @@ export const ExtrusionDowntimeSection = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 items-center">
                 {/* Left Side: 당월 누적 합산 */}
                 <div className="flex flex-col justify-center pr-1 sm:border-r border-slate-200/70 dark:border-slate-700/70 min-w-0">
-                  <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate">
                     <Clock className="w-2.5 h-2.5 text-rose-500 shrink-0" />
                     <span className="truncate">[{ex.currentMonth}] 당월 누적</span>
                   </div>
                   <div className="flex items-baseline gap-0.5 mt-0.5">
-                    <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 tracking-tight leading-none">
+                    <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 tracking-tight leading-none">
                       {ex.currentMonthMin?.toLocaleString()}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">분</span>
+                    <span className="text-[9.5px] font-bold text-slate-600 dark:text-slate-300">분</span>
                   </div>
-                  <span className="text-[9px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate">
+                  <span className="text-[8.5px] sm:text-[9px] text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate">
                     ({ex.currentMonthHours}) • 가동률 {ex.opRatio}%
                   </span>
                 </div>

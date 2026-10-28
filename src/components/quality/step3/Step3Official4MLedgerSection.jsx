@@ -70,18 +70,18 @@ export const Step3Official4MLedgerSection = ({
   }, [filteredItems, currentPage]);
 
   return (
-    <div className="space-y-3 pt-2">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+    <div className="space-y-2 pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {isInlineEditing ? (
             <>
               {!customSettings?.hideOfficialSubBadge ? (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
+                <div className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-indigo-600 text-white font-black text-[10px]">
                   <input
                     type="text"
                     value={officialSubBadgeClean}
                     onChange={(e) => onUpdateDraft?.({ officialSubBadge: cleanTitleWithoutEmoji(e.target.value) })}
-                    className="bg-transparent text-white font-black text-xs outline-none w-20 border-b border-white/40 focus:border-white"
+                    className="bg-transparent text-white font-black text-[10px] outline-none w-16 border-b border-white/40 focus:border-white"
                   />
                   <button
                     type="button"
@@ -96,37 +96,37 @@ export const Step3Official4MLedgerSection = ({
                 <button
                   type="button"
                   onClick={() => onUpdateDraft?.({ hideOfficialSubBadge: false, officialSubBadge: "4M 정식대장" })}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-indigo-400 text-indigo-400 hover:bg-indigo-500/10 flex items-center gap-1 cursor-pointer"
+                  className="px-2 py-0.2 rounded-md text-[9.5px] font-bold border border-dashed border-indigo-400 text-indigo-400 hover:bg-indigo-500/10 flex items-center gap-1 cursor-pointer"
                 >
-                  <Plus className="w-2.5 h-2.5" />
+                  <Plus className="w-2 h-2" />
                   <span>+ 4M 정식대장 뱃지 복원</span>
                 </button>
               )}
 
               <div className="flex items-center gap-1.5">
-                <ClipboardList className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <input
                   type="text"
                   value={officialSubTitleClean}
                   onChange={(e) => onUpdateDraft?.({ officialSubTitle: cleanTitleWithoutEmoji(e.target.value) })}
-                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-indigo-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[240px]"
+                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-indigo-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[200px]"
                 />
               </div>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+              <span className="text-[11px] px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                 총 {filteredItems.length}건
               </span>
             </>
           ) : (
             <>
               {!customSettings?.hideOfficialSubBadge && (
-                <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
+                <span className="px-1.5 py-0.2 rounded-md bg-indigo-600 text-white font-black text-[10px]">
                   {officialSubBadgeClean}
                 </span>
               )}
-              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                <ClipboardList className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                <ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>{officialSubTitleClean}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                <span className="text-[10.5px] px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                   총 {filteredItems.length}건
                 </span>
               </h4>
@@ -134,12 +134,12 @@ export const Step3Official4MLedgerSection = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5 flex-wrap text-xs">
           {/* 4M Filter */}
           <select
             value={selectedFourMFilter}
             onChange={(e) => setSelectedFourMFilter(e.target.value)}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs outline-none cursor-pointer"
+            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[11px] outline-none cursor-pointer"
           >
             <option value="ALL">4M 전체 구분</option>
             <option value="Machine">Machine (설비)</option>
@@ -150,30 +150,30 @@ export const Step3Official4MLedgerSection = ({
 
           {/* Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="소속사/공정/차종/대책 검색..."
-              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs outline-none focus:ring-1 focus:ring-indigo-500 w-36 sm:w-48"
+              placeholder="소속사/공정/차종 검색..."
+              className="pl-7 pr-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-[11px] outline-none focus:ring-1 focus:ring-indigo-500 w-32 sm:w-44"
             />
           </div>
         </div>
       </div>
 
       {/* 4M Items Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300 border-collapse">
-          <thead className={`${themeObj?.tableThead || "bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300"} text-[11px] font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap`}>
+          <thead className={`${themeObj?.tableThead || "bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300"} text-[10.5px] font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap`}>
             <tr>
-              <th className="py-2.5 px-3 w-28">관리번호</th>
-              <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
-              <th className="py-2.5 px-2.5 w-32">소속사 / 공정</th>
-              <th className="py-2.5 px-3 min-w-[200px]">변동점 및 이상 내용</th>
-              <th className="py-2.5 px-3 min-w-[240px]">시정대책(CAPA) 및 조치결과</th>
-              <th className="py-2.5 px-2 text-center w-24">진행상태</th>
-              <th className="py-2.5 px-3 text-center w-32">수정&결재</th>
+              <th className="py-1.5 px-2.5 w-24">관리번호</th>
+              <th className="py-1.5 px-2 text-center w-20">4M 구분</th>
+              <th className="py-1.5 px-2 w-28">소속사 / 공정</th>
+              <th className="py-1.5 px-2.5 min-w-[180px]">변동점 및 이상 내용</th>
+              <th className="py-1.5 px-2.5 min-w-[200px]">시정대책(CAPA) 및 조치결과</th>
+              <th className="py-1.5 px-2 text-center w-20">진행상태</th>
+              <th className="py-1.5 px-2 text-center w-28">수정&결재</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
@@ -197,23 +197,23 @@ export const Step3Official4MLedgerSection = ({
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition"
                   >
                     {/* ID / Date */}
-                    <td className="py-2.5 px-3">
-                      <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    <td className="py-1.5 px-2.5">
+                      <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
                         {String(rec.id).replace(/^ledger_/, "").slice(0, 16)}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
+                      <div className="text-[9.5px] text-slate-400 font-mono">
                         {rec.date} {rec.time}
                       </div>
                     </td>
 
                     {/* 4M Badge */}
-                    <td className="py-2.5 px-2 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10.5px] font-black border ${badgeColor}`}>
+                    <td className="py-1.5 px-2 text-center">
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-black border ${badgeColor}`}>
                         {rec.fourM || "Machine"}
                       </span>
                       {rec.isSqNotice && (
-                        <div className="mt-1">
-                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500 text-[9.5px] font-black border border-amber-500/30">
+                        <div className="mt-0.5">
+                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500 text-[9px] font-black border border-amber-500/30">
                             SQ통보
                           </span>
                         </div>
@@ -221,59 +221,58 @@ export const Step3Official4MLedgerSection = ({
                     </td>
 
                     {/* Company / Process */}
-                    <td className="py-2.5 px-2.5">
+                    <td className="py-1.5 px-2">
                       <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                        <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11.5px] font-black tracking-wide">
+                        <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10.5px] font-black tracking-wide">
                           {getFourMRecordCompany(rec)}
                         </span>
                       </div>
-                      <div className="text-[10.5px] text-slate-400 mt-1">
+                      <div className="text-[10px] text-slate-400 mt-0.5">
                         {rec.line || rec.process || "압출"} · {rec.plant}
                       </div>
                     </td>
 
                     {/* Defect Content */}
-                    <td className="py-2.5 px-3">
-                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                    <td className="py-1.5 px-2.5">
+                      <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                         {rec.title || rec.content}
                       </div>
                       {rec.content && rec.content !== rec.title && (
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                        <div className="text-[10.5px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
                           {rec.content}
                         </div>
                       )}
                       {(rec.downtimeMinutes > 0 || rec.scrapKg > 0) && (
-                        <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-slate-400 font-mono">
-                          {rec.downtimeMinutes > 0 && <span>⏱️ {rec.downtimeMinutes}분</span>}
-                          {rec.scrapKg > 0 && <span>🗑️ {rec.scrapKg}kg</span>}
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
+                          {rec.downtimeMinutes > 0 && <span>비가동 {rec.downtimeMinutes}분</span>}
+                          {rec.scrapKg > 0 && <span>폐기 {rec.scrapKg}kg</span>}
                         </div>
                       )}
                     </td>
 
                     {/* Corrective Action */}
-                    <td className="py-2.5 px-3">
+                    <td className="py-1.5 px-2.5">
                       {rec.actionResult || rec.correctiveAction ? (
-                        <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                          <span className="font-bold">🛠️ 대책: </span>
+                        <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400">
+                          <span className="font-bold">대책: </span>
                           <span>{rec.actionResult || rec.correctiveAction}</span>
                         </div>
                       ) : (
-                        <div className="text-[11px] text-rose-500 dark:text-rose-400 font-bold">
-                          ⚠️ 시정 및 재발방지대책 수립 필요
+                        <div className="text-[10.5px] text-rose-500 dark:text-rose-400 font-bold">
+                          시정 및 재발방지대책 수립 필요
                         </div>
                       )}
                       {rec.actionAuthor && (
-                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        <div className="text-[9.5px] text-slate-400 mt-0.5 font-mono">
                           조치자: {rec.actionAuthor} ({rec.actionAt?.slice(0, 16) || ""})
                         </div>
                       )}
                     </td>
 
                     {/* Status */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-1.5 px-2 text-center whitespace-nowrap">
                       {isCeoApproved ? (
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-black text-[10.5px] inline-flex items-center gap-1 shadow-xs">
-                          <span className="text-xs">✅</span>
+                        <span className="px-2 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-black text-[10px] inline-flex items-center gap-1 shadow-2xs">
                           <span>대표이사 승인 (3/3)</span>
                         </span>
                       ) : isPendingApproval ? (
@@ -296,39 +295,36 @@ export const Step3Official4MLedgerSection = ({
                             : "[2/3단계] 이명재 이사 검토대기";
 
                           return (
-                            <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 font-bold text-[10.5px] inline-flex items-center gap-1">
-                              <span>🚀</span>
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 font-bold text-[10px] inline-flex items-center gap-1">
                               <span>{stepText}</span>
                             </span>
                           );
                         })()
                       ) : isResolved ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-[10.5px]">
-                          🟢 조치완료
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-[10px]">
+                          조치완료
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-[10.5px]">
-                          🛠️ 대책수립중
+                        <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-[10px]">
+                          대책수립중
                         </span>
                       )}
                     </td>
 
                     {/* Follow-up Action Buttons */}
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <td className="py-1.5 px-2 text-center whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleOpenCapaModal(rec)}
-                        className={`px-3 py-1.5 rounded-lg font-black text-[11px] border transition cursor-pointer inline-flex items-center gap-1.5 shadow-xs ${
+                        className={`px-2.5 py-1 rounded-md font-black text-[10.5px] border transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
                           isCeoApproved
                             ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20"
                             : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800"
                         }`}
                         title={isCeoApproved ? "대표이사 결재완료건 (수정 및 결재내역 열람)" : "수정 & 임원결재"}
                       >
-                        {isCeoApproved ? (
-                          <span className="text-xs">✅</span>
-                        ) : (
-                          <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        {!isCeoApproved && (
+                          <Edit3 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                         )}
                         <span>수정&결재</span>
                       </button>

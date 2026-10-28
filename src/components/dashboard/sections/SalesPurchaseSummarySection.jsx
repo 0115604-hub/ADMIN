@@ -23,23 +23,23 @@ export const SalesPurchaseSummarySection = ({
   const titleValue = cleanTitleWithoutEmoji(rawTitle) || `${monthTitle} 매입매출현황 요약`;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 min-w-0 max-w-full overflow-hidden">
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
           {isInlineEditing ? (
             <div className="flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <input
                 type="text"
                 value={titleValue}
                 onChange={(e) => onUpdateDraft?.({ customTitle: cleanTitleWithoutEmoji(e.target.value) })}
                 placeholder="제목..."
-                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[150px]"
               />
             </div>
           ) : (
-            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{titleValue}</span>
             </h2>
           )}
@@ -47,12 +47,12 @@ export const SalesPurchaseSummarySection = ({
           {isInlineEditing ? (
             <div className="inline-flex items-center gap-1">
               {customSettings?.hideBadge !== true ? (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <div className="inline-flex items-center gap-1 px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   <input
                     type="text"
                     value={customSettings?.customBadge !== undefined ? customSettings.customBadge : defaultBadgeText}
                     onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
-                    className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-24 border-b border-emerald-400"
+                    className="bg-transparent text-inherit font-black text-[9.5px] sm:text-[10px] outline-none w-24 border-b border-emerald-400"
                   />
                   <button
                     type="button"
@@ -67,7 +67,7 @@ export const SalesPurchaseSummarySection = ({
                 <button
                   type="button"
                   onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: defaultBadgeText })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-emerald-500 text-emerald-500 flex items-center gap-1"
+                  className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border border-dashed border-emerald-500 text-emerald-500 flex items-center gap-1"
                 >
                   <Plus className="w-2.5 h-2.5" />
                   <span>+ 뱃지 복원</span>
@@ -77,7 +77,7 @@ export const SalesPurchaseSummarySection = ({
           ) : (
             customSettings?.hideBadge !== true && (
               <span
-                className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
+                className="px-1.5 py-0.2 sm:px-2 rounded-full text-[9.5px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
                 title={
                   currentMonthData?.latestFile?.fileName
                     ? `등록 엑셀: ${currentMonthData.latestFile.fileName} (${currentMonthData.latestFile.uploadedBy || "조인주 선임"})`
@@ -93,7 +93,7 @@ export const SalesPurchaseSummarySection = ({
         {onNavigateTab && (
           <button
             onClick={() => onNavigateTab("vehicle_sales")}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
+            className="flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-[11px] sm:text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
           >
             <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -106,24 +106,24 @@ export const SalesPurchaseSummarySection = ({
       </div>
 
       {/* 3 Core KPI Cards (Clean numbers without annotations) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
-          <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
+          <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
+          <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
             {formatAmount(totalSales)}
           </span>
         </div>
 
-        <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
-          <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
+          <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
+          <span className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400">
             {formatAmount(totalPurchases)}
           </span>
         </div>
 
-        <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입원가율</span>
-          <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
+          <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입원가율</span>
+          <span className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400">
             {purchaseRatio}%
           </span>
         </div>

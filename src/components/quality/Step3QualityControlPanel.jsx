@@ -40,7 +40,7 @@ export default function Step3QualityControlPanel({
   const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
 
   return (
-    <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all`}>
+    <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-2.5 sm:p-3 space-y-2.5 text-left transition-all`}>
       {/* 1. Header Bar with Step 3 Identity */}
       <Step3QualityHeader
         managerName={state.managerName}

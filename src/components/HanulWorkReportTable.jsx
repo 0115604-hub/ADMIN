@@ -302,10 +302,10 @@ export const HanulWorkReportTable = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-xl overflow-hidden p-3.5 sm:p-5 space-y-4 text-left">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-xl overflow-hidden p-2.5 sm:p-3.5 space-y-2.5 text-left">
       {/* Toast Alert */}
       {assignToast && (
-        <div className="p-3 rounded-2xl bg-emerald-600 text-white font-black text-xs flex items-center justify-between gap-2 shadow-lg animate-fadeIn">
+        <div className="p-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center justify-between gap-2 shadow-lg animate-fadeIn">
           <span>{assignToast}</span>
           <button
             type="button"
@@ -318,99 +318,99 @@ export const HanulWorkReportTable = ({
       )}
 
       {/* Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
         <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>한울 작업일보현황</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
+              <span className="text-[9.5px] sm:text-[10px] px-2 py-0.2 sm:py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
                 {filteredReports.length}건
               </span>
             </h3>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
               9BQC G/RUN 및 LQ2a Hood Side 세부 공정 실시간 보고서 관리
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <button
             type="button"
             onClick={() => handleOpenTemplateSetting("9BQC")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
             title="탭하면 5대 공정 양식 리스트를 열어 9BQC 적용 양식을 설정합니다"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-3 h-3" />
             <span>9BQC일보설정</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleOpenTemplateSetting("LQ2A")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
             title="탭하면 5대 공정 양식 리스트를 열어 LQ2a 적용 양식을 설정합니다"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-3 h-3" />
             <span>LQ2a일보설정</span>
           </button>
 
           <button
             type="button"
             onClick={() => onOpenReportModal && onOpenReportModal("9BQC", "소재준비")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3 h-3" />
             <span>작업일보 등록</span>
           </button>
         </div>
       </div>
 
       {/* Aggregate KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60">
-          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 block">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        <div className="p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60">
+          <span className="text-[9.5px] font-bold text-indigo-700 dark:text-indigo-300 block">
             9BQC 생산실적
           </span>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className="text-lg font-black text-indigo-950 dark:text-indigo-100">
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base sm:text-lg font-black text-indigo-950 dark:text-indigo-100">
               {stats.bqcGenuine.toLocaleString()}
             </span>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
               EA ({stats.bqcYield}%)
             </span>
           </div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/60">
-          <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 block">
+        <div className="p-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/60">
+          <span className="text-[9.5px] font-bold text-purple-700 dark:text-purple-300 block">
             LQ2a 생산실적
           </span>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className="text-lg font-black text-purple-950 dark:text-purple-100">
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base sm:text-lg font-black text-purple-950 dark:text-purple-100">
               {stats.lq2Genuine.toLocaleString()}
             </span>
-            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+            <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
               EA ({stats.lq2Yield}%)
             </span>
           </div>
         </div>
 
-        <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60">
-          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 block">
+        <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60">
+          <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 block">
             총 양품 수량
           </span>
-          <span className="text-lg font-black text-emerald-950 dark:text-emerald-100">
-            {(stats.bqcGenuine + stats.lq2Genuine).toLocaleString()} <span className="text-xs font-normal">EA</span>
+          <span className="text-base sm:text-lg font-black text-emerald-950 dark:text-emerald-100">
+            {(stats.bqcGenuine + stats.lq2Genuine).toLocaleString()} <span className="text-[10px] font-normal">EA</span>
           </span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
-          <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block">
+        <div className="p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
+          <span className="text-[9.5px] font-bold text-rose-700 dark:text-rose-300 block">
             총 불량 수량
           </span>
-          <span className="text-lg font-black text-rose-950 dark:text-rose-100">
-            {(stats.bqcBad + stats.lq2Bad).toLocaleString()} <span className="text-xs font-normal">EA</span>
+          <span className="text-base sm:text-lg font-black text-rose-950 dark:text-rose-100">
+            {(stats.bqcBad + stats.lq2Bad).toLocaleString()} <span className="text-[10px] font-normal">EA</span>
           </span>
         </div>
       </div>
@@ -421,17 +421,17 @@ export const HanulWorkReportTable = ({
         machiningIncidents={hanulIncidents}
         handleSortIncident={handleSortIncident}
         title="당일 한울(한림) 비가동 · 부적합 1차 소팅"
-        emptyText="🟢 오늘 접수된 한울 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
+        emptyText="오늘 접수된 한울 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
       />
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs">
         {/* Project Selector */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
           <button
             type="button"
             onClick={() => { setProjectFilter("all"); setProcessFilter("all"); }}
-            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
               projectFilter === "all" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs" : "text-slate-500"
             }`}
           >
@@ -440,20 +440,20 @@ export const HanulWorkReportTable = ({
           <button
             type="button"
             onClick={() => { setProjectFilter("9BQC"); setProcessFilter("all"); }}
-            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
               projectFilter === "9BQC" ? "bg-indigo-600 text-white shadow-2xs" : "text-slate-500"
             }`}
           >
-            <span>🚗 9BQC</span>
+            <span>9BQC</span>
           </button>
           <button
             type="button"
             onClick={() => { setProjectFilter("LQ2A"); setProcessFilter("all"); }}
-            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
               projectFilter === "LQ2A" ? "bg-purple-600 text-white shadow-2xs" : "text-slate-500"
             }`}
           >
-            <span>⚡ LQ2a</span>
+            <span>LQ2a</span>
           </button>
         </div>
 
@@ -515,26 +515,26 @@ export const HanulWorkReportTable = ({
       </div>
 
       {/* Reports Table */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-xs">
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-xs">
         <table className="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[11px] border-b border-slate-200 dark:border-slate-700">
+          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10.5px] border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="px-3 py-2.5">일자</th>
-              <th className="px-3 py-2.5">차종</th>
-              <th className="px-3 py-2.5">공정명</th>
-              <th className="px-3 py-2.5">작업자</th>
-              <th className="px-3 py-2.5 text-right">양품수량</th>
-              <th className="px-3 py-2.5 text-right">불량</th>
-              <th className="px-3 py-2.5 text-right">양품률</th>
-              <th className="px-3 py-2.5 text-center">비가동</th>
-              <th className="px-3 py-2.5">비고</th>
-              <th className="px-3 py-2.5 text-center">관리</th>
+              <th className="px-2 py-1.5">일자</th>
+              <th className="px-2 py-1.5">차종</th>
+              <th className="px-2 py-1.5">공정명</th>
+              <th className="px-2 py-1.5">작업자</th>
+              <th className="px-2 py-1.5 text-right">양품수량</th>
+              <th className="px-2 py-1.5 text-right">불량</th>
+              <th className="px-2 py-1.5 text-right">양품률</th>
+              <th className="px-2 py-1.5 text-center">비가동</th>
+              <th className="px-2 py-1.5">비고</th>
+              <th className="px-2 py-1.5 text-center">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredReports.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-10 text-slate-400">
+                <td colSpan={10} className="text-center py-8 text-slate-400">
                   등록된 한울 작업일보가 없습니다.
                 </td>
               </tr>
@@ -550,13 +550,13 @@ export const HanulWorkReportTable = ({
                   <tr
                     key={rep.id}
                     onClick={() => onOpenReportModal && onOpenReportModal(rep.project, rep.processId, rep)}
-                    className="hover:bg-indigo-50/40 dark:hover:bg-slate-800/60 transition cursor-pointer"
+                    className="hover:bg-indigo-50/40 dark:hover:bg-slate-800/60 transition cursor-pointer text-[10.5px] sm:text-[11px]"
                   >
-                    <td className="px-3 py-2.5 font-medium whitespace-nowrap">
+                    <td className="px-2 py-1.5 font-medium whitespace-nowrap">
                       {rep.date || "-"}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                         rep.project === "9BQC"
                           ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
                           : "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
@@ -564,16 +564,16 @@ export const HanulWorkReportTable = ({
                         {rep.project || "9BQC"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    <td className="px-2 py-1.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">
                       {rep.processName || rep.processId || "-"}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-medium">
+                    <td className="px-2 py-1.5 whitespace-nowrap font-medium">
                       {rep.worker || "-"}
                     </td>
-                    <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
                       {genuine.toLocaleString()} EA
                     </td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       {bad > 0 ? (
                         <span className="font-bold text-rose-600 dark:text-rose-400">
                           {bad.toLocaleString()} EA
@@ -582,25 +582,25 @@ export const HanulWorkReportTable = ({
                         <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap font-semibold">
+                    <td className="px-2 py-1.5 text-right whitespace-nowrap font-semibold">
                       <span className={Number(yieldPct) >= 99 ? "text-emerald-600" : Number(yieldPct) >= 95 ? "text-indigo-600" : "text-amber-600"}>
                         {yieldPct}%
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
                       {downtimeMins > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[9.5px] font-bold">
                           {downtimeMins}분
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-[11px]">-</span>
+                        <span className="text-slate-400 text-[10px]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 max-w-xs truncate text-slate-500" title={rep.remark}>
+                    <td className="px-2 py-1.5 max-w-xs truncate text-slate-500" title={rep.remark}>
                       {rep.remark || "-"}
                     </td>
-                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={(e) => {

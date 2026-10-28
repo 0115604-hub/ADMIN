@@ -279,19 +279,19 @@ export const BurimtechWorkReportTable = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-teal-200 dark:border-teal-900/60 shadow-xl overflow-hidden p-3.5 sm:p-5 space-y-4 text-left">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-teal-200 dark:border-teal-900/60 shadow-xl overflow-hidden p-2.5 sm:p-3.5 space-y-2.5 text-left">
       {/* Header and Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0">
           <div>
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 dark:text-teal-400 shrink-0" />
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600 dark:text-teal-400 shrink-0" />
               <span>(주)부림텍 가공/협력업체 작업일보 실시간 현황</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
+              <span className="text-[9.5px] sm:text-[10px] px-2 py-0.2 sm:py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-black">
                 총 {stats.total}건
               </span>
             </h3>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
               한림공장 (주)부림텍 가공/협력업체 일일 작업 실적 및 실시간 결재 승인 현황
             </span>
           </div>
@@ -302,19 +302,19 @@ export const BurimtechWorkReportTable = ({
           <button
             type="button"
             onClick={() => setIsTemplateSettingOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
             title="탭하면 부림텍 가공/협력업체에 적용할 5대 공정 양식 리스트를 열어 설정합니다"
           >
-            <Settings className="w-3.5 h-3.5" />
-            <span>⚙️ 부림텍일보설정</span>
+            <Settings className="w-3 h-3" />
+            <span>부림텍일보설정</span>
           </button>
           {handleOpenWorkLogModal && (
             <button
               type="button"
               onClick={() => handleOpenWorkLogModal()}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3 h-3" />
               <span>+ 일보 작성</span>
             </button>
           )}
@@ -322,34 +322,34 @@ export const BurimtechWorkReportTable = ({
       </div>
 
       {/* 요약 통계 카드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-900/40">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-teal-700 dark:text-teal-300">총 작업일보</span>
-            <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">누적 등록</span>
+            <span className="font-black text-[11px] text-teal-700 dark:text-teal-300">총 작업일보</span>
+            <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">누적 등록</span>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {stats.total} <span className="text-xs font-normal text-slate-500">건</span>
+          <div className="mt-1 text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono">
+            {stats.total} <span className="text-[11px] font-normal text-slate-500">건</span>
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-900/40">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-900/40">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-emerald-700 dark:text-emerald-300">승인완료</span>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">결재율 {stats.rate}%</span>
+            <span className="font-black text-[11px] text-emerald-700 dark:text-emerald-300">승인완료</span>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">결재율 {stats.rate}%</span>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
-            {stats.approved} <span className="text-xs font-normal text-slate-500">건</span>
+          <div className="mt-1 text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 font-mono">
+            {stats.approved} <span className="text-[11px] font-normal text-slate-500">건</span>
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-900/40">
           <div className="flex items-center justify-between">
-            <span className="font-black text-xs text-amber-700 dark:text-amber-300">결재대기</span>
-            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">승인대기</span>
+            <span className="font-black text-[11px] text-amber-700 dark:text-amber-300">결재대기</span>
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">승인대기</span>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-400 font-mono">
-            {stats.pending} <span className="text-xs font-normal text-slate-500">건</span>
+          <div className="mt-1 text-base sm:text-lg font-black text-amber-700 dark:text-amber-400 font-mono">
+            {stats.pending} <span className="text-[11px] font-normal text-slate-500">건</span>
           </div>
         </div>
       </div>
@@ -360,27 +360,27 @@ export const BurimtechWorkReportTable = ({
         machiningIncidents={burimIncidents}
         handleSortIncident={handleSortIncident}
         title="당일 부림텍(한림) 비가동 · 부적합 1차 소팅"
-        emptyText="🟢 오늘 접수된 부림텍 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
+        emptyText="오늘 접수된 부림텍 일보에 비가동 및 부적합 내역이 없습니다. (정상 가동 중)"
       />
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table className="w-full text-xs text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700">
-              <th className="py-2.5 px-3">일자</th>
-              <th className="py-2.5 px-3">작성자</th>
-              <th className="py-2.5 px-3">공정 / 품목</th>
-              <th className="py-2.5 px-3">주요 작업 내용</th>
-              <th className="py-2.5 px-3 text-center">사진</th>
-              <th className="py-2.5 px-3 text-center">결재상태</th>
-              <th className="py-2.5 px-3 text-center">관리</th>
+            <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 text-[10.5px]">
+              <th className="py-1.5 px-2">일자</th>
+              <th className="py-1.5 px-2">작성자</th>
+              <th className="py-1.5 px-2">공정 / 품목</th>
+              <th className="py-1.5 px-2">주요 작업 내용</th>
+              <th className="py-1.5 px-2 text-center">사진</th>
+              <th className="py-1.5 px-2 text-center">결재상태</th>
+              <th className="py-1.5 px-2 text-center">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {burimLogs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-slate-400 font-bold">
+                <td colSpan={7} className="py-8 text-center text-slate-400 font-bold">
                   등록된 부림텍 가공/협력업체 작업일보가 없습니다. 상단의 [+ 일보 작성] 버튼을 클릭해 등록해 주십시오.
                 </td>
               </tr>
@@ -392,35 +392,35 @@ export const BurimtechWorkReportTable = ({
                   <tr
                     key={log.id}
                     onClick={() => handleOpenLogDetail && handleOpenLogDetail(log)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer text-[10.5px] sm:text-[11px]"
                   >
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="py-1.5 px-2 font-mono font-bold text-slate-900 dark:text-white">
                       {log.workDate || log.date}
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-teal-700 dark:text-teal-300">
+                    <td className="py-1.5 px-2 font-bold text-teal-700 dark:text-teal-300">
                       {log.writer || "부림텍"}
                     </td>
-                    <td className="py-2.5 px-3">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                    <td className="py-1.5 px-2">
+                      <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                         {log.assignedProcess === "외주가공" ? "가공/협력업체" : (log.assignedProcess || log.process || "가공/협력업체")}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium">
+                    <td className="py-1.5 px-2 text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium">
                       {log.workContent || log.description || log.content || "-"}
                     </td>
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-1.5 px-2 text-center">
                       {hasPhotos ? (
                         <span className="inline-flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                          <Camera className="w-3.5 h-3.5" />
+                          <Camera className="w-3 h-3" />
                           <span>{log.images.length}</span>
                         </span>
                       ) : (
                         <span className="text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-1.5 px-2 text-center">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                        className={`inline-block px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
                           approved
                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                             : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
@@ -429,15 +429,15 @@ export const BurimtechWorkReportTable = ({
                         {approved ? "승인완료" : "결재대기"}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="py-1.5 px-2 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenLogDetail && handleOpenLogDetail(log);
                           }}
-                          className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                          className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10.5px] font-bold transition cursor-pointer"
                           title="일보 상세 보기"
                         >
                           보기
