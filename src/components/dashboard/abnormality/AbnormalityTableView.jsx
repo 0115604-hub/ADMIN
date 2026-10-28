@@ -319,7 +319,7 @@ export const AbnormalityTableView = ({
       {totalPages > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 text-xs">
           <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
-            <span>전체 취합대장 총 {filteredRecords.length}건 중 </span>
+            <span>전사 4M 취합대장 총 {filteredRecords.length}건 중 </span>
             <span className="text-indigo-600 dark:text-indigo-400 font-black">
               {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredRecords.length)}건
             </span>

@@ -27,9 +27,6 @@ export const Step3IncomingTransferredSection = ({
             <span>🔔 1. 2단계 생산관리자 이관 건 재검토 ({stats.incomingCount}건 대기)</span>
           </h4>
         </div>
-        <span className="text-[11.5px] text-slate-500 dark:text-slate-400">
-          ※ 현장 이관 사유를 확인 후 <b>[공식 4M 대장 등재]</b> 또는 <b>[사내관리로 재분류(반송)]</b>를 판정합니다.
-        </span>
       </div>
 
       {incomingTransferredItems.length === 0 ? (

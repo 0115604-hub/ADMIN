@@ -8,31 +8,20 @@ export const Step3QualityHeader = ({
   stats
 }) => {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-      <div className="flex items-start sm:items-center gap-3">
-        <div className="p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-rose-600 text-white shadow-lg shrink-0">
-          <ShieldAlert className="w-6 h-6" />
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2.5">
+        <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-rose-600 text-white shadow-md shrink-0">
+          <ShieldAlert className="w-5 h-5" />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-xs font-black">
-              3단계 품질관리자 전용
-            </span>
-            <h3 className="font-black text-lg sm:text-xl text-slate-900 dark:text-white tracking-tight">
-              변동점 재검토 · 4M 대장 등재 및 시정조치(CAPA) 센터
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+              <span>📋 이창엽의 4M 정식대장</span>
             </h3>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
-            <span>
-              담당:{" "}
-              <strong className="text-indigo-600 dark:text-indigo-400 font-black">
-                {managerName} 책임
-              </strong>{" "}
-              (품질보증팀)
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-xs border border-rose-400/40">
+              {managerName ? `${managerName} 책임 전용` : "품질관리자 전용"}
             </span>
-            <span>•</span>
-            <span>4M 변동점 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)</span>
-          </p>
+          </div>
         </div>
       </div>
 

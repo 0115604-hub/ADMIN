@@ -27,7 +27,7 @@ export default function Step3QualityControlPanel({
   });
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-500/40 shadow-xl p-4 sm:p-6 space-y-5 text-left transition-all">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500/30 shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all">
       {/* 1. Header Bar with Step 3 Identity */}
       <Step3QualityHeader
         managerName={state.managerName}
