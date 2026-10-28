@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
-import { sanitizeForFirestore } from "../../utils/firestoreUtils";
 import { subscribeToExtrusionReports } from "../../services/extrusionProductionService";
 import { subscribeMachiningWorkReports } from "../../services/machiningWorkReportService";
 import { subscribeHanulWorkReports } from "../../services/hanulWorkReportService";
@@ -12,265 +11,24 @@ import {
   determineFourMCategory
 } from "../../services/fourMChangePointService";
 
-export const WORK_REPORT_NC_STORAGE_KEY = "work_report_nonconformance_ledger_v1";
+// Re-export core services for 100% backward compatibility
+export {
+  WORK_REPORT_NC_STORAGE_KEY,
+  getLocalWorkReportNcLedger,
+  saveWorkReportNcLedger,
+  extractWorkReportNonconformances
+} from "./ncLedger/workReportNcService";
 
-const compressImageToBase64 = (file, maxWidth = 800, quality = 0.72) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+import {
+  WORK_REPORT_NC_STORAGE_KEY,
+  getLocalWorkReportNcLedger,
+  saveWorkReportNcLedger,
+  extractWorkReportNonconformances,
+  compressImageToBase64
+} from "./ncLedger/workReportNcService";
 
-export const getLocalWorkReportNcLedger = () => {
-  try {
-    const raw = localStorage.getItem(WORK_REPORT_NC_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
-    }
-  } catch (e) {
-    console.warn("Failed to read work_report_nonconformance_ledger_v1:", e);
-  }
-  return { overrides: {}, manualItems: [] };
-};
-
-export const saveWorkReportNcLedger = async (ledgerState) => {
-  const cleanState = {
-    overrides: ledgerState?.overrides || {},
-    manualItems: Array.isArray(ledgerState?.manualItems) ? ledgerState.manualItems : [],
-    updatedAt: new Date().toISOString()
-  };
-  try {
-    localStorage.setItem(WORK_REPORT_NC_STORAGE_KEY, JSON.stringify(cleanState));
-    window.dispatchEvent(new CustomEvent("work_report_nc_ledger_updated", { detail: cleanState }));
-  } catch (e) {
-    console.warn("LocalStorage save error for work_report_nc_ledger:", e);
-  }
-  if (db) {
-    try {
-      await setDoc(
-        doc(db, "app_settings", WORK_REPORT_NC_STORAGE_KEY),
-        sanitizeForFirestore(cleanState),
-        { merge: true }
-      );
-    } catch (e) {
-      console.warn("Firestore save error for work_report_nc_ledger:", e);
-    }
-  }
-  return cleanState;
-};
-
-/**
- * Extracts nonconformance occurrences from all work reports across processes
- */
-export const extractWorkReportNonconformances = ({
-  extrusionReports = [],
-  machiningReports = [],
-  hanulReports = [],
-  yuseongReports = [],
-  legoReports = [],
-  workLogs = [],
-  ledgerState = { overrides: {}, manualItems: [] }
-}) => {
-  const extracted = [];
-  const overrides = ledgerState?.overrides || {};
-
-  const processReportEvents = (report, defaultCompany, defaultPlant, defaultLine) => {
-    if (!report) return;
-    const rId = String(report.id || "");
-    const date = String(report.date || (report.createdAt ? String(report.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)));
-    const company = String(report.company || defaultCompany || "사내").trim();
-    const plant = String(report.plant || defaultPlant || "삼랑진공장").trim();
-    const line = String(
-      report.lineName ||
-      report.line ||
-      (report.project && report.processId ? `${report.project} ${report.processId}` : report.project || report.processName || defaultLine)
-    ).trim();
-    const worker = String(report.worker || report.author || report.writer || "현장작업자").trim();
-    const carModel = String(report.vehicle || report.carModel || report.project || "").trim();
-    const partName = String(report.itemName || report.partName || report.processId || "").trim();
-
-    const dtEvents = Array.isArray(report.downtimeEvents) ? report.downtimeEvents : [];
-    let hasDefectEvent = false;
-
-    dtEvents.forEach((ev, idx) => {
-      if (!ev) return;
-      const evType = String(ev.type || "").trim();
-      const isDefect =
-        evType === "불량" ||
-        evType === "부적합" ||
-        Boolean(ev.beforePhoto || ev.afterPhoto) ||
-        String(ev.category || "").includes("불량") ||
-        String(ev.category || "").includes("부적합");
-
-      if (!isDefect) return;
-      hasDefectEvent = true;
-
-      const itemId = `wr_nc_${rId}_${ev.id || idx}`;
-      const ov = overrides[itemId] || {};
-      if (ov.isDeleted) return;
-
-      const beforePhoto = ov.beforePhoto !== undefined ? ov.beforePhoto : (ev.beforePhoto || null);
-      const afterPhoto = ov.afterPhoto !== undefined ? ov.afterPhoto : (ev.afterPhoto || null);
-      const defectType = ov.defectType || ev.category || "공정 부적합";
-      const content = ov.content !== undefined ? ov.content : (ev.detail || `${defectType} 발생`);
-      const actionResult = ov.actionResult !== undefined ? ov.actionResult : (ev.actionDetail || "");
-      const scrapKg = ov.scrapKg !== undefined ? Number(ov.scrapKg) : (Number(ev.scrapKg) || 0);
-      const downtimeMinutes = ov.downtimeMinutes !== undefined ? Number(ov.downtimeMinutes) : (Number(ev.minutes) || 0);
-      const registrationType = ov.registrationType || "UNREGISTERED"; // "CHANGE_POINT" | "INTERNAL" | "UNREGISTERED"
-
-      const baseObj = {
-        id: itemId,
-        reportId: rId,
-        date,
-        time: ev.startTime || report.time || "",
-        company,
-        plant,
-        line,
-        worker,
-        carModel,
-        partName,
-        defectType,
-        title: ov.title || `[작업일보 부적합] ${line} - ${defectType}`,
-        content,
-        actionResult,
-        scrapKg,
-        downtimeMinutes,
-        beforePhoto,
-        afterPhoto,
-        images: beforePhoto ? [beforePhoto] : [],
-        actionImages: afterPhoto ? [afterPhoto] : [],
-        registrationType,
-        status: ov.status || (actionResult || afterPhoto ? "RESOLVED" : "ACTIVE"),
-        isResolved: Boolean(ov.status === "RESOLVED" || actionResult || afterPhoto),
-        registeredBy: ov.registeredBy || "",
-        registeredAt: ov.registeredAt || "",
-        fourM: ov.fourM || determineFourMCategory({ title: defectType, content, line }),
-        source: "WORK_REPORT"
-      };
-      extracted.push(baseObj);
-    });
-
-    // Also check report-level defects map or defectQty > 0 if no downtimeEvents defect was logged
-    if (!hasDefectEvent) {
-      const defectsMap = report.defects && typeof report.defects === "object" ? report.defects : {};
-      const defectEntries = Object.entries(defectsMap).filter(([, qty]) => Number(qty) > 0);
-      const totalDefectQty = Number(report.defectQty) || defectEntries.reduce((acc, [, q]) => acc + (Number(q) || 0), 0);
-
-      if (totalDefectQty > 0) {
-        const itemId = `wr_nc_def_${rId}`;
-        const ov = overrides[itemId] || {};
-        if (!ov.isDeleted) {
-          const defectSummary = defectEntries.length > 0
-            ? defectEntries.map(([k, q]) => `${k}(${q}EA)`).join(", ")
-            : `부적합 ${totalDefectQty}EA`;
-          const defectType = ov.defectType || (defectEntries[0]?.[0] || "작업일보 불량");
-          const beforePhoto = ov.beforePhoto || null;
-          const afterPhoto = ov.afterPhoto || null;
-          const content = ov.content !== undefined ? ov.content : `${defectSummary} ${report.remark || report.notes || ""}`.trim();
-          const actionResult = ov.actionResult || "";
-          const registrationType = ov.registrationType || "UNREGISTERED";
-
-          extracted.push({
-            id: itemId,
-            reportId: rId,
-            date,
-            time: report.time || "",
-            company,
-            plant,
-            line,
-            worker,
-            carModel,
-            partName,
-            defectType,
-            title: ov.title || `[작업일보 부적합] ${line} - ${defectType}`,
-            content,
-            actionResult,
-            scrapKg: totalDefectQty,
-            downtimeMinutes: Number(report.downtimeMinutes) || 0,
-            beforePhoto,
-            afterPhoto,
-            images: beforePhoto ? [beforePhoto] : [],
-            actionImages: afterPhoto ? [afterPhoto] : [],
-            registrationType,
-            status: ov.status || (actionResult || afterPhoto ? "RESOLVED" : "ACTIVE"),
-            isResolved: Boolean(ov.status === "RESOLVED" || actionResult || afterPhoto),
-            registeredBy: ov.registeredBy || "",
-            registeredAt: ov.registeredAt || "",
-            fourM: ov.fourM || determineFourMCategory({ title: defectType, content, line }),
-            source: "WORK_REPORT"
-          });
-        }
-      }
-    }
-  };
-
-  (extrusionReports || []).forEach((r) => processReportEvents(r, r.company || "오륙", "삼랑진공장", r.lineName || "압출라인"));
-  (machiningReports || []).forEach((r) => {
-    const rawProj = String(r.project || "");
-    const comp = r.company || (rawProj.includes("조영") ? "조영" : rawProj.includes("부림") ? "부림텍" : "오륙");
-    processReportEvents(r, comp, "삼랑진공장", `${r.project || "가공"} ${r.processId || ""}`);
-  });
-  (hanulReports || []).forEach((r) => processReportEvents(r, r.company || "한울", "한림공장", `${r.project || "9BQC"} ${r.processId || ""}`));
-  (yuseongReports || []).forEach((r) => processReportEvents(r, r.company || "유성", "삼랑진공장", `${r.project || "유성"} ${r.processId || ""}`));
-  (legoReports || []).forEach((r) => processReportEvents(r, r.company || r.department || "오륙", r.plant || "삼랑진공장", r.processName || r.title || "공정 작업일보"));
-  (workLogs || []).forEach((r) => {
-    if (!r) return;
-    const rawComp = String(r.company || "");
-    const rawWriter = String(r.writer || "");
-    const rawProc = String(r.assignedProcess || r.process || "");
-    const isBurim = rawComp.includes("부림") || rawWriter.includes("부림") || rawWriter === "최현영" || rawWriter === "김동훈" || rawProc.includes("부림");
-    const isJoyoung = rawComp.includes("조영") || rawWriter.includes("조영") || rawWriter === "오상민" || rawWriter === "김동욱" || rawProc.includes("조영");
-    if (isBurim) {
-      processReportEvents(r, "부림텍", "한림공장", rawProc || "가공/협력업체(부림텍)");
-    } else if (isJoyoung) {
-      processReportEvents(r, "조영", "한림공장", rawProc || "가공/협력업체(조영)");
-    }
-  });
-
-  // Include manual items registered directly in the Work Report Nonconformance Panel
-  const manualList = Array.isArray(ledgerState?.manualItems) ? ledgerState.manualItems : [];
-  manualList.forEach((m) => {
-    if (!m || m.isDeleted) return;
-    const ov = overrides[m.id] || {};
-    if (ov.isDeleted) return;
-    const merged = { ...m, ...ov };
-    extracted.push({
-      ...merged,
-      images: merged.beforePhoto ? [merged.beforePhoto] : (merged.images || []),
-      actionImages: merged.afterPhoto ? [merged.afterPhoto] : (merged.actionImages || []),
-      isResolved: Boolean(merged.status === "RESOLVED" || merged.actionResult || merged.afterPhoto),
-      fourM: merged.fourM || determineFourMCategory(merged)
-    });
-  });
-
-  extracted.sort((a, b) => {
-    if (b.date !== a.date) return String(b.date || "").localeCompare(String(a.date || ""));
-    return String(b.id || "").localeCompare(String(a.id || ""));
-  });
-
-  return extracted;
-};
+import WorkReportNcAddEditForm from "./ncLedger/WorkReportNcAddEditForm";
+import WorkReportNcItemList from "./ncLedger/WorkReportNcItemList";
 
 export default function WorkReportNonconformanceLedgerPanel({
   filterCompany = "", // e.g., "한울", "부림텍", "유성", "조영", "오륙", "압출동", or "" for all
@@ -445,8 +203,6 @@ export default function WorkReportNonconformanceLedgerPanel({
 
     if (targetBadgeType === "CHANGE_POINT") {
       // 🌟 4M 공식대장 등록권한은 오직 이창엽에게만 있음
-      // 이창엽 품질책임자만 네이티브 4M 공식대장(four_m_change_points)에 등록하고,
-      // 생산관리자는 Step 3 상단 접수함(위 패널)으로 이관됩니다.
       if (managerName === "이창엽" || managerName === "권태형") {
         const fourM = item.fourM || determineFourMCategory(item);
         await registerToFourMLedger(
@@ -482,7 +238,7 @@ export default function WorkReportNonconformanceLedgerPanel({
         await unregisterFromFourMLedger(`ledger_${item.id}`);
       }
     } else if (targetBadgeType === "INTERNAL") {
-      // 🌟 사내관리등록뱃지로 등록 시 사내 부적합관리대장으로만 관리 (4M 변동점관리대장에서는 제외)
+      // 사내관리등록뱃지로 등록 시 사내 부적합관리대장으로만 관리 (4M 변동점관리대장에서는 제외)
       await unregisterFromFourMLedger(item.id);
       await unregisterFromFourMLedger(`ledger_${item.id}`);
     }
@@ -769,322 +525,48 @@ export default function WorkReportNonconformanceLedgerPanel({
       </div>
 
       {/* Add / Edit Form */}
-      {isAddOpen && (
-        <div className="p-4 bg-rose-50/50 border-b border-rose-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-800">
-              {editingItemId ? "✏️ 작업일보 부적합 내역 수정 및 대장 등록" : "➕ 작업일보 부적합 내역 신규 등록"}
-            </span>
-            {/* Registration Badge Selector in Form */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black text-slate-600 mr-1">등록구분 뱃지:</span>
-              <button
-                type="button"
-                onClick={() => setFormRegType("CHANGE_POINT")}
-                className={`px-3 py-1 rounded-full text-[11px] font-black border transition-all cursor-pointer ${
-                  formRegType === "CHANGE_POINT"
-                    ? "bg-indigo-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-200"
-                    : "bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50"
-                }`}
-              >
-                🔄 변동점등록 (4M 변동점관리대장 동시등록)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormRegType("INTERNAL")}
-                className={`px-3 py-1 rounded-full text-[11px] font-black border transition-all cursor-pointer ${
-                  formRegType === "INTERNAL"
-                    ? "bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-200"
-                    : "bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                }`}
-              >
-                🏢 사내관리등록 (부적합관리대장 전용)
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div>
-              <label className="block text-[10px] font-black text-slate-600 mb-1">발생 공정 / 라인</label>
-              <input
-                type="text"
-                value={formLine}
-                onChange={(e) => setFormLine(e.target.value)}
-                placeholder="예: 9BQC 조인트 / PCM 1호기"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-slate-600 mb-1">부적합 유형</label>
-              <input
-                type="text"
-                value={formDefectType}
-                onChange={(e) => setFormDefectType(e.target.value)}
-                placeholder="예: 외관 스크래치 / 치수 불량"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-slate-600 mb-1">부적합 수량 (EA 또는 kg)</label>
-              <input
-                type="number"
-                value={formScrapKg}
-                onChange={(e) => setFormScrapKg(e.target.value)}
-                placeholder="0"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[10px] font-black text-slate-600 mb-1">발생원인 및 부적합 상세내용</label>
-              <input
-                type="text"
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-                placeholder="작업일보 내 발생한 부적합 상세 내역 입력"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-slate-600 mb-1">조치결과 및 대책</label>
-              <input
-                type="text"
-                value={formActionResult}
-                onChange={(e) => setFormActionResult(e.target.value)}
-                placeholder="현장 조치 내역 입력 (입력 시 조치완료 처리)"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
-              />
-            </div>
-          </div>
-
-          {/* 조치전 / 조치후 사진 업로드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div className="bg-white p-2.5 rounded-lg border border-rose-200 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-black text-rose-700 block">📸 조치전 사진 (부적합 현상)</span>
-                <label className="mt-1 inline-block px-2.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-black cursor-pointer">
-                  사진 선택
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handlePhotoUpload("beforePhoto", e.target.files?.[0])}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {formBeforePhoto && (
-                <div className="relative">
-                  <img src={formBeforePhoto} alt="조치전" className="w-14 h-14 object-cover rounded-lg border border-rose-300" />
-                  <button
-                    type="button"
-                    onClick={() => setFormBeforePhoto(null)}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-2.5 rounded-lg border border-emerald-200 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-black text-emerald-700 block">📸 조치후 사진 (개선 완료)</span>
-                <label className="mt-1 inline-block px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-black cursor-pointer">
-                  사진 선택
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handlePhotoUpload("afterPhoto", e.target.files?.[0])}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {formAfterPhoto && (
-                <div className="relative">
-                  <img src={formAfterPhoto} alt="조치후" className="w-14 h-14 object-cover rounded-lg border border-emerald-300" />
-                  <button
-                    type="button"
-                    onClick={() => setFormAfterPhoto(null)}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setIsAddOpen(false);
-                handleResetForm();
-              }}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 text-xs font-bold cursor-pointer"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveForm}
-              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-black shadow-sm cursor-pointer"
-            >
-              💾 저장 및 {formRegType === "CHANGE_POINT" ? "변동점등록 (4M 연동)" : "사내관리등록"}
-            </button>
-          </div>
-        </div>
-      )}
+      <WorkReportNcAddEditForm
+        isAddOpen={isAddOpen}
+        editingItemId={editingItemId}
+        formRegType={formRegType}
+        setFormRegType={setFormRegType}
+        formLine={formLine}
+        setFormLine={setFormLine}
+        formDefectType={formDefectType}
+        setFormDefectType={setFormDefectType}
+        formScrapKg={formScrapKg}
+        setFormScrapKg={setFormScrapKg}
+        formContent={formContent}
+        setFormContent={setFormContent}
+        formActionResult={formActionResult}
+        setFormActionResult={setFormActionResult}
+        formBeforePhoto={formBeforePhoto}
+        setFormBeforePhoto={setFormBeforePhoto}
+        formAfterPhoto={formAfterPhoto}
+        setFormAfterPhoto={setFormAfterPhoto}
+        onPhotoUpload={handlePhotoUpload}
+        onCancel={() => {
+          setIsAddOpen(false);
+          handleResetForm();
+        }}
+        onSave={handleSaveForm}
+      />
 
       {/* List of Work Report Nonconformances */}
-      <div className={`divide-y divide-slate-100 ${compact ? "max-h-72" : "max-h-96"} overflow-y-auto`}>
-        {filteredItems.length === 0 ? (
-          <div className="py-8 text-center text-xs font-bold text-slate-400">
-            작업일보 내 발생한 부적합 내역이 없습니다.
-          </div>
-        ) : (
-          filteredItems.map((item) => {
-            const isChangePoint = item.registrationType === "CHANGE_POINT";
-            const isInternal = item.registrationType === "INTERNAL";
-
-            return (
-              <div
-                key={item.id}
-                className="p-3 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-              >
-                <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                  {/* Photos Thumbnail (Before / After) */}
-                  {(item.beforePhoto || item.afterPhoto) && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {item.beforePhoto && (
-                        <div
-                          onClick={() => setPreviewImg(item.beforePhoto)}
-                          className="relative w-11 h-11 rounded-lg overflow-hidden border border-rose-300 cursor-pointer group"
-                          title="조치전 사진 확대"
-                        >
-                          <img src={item.beforePhoto} alt="조치전" className="w-full h-full object-cover" />
-                          <span className="absolute bottom-0 inset-x-0 bg-rose-600/85 text-white text-[8px] font-black text-center">
-                            조치전
-                          </span>
-                        </div>
-                      )}
-                      {item.afterPhoto && (
-                        <div
-                          onClick={() => setPreviewImg(item.afterPhoto)}
-                          className="relative w-11 h-11 rounded-lg overflow-hidden border border-emerald-300 cursor-pointer group"
-                          title="조치후 사진 확대"
-                        >
-                          <img src={item.afterPhoto} alt="조치후" className="w-full h-full object-cover" />
-                          <span className="absolute bottom-0 inset-x-0 bg-emerald-600/85 text-white text-[8px] font-black text-center">
-                            조치후
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-white text-[10px] font-black">
-                        {item.company}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black">
-                        {item.line}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-black">
-                        {item.defectType}
-                      </span>
-                      {item.scrapKg > 0 && (
-                        <span className="text-[10px] font-black text-rose-600">
-                          ({item.scrapKg} EA/kg)
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {item.date} {item.worker ? `• ${item.worker}` : ""}
-                      </span>
-
-                      {/* Current Registration Status Badge */}
-                      {isChangePoint && (
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black shadow-2xs">
-                          ✓ 변동점관리대장 연동됨
-                        </span>
-                      )}
-                      {isInternal && (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-2xs">
-                          ✓ 사내관리 등록됨
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs font-bold text-slate-800 truncate">
-                      {item.content || item.title}
-                    </p>
-                    {item.actionResult && (
-                      <p className="text-[11px] font-bold text-emerald-700 mt-0.5 truncate">
-                        ↳ 조치완료: {item.actionResult}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Action & Registration Badges (변동점등록 뱃지 / 사내관리등록 뱃지) */}
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRegistrationBadge(item, "CHANGE_POINT")}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer flex items-center gap-1 ${
-                      isChangePoint
-                        ? "bg-indigo-600 text-white border-indigo-700 shadow-xs ring-2 ring-indigo-200"
-                        : "bg-indigo-50/80 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
-                    }`}
-                    title="변동점등록 뱃지로 등록 (변동점관리대장에 자동 등록)"
-                  >
-                    🔄 변동점등록
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRegistrationBadge(item, "INTERNAL")}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer flex items-center gap-1 ${
-                      isInternal
-                        ? "bg-emerald-600 text-white border-emerald-700 shadow-xs ring-2 ring-emerald-200"
-                        : "bg-emerald-50/80 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                    }`}
-                    title="사내관리등록 뱃지로 등록 (부적합관리대장 사내관리 전용)"
-                  >
-                    🏢 사내관리등록
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(item)}
-                    className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10px] font-black cursor-pointer"
-                  >
-                    조치/사진
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteItem(item)}
-                    className="px-1.5 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-black cursor-pointer"
-                    title="삭제"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <WorkReportNcItemList
+        filteredItems={filteredItems}
+        compact={compact}
+        onPreviewImg={(src) => setPreviewImg(src)}
+        onSelectRegistrationBadge={handleSelectRegistrationBadge}
+        onOpenEdit={handleOpenEdit}
+        onDeleteItem={handleDeleteItem}
+      />
 
       {/* Image Lightbox */}
       {previewImg && (
         <div
           onClick={() => setPreviewImg(null)}
-          className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[99999] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
         >
           <img
             src={previewImg}
