@@ -1003,6 +1003,28 @@ export const WorkerPinModal = ({
     personnelCardsMap
   ]);
 
+  // 🌟 이창엽의 4M 정식대장 최신 5건 (시간순 정렬)
+  const official4MLedgerTop5 = useMemo(() => {
+    const list = Array.isArray(fourMLedgerRecords) ? [...fourMLedgerRecords] : [];
+    // Only official ledger records (이창엽 품질책임자 공식대장 등재건)
+    const officialList = list.filter((r) => r.isOfficialLedger !== false);
+
+    // 시간순(최신순) 정렬: 발생일자(date) 또는 등록일시(registeredAt) 최신순
+    officialList.sort((a, b) => {
+      const dateA = a.date || a.registeredAt?.slice(0, 10) || "";
+      const dateB = b.date || b.registeredAt?.slice(0, 10) || "";
+      if (dateB !== dateA) return dateB.localeCompare(dateA);
+
+      const regA = a.registeredAt || a.time || "";
+      const regB = b.registeredAt || b.time || "";
+      if (regB !== regA) return regB.localeCompare(regA);
+
+      return (b.id || "").localeCompare(a.id || "");
+    });
+
+    return officialList.slice(0, 5);
+  }, [fourMLedgerRecords]);
+
   // 🌟 4M 변동점 발생공지 (모든 부적합경보 100% 최우선 포함 + 최신 설비/인원/불량 변동점)
   const recent4MRecords = useMemo(() => {
     // 1. 등록된 모든 부적합경보 - 4M 분류(Machine/Material/Method)와 무관하게 100% 최우선 수집
@@ -1919,7 +1941,7 @@ export const WorkerPinModal = ({
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isFieldWorker
                       ? "인증 시 [중대재해공유판 + 소속 관리자 품질이슈/긴급공지 + 첫화면 품질경보]가 표시됩니다."
-                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 변동점 발생공지 + 근태정보]가 표시됩니다."}
+                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 현황요약 + 근태정보]가 표시됩니다."}
                   </p>
                 </div>
               </div>
@@ -2391,46 +2413,30 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 4M 변동점 발생공지 (최근 2건 및 4M 현황 - 공간 없이 붙여서 표시) */}
-                      <div className="p-3.5 sm:p-4 bg-indigo-50/60 dark:bg-indigo-950/30 space-y-2 flex-1 flex flex-col">
-                        <div className="flex items-center justify-between">
+                      {/* 2. 4M 현황요약 (이창엽 책임 4M 정식대장 최신 5건 시간순 표시) */}
+                      <div className="p-3.5 sm:p-4 bg-indigo-50/60 dark:bg-indigo-950/30 space-y-2 flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between pb-1 shrink-0">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
                               <Activity className="w-4 h-4" />
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 4M 변동점 발생공지
+                                📋 4M 현황요약
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                부적합경보 전체 • 설비수리 • 비가동 • TPM • 불량손실
+                                이창엽 책임 4M 정식 관리대장 (시간순 최신 5건)
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1 text-[10px] font-bold flex-wrap justify-end">
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
-                              ⭐ 대장 {stats4M.officialCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black shadow-xs">
-                              부적합 {stats4M.methodCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
-                              설비 {stats4M.machineCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                              인원 {stats4M.manCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                              불량 {stats4M.materialCount}
-                            </span>
-                          </div>
+                          {/* 오른쪽 뱃지 5개 전부 삭제하여 심플하게 구성 */}
                         </div>
 
-                        {recent4MRecords.length > 0 ? (
-                          <div className="space-y-1.5 max-h-60 sm:max-h-72 overflow-y-auto pr-0.5 custom-scrollbar flex-1">
-                            {recent4MRecords.map((item) => {
-                              const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.sourceType === "QUALITY_ALERT";
+                        {official4MLedgerTop5.length > 0 ? (
+                          <div className="space-y-1.5 overflow-y-auto pr-0.5 custom-scrollbar flex-1 min-h-0">
+                            {official4MLedgerTop5.map((item) => {
+                              const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.fourM === "Method" || item.sourceType === "QUALITY_ALERT";
                               return (
                                 <div
                                   key={item.id}
@@ -2445,27 +2451,29 @@ export const WorkerPinModal = ({
                                       <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
                                         isQuality
                                           ? "bg-rose-600 text-white shadow-xs"
-                                          : item.origin === "설비수리"
-                                          ? "bg-indigo-100 text-indigo-800 border border-indigo-300"
+                                          : item.origin === "설비수리" || item.fourM === "Machine"
+                                          ? "bg-indigo-600 text-white shadow-xs"
                                           : item.origin === "비가동"
-                                          ? "bg-orange-100 text-orange-800 border border-orange-300"
+                                          ? "bg-orange-600 text-white shadow-xs"
                                           : item.origin === "TPM 이상신고"
-                                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                                          : item.origin === "불량손실"
-                                          ? "bg-rose-100 text-rose-800 border border-rose-300"
-                                          : "bg-purple-100 text-purple-800 border border-purple-300"
+                                          ? "bg-amber-600 text-white shadow-xs"
+                                          : item.origin === "불량손실" || item.fourM === "Material"
+                                          ? "bg-rose-500 text-white shadow-xs"
+                                          : item.fourM === "Man"
+                                          ? "bg-purple-600 text-white shadow-xs"
+                                          : "bg-indigo-100 text-indigo-800 border border-indigo-300"
                                       }`}>
-                                        {item.origin}
+                                        {item.origin || item.fourM || "4M"}
                                       </span>
                                       <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
-                                        {item.plant?.replace("공장", "")} • {item.line}
+                                        {item.company ? `${item.company} • ` : ""}{item.plant ? `${item.plant.replace("공장", "")} • ` : ""}{item.line}
                                       </span>
                                     </div>
-                                    <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono shrink-0">{item.date}</span>
                                   </div>
-                                  <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                  <h6 className="font-black text-slate-900 dark:text-white text-xs leading-snug">{item.title}</h6>
                                   {item.content && item.content !== item.title && (
-                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed line-clamp-2">
                                       {item.content}
                                     </p>
                                   )}
@@ -2485,8 +2493,8 @@ export const WorkerPinModal = ({
                             })}
                           </div>
                         ) : (
-                          <div className="py-3 text-center text-xs text-slate-400 font-bold">
-                            등록된 변동점이 없습니다.
+                          <div className="py-4 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900">
+                            등록된 4M 정식대장 변동점이 없습니다.
                           </div>
                         )}
                       </div>
