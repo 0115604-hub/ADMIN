@@ -1889,6 +1889,12 @@ export const WorkerPinModal = ({
                       : "사원")}
                 </h3>
 
+                {selectedUser.assignedProcess && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    {selectedUser.plant || "공장"} • {selectedUser.assignedProcess}
+                  </span>
+                )}
+
                 {/* PIN Input Badge */}
                 <form onSubmit={handlePinSubmit} className="flex items-center gap-1.5 shrink-0">
                   <div

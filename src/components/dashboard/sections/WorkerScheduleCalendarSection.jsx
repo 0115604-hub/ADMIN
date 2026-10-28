@@ -95,6 +95,11 @@ export const WorkerScheduleCalendarSection = ({
                   <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
                     {(workerPlant || "본사").replace("공장", "")}
+                    {currentProfile?.assignedProcess && (
+                      <span className="text-cyan-200/90 font-bold normal-case">
+                        • {currentProfile.assignedProcess}
+                      </span>
+                    )}
                   </span>
                   <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
                     {workerFullName}

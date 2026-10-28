@@ -436,9 +436,10 @@ export function DashboardViewRouter({ state }) {
     );
   }
 
-  // Internal Manager Dashboard View
+  // Internal Manager Dashboard View (관리자 프로필별 고유 key 지정으로 전환 시 완벽한 상태 초기화 및 맞춤 패널 렌더링 보장)
   return (
     <InternalManagerDashboardView
+      key={currentProfile?.id || currentProfile?.name || "internal_manager"}
       currentProfile={currentProfile}
       onNavigateTab={onNavigateTab}
       isAdmin={isAdmin}

@@ -162,7 +162,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
     : (currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || ""}` : "ADMIN");
 
   const displayPlant = isOperator
-    ? `${currentProfile?.plant || "생산현장"}${!isManager && !isAdmin ? " • 작업자 모드" : ""}`
+    ? `${currentProfile?.plant || "생산현장"}${currentProfile?.assignedProcess ? ` • ${currentProfile.assignedProcess}` : (!isManager && !isAdmin ? " • 작업자 모드" : "")}`
     : "본사 총괄";
 
   const sidebarContent = (

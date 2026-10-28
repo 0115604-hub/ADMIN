@@ -4,17 +4,27 @@ import { DEFAULT_PANEL_SETTING } from "../config/panelThemeConfig";
 
 const LOCAL_STORAGE_KEY_LAYOUTS = "oryuk_manager_custom_layouts";
 const LOCAL_STORAGE_KEY_SETTINGS = "oryuk_panel_custom_settings";
+const LOCAL_STORAGE_KEY_VERSION = "oryuk_manager_layout_version";
+const CURRENT_LAYOUT_VERSION = "20261029_v15_role_tailored";
 const SETTINGS_DOC_PATH = ["system_settings", "manager_dashboard_layouts"];
 
 // Memory cache for synchronous lookups
 let inMemoryLayouts = {};
 let inMemoryPanelSettings = {};
 
-// Initialize from localStorage immediately
+// Initialize from localStorage immediately with version control
 try {
-  const cachedLayouts = localStorage.getItem(LOCAL_STORAGE_KEY_LAYOUTS);
-  if (cachedLayouts) {
-    inMemoryLayouts = JSON.parse(cachedLayouts) || {};
+  const savedVersion = localStorage.getItem(LOCAL_STORAGE_KEY_VERSION);
+  if (savedVersion !== CURRENT_LAYOUT_VERSION) {
+    // 구버전 캐시 무효화 (각 관리자별 전담 공정 최상단 맞춤 레이아웃 적용)
+    localStorage.removeItem(LOCAL_STORAGE_KEY_LAYOUTS);
+    localStorage.setItem(LOCAL_STORAGE_KEY_VERSION, CURRENT_LAYOUT_VERSION);
+    inMemoryLayouts = {};
+  } else {
+    const cachedLayouts = localStorage.getItem(LOCAL_STORAGE_KEY_LAYOUTS);
+    if (cachedLayouts) {
+      inMemoryLayouts = JSON.parse(cachedLayouts) || {};
+    }
   }
 } catch (e) {
   console.warn("Failed to load local manager dashboard layouts:", e);

@@ -175,10 +175,12 @@ export const InternalManagerDashboardView = ({
   );
 
   // 🛠️ TEST 뱃지 전용: 현재 커스터마이징 & 시뮬레이션 중인 관리자 상태
-  const initialStudioManagerId = isTest ? "hal_test" : "sam_cy";
+  const initialStudioManagerId = isTest ? "hal_test" : (currentProfile?.id || "sam_cy");
   const [selectedStudioManagerId, setSelectedStudioManagerId] = useState(initialStudioManagerId);
   const [studioPanels, setStudioPanels] = useState(() => {
-    const targetMgr = STUDIO_MANAGERS.find((m) => m.id === initialStudioManagerId);
+    const targetMgr = isTest
+      ? STUDIO_MANAGERS.find((m) => m.id === "hal_test")
+      : currentProfile;
     return getPanelsForUser(targetMgr);
   });
   const [isSavingStudio, setIsSavingStudio] = useState(false);
@@ -194,6 +196,24 @@ export const InternalManagerDashboardView = ({
   const [insertTargetIndex, setInsertTargetIndex] = useState(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isTopStudioVisible, setIsTopStudioVisible] = useState(true);
+
+  // 🔄 현재 로그인한 관리자 변경 시(currentProfile 변경 시) 패널 레이아웃 및 디자인 설정 완벽 동기화
+  useEffect(() => {
+    if (currentProfile) {
+      if (isTest) {
+        setSelectedStudioManagerId("hal_test");
+        const testMgr = STUDIO_MANAGERS.find((m) => m.id === "hal_test");
+        setStudioPanels(getPanelsForUser(testMgr));
+        setPanelCustomSettings(getCustomSettingsForManager("hal_test"));
+      } else {
+        const mgrKey = currentProfile.id || currentProfile.name;
+        setSelectedStudioManagerId(mgrKey);
+        setStudioPanels(getPanelsForUser(currentProfile));
+        setPanelCustomSettings(getCustomSettingsForManager(mgrKey));
+      }
+      setLayoutVersionTick((v) => v + 1);
+    }
+  }, [currentProfile?.id, currentProfile?.name, isTest]);
 
   // ✏️ [실시간 인패널 직접 편집] 상태 (팝업창 없이 화면 패널 내에서 직접 제목·뱃지·KPI 편집)
   const [inlineEditingBlockKey, setInlineEditingBlockKey] = useState(null);
