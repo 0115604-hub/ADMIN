@@ -148,11 +148,17 @@ export const AuthModal = () => {
     );
   }, []);
 
+  const allMasterWorkers = useMemo(() => {
+    return (smartOvertimeData?.masterWorkers && smartOvertimeData.masterWorkers.length > 0)
+      ? smartOvertimeData.masterWorkers
+      : (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []);
+  }, [smartOvertimeData]);
+
   const hanulWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company === "한울" && w.plant === "한림공장"
+    return allMasterWorkers.filter(
+      (w) => w.company === "한울" && (!w.status || w.status !== "퇴사")
     );
-  }, []);
+  }, [allMasterWorkers]);
 
   // Bulimtech partner user definition (한림공장 가공/협력업체 대표 계정)
   const bulimtechUser = useMemo(() => {
@@ -172,16 +178,16 @@ export const AuthModal = () => {
   }, []);
 
   const bulimtechWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company === "부림텍" && w.plant === "한림공장"
+    return allMasterWorkers.filter(
+      (w) => w.company === "부림텍" && (!w.status || w.status !== "퇴사")
     );
-  }, []);
+  }, [allMasterWorkers]);
 
   const machiningWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company === "오륙" && w.plant === "삼랑진공장" && w.dept === "가공동"
+    return allMasterWorkers.filter(
+      (w) => w.company === "오륙" && (w.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel", "JA.HR", "NX4.NX4a"].includes(w.line)) && (!w.status || w.status !== "퇴사")
     );
-  }, []);
+  }, [allMasterWorkers]);
 
   // Yuseong partner user definition (삼랑진공장 가공/협력업체 대표 계정)
   const yuseongUser = useMemo(() => {
@@ -201,16 +207,16 @@ export const AuthModal = () => {
   }, []);
 
   const yuseongWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company === "유성" && w.plant === "삼랑진공장"
+    return allMasterWorkers.filter(
+      (w) => w.company === "유성" && (!w.status || w.status !== "퇴사")
     );
-  }, []);
+  }, [allMasterWorkers]);
 
   const joyoungWorkers = useMemo(() => {
-    return (INITIAL_SMART_OVERTIME_DATA?.masterWorkers || []).filter(
-      (w) => w.company === "조영" && w.plant === "한림공장"
+    return allMasterWorkers.filter(
+      (w) => w.company === "조영" && (!w.status || w.status !== "퇴사")
     );
-  }, []);
+  }, [allMasterWorkers]);
 
   // Leave counts
   const samrangjinLeaveCount = useMemo(() => {
@@ -393,6 +399,18 @@ export const AuthModal = () => {
             urgentIssues={issues.urgentIssues}
             onUserClick={handleUserClick}
             onPinSubmit={handlePinSubmit}
+            onOpenExtrusionModal={() => setIsExtrusionModalOpen(true)}
+            onOpenMachiningModal={() => setIsMachiningModalOpen(true)}
+            onOpenHanulModal={() => setIsHanulModalOpen(true)}
+            onOpenBulimtechModal={() => setIsBulimtechModalOpen(true)}
+            onOpenYuseongModal={() => setIsYuseongModalOpen(true)}
+            onOpenJoyoungModal={() => setIsJoyoungModalOpen(true)}
+            extrusionWorkersCount={EXTRUSION_WORKERS.length}
+            machiningWorkersCount={machiningWorkers.length}
+            hanulWorkersCount={hanulWorkers.length}
+            bulimtechWorkersCount={bulimtechWorkers.length}
+            yuseongWorkersCount={yuseongWorkers.length}
+            joyoungWorkersCount={joyoungWorkers.length}
             onOpenExtrusionReport={() => setIsExtrusionReportModalOpen(true)}
             onOpenDisasterModal={() => setIsSevereDisasterModalOpen(true)}
             onOpenQualityAlerts={() => {

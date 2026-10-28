@@ -206,9 +206,12 @@ export const AuthProvider = ({ children }) => {
     let effectiveRememberMe = rememberMe !== false;
 
     if (typeof userOrId === "object" && userOrId !== null) {
-      const found =
-        ALL_DESIGNATED_USERS.find((u) => u.id === userOrId.id) ||
-        ALL_DESIGNATED_USERS.find((u) => u.name === userOrId.name && (u.plant === userOrId.plant || !userOrId.plant));
+      const found = userOrId.isFieldWorker
+        ? ALL_DESIGNATED_USERS.find((u) => u.id === userOrId.id)
+        : (
+            ALL_DESIGNATED_USERS.find((u) => u.id === userOrId.id) ||
+            ALL_DESIGNATED_USERS.find((u) => u.name === userOrId.name && (u.plant === userOrId.plant || !userOrId.plant))
+          );
       target = {
         ...(found || {}),
         ...userOrId

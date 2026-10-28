@@ -137,17 +137,13 @@ export const App = () => {
 
     if (currentProfile) {
       const isExtrusionWorker = isExtrusionWorkerProfile(currentProfile);
-      let autoOpenExtrusion = false;
-      try {
-        autoOpenExtrusion = sessionStorage.getItem("auto_open_extrusion_report") === "true";
-      } catch (e) {}
-
-      const targetTab = (isExtrusionWorker && autoOpenExtrusion) ? "extrusion_downtime" : "worker_dashboard";
       if (isExtrusionWorker) {
         try {
           localStorage.setItem("factory_extrusion_active_subtab", "production");
         } catch (e) {}
       }
+
+      const targetTab = "worker_dashboard";
       setActiveTab(targetTab);
       try {
         window.history.pushState({ screen: targetTab, isSummary: true }, "");
