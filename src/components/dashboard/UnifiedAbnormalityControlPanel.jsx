@@ -15,6 +15,7 @@ import { AbnormalityHeader } from "./abnormality/AbnormalityHeader";
 import { AbnormalityTableView } from "./abnormality/AbnormalityTableView";
 import { AbnormalityCardView } from "./abnormality/AbnormalityCardView";
 import { AbnormalityDetailModal } from "./abnormality/AbnormalityDetailModal";
+import { PANEL_THEMES } from "../../config/panelThemeConfig";
 
 /**
  * UnifiedAbnormalityControlPanel (Facade Container)
@@ -201,6 +202,11 @@ export const UnifiedAbnormalityControlPanel = ({
     currentProfile?.department === "품질보증팀"
   );
 
+  const theme = customSettings?.theme || "indigo";
+  const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
+  const borderRadius = customSettings?.borderRadius || "rounded-2xl";
+  const borderStyle = customSettings?.borderStyle || "border-2";
+
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* 1. 상단: 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자[이창엽의 4M 정식대장] vs 2단계 생산관리자) */}
@@ -217,9 +223,9 @@ export const UnifiedAbnormalityControlPanel = ({
           onNavigateTab={onNavigateTab}
           customTitle={customSettings?.customTopTitle || customSettings?.customTitle}
           hideSubtitle={customSettings?.hideSubtitle !== false}
-          theme={customSettings?.theme || "indigo"}
-          borderRadius={customSettings?.borderRadius}
-          borderStyle={customSettings?.borderStyle}
+          theme={theme}
+          borderRadius={borderRadius}
+          borderStyle={borderStyle}
         />
       ) : (
         <Step2ProductionManagerPanel
@@ -229,8 +235,8 @@ export const UnifiedAbnormalityControlPanel = ({
         />
       )}
 
-      {/* 2. 하단: [전사 4M 취합대장] 전용 패널 (헤더 + 1줄 테이블이 표 바로 위에 직결된 구조) */}
-      <div className="space-y-2.5">
+      {/* 2. 하단: [전사 4M 취합대장] 일체형 단일 패널 (헤더 + 5대 KPI + 1줄 대장 목록표가 완전히 하나의 패널로 통합) */}
+      <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all`}>
         <AbnormalityHeader
           currentProfile={currentProfile}
           viewMode={viewMode}
@@ -246,10 +252,11 @@ export const UnifiedAbnormalityControlPanel = ({
           filteredCount={filteredRecords.length}
           customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
           hideSubtitle={customSettings?.hideSubtitle !== false}
-          theme={customSettings?.theme || "indigo"}
+          theme={theme}
+          themeObj={themeObj}
         />
 
-        {/* 3. Table View or Card View */}
+        {/* 3. Table View or Card View (패널 내부 직결 목록) */}
         {viewMode === "table" ? (
           <AbnormalityTableView
             filteredRecords={filteredRecords}
@@ -260,7 +267,8 @@ export const UnifiedAbnormalityControlPanel = ({
             internalMgmtMap={internalMgmtMap}
             onPreviewImage={(src) => setPreviewImage(src)}
             customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
-            theme={customSettings?.theme || "indigo"}
+            theme={theme}
+            themeObj={themeObj}
           />
         ) : (
           <AbnormalityCardView

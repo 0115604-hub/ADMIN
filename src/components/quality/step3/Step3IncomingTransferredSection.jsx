@@ -24,7 +24,7 @@ export const Step3IncomingTransferredSection = ({
             접수함
           </span>
           <h4 className="font-black text-sm sm:text-base text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-            <span>🔔 1. 2단계 생산관리자 이관 건 재검토 ({stats.incomingCount}건 대기)</span>
+            <span>🔔 생산관리자 이관 건 재검토</span>
           </h4>
         </div>
       </div>

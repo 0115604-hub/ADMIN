@@ -25,11 +25,12 @@ export const AbnormalityTableView = ({
   internalMgmtMap,
   onPreviewImage,
   customTitle,
-  theme = "indigo"
+  theme = "indigo",
+  themeObj: propThemeObj
 }) => {
   const PAGE_SIZE = 8;
   const [currentPage, setCurrentPage] = useState(1);
-  const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
+  const themeObj = propThemeObj || PANEL_THEMES[theme] || PANEL_THEMES.indigo;
 
   // 레코드 개수나 필터가 변경되면 1페이지로 리셋
   useEffect(() => {
@@ -348,7 +349,7 @@ export const AbnormalityTableView = ({
                 onClick={() => setCurrentPage(num)}
                 className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-black transition cursor-pointer ${
                   currentPage === num
-                    ? "bg-indigo-600 text-white shadow-xs"
+                    ? `${themeObj.accentBadge || "bg-indigo-600 text-white"} shadow-xs`
                     : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
