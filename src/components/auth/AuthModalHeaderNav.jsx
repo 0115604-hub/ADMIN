@@ -29,8 +29,8 @@ export const AuthModalHeaderNav = ({
           className="flex items-center gap-2 sm:gap-3 cursor-pointer group active:scale-98 transition-transform min-w-0"
           title="관리자(대표이사) 로그인"
         >
-          <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all">
-            <OryukLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
+          <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-0.5 sm:p-1 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all overflow-hidden">
+            <OryukLogo className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-xs group-hover:scale-105 transition-transform" />
           </div>
           <div className="min-w-0 text-left">
             <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5 truncate">

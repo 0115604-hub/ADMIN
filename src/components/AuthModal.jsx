@@ -313,7 +313,7 @@ export const AuthModal = () => {
   useModalHistory(isSqLevelUpModalOpen, () => setIsSqLevelUpModalOpen(false), "sqLevelUpModal");
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn px-2 sm:px-4 pt-2 sm:pt-6 pb-24 sm:pb-12 flex justify-center items-start min-h-screen max-w-full">
       {/* Background Ambient Glow Orbs */}
       <div className="fixed w-96 h-96 -top-20 -left-20 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-96 h-96 -bottom-20 -right-20 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
@@ -324,7 +324,7 @@ export const AuthModal = () => {
         {/* Top Glowing Accent Line */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
-        <div className="p-3 sm:p-5 sm:px-6">
+        <div className="p-3 sm:p-5 sm:px-6 pb-8 sm:pb-6">
           {/* Toast Alert */}
           {(issues.restoreToast || firstPageToast) && (
             <div className="fixed top-4 right-4 z-[90] bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-500/50 backdrop-blur-md">
