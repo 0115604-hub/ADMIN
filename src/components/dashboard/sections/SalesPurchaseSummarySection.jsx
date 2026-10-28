@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, X, Plus } from "lucide-react";
 
 export const SalesPurchaseSummarySection = ({
   monthTitle,
@@ -10,28 +10,75 @@ export const SalesPurchaseSummarySection = ({
   totalSales,
   totalPurchases,
   purchaseRatio,
-  customSettings = null
+  customSettings = null,
+  isInlineEditing = false,
+  onUpdateDraft = null
 }) => {
+  const defaultBadgeText = currentMonthData?.latestFile?.uploadedAtFormatted
+    ? `${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준`
+    : `${todayFormattedLabel} 기준 (누적)`;
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
-          <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            {customSettings?.customTitle || `${monthTitle} 매입매출현황 요약`}
-          </h2>
-          {customSettings?.hideBadge !== true && (
-            <span
-              className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
-              title={
-                currentMonthData?.latestFile?.fileName
-                  ? `등록 엑셀: ${currentMonthData.latestFile.fileName} (${currentMonthData.latestFile.uploadedBy || "조인주 선임"})`
-                  : "일일 누적 기준"
-              }
-            >
-              {customSettings?.customBadge || (currentMonthData?.latestFile?.uploadedAtFormatted
-                ? `${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준`
-                : `${todayFormattedLabel} 기준 (누적)`)}
-            </span>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+          {isInlineEditing ? (
+            <input
+              type="text"
+              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : `${monthTitle} 매입매출현황 요약`}
+              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
+              placeholder="제목..."
+              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+            />
+          ) : (
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
+              {customSettings?.customTitle || `${monthTitle} 매입매출현황 요약`}
+            </h2>
+          )}
+
+          {isInlineEditing ? (
+            <div className="inline-flex items-center gap-1">
+              {customSettings?.hideBadge !== true ? (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <input
+                    type="text"
+                    value={customSettings?.customBadge !== undefined ? customSettings.customBadge : defaultBadgeText}
+                    onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
+                    className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-24 border-b border-emerald-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdateDraft?.({ hideBadge: true })}
+                    className="p-0.5 hover:bg-black/10 rounded-full"
+                    title="뱃지 삭제"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: defaultBadgeText })}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-emerald-500 text-emerald-500 flex items-center gap-1"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>+ 뱃지 복원</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            customSettings?.hideBadge !== true && (
+              <span
+                className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
+                title={
+                  currentMonthData?.latestFile?.fileName
+                    ? `등록 엑셀: ${currentMonthData.latestFile.fileName} (${currentMonthData.latestFile.uploadedBy || "조인주 선임"})`
+                    : "일일 누적 기준"
+                }
+              >
+                {customSettings?.customBadge || defaultBadgeText}
+              </span>
+            )
           )}
         </div>
 

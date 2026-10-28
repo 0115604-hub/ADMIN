@@ -8,7 +8,8 @@ import {
   Users,
   AlertOctagon,
   TrendingDown,
-  X
+  X,
+  Plus
 } from "lucide-react";
 import { PANEL_THEMES } from "../../../config/panelThemeConfig";
 
@@ -34,27 +35,96 @@ export const AbnormalityHeader = ({
   hideBadge = false,
   hideSubtitle = true,
   theme = "indigo",
-  themeObj: propThemeObj
+  themeObj: propThemeObj,
+  isInlineEditing = false,
+  customSettings = null,
+  onUpdateDraft = null
 }) => {
   const themeObj = propThemeObj || PANEL_THEMES[theme] || PANEL_THEMES.indigo;
+
+  const titleValue =
+    customSettings?.customBottomTitle !== undefined
+      ? customSettings.customBottomTitle
+      : customSettings?.customTitle !== undefined
+      ? customSettings.customTitle
+      : (customTitle || "📋 전사 4M 취합대장");
+
+  const defaultBadgeText = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "전사 통합 관제";
+  const badgeValue =
+    customSettings?.customBottomBadge !== undefined && customSettings.customBottomBadge !== ""
+      ? customSettings.customBottomBadge
+      : customSettings?.customBadge !== undefined && customSettings.customBadge !== ""
+      ? customSettings.customBadge
+      : (customBadge || defaultBadgeText);
+
+  const isBadgeHidden =
+    customSettings?.hideBottomBadge !== undefined
+      ? customSettings.hideBottomBadge
+      : customSettings?.hideBadge !== undefined
+      ? customSettings.hideBadge
+      : hideBadge;
 
   return (
     <div className="space-y-3">
       {/* 1. 패널 상단 타이틀 & 툴바 (이창엽 4M 정식대장과 100% 동일한 통일감 부여) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className={`p-2 rounded-xl bg-gradient-to-tr ${themeObj.iconGradient} text-white shadow-md shrink-0`}>
             <ShieldAlert className="w-5 h-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-sm sm:text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>{customTitle || "📋 전사 4M 취합대장"}</span>
-              </h2>
-              {!hideBadge && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj.accentBadge}`}>
-                  {customBadge || (currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "전사 통합 관제")}
-                </span>
+              {isInlineEditing ? (
+                <input
+                  type="text"
+                  value={titleValue}
+                  onChange={(e) => onUpdateDraft?.({ customBottomTitle: e.target.value })}
+                  placeholder="취합대장 제목 입력..."
+                  className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-sm sm:text-base outline-none shadow-sm focus:ring-2 focus:ring-cyan-500 min-w-[200px]"
+                />
+              ) : (
+                <h2 className="font-black text-sm sm:text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>{titleValue}</span>
+                </h2>
+              )}
+
+              {isInlineEditing ? (
+                <div className="inline-flex items-center gap-1.5">
+                  {!isBadgeHidden ? (
+                    <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black ${themeObj.accentBadge}`}>
+                      <input
+                        type="text"
+                        value={badgeValue}
+                        onChange={(e) => onUpdateDraft?.({ customBottomBadge: e.target.value })}
+                        placeholder="뱃지 명칭..."
+                        className="bg-transparent text-white font-black text-[10.5px] outline-none w-24 border-b border-white/40 focus:border-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onUpdateDraft?.({ hideBottomBadge: true })}
+                        className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer text-white/70 hover:text-white"
+                        title="뱃지 삭제(숨김)"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onUpdateDraft?.({ hideBottomBadge: false, customBottomBadge: defaultBadgeText })}
+                      className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-cyan-950 text-cyan-300 border border-dashed border-cyan-500 hover:bg-cyan-900 cursor-pointer flex items-center gap-1"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                      <span>+ 뱃지 복원</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                !isBadgeHidden && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj.accentBadge}`}>
+                    {badgeValue}
+                  </span>
+                )
               )}
             </div>
             {!hideSubtitle && (

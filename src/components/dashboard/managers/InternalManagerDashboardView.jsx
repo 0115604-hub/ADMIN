@@ -27,7 +27,10 @@ import {
   Save,
   Sparkles,
   Eye,
-  EyeOff
+  EyeOff,
+  Check,
+  Edit3,
+  X
 } from "lucide-react";
 import {
   PANEL_KEYS,
@@ -189,6 +192,51 @@ export const InternalManagerDashboardView = ({
   const [insertTargetIndex, setInsertTargetIndex] = useState(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isTopStudioVisible, setIsTopStudioVisible] = useState(true);
+
+  // ✏️ [실시간 인패널 직접 편집] 상태 (팝업창 없이 화면 패널 내에서 직접 제목·뱃지·KPI 편집)
+  const [inlineEditingBlockKey, setInlineEditingBlockKey] = useState(null);
+  const [inlineDraftSettings, setInlineDraftSettings] = useState({});
+  const [isSavingInline, setIsSavingInline] = useState(false);
+  const [saveSuccessToast, setSaveSuccessToast] = useState(null);
+
+  // 인패널 편집 시작
+  const handleStartInlineEdit = (blockKey) => {
+    setInlineEditingBlockKey(blockKey);
+    setInlineDraftSettings({ ...(panelCustomSettings[blockKey] || {}) });
+  };
+
+  // 인패널 편집 취소
+  const handleCancelInlineEdit = () => {
+    setInlineEditingBlockKey(null);
+    setInlineDraftSettings({});
+  };
+
+  // 인패널 드래프트 업데이트
+  const handleUpdateInlineDraft = (updaterOrObj) => {
+    setInlineDraftSettings((prev) => {
+      if (typeof updaterOrObj === "function") {
+        return updaterOrObj(prev);
+      }
+      return { ...prev, ...updaterOrObj };
+    });
+  };
+
+  // 인패널 완료 및 저장
+  const handleSaveInlineEdit = async (blockKey) => {
+    setIsSavingInline(true);
+    try {
+      await handleSavePanelSetting(blockKey, inlineDraftSettings);
+      setInlineEditingBlockKey(null);
+      setInlineDraftSettings({});
+      setSaveSuccessToast("✓ 패널 제목 및 뱃지 설정이 저장되었습니다.");
+      setTimeout(() => setSaveSuccessToast(null), 3000);
+    } catch (err) {
+      console.error("Failed to save panel setting inline:", err);
+      alert("설정 저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingInline(false);
+    }
+  };
 
   // Firestore 실시간 레이아웃 및 디자인 변경 구독
   useEffect(() => {
@@ -369,6 +417,11 @@ export const InternalManagerDashboardView = ({
 
   // 🧩 개별 패널 블록 렌더러 (14대 표준 대시보드 블록)
   const renderDashboardBlock = (blockKey) => {
+    const isThisBlockEditing = inlineEditingBlockKey === blockKey;
+    const currentBlockSettings = isThisBlockEditing
+      ? { ...(panelCustomSettings[blockKey] || {}), ...inlineDraftSettings }
+      : (panelCustomSettings[blockKey] || {});
+
     switch (blockKey) {
       // 1. 📌 사내 공통일정 바
       case PANEL_KEYS.COMMON_SCHEDULE:
@@ -438,7 +491,9 @@ export const InternalManagerDashboardView = ({
             handleResetToToday={handleResetToToday}
             handleNextWeek={handleNextWeek}
             myWeeklyCalendarDays={myWeeklyCalendarDays}
-            customSettings={panelCustomSettings[PANEL_KEYS.CALENDAR_SCHEDULE]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -508,7 +563,9 @@ export const InternalManagerDashboardView = ({
             totalSales={totalSales}
             totalPurchases={totalPurchases}
             purchaseRatio={purchaseRatio}
-            customSettings={panelCustomSettings[PANEL_KEYS.SALES_PURCHASE]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -524,7 +581,9 @@ export const InternalManagerDashboardView = ({
             pushModalHistory={pushModalHistory}
             setSelectedOvertimeReportForModal={setSelectedOvertimeReportForModal}
             formatKoreanWorkDate={formatKoreanWorkDate}
-            customSettings={panelCustomSettings[PANEL_KEYS.ATTENDANCE]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -537,7 +596,9 @@ export const InternalManagerDashboardView = ({
             liveQualityCurrentMonthly={liveQualityCurrentMonthly}
             liveQualityPrevMonthly={liveQualityPrevMonthly}
             handleOpenQualityPopup={handleOpenQualityPopup}
-            customSettings={panelCustomSettings[PANEL_KEYS.QUALITY_SUMMARY]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -548,7 +609,9 @@ export const InternalManagerDashboardView = ({
             workLogs={workLogs}
             currentProfile={activeProfile}
             onNavigateTab={onNavigateTab}
-            customSettings={panelCustomSettings[PANEL_KEYS.ABNORMALITY_4M]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
             onOpenWorkLogDetail={handleOpenLogDetail}
             onOpenExtrusionReport={() => {
               try {
@@ -568,7 +631,9 @@ export const InternalManagerDashboardView = ({
           <ExtrusionDowntimeSection
             onNavigateTab={onNavigateTab}
             extrusionSummaryList={extrusionSummaryList}
-            customSettings={panelCustomSettings[PANEL_KEYS.EXTRUSION_DOWNTIME]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -631,7 +696,9 @@ export const InternalManagerDashboardView = ({
             LOGS_PER_PAGE={LOGS_PER_PAGE}
             totalLogPages={totalLogPages}
             handleOpenWorkLogModal={handleOpenWorkLogModal}
-            customSettings={panelCustomSettings[PANEL_KEYS.WORK_LOGS]}
+            customSettings={currentBlockSettings}
+            isInlineEditing={isThisBlockEditing}
+            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 
@@ -721,46 +788,109 @@ export const InternalManagerDashboardView = ({
         const blockElement = renderDashboardBlock(blockKey);
         if (!blockElement) return null;
 
+        const isEditingThisBlock = inlineEditingBlockKey === blockKey;
+
         return (
-          <div key={blockKey} className="relative group/panel">
-            {/* 🛠️ [TEST 모드]: 패널 우측 상단 직관적 인패널 컨트롤러 (외부 바 제거, 패널 내부에 직접 배치) */}
+          <div
+            key={blockKey}
+            className={`relative group/panel transition-all ${
+              isEditingThisBlock
+                ? "ring-2 ring-cyan-400 rounded-3xl p-1 bg-cyan-950/10 shadow-2xl shadow-cyan-950/50"
+                : ""
+            }`}
+          >
+            {/* 🛠️ [TEST 모드]: 패널 우측 상단 직관적 인패널 컨트롤러 (팝업창 없이 화면 패널 내 직접 수정) */}
             {isTest && (
-              <div className="absolute top-3 right-3 z-30 flex items-center gap-1 opacity-80 group-hover/panel:opacity-100 transition-opacity bg-slate-900/90 backdrop-blur-md px-2 py-1 rounded-xl border border-cyan-500/50 shadow-md">
-                <button
-                  type="button"
-                  onClick={() => setEditingBlockKeyFromDashboard(blockKey)}
-                  title="이 패널의 제목 수정 · 뱃지 추가/삭제 · 디자인 변경"
-                  className="px-2 py-0.5 rounded-lg bg-cyan-950 hover:bg-cyan-800 text-cyan-300 hover:text-white font-bold text-xs flex items-center gap-1 border border-cyan-700/60 cursor-pointer transition active:scale-95"
-                >
-                  <Palette className="w-3 h-3 text-cyan-400" />
-                  <span>제목·뱃지 수정</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMoveBlockOnDashboard(idx, "up")}
-                  disabled={idx === 0}
-                  title="위로 이동"
-                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-20 cursor-pointer transition"
-                >
-                  <ArrowUp className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMoveBlockOnDashboard(idx, "down")}
-                  disabled={idx === activePanelKeys.length - 1}
-                  title="아래로 이동"
-                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-20 cursor-pointer transition"
-                >
-                  <ArrowDown className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveBlockFromDashboard(blockKey)}
-                  title="이 패널 화면에서 삭제(제외)"
-                  className="p-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white cursor-pointer transition"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 opacity-90 group-hover/panel:opacity-100 transition-opacity bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-cyan-500/50 shadow-xl">
+                {isEditingThisBlock ? (
+                  <>
+                    {/* 실시간 테마 색상 퀵 선택 */}
+                    <div className="flex items-center gap-1 pr-2 border-r border-slate-700">
+                      <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">테마:</span>
+                      {[
+                        { key: "indigo", bg: "bg-indigo-500", name: "인디고" },
+                        { key: "ocean", bg: "bg-sky-500", name: "오션" },
+                        { key: "emerald", bg: "bg-emerald-500", name: "에메랄드" },
+                        { key: "amber", bg: "bg-amber-500", name: "앰버" },
+                        { key: "slate", bg: "bg-slate-500", name: "슬레이트" },
+                        { key: "light", bg: "bg-white", name: "라이트" }
+                      ].map((th) => (
+                        <button
+                          key={th.key}
+                          type="button"
+                          onClick={() => handleUpdateInlineDraft({ theme: th.key })}
+                          title={`${th.name} 테마 적용`}
+                          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full ${th.bg} cursor-pointer transition-transform hover:scale-125 border ${
+                            (inlineDraftSettings.theme || panelCustomSettings[blockKey]?.theme || "indigo") === th.key
+                              ? "ring-2 ring-cyan-400 scale-110"
+                              : "opacity-60 hover:opacity-100"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* 완료 및 저장 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => handleSaveInlineEdit(blockKey)}
+                      disabled={isSavingInline}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-emerald-950/40 cursor-pointer transition active:scale-95"
+                      title="수정한 제목과 뱃지를 저장합니다"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isSavingInline ? "저장 중..." : "✓ 완료 및 저장"}</span>
+                    </button>
+
+                    {/* 취소 버튼 */}
+                    <button
+                      type="button"
+                      onClick={handleCancelInlineEdit}
+                      className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition"
+                      title="수정 취소"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>취소</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleStartInlineEdit(blockKey)}
+                      title="이 패널의 제목·뱃지·KPI를 패널에서 직접 수정 (팝업창 없음)"
+                      className="px-2.5 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-800 text-cyan-300 hover:text-white font-black text-xs flex items-center gap-1 border border-cyan-700/60 cursor-pointer transition active:scale-95"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>패널 직접수정</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveBlockOnDashboard(idx, "up")}
+                      disabled={idx === 0}
+                      title="위로 이동"
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-20 cursor-pointer transition"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveBlockOnDashboard(idx, "down")}
+                      disabled={idx === activePanelKeys.length - 1}
+                      title="아래로 이동"
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-20 cursor-pointer transition"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveBlockFromDashboard(blockKey)}
+                      title="이 패널 화면에서 삭제(제외)"
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white cursor-pointer transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -819,6 +949,14 @@ export const InternalManagerDashboardView = ({
             {isSavingStudio ? <span className="animate-spin">⏳</span> : <Save className="w-3.5 h-3.5" />}
             <span>이 화면 설정 저장</span>
           </button>
+        </div>
+      )}
+
+      {/* 🌟 설정 저장 완료 토스트 */}
+      {saveSuccessToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-emerald-600 text-white font-black text-xs sm:text-sm shadow-2xl shadow-emerald-950/80 border-2 border-emerald-400 flex items-center gap-2 animate-bounce">
+          <Check className="w-4 h-4 text-emerald-200" />
+          <span>{saveSuccessToast}</span>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Edit3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Edit3, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { getFourMBadgeColor, getFourMRecordCompany } from "../../../services/fourMChangePointService";
 
 export const Step3Official4MLedgerSection = ({
@@ -13,7 +13,10 @@ export const Step3Official4MLedgerSection = ({
   checkIsCeoApproved,
   handleOpenCapaModal,
   customTitle,
-  themeObj
+  themeObj,
+  isInlineEditing = false,
+  customSettings = null,
+  onUpdateDraft = null
 }) => {
   const PAGE_SIZE = 8;
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,16 +69,62 @@ export const Step3Official4MLedgerSection = ({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
-            4M 정식대장
-          </span>
-          <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-            <span>📋 이창엽의 4M 정식대장 & 시정조치(CAPA)</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-              총 {filteredItems.length}건
-            </span>
-          </h4>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isInlineEditing ? (
+            <>
+              {!customSettings?.hideOfficialSubBadge ? (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
+                  <input
+                    type="text"
+                    value={customSettings?.officialSubBadge !== undefined ? customSettings.officialSubBadge : "4M 정식대장"}
+                    onChange={(e) => onUpdateDraft?.({ officialSubBadge: e.target.value })}
+                    className="bg-transparent text-white font-black text-xs outline-none w-20 border-b border-white/40 focus:border-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdateDraft?.({ hideOfficialSubBadge: true })}
+                    className="p-0.5 hover:bg-black/20 rounded-full cursor-pointer text-white/70 hover:text-white"
+                    title="4M 정식대장 뱃지 숨김/삭제"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onUpdateDraft?.({ hideOfficialSubBadge: false, officialSubBadge: "4M 정식대장" })}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-indigo-400 text-indigo-400 hover:bg-indigo-500/10 flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>+ 4M 정식대장 뱃지 복원</span>
+                </button>
+              )}
+
+              <input
+                type="text"
+                value={customSettings?.officialSubTitle !== undefined ? customSettings.officialSubTitle : "📋 이창엽의 4M 정식대장 & 시정조치(CAPA)"}
+                onChange={(e) => onUpdateDraft?.({ officialSubTitle: e.target.value })}
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-indigo-400 text-slate-900 dark:text-white font-black text-xs sm:text-sm outline-none min-w-[240px]"
+              />
+              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                총 {filteredItems.length}건
+              </span>
+            </>
+          ) : (
+            <>
+              {!customSettings?.hideOfficialSubBadge && (
+                <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
+                  {customSettings?.officialSubBadge || "4M 정식대장"}
+                </span>
+              )}
+              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>{customSettings?.officialSubTitle || "📋 이창엽의 4M 정식대장 & 시정조치(CAPA)"}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                  총 {filteredItems.length}건
+                </span>
+              </h4>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap text-xs">

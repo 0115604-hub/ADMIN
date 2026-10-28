@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, X, Plus } from "lucide-react";
 import { PANEL_THEMES } from "../../../config/panelThemeConfig";
 
 export const QualityStatusSection = ({
@@ -8,26 +8,72 @@ export const QualityStatusSection = ({
   liveQualityCurrentMonthly,
   liveQualityPrevMonthly,
   handleOpenQualityPopup,
-  customSettings = null
+  customSettings = null,
+  isInlineEditing = false,
+  onUpdateDraft = null
 }) => {
   const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly?.items || [];
   const themeObj = PANEL_THEMES[customSettings?.theme || "indigo"];
   const title = customSettings?.customTitle || "중요ITEM 품질현황";
   const radius = customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl";
   const border = customSettings?.borderStyle ? `${customSettings.borderStyle} ${themeObj.borderClass}` : "border border-slate-200/80 dark:border-slate-800";
+  const defaultBadgeText = `${selectedMonth?.slice(5, 7) || "9"}월 실적`;
 
   return (
     <div className={`bg-white dark:bg-slate-900 ${radius} p-3.5 sm:p-5 ${border} shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden`}>
       {/* Header with Quality Detail Link */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
-          <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            {title}
-          </h2>
-          {customSettings?.hideBadge !== true && (
-            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-              {customSettings?.customBadge || `${selectedMonth?.slice(5, 7) || "9"}월 실적`}
-            </span>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+          {isInlineEditing ? (
+            <input
+              type="text"
+              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "중요ITEM 품질현황"}
+              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
+              placeholder="제목..."
+              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+            />
+          ) : (
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
+              {title}
+            </h2>
+          )}
+
+          {isInlineEditing ? (
+            <div className="inline-flex items-center gap-1">
+              {customSettings?.hideBadge !== true ? (
+                <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <input
+                    type="text"
+                    value={customSettings?.customBadge !== undefined ? customSettings.customBadge : defaultBadgeText}
+                    onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
+                    className="bg-transparent text-inherit font-black text-[10px] outline-none w-20 border-b border-emerald-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdateDraft?.({ hideBadge: true })}
+                    className="p-0.5 hover:bg-black/10 rounded-full"
+                    title="뱃지 삭제"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: defaultBadgeText })}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-emerald-500 text-emerald-500 flex items-center gap-1"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>+ 뱃지 복원</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            customSettings?.hideBadge !== true && (
+              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                {customSettings?.customBadge || defaultBadgeText}
+              </span>
+            )
           )}
         </div>
 

@@ -27,7 +27,10 @@ export default function Step3QualityControlPanel({
   hideSubtitle = true,
   theme = "indigo",
   borderRadius = "rounded-2xl",
-  borderStyle = "border-2"
+  borderStyle = "border-2",
+  isInlineEditing = false,
+  customSettings = null,
+  onUpdateDraft = null
 }) {
   const state = useStep3QualityState({
     currentProfile,
@@ -49,6 +52,9 @@ export default function Step3QualityControlPanel({
         hideBadge={hideBadge}
         hideSubtitle={hideSubtitle}
         themeObj={themeObj}
+        isInlineEditing={isInlineEditing}
+        customSettings={customSettings}
+        onUpdateDraft={onUpdateDraft}
       />
 
       {/* 2. SECTION 1: 2단계 관리자 이관 건 재검토 및 4M 대장 등재 (접수함) */}
@@ -61,6 +67,9 @@ export default function Step3QualityControlPanel({
           handleReclassifyToInternal={state.handleReclassifyToInternal}
           handleConfirmToFourMLedger={state.handleConfirmToFourMLedger}
           setPreviewImage={state.setPreviewImage}
+          isInlineEditing={isInlineEditing}
+          customSettings={customSettings}
+          onUpdateDraft={onUpdateDraft}
         />
       )}
 
@@ -77,6 +86,9 @@ export default function Step3QualityControlPanel({
         handleOpenCapaModal={state.handleOpenCapaModal}
         customTitle={customTitle}
         themeObj={themeObj}
+        isInlineEditing={isInlineEditing}
+        customSettings={customSettings}
+        onUpdateDraft={onUpdateDraft}
       />
 
       {/* 4. 팝업창: 4M 변동점 및 이상내용 + 조치결과 + 전후사진 각 5장 + 전자결재 상신 모달 */}

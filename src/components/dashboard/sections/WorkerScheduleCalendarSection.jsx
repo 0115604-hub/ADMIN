@@ -11,7 +11,8 @@ import {
   Factory,
   Sparkles,
   FileText,
-  MessageCircle
+  MessageCircle,
+  Plus
 } from "lucide-react";
 
 export const WorkerScheduleCalendarSection = ({
@@ -60,7 +61,9 @@ export const WorkerScheduleCalendarSection = ({
   handleResetToToday,
   handleNextWeek,
   myWeeklyCalendarDays = [],
-  customSettings = null
+  customSettings = null,
+  isInlineEditing = false,
+  onUpdateDraft = null
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
@@ -134,10 +137,42 @@ export const WorkerScheduleCalendarSection = ({
                   )}
                 </button>
 
-                {customSettings?.hideBadge !== true && (
-                  <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                    {customSettings?.customBadge || officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "사원"))}
-                  </span>
+                {isInlineEditing ? (
+                  <div className="inline-flex items-center gap-1">
+                    {customSettings?.hideBadge !== true ? (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30">
+                        <input
+                          type="text"
+                          value={customSettings?.customBadge !== undefined ? customSettings.customBadge : (officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "사원")))}
+                          onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
+                          className="bg-transparent text-white font-black text-xs outline-none w-20 border-b border-blue-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onUpdateDraft?.({ hideBadge: true })}
+                          className="p-0.5 hover:bg-black/20 rounded-full"
+                          title="뱃지 삭제"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "사원")) })}
+                        className="px-2 py-0.5 rounded-lg text-xs font-bold border border-dashed border-cyan-400 text-cyan-300 flex items-center gap-1"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>+ 뱃지 복원</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  customSettings?.hideBadge !== true && (
+                    <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
+                      {customSettings?.customBadge || officialTitle || (isAdmin ? "대표이사" : (isManagerRole ? "반장" : "사원"))}
+                    </span>
+                  )
                 )}
               </div>
             </div>

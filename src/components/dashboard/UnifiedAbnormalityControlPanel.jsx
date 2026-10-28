@@ -28,7 +28,9 @@ export const UnifiedAbnormalityControlPanel = ({
   onOpenExtrusionReport = null,
   currentProfile = null,
   onNavigateTab = null,
-  customSettings = null
+  customSettings = null,
+  isInlineEditing = false,
+  onUpdateDraft = null
 }) => {
   // 1. Data Aggregation & Realtime Subscriptions
   const {
@@ -228,6 +230,9 @@ export const UnifiedAbnormalityControlPanel = ({
           theme={theme}
           borderRadius={borderRadius}
           borderStyle={borderStyle}
+          isInlineEditing={isInlineEditing}
+          customSettings={customSettings}
+          onUpdateDraft={onUpdateDraft}
         />
       ) : (
         <Step2ProductionManagerPanel
@@ -258,6 +263,9 @@ export const UnifiedAbnormalityControlPanel = ({
           hideSubtitle={customSettings?.hideSubtitle !== false}
           theme={theme}
           themeObj={themeObj}
+          isInlineEditing={isInlineEditing}
+          customSettings={customSettings}
+          onUpdateDraft={onUpdateDraft}
         />
 
         {/* 3. Table View or Card View (패널 내부 직결 목록) */}

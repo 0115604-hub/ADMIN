@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, ArrowRight, Users } from "lucide-react";
+import { CheckCircle2, ArrowRight, Users, X, Plus } from "lucide-react";
 
 export const AttendanceSummarySection = ({
   todayFormattedLabel,
@@ -10,19 +10,64 @@ export const AttendanceSummarySection = ({
   pushModalHistory,
   setSelectedOvertimeReportForModal,
   formatKoreanWorkDate,
-  customSettings = null
+  customSettings = null,
+  isInlineEditing = false,
+  onUpdateDraft = null
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-          <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-            <span>{customSettings?.customTitle || "근태현황 및 관리"}</span>
-          </h2>
-          {customSettings?.hideBadge !== true && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
-              {customSettings?.customBadge || todayFormattedLabel}
-            </span>
+          {isInlineEditing ? (
+            <input
+              type="text"
+              value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "근태현황 및 관리"}
+              onChange={(e) => onUpdateDraft?.({ customTitle: e.target.value })}
+              placeholder="제목..."
+              className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border-2 border-cyan-400 text-slate-900 dark:text-white font-black text-xs sm:text-base outline-none min-w-[150px]"
+            />
+          ) : (
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+              <span>{customSettings?.customTitle || "근태현황 및 관리"}</span>
+            </h2>
+          )}
+
+          {isInlineEditing ? (
+            <div className="inline-flex items-center gap-1">
+              {customSettings?.hideBadge !== true ? (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                  <input
+                    type="text"
+                    value={customSettings?.customBadge !== undefined ? customSettings.customBadge : todayFormattedLabel}
+                    onChange={(e) => onUpdateDraft?.({ customBadge: e.target.value })}
+                    className="bg-transparent text-inherit font-black text-[10.5px] outline-none w-20 border-b border-cyan-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdateDraft?.({ hideBadge: true })}
+                    className="p-0.5 hover:bg-black/10 rounded-full"
+                    title="뱃지 삭제"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onUpdateDraft?.({ hideBadge: false, customBadge: todayFormattedLabel })}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-cyan-500 text-cyan-500 flex items-center gap-1"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  <span>+ 뱃지 복원</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            customSettings?.hideBadge !== true && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
+                {customSettings?.customBadge || todayFormattedLabel}
+              </span>
+            )
           )}
           {/* ⭐ 미작성 업체 표기 배지 (통합 완료 뱃지 제거, 미작성 개별사만 안내) */}
           {unwrittenCompanies.length > 0 && (
