@@ -28,11 +28,11 @@ export const PANEL_KEYS = {
 export const ALL_DASHBOARD_BLOCKS = [
   {
     key: PANEL_KEYS.INCOMING_INSPECTION,
-    label: "원부자재 수입검사 센터",
+    label: "원부자재 입고 및 수입검사 통합대장",
     category: "품질/4M",
-    badge: "🔍 수입검사",
+    badge: "📦 입고·검사",
     icon: "ClipboardCheck",
-    description: "고무/압출 원소재 및 조립/체결 부자재 수입검사 성적서 & 4M 자동연동",
+    description: "원부자재 입고대장(송장/수량/창고) & 수입검사 성적서 4M 자동연동",
     color: "from-cyan-600 to-teal-700"
   },
   {
@@ -428,7 +428,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전
-export const PANEL_CONFIG_VERSION = "20261028_v13";
+export const PANEL_CONFIG_VERSION = "20261029_v14";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

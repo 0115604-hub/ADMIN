@@ -18,10 +18,17 @@ import {
   ExternalLink,
   ChevronRight,
   Eye,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Truck,
+  Warehouse,
+  FileText,
+  Clock,
+  PackageCheck,
+  ArrowRight
 } from "lucide-react";
 import {
   INSPECTION_CATEGORIES,
+  RECEIVING_STATUS,
   subscribeIncomingInspections,
   saveIncomingInspection,
   deleteIncomingInspection,
@@ -40,14 +47,19 @@ export const IncomingInspectionPanel = ({
 }) => {
   const [inspections, setInspections] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategoryTab, setSelectedCategoryTab] = useState("ALL"); // ALL, RAW_MATERIAL, SUB_MATERIAL, REJECT_ONLY
-  const [selectedResultFilter, setSelectedResultFilter] = useState("ALL"); // ALL, PASS, REJECT, CONDITIONAL
+
+  // 🌟 3가지 대장 뷰 모드: "RECEIVING" (입고대장) | "INSPECTION" (수입검사) | "ALL" (통합)
+  const [activeLedgerView, setActiveLedgerView] = useState("RECEIVING");
+
+  // 카테고리 필터: ALL, RAW_MATERIAL, SUB_MATERIAL, PENDING_ONLY, REJECT_ONLY
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalDefaultMode, setModalDefaultMode] = useState("FULL");
   const [selectedItemForEdit, setSelectedItemForEdit] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [syncingId, setSyncingId] = useState(null);
 
-  // 실시간 수입검사 데이터 구독
+  // 실시간 수입검사 & 입고대장 데이터 구독
   useEffect(() => {
     const unsubscribe = subscribeIncomingInspections((data) => {
       setInspections(data);
@@ -58,11 +70,11 @@ export const IncomingInspectionPanel = ({
   // 커스텀 테마 & 타이틀 설정 계산
   const themeKey = customSettings?.theme || "indigo";
   const themeObj = PANEL_THEMES[themeKey] || PANEL_THEMES.indigo;
-  const rawTitle = customSettings?.customTitle || "원부자재 수입검사 센터";
-  const titleValue = cleanTitleWithoutEmoji(rawTitle) || "원부자재 수입검사 센터";
+  const rawTitle = customSettings?.customTitle || "원부자재 입고 및 수입검사 통합대장";
+  const titleValue = cleanTitleWithoutEmoji(rawTitle) || "원부자재 입고 및 수입검사 통합대장";
   const defaultBadgeText = currentProfile?.name
     ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제`
-    : "품질보증 관제";
+    : "자재·품질 통합관제";
   const badgeValue =
     customSettings?.customBadge !== undefined && customSettings.customBadge !== ""
       ? cleanTitleWithoutEmoji(customSettings.customBadge)
@@ -74,17 +86,20 @@ export const IncomingInspectionPanel = ({
     const total = inspections.length;
     const rawMaterialCount = inspections.filter((i) => i.category === "RAW_MATERIAL").length;
     const subMaterialCount = inspections.filter((i) => i.category === "SUB_MATERIAL").length;
-    const passCount = inspections.filter((i) => i.overallResult === "PASS").length;
-    const rejectCount = inspections.filter((i) => i.overallResult === "REJECT").length;
-    const conditionalCount = inspections.filter((i) => i.overallResult === "CONDITIONAL").length;
+    const passedCount = inspections.filter((i) => i.receivingStatus === "PASSED" || i.overallResult === "PASS").length;
+    const pendingCount = inspections.filter((i) => i.receivingStatus === "PENDING" || i.overallResult === "PENDING").length;
+    const rejectCount = inspections.filter((i) => i.receivingStatus === "REJECTED" || i.overallResult === "REJECT").length;
+    const conditionalCount = inspections.filter((i) => i.receivingStatus === "CONDITIONAL" || i.overallResult === "CONDITIONAL").length;
     const synced4MCount = inspections.filter((i) => i.syncedTo4M).length;
-    const passRate = total > 0 ? Math.round((passCount / total) * 100) : 100;
+    const inspectedTotal = passedCount + rejectCount + conditionalCount;
+    const passRate = inspectedTotal > 0 ? Math.round((passedCount / inspectedTotal) * 100) : 100;
 
     return {
       total,
       rawMaterialCount,
       subMaterialCount,
-      passCount,
+      passedCount,
+      pendingCount,
       rejectCount,
       conditionalCount,
       synced4MCount,
@@ -93,39 +108,44 @@ export const IncomingInspectionPanel = ({
   }, [inspections]);
 
   // 필터링 적용
-  const filteredInspections = useMemo(() => {
+  const filteredList = useMemo(() => {
     return inspections.filter((item) => {
       // 카테고리 필터
       if (selectedCategoryTab === "RAW_MATERIAL" && item.category !== "RAW_MATERIAL") return false;
       if (selectedCategoryTab === "SUB_MATERIAL" && item.category !== "SUB_MATERIAL") return false;
-      if (selectedCategoryTab === "REJECT_ONLY" && item.overallResult !== "REJECT" && item.overallResult !== "CONDITIONAL") return false;
+      if (selectedCategoryTab === "PENDING_ONLY" && item.receivingStatus !== "PENDING" && item.overallResult !== "PENDING") return false;
+      if (selectedCategoryTab === "REJECT_ONLY" && item.receivingStatus !== "REJECTED" && item.overallResult !== "REJECT" && item.overallResult !== "CONDITIONAL") return false;
 
-      // 판정 필터
-      if (selectedResultFilter !== "ALL" && item.overallResult !== selectedResultFilter) return false;
-
-      // 검색어 필터 (품명, 공급사, LOT, 검사원)
+      // 검색어 필터 (품명, 공급사, LOT, 거래명세서, 보관창고)
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchName = (item.itemName || "").toLowerCase().includes(term);
         const matchSupplier = (item.supplier || "").toLowerCase().includes(term);
         const matchLot = (item.lotNo || "").toLowerCase().includes(term);
+        const matchSlip = (item.deliveryNoteNo || "").toLowerCase().includes(term);
+        const matchLoc = (item.storageLocation || "").toLowerCase().includes(term);
         const matchInspector = (item.inspector || "").toLowerCase().includes(term);
-        if (!matchName && !matchSupplier && !matchLot && !matchInspector) return false;
+        const matchReceiver = (item.receivedBy || "").toLowerCase().includes(term);
+        if (!matchName && !matchSupplier && !matchLot && !matchSlip && !matchLoc && !matchInspector && !matchReceiver) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [inspections, selectedCategoryTab, selectedResultFilter, searchTerm]);
+  }, [inspections, selectedCategoryTab, searchTerm]);
 
-  // 신규 등록 열기
-  const handleOpenNewModal = () => {
+  // 신규 등록 열기 (입고+검사 동시)
+  const handleOpenNewModal = (mode = "FULL") => {
     setSelectedItemForEdit(null);
+    setModalDefaultMode(mode);
     setIsModalOpen(true);
   };
 
   // 상세/수정 열기
   const handleOpenEditModal = (item) => {
     setSelectedItemForEdit(item);
+    setModalDefaultMode("FULL");
     setIsModalOpen(true);
   };
 
@@ -138,7 +158,7 @@ export const IncomingInspectionPanel = ({
   // 삭제 처리
   const handleDeleteInspection = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm("해당 수입검사 성적서를 정말 삭제하시겠습니까?")) return;
+    if (!window.confirm("해당 입고 및 검사 대장 기록을 정말 삭제하시겠습니까?")) return;
     await deleteIncomingInspection(id);
   };
 
@@ -164,42 +184,87 @@ export const IncomingInspectionPanel = ({
     }
   };
 
-  // 엑셀 (CSV) 내보내기
+  // 엑셀 (CSV) 내보내기 (현재 뷰 모드에 따라 최적화된 양식 다운로드)
   const handleExportCSV = () => {
-    if (filteredInspections.length === 0) {
-      alert("다운로드할 수입검사 내역이 없습니다.");
+    if (filteredList.length === 0) {
+      alert("다운로드할 데이터가 없습니다.");
       return;
     }
 
-    const headers = [
-      "검사일자",
-      "공장",
-      "분류",
-      "품목구분",
-      "품명및규격",
-      "공급사",
-      "입고LOT",
-      "입고수량",
-      "종합판정",
-      "4M대장연동여부",
-      "검사원",
-      "특기사항"
-    ];
+    let headers = [];
+    let rows = [];
+    let fileName = "";
 
-    const rows = filteredInspections.map((it) => [
-      it.date,
-      it.plant || "삼랑진공장",
-      it.category === "RAW_MATERIAL" ? "고무/압출 원소재" : "조립/체결 부자재",
-      it.itemType || "",
-      `"${(it.itemName || "").replace(/"/g, '""')}"`,
-      `"${(it.supplier || "").replace(/"/g, '""')}"`,
-      it.lotNo || "",
-      it.quantity || "",
-      it.overallResult === "PASS" ? "합격" : it.overallResult === "REJECT" ? "불합격" : "조건부합격",
-      it.syncedTo4M ? "4M등록완료" : "미등록",
-      it.inspector || "",
-      `"${(it.remarks || "").replace(/"/g, '""')}"`
-    ]);
+    if (activeLedgerView === "RECEIVING") {
+      // 📋 원부자재 입고대장 표준 양식
+      fileName = `원부자재_입고대장_${new Date().toISOString().slice(0, 10)}.csv`;
+      headers = [
+        "입고일자",
+        "입고시간",
+        "공장",
+        "거래명세서번호",
+        "공급사",
+        "분류",
+        "품명및규격",
+        "입고LOT",
+        "입고수량",
+        "보관창고/위치",
+        "입고담당자",
+        "진행상태",
+        "특기사항"
+      ];
+      rows = filteredList.map((it) => [
+        it.receivingDate || it.date,
+        it.receivingTime || it.time,
+        it.plant || "삼랑진공장",
+        `"${(it.deliveryNoteNo || "").replace(/"/g, '""')}"`,
+        `"${(it.supplier || "").replace(/"/g, '""')}"`,
+        it.category === "RAW_MATERIAL" ? "고무/압출 원소재" : "조립/체결 부자재",
+        `"${(it.itemName || "").replace(/"/g, '""')}"`,
+        it.lotNo || "",
+        it.quantity || (it.quantityNum ? `${it.quantityNum} ${it.quantityUnit}` : ""),
+        `"${(it.storageLocation || "").replace(/"/g, '""')}"`,
+        it.receivedBy || "",
+        it.receivingStatus === "PENDING" ? "검사대기" : it.receivingStatus === "PASSED" ? "정상입고" : "불합격반품",
+        `"${(it.remarks || "").replace(/"/g, '""')}"`
+      ]);
+    } else {
+      // 🔍 수입검사 성적서 표준 양식
+      fileName = `수입검사_성적서대장_${new Date().toISOString().slice(0, 10)}.csv`;
+      headers = [
+        "검사일자",
+        "공장",
+        "분류",
+        "품명및규격",
+        "공급사",
+        "입고LOT",
+        "입고수량",
+        "종합판정",
+        "4M대장연동",
+        "검사원",
+        "주요실측요약",
+        "특기사항"
+      ];
+      rows = filteredList.map((it) => {
+        const measuredStr = (it.inspectionChecks || [])
+          .map((c) => `${c.name}:${c.measured || '-'}(${c.result})`)
+          .join(" | ");
+        return [
+          it.date,
+          it.plant || "삼랑진공장",
+          it.category === "RAW_MATERIAL" ? "고무/압출 원소재" : "조립/체결 부자재",
+          `"${(it.itemName || "").replace(/"/g, '""')}"`,
+          `"${(it.supplier || "").replace(/"/g, '""')}"`,
+          it.lotNo || "",
+          it.quantity || "",
+          it.overallResult === "PASS" ? "합격" : it.overallResult === "REJECT" ? "불합격" : it.overallResult === "PENDING" ? "검사대기" : "조건부합격",
+          it.syncedTo4M ? "4M등록완료" : "미등록",
+          it.inspector || "",
+          `"${measuredStr.replace(/"/g, '""')}"`,
+          `"${(it.remarks || "").replace(/"/g, '""')}"`
+        ];
+      });
+    }
 
     const csvContent =
       "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -207,7 +272,7 @@ export const IncomingInspectionPanel = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `수입검사성적서_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -216,7 +281,7 @@ export const IncomingInspectionPanel = ({
   return (
     <div className={`w-full ${themeObj.cardBg} border-2 ${themeObj.borderClass} ${customSettings?.borderRadius || "rounded-2xl"} shadow-lg overflow-hidden transition-all duration-200 animate-fadeIn`}>
       {/* 1. Header Bar (울트라고밀도 스타일) */}
-      <div className={`p-2.5 sm:p-3 border-b border-slate-700/50 ${themeObj.headerBg} flex flex-col sm:flex-row sm:items-center justify-between gap-2.5`}>
+      <div className={`p-2.5 sm:p-3 border-b border-slate-700/50 ${themeObj.headerBg} flex flex-col md:flex-row md:items-center justify-between gap-2.5`}>
         {/* Title & Badge */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="p-1.5 rounded-lg bg-cyan-600/30 border border-cyan-400/30 text-cyan-300">
@@ -228,7 +293,7 @@ export const IncomingInspectionPanel = ({
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
-                value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "원부자재 수입검사 센터"}
+                value={customSettings?.customTitle !== undefined ? customSettings.customTitle : "원부자재 입고 및 수입검사 통합대장"}
                 onChange={(e) => onUpdateDraft && onUpdateDraft({ customTitle: e.target.value })}
                 className="bg-slate-900 border border-cyan-500 rounded px-2 py-0.5 text-xs text-white font-black focus:outline-none"
                 placeholder="패널 타이틀"
@@ -255,38 +320,99 @@ export const IncomingInspectionPanel = ({
           )}
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+        {/* 🌟 상단 뷰 모드 탭 (입고대장 뷰 ↔ 수입검사 뷰 ↔ 통합 뷰) */}
+        <div className="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-xl border border-slate-700/60 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setActiveLedgerView("RECEIVING")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              activeLedgerView === "RECEIVING"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            <span>📋 원부자재 입고대장</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveLedgerView("INSPECTION")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              activeLedgerView === "INSPECTION"
+                ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            <span>🔍 수입검사 성적서</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveLedgerView("ALL")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              activeLedgerView === "ALL"
+                ? "bg-slate-700 text-white shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span>📊 통합 전체</span>
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1.5 self-end md:self-auto">
           <button
             type="button"
             onClick={handleExportCSV}
-            title="CSV 엑셀 다운로드"
+            title={activeLedgerView === "RECEIVING" ? "입고대장 CSV 다운로드" : "수입검사대장 CSV 다운로드"}
             className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-300 transition"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">엑셀</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleOpenNewModal}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[11px] font-black shadow-md shadow-cyan-950/60 transition active:scale-95"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>신규 수입검사 등록</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleOpenNewModal("FULL")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[11px] font-black shadow-md shadow-cyan-950/60 transition active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>신규 입고·검사 등록</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 2. 통계 KPI 요약 바 (Ultra High-Density) */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-2 sm:p-2.5 bg-slate-950/60 border-b border-slate-800 text-xs">
-        {/* 전체 */}
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 p-2 sm:p-2.5 bg-slate-950/60 border-b border-slate-800 text-xs">
+        {/* 전체 건수 */}
         <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-          <span className="text-[11px] font-bold text-slate-400">총 검사건수</span>
+          <span className="text-[11px] font-bold text-slate-400">총 입고·검사</span>
           <span className="text-xs font-black text-white">{stats.total}건</span>
         </div>
 
-        {/* 고무/압출 원소재 */}
+        {/* 정상 입고 */}
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/50">
+          <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            정상입고
+          </span>
+          <span className="text-xs font-black text-emerald-200">{stats.passedCount}건</span>
+        </div>
+
+        {/* 검사 대기 */}
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-amber-950/40 border border-amber-900/50">
+          <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-amber-400" />
+            검사대기
+          </span>
+          <span className="text-xs font-black text-amber-200">{stats.pendingCount}건</span>
+        </div>
+
+        {/* 원소재 */}
         <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-blue-950/40 border border-blue-900/50">
           <span className="text-[11px] font-bold text-blue-300 flex items-center gap-1">
             <Layers className="w-3 h-3 text-blue-400" />
@@ -295,28 +421,20 @@ export const IncomingInspectionPanel = ({
           <span className="text-xs font-black text-blue-200">{stats.rawMaterialCount}건</span>
         </div>
 
-        {/* 조립/체결 부자재 */}
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/50">
-          <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1">
-            <Component className="w-3 h-3 text-emerald-400" />
+        {/* 부자재 */}
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
+          <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+            <Component className="w-3 h-3 text-slate-400" />
             부자재
           </span>
-          <span className="text-xs font-black text-emerald-200">{stats.subMaterialCount}건</span>
+          <span className="text-xs font-black text-slate-200">{stats.subMaterialCount}건</span>
         </div>
 
-        {/* 합격률 */}
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-          <span className="text-[11px] font-bold text-slate-400">합격률</span>
-          <span className={`text-xs font-black ${stats.passRate >= 95 ? "text-emerald-400" : "text-amber-400"}`}>
-            {stats.passRate}%
-          </span>
-        </div>
-
-        {/* 4M 자동연동 부적합건 */}
+        {/* 4M 연동 부적합 */}
         <div className="col-span-2 sm:col-span-1 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-rose-950/40 border border-rose-900/60">
           <span className="text-[11px] font-black text-rose-300 flex items-center gap-1">
             <ShieldAlert className="w-3 h-3 text-rose-400" />
-            4M 연동부적합
+            4M 부적합
           </span>
           <span className="text-xs font-black text-rose-200">
             {stats.rejectCount + stats.conditionalCount}건
@@ -326,7 +444,7 @@ export const IncomingInspectionPanel = ({
 
       {/* 3. 필터 및 검색 바 */}
       <div className="p-2 sm:p-2.5 bg-slate-900/80 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
-        {/* 카테고리 탭 */}
+        {/* 필터 칩 */}
         <div className="flex items-center gap-1 flex-wrap">
           <button
             type="button"
@@ -365,6 +483,18 @@ export const IncomingInspectionPanel = ({
           </button>
           <button
             type="button"
+            onClick={() => setSelectedCategoryTab("PENDING_ONLY")}
+            className={`px-2 py-1 rounded-md text-[11px] font-black transition flex items-center gap-1 ${
+              selectedCategoryTab === "PENDING_ONLY"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "text-amber-400 hover:text-amber-300 hover:bg-amber-950/60"
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            검사대기건 ({stats.pendingCount})
+          </button>
+          <button
+            type="button"
             onClick={() => setSelectedCategoryTab("REJECT_ONLY")}
             className={`px-2 py-1 rounded-md text-[11px] font-black transition flex items-center gap-1 ${
               selectedCategoryTab === "REJECT_ONLY"
@@ -373,16 +503,16 @@ export const IncomingInspectionPanel = ({
             }`}
           >
             <ShieldAlert className="w-3 h-3" />
-            🚨 4M 연동 부적합건만 ({stats.rejectCount + stats.conditionalCount})
+            🚨 4M 부적합건 ({stats.rejectCount + stats.conditionalCount})
           </button>
         </div>
 
         {/* 검색창 */}
-        <div className="relative w-full md:w-60">
+        <div className="relative w-full md:w-64">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="품명, 규격, 공급사, LOT 검색..."
+            placeholder="품명, 송장, 공급사, LOT, 창고 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-medium"
@@ -390,183 +520,490 @@ export const IncomingInspectionPanel = ({
         </div>
       </div>
 
-      {/* 4. 고밀도 수입검사 목록 테이블 (Responsive Table) */}
+      {/* 4. 고밀도 대장 테이블 (선택된 뷰 모드에 따라 컬럼 동적 최적화) */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
-          <thead className="bg-slate-900/90 text-slate-300 border-b border-slate-800 font-bold text-[11px]">
-            <tr>
-              <th className="py-2 px-2.5 w-24">검사일자</th>
-              <th className="py-2 px-2.5 w-20">공장</th>
-              <th className="py-2 px-2.5 w-24">분류</th>
-              <th className="py-2 px-2.5">품명 및 규격</th>
-              <th className="py-2 px-2.5 w-28">공급사</th>
-              <th className="py-2 px-2.5 w-28">입고 LOT</th>
-              <th className="py-2 px-2.5 w-24 text-right">입고수량</th>
-              <th className="py-2 px-2.5 w-44">주요 물성/스펙 실측치</th>
-              <th className="py-2 px-2 w-12 text-center">성적서</th>
-              <th className="py-2 px-2.5 w-20 text-center">판정</th>
-              <th className="py-2 px-2.5 w-32 text-center">4M 대장 연동</th>
-              <th className="py-2 px-2 w-16 text-center">관리</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800 text-[11px]">
-            {filteredInspections.length === 0 ? (
-              <tr>
-                <td colSpan={12} className="py-8 text-center text-slate-500">
-                  등록된 수입검사 내역이 없습니다.
-                </td>
-              </tr>
-            ) : (
-              filteredInspections.map((item) => {
-                const isRaw = item.category === "RAW_MATERIAL";
-                const isPass = item.overallResult === "PASS";
-                const isReject = item.overallResult === "REJECT";
-                const isCond = item.overallResult === "CONDITIONAL";
+          {/* ======================= CASE 1: 원부자재 입고대장 모드 ======================= */}
+          {activeLedgerView === "RECEIVING" && (
+            <>
+              <thead className="bg-slate-900/90 text-slate-300 border-b border-slate-800 font-bold text-[11px]">
+                <tr>
+                  <th className="py-2 px-2.5 w-24">입고일시</th>
+                  <th className="py-2 px-2.5 w-24">송장번호</th>
+                  <th className="py-2 px-2.5 w-20">공장</th>
+                  <th className="py-2 px-2.5 w-24">분류</th>
+                  <th className="py-2 px-2.5">품명 및 규격</th>
+                  <th className="py-2 px-2.5 w-28">공급사</th>
+                  <th className="py-2 px-2.5 w-28">입고 LOT</th>
+                  <th className="py-2 px-2.5 w-24 text-right">입고수량</th>
+                  <th className="py-2 px-2.5 w-32">보관 창고 / 위치</th>
+                  <th className="py-2 px-2.5 w-20">입고자</th>
+                  <th className="py-2 px-2.5 w-24 text-center">진행 상태</th>
+                  <th className="py-2 px-2.5 w-28 text-center">수입검사 조치</th>
+                  <th className="py-2 px-2 w-16 text-center">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-[11px]">
+                {filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={13} className="py-8 text-center text-slate-500">
+                      등록된 원부자재 입고 내역이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredList.map((item) => {
+                    const isRaw = item.category === "RAW_MATERIAL";
+                    const isPending = item.receivingStatus === "PENDING" || item.overallResult === "PENDING";
+                    const isPassed = item.receivingStatus === "PASSED" || item.overallResult === "PASS";
+                    const isReject = item.receivingStatus === "REJECTED" || item.overallResult === "REJECT";
+                    const isCond = item.receivingStatus === "CONDITIONAL" || item.overallResult === "CONDITIONAL";
 
-                // 물성 요약 추출 (실측치가 있는 주요 2~3개)
-                const measuredSummary = (item.inspectionChecks || [])
-                  .filter((c) => c.measured && c.measured.trim() !== "")
-                  .slice(0, 2)
-                  .map((c) => `${c.name.split(" ")[0]}: ${c.measured}${c.unit ? c.unit.split(" ")[0] : ""}`)
-                  .join(" | ");
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-slate-800/40 cursor-pointer transition-colors"
+                      >
+                        {/* 입고일시 */}
+                        <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
+                          <div>{item.receivingDate || item.date}</div>
+                          <div className="text-[10px] text-slate-500">{item.receivingTime || item.time || "09:30"}</div>
+                        </td>
 
-                return (
+                        {/* 송장번호 */}
+                        <td className="py-2 px-2.5 text-slate-300 font-mono text-[10px] whitespace-nowrap">
+                          {item.deliveryNoteNo || "-"}
+                        </td>
+
+                        {/* 공장 */}
+                        <td className="py-2 px-2.5 text-slate-400 whitespace-nowrap">
+                          {item.plant || "삼랑진"}
+                        </td>
+
+                        {/* 분류 */}
+                        <td className="py-2 px-2.5 whitespace-nowrap">
+                          {isRaw ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1 w-fit">
+                              <Layers className="w-2.5 h-2.5" />
+                              원소재
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1 w-fit">
+                              <Component className="w-2.5 h-2.5" />
+                              부자재
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 품명 및 규격 */}
+                        <td className="py-2 px-2.5 font-bold text-white">
+                          <div className="flex items-center gap-1.5">
+                            <span>{item.itemName}</span>
+                            {item.itemType && (
+                              <span className="text-[10px] font-normal text-slate-400">
+                                ({item.itemType})
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 공급사 */}
+                        <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
+                          {item.supplier}
+                        </td>
+
+                        {/* 입고 LOT */}
+                        <td className="py-2 px-2.5 text-slate-400 font-mono text-[10px] whitespace-nowrap">
+                          {item.lotNo}
+                        </td>
+
+                        {/* 입고수량 */}
+                        <td className="py-2 px-2.5 text-right text-slate-200 font-bold whitespace-nowrap">
+                          {item.quantity || (item.quantityNum ? `${item.quantityNum.toLocaleString()} ${item.quantityUnit}` : "-")}
+                        </td>
+
+                        {/* 보관창고 */}
+                        <td className="py-2 px-2.5 text-slate-300 whitespace-nowrap">
+                          <span className="flex items-center gap-1">
+                            <Warehouse className="w-3 h-3 text-slate-500" />
+                            {item.storageLocation || "삼랑진 원재료창고"}
+                          </span>
+                        </td>
+
+                        {/* 입고자 */}
+                        <td className="py-2 px-2.5 text-slate-400 whitespace-nowrap">
+                          {item.receivedBy || "유동길"}
+                        </td>
+
+                        {/* 진행 상태 */}
+                        <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                          {isPending && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-600 animate-pulse">
+                              검사대기
+                            </span>
+                          )}
+                          {isPassed && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-600">
+                              정상입고
+                            </span>
+                          )}
+                          {isReject && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-950 text-rose-300 border border-rose-600">
+                              불합격반품
+                            </span>
+                          )}
+                          {isCond && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-orange-950 text-orange-300 border border-orange-600">
+                              조건부특채
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 수입검사 조치 버튼 */}
+                        <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                          {isPending ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
+                              className="px-2 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-black text-[10px] shadow-xs flex items-center justify-center gap-1 mx-auto"
+                            >
+                              <ClipboardCheck className="w-3 h-3" />
+                              <span>검사실시</span>
+                            </button>
+                          ) : isReject || isCond ? (
+                            <span className="text-[10px] font-bold text-rose-400 flex items-center justify-center gap-0.5">
+                              <ShieldAlert className="w-3 h-3" />
+                              4M 대장이관
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-400 flex items-center justify-center gap-0.5">
+                              <CheckCircle2 className="w-3 h-3" />
+                              검사완료
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 작업 (수정 / 삭제) */}
+                        <td className="py-2 px-2 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition"
+                              title="수정"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteInspection(item.id, e)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </>
+          )}
+
+          {/* ======================= CASE 2: 수입검사 성적서 모드 ======================= */}
+          {activeLedgerView === "INSPECTION" && (
+            <>
+              <thead className="bg-slate-900/90 text-slate-300 border-b border-slate-800 font-bold text-[11px]">
+                <tr>
+                  <th className="py-2 px-2.5 w-24">검사일자</th>
+                  <th className="py-2 px-2.5 w-20">공장</th>
+                  <th className="py-2 px-2.5 w-24">분류</th>
+                  <th className="py-2 px-2.5">품명 및 규격</th>
+                  <th className="py-2 px-2.5 w-28">공급사</th>
+                  <th className="py-2 px-2.5 w-28">입고 LOT</th>
+                  <th className="py-2 px-2.5 w-24 text-right">입고수량</th>
+                  <th className="py-2 px-2.5 w-48">주요 물성/스펙 실측치</th>
+                  <th className="py-2 px-2 w-12 text-center">성적서</th>
+                  <th className="py-2 px-2.5 w-20 text-center">판정</th>
+                  <th className="py-2 px-2.5 w-32 text-center">4M 대장 연동</th>
+                  <th className="py-2 px-2 w-16 text-center">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-[11px]">
+                {filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="py-8 text-center text-slate-500">
+                      등록된 수입검사 내역이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredList.map((item) => {
+                    const isRaw = item.category === "RAW_MATERIAL";
+                    const isPass = item.overallResult === "PASS";
+                    const isReject = item.overallResult === "REJECT";
+                    const isCond = item.overallResult === "CONDITIONAL";
+                    const isPending = item.overallResult === "PENDING" || item.receivingStatus === "PENDING";
+
+                    const measuredSummary = (item.inspectionChecks || [])
+                      .filter((c) => c.measured && c.measured.trim() !== "")
+                      .slice(0, 2)
+                      .map((c) => `${c.name.split(" ")[0]}: ${c.measured}${c.unit ? c.unit.split(" ")[0] : ""}`)
+                      .join(" | ");
+
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => handleOpenEditModal(item)}
+                        className="hover:bg-slate-800/40 cursor-pointer transition-colors"
+                      >
+                        <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
+                          <div>{item.date}</div>
+                          <div className="text-[10px] text-slate-500">{item.time || "09:00"}</div>
+                        </td>
+
+                        <td className="py-2 px-2.5 text-slate-400 whitespace-nowrap">
+                          {item.plant || "삼랑진"}
+                        </td>
+
+                        <td className="py-2 px-2.5 whitespace-nowrap">
+                          {isRaw ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1 w-fit">
+                              <Layers className="w-2.5 h-2.5" /> 원소재
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1 w-fit">
+                              <Component className="w-2.5 h-2.5" /> 부자재
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2.5 font-bold text-white">
+                          <div className="flex items-center gap-1.5">
+                            <span>{item.itemName}</span>
+                            {item.itemType && (
+                              <span className="text-[10px] font-normal text-slate-400">
+                                ({item.itemType})
+                              </span>
+                            )}
+                          </div>
+                          {item.remarks && (
+                            <div className="text-[10px] font-normal text-slate-400 truncate max-w-xs">
+                              {item.remarks}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
+                          {item.supplier}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-slate-400 font-mono text-[10px] whitespace-nowrap">
+                          {item.lotNo}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-right text-slate-300 font-bold whitespace-nowrap">
+                          {item.quantity || (item.quantityNum ? `${item.quantityNum} ${item.quantityUnit}` : "-")}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-slate-400">
+                          {isPending ? (
+                            <span className="text-amber-400 font-bold text-[10px] flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> 검사실시 대기 중
+                            </span>
+                          ) : (
+                            <span className="truncate block max-w-xs text-[10px]">
+                              {measuredSummary || "성적서 전 항목 합격"}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2 text-center">
+                          {(item.mSheetPhotos && item.mSheetPhotos.length > 0) ||
+                          (item.defectPhotos && item.defectPhotos.length > 0) ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const firstPhoto = item.mSheetPhotos?.[0]?.dataUrl || item.defectPhotos?.[0]?.dataUrl;
+                                if (firstPhoto) setPreviewImage(firstPhoto);
+                              }}
+                              className="p-1 rounded bg-slate-800 text-cyan-400 hover:bg-slate-700"
+                              title="성적서/사진 보기"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <span className="text-slate-600">-</span>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                          {isPending && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-700">
+                              대기
+                            </span>
+                          )}
+                          {isPass && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-700">
+                              합격
+                            </span>
+                          )}
+                          {isReject && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-950 text-rose-300 border border-rose-700">
+                              불합격
+                            </span>
+                          )}
+                          {isCond && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-700">
+                              조건부
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                          {item.syncedTo4M ? (
+                            <span
+                              title={`4M 등록일시: ${item.syncedTo4MAt || "등록완료"}`}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-700/80 flex items-center justify-center gap-1"
+                            >
+                              <ShieldAlert className="w-2.5 h-2.5 text-indigo-400" />
+                              4M 연동완료
+                            </span>
+                          ) : isReject || isCond ? (
+                            <button
+                              type="button"
+                              disabled={syncingId === item.id}
+                              onClick={(e) => handleManualSync4M(item, e)}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 hover:bg-rose-500 text-white transition active:scale-95 flex items-center justify-center gap-1 shadow-xs"
+                            >
+                              <ShieldAlert className="w-2.5 h-2.5" />
+                              {syncingId === item.id ? "연동중..." : "4M 즉시이관"}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-500">-</span>
+                          )}
+                        </td>
+
+                        <td className="py-2 px-2 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(item);
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition"
+                              title="수정"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteInspection(item.id, e)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </>
+          )}
+
+          {/* ======================= CASE 3: 통합 전체 뷰 ======================= */}
+          {activeLedgerView === "ALL" && (
+            <>
+              <thead className="bg-slate-900/90 text-slate-300 border-b border-slate-800 font-bold text-[11px]">
+                <tr>
+                  <th className="py-2 px-2.5 w-24">일자</th>
+                  <th className="py-2 px-2.5 w-24">송장번호</th>
+                  <th className="py-2 px-2.5 w-24">분류</th>
+                  <th className="py-2 px-2.5">품명 및 규격</th>
+                  <th className="py-2 px-2.5 w-28">공급사</th>
+                  <th className="py-2 px-2.5 w-28">입고 LOT</th>
+                  <th className="py-2 px-2.5 w-24 text-right">수량</th>
+                  <th className="py-2 px-2.5 w-28">창고위치</th>
+                  <th className="py-2 px-2.5 w-20 text-center">판정/상태</th>
+                  <th className="py-2 px-2.5 w-28 text-center">4M 연동</th>
+                  <th className="py-2 px-2 w-16 text-center">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-[11px]">
+                {filteredList.map((item) => (
                   <tr
                     key={item.id}
                     onClick={() => handleOpenEditModal(item)}
                     className="hover:bg-slate-800/40 cursor-pointer transition-colors"
                   >
-                    {/* 일자 */}
                     <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
-                      <div>{item.date}</div>
-                      <div className="text-[10px] text-slate-500">{item.time || "09:00"}</div>
+                      {item.date}
                     </td>
-
-                    {/* 공장 */}
-                    <td className="py-2 px-2.5 text-slate-400 whitespace-nowrap">
-                      {item.plant || "삼랑진"}
+                    <td className="py-2 px-2.5 text-slate-400 font-mono text-[10px] whitespace-nowrap">
+                      {item.deliveryNoteNo || "-"}
                     </td>
-
-                    {/* 분류 뱃지 */}
                     <td className="py-2 px-2.5 whitespace-nowrap">
-                      {isRaw ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1 w-fit">
-                          <Layers className="w-2.5 h-2.5" />
+                      {item.category === "RAW_MATERIAL" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950 text-blue-300 border border-blue-800">
                           원소재
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1 w-fit">
-                          <Component className="w-2.5 h-2.5" />
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800">
                           부자재
                         </span>
                       )}
                     </td>
-
-                    {/* 품명 및 규격 */}
                     <td className="py-2 px-2.5 font-bold text-white">
-                      <div className="flex items-center gap-1.5">
-                        <span>{item.itemName}</span>
-                        {item.itemType && (
-                          <span className="text-[10px] font-normal text-slate-400">
-                            ({item.itemType})
-                          </span>
-                        )}
-                      </div>
-                      {item.remarks && (
-                        <div className="text-[10px] font-normal text-slate-400 truncate max-w-xs">
-                          {item.remarks}
-                        </div>
-                      )}
+                      {item.itemName}
                     </td>
-
-                    {/* 공급사 */}
-                    <td className="py-2 px-2.5 text-slate-300 font-medium whitespace-nowrap">
+                    <td className="py-2 px-2.5 text-slate-300 whitespace-nowrap">
                       {item.supplier}
                     </td>
-
-                    {/* 입고 LOT */}
                     <td className="py-2 px-2.5 text-slate-400 font-mono text-[10px] whitespace-nowrap">
                       {item.lotNo}
                     </td>
-
-                    {/* 입고수량 */}
-                    <td className="py-2 px-2.5 text-right text-slate-300 font-bold whitespace-nowrap">
-                      {item.quantity || "-"}
+                    <td className="py-2 px-2.5 text-right text-slate-200 font-bold whitespace-nowrap">
+                      {item.quantity || (item.quantityNum ? `${item.quantityNum} ${item.quantityUnit}` : "-")}
                     </td>
-
-                    {/* 주요 물성 실측 요약 */}
-                    <td className="py-2 px-2.5 text-slate-400">
-                      <span className="truncate block max-w-xs text-[10px]">
-                        {measuredSummary || "검사 성적서 확인"}
-                      </span>
+                    <td className="py-2 px-2.5 text-slate-300 text-[10px] whitespace-nowrap">
+                      {item.storageLocation || "원재료창고"}
                     </td>
-
-                    {/* 성적서 사진 아이콘 */}
-                    <td className="py-2 px-2 text-center">
-                      {(item.mSheetPhotos && item.mSheetPhotos.length > 0) ||
-                      (item.defectPhotos && item.defectPhotos.length > 0) ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const firstPhoto = item.mSheetPhotos?.[0]?.dataUrl || item.defectPhotos?.[0]?.dataUrl;
-                            if (firstPhoto) setPreviewImage(firstPhoto);
-                          }}
-                          className="p-1 rounded bg-slate-800 text-cyan-400 hover:bg-slate-700"
-                          title="성적서/사진 보기"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                        </button>
+                    <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                      {item.overallResult === "PASS" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-600">
+                          정상입고
+                        </span>
+                      ) : item.overallResult === "REJECT" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-950 text-rose-300 border border-rose-600">
+                          불합격반품
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-600">
+                          검사대기
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 px-2.5 text-center whitespace-nowrap">
+                      {item.syncedTo4M ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-700/80">
+                          4M 완료
+                        </span>
                       ) : (
                         <span className="text-slate-600">-</span>
                       )}
                     </td>
-
-                    {/* 판정 결과 */}
-                    <td className="py-2 px-2.5 text-center whitespace-nowrap">
-                      {isPass && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-700">
-                          합격
-                        </span>
-                      )}
-                      {isReject && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-950 text-rose-300 border border-rose-700">
-                          불합격
-                        </span>
-                      )}
-                      {isCond && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-700">
-                          조건부
-                        </span>
-                      )}
-                    </td>
-
-                    {/* 4M 실시간 대장 연동 상태 */}
-                    <td className="py-2 px-2.5 text-center whitespace-nowrap">
-                      {item.syncedTo4M ? (
-                        <span
-                          title={`4M 등록일시: ${item.syncedTo4MAt || "등록완료"}`}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-700/80 flex items-center justify-center gap-1"
-                        >
-                          <ShieldAlert className="w-2.5 h-2.5 text-indigo-400" />
-                          4M 연동완료
-                        </span>
-                      ) : isReject || isCond ? (
-                        <button
-                          type="button"
-                          disabled={syncingId === item.id}
-                          onClick={(e) => handleManualSync4M(item, e)}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 hover:bg-rose-500 text-white transition active:scale-95 flex items-center justify-center gap-1 shadow-xs"
-                        >
-                          <ShieldAlert className="w-2.5 h-2.5" />
-                          {syncingId === item.id ? "연동중..." : "4M 즉시이관"}
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-slate-500">-</span>
-                      )}
-                    </td>
-
-                    {/* 작업 (수정 / 삭제) */}
                     <td className="py-2 px-2 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <button
@@ -575,26 +1012,24 @@ export const IncomingInspectionPanel = ({
                             e.stopPropagation();
                             handleOpenEditModal(item);
                           }}
-                          className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition"
-                          title="수정"
+                          className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={(e) => handleDeleteInspection(item.id, e)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
-                          title="삭제"
+                          className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
+                ))}
+              </tbody>
+            </>
+          )}
         </table>
       </div>
 
@@ -606,6 +1041,7 @@ export const IncomingInspectionPanel = ({
           onSave={handleSaveInspection}
           initialData={selectedItemForEdit}
           currentProfile={currentProfile}
+          defaultMode={modalDefaultMode}
         />
       )}
 
