@@ -587,6 +587,28 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
+      "no": 54,
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "line": "조인트",
+      "name": "리소스",
+      "position": "사원",
+      "employmentType": "정규직",
+      "status": "재직",
+      "note": ""
+    },
+    {
+      "no": 55,
+      "company": "오륙",
+      "dept": "가공관리팀",
+      "line": "조인트",
+      "name": "욘팀",
+      "position": "사원",
+      "employmentType": "정규직",
+      "status": "재직",
+      "note": ""
+    },
+    {
       "no": 1,
       "company": "유성",
       "dept": "압출동",
@@ -1089,8 +1111,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "name": "정인순",
       "position": "사원",
       "employmentType": "정규직",
-      "status": "재직",
-      "note": ""
+      "status": "퇴사",
+      "note": "퇴사자"
     },
     {
       "no": 27,

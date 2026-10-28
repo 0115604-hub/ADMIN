@@ -321,12 +321,18 @@ export const WorkerPinModal = ({
     if (!selectedUser) return false;
     if (isExtrusionWorker) return false;
     if (selectedUser.portalType === "machining") return true;
-    if (selectedUser.portalType === "extrusion" || selectedUser.portalType === "hanul" || selectedUser.portalType === "bulimtech") return false;
+    if (selectedUser.portalType === "extrusion" || selectedUser.portalType === "hanul" || selectedUser.portalType === "bulimtech" || selectedUser.portalType === "yuseong" || selectedUser.portalType === "joyoung") return false;
     return Boolean(
       selectedUser.building === "가공동" ||
       selectedUser.dept === "가공동" ||
+      selectedUser.dept === "가공관리팀" ||
+      String(selectedUser.dept || "").includes("가공") ||
       String(selectedUser.id || "").startsWith("mach_") ||
-      (selectedUser.company === "오륙" && (selectedUser.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel"].includes(selectedUser.line)))
+      (selectedUser.company === "오륙" && (
+        selectedUser.dept === "가공동" ||
+        selectedUser.dept === "가공관리팀" ||
+        ["JA", "HR", "NX4", "NX4a", "Channel", "JA.HR", "NX4.NX4a", "조인트", "검사", "사상", "소재준비"].includes(selectedUser.line)
+      ))
     );
   }, [selectedUser, isExtrusionWorker]);
 

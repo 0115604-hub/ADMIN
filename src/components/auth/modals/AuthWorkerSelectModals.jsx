@@ -60,7 +60,7 @@ export const AuthWorkerSelectModals = ({
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight">
-                    삼랑진공장 압출동 작업자 (11명)
+                    삼랑진공장 압출동 작업자 ({EXTRUSION_WORKERS.length}명)
                   </h3>
                   <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
                     안전·품질 확인 후 압출 생산관리 입장

@@ -8,7 +8,9 @@ import {
 import {
   COMPANIES,
   subscribeSmartOvertimeData,
-  getLocalSmartOvertimeData
+  getLocalSmartOvertimeData,
+  cleanCompanyName,
+  normalizeDept
 } from "../services/overtimeSmartService";
 import { INITIAL_SMART_OVERTIME_DATA } from "../data/masterOvertimeSmartData.js";
 import { getKSTDateString, getKSTTimeInfo } from "../utils/dateUtils";
@@ -157,7 +159,7 @@ export const AuthModal = () => {
 
   const hanulWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => w.company === "한울" && (!w.status || w.status !== "퇴사")
+      (w) => cleanCompanyName(w.company) === "한울" && (!w.status || w.status !== "퇴사")
     );
   }, [allMasterWorkers]);
 
@@ -180,14 +182,36 @@ export const AuthModal = () => {
 
   const bulimtechWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => w.company === "부림텍" && (!w.status || w.status !== "퇴사")
+      (w) => cleanCompanyName(w.company) === "부림텍" && (!w.status || w.status !== "퇴사")
     );
   }, [allMasterWorkers]);
 
   const machiningWorkers = useMemo(() => {
-    return allMasterWorkers.filter(
-      (w) => w.company === "오륙" && (w.dept === "가공동" || ["JA", "HR", "NX4", "NX4a", "Channel", "JA.HR", "NX4.NX4a"].includes(w.line)) && (!w.status || w.status !== "퇴사")
-    );
+    return allMasterWorkers.filter((w) => {
+      const comp = cleanCompanyName(w.company);
+      if (comp !== "오륙") return false;
+      if (w.status === "퇴사") return false;
+      const dept = normalizeDept(w.dept);
+      const line = String(w.line || "").trim();
+      // 압출동 및 관리부(관리자)는 가공동 작업자에서 명확히 제외
+      if (
+        dept === "압출관리팀" ||
+        dept === "관리팀" ||
+        line === "압출동" ||
+        line === "압출" ||
+        line === "코팅" ||
+        line === "관리부" ||
+        line === "관리자"
+      ) {
+        return false;
+      }
+      return (
+        dept === "가공관리팀" ||
+        dept === "가공동" ||
+        dept.includes("가공") ||
+        ["JA", "HR", "NX4", "NX4a", "Channel", "JA.HR", "NX4.NX4a", "조인트", "검사", "사상", "소재준비"].includes(line)
+      );
+    });
   }, [allMasterWorkers]);
 
   // Yuseong partner user definition (삼랑진공장 가공/협력업체 대표 계정)
@@ -209,13 +233,13 @@ export const AuthModal = () => {
 
   const yuseongWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => w.company === "유성" && (!w.status || w.status !== "퇴사")
+      (w) => cleanCompanyName(w.company) === "유성" && (!w.status || w.status !== "퇴사")
     );
   }, [allMasterWorkers]);
 
   const joyoungWorkers = useMemo(() => {
     return allMasterWorkers.filter(
-      (w) => w.company === "조영" && (!w.status || w.status !== "퇴사")
+      (w) => cleanCompanyName(w.company) === "조영" && (!w.status || w.status !== "퇴사")
     );
   }, [allMasterWorkers]);
 
