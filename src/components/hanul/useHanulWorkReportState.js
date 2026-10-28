@@ -1,46 +1,33 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   HANUL_PROJECTS,
   HANUL_PROCESSES,
   HANUL_JOINT_TYPES,
   HANUL_INSPECTION_TYPES,
   DEFAULT_DEFECT_CATEGORIES,
-  HANUL_TPM_MACHINES,
-  HANUL_TPM_CHECK_ITEMS,
-  createDefaultHanulTpmChecks,
   saveHanulWorkReport,
   deleteHanulWorkReport,
   exportHanulReportToExcel,
-  isExcludedFromWorkReport,
-  getLocalHanulWorkReports,
-  subscribeHanulWorkReports
+  isExcludedFromWorkReport
 } from "../../services/hanulWorkReportService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { useModalHistory } from "../../utils/modalHistory";
 import {
-  subscribeWorkReportTemplates,
-  getLocalWorkReportTemplates,
-  subscribeHanulTemplateAssignments,
-  getLocalHanulTemplateAssignments,
-  buildHanulProcessSlotKey,
-  getAssignedTemplateForWorker
-} from "../../services/workReportTemplateService";
-import {
-  getWorkLogText,
-  getCurrentWorkLogLanguage,
-  getWorkerLanguageInfo,
-  syncWorkerLanguage
-} from "../../services/workLogI18nService";
-import {
-  BLADE_RESET_KEY,
-  BLADE_LIMIT,
-  isHanulTpmAlreadyDone,
   getDefectKeysForProcess,
   getSpecsForProcess,
   getInspColumnsForType,
   calculateTotals
 } from "./hanulReportHelpers";
+import { useHanulTpmState } from "./state/useHanulTpmState";
+import { useHanulBladeTracker } from "./state/useHanulBladeTracker";
+import { useHanulLotMeasurements } from "./state/useHanulLotMeasurements";
+import { useHanulAssignedTemplate } from "./state/useHanulAssignedTemplate";
 
+/**
+ * useHanulWorkReportState
+ * 한울 작업일보 모달의 통합 상태 관리 파사드(Facade) 훅
+ * TPM, 칼날 수명 관리, LOT 실측, 5대 공정 지정 양식 서브 훅들을 조합하여 제공합니다.
+ */
 export const useHanulWorkReportState = ({
   isOpen,
   onClose,
@@ -53,57 +40,9 @@ export const useHanulWorkReportState = ({
   const [project, setProject] = useState(initialProject);
   const [processId, setProcessId] = useState(initialProcess);
   const [subProcess, setSubProcess] = useState("정치절단"); // For "소재준비": "정치절단" | "단컷팅"
-
-  // 🌟 관리자 지정 5대 공정 양식 연동 상태 (공정표 위치별 매핑)
-  const [allCatalogTemplates, setAllCatalogTemplates] = useState(() => getLocalWorkReportTemplates());
-  const [templateAssignments, setTemplateAssignments] = useState(() => getLocalHanulTemplateAssignments());
-  const [forceLegacyMode, setForceLegacyMode] = useState(false);
-
-  useEffect(() => {
-    const unsubTpl = subscribeWorkReportTemplates((list) => {
-      if (Array.isArray(list)) setAllCatalogTemplates(list);
-    });
-    const unsubAssign = subscribeHanulTemplateAssignments((map) => {
-      if (map) setTemplateAssignments(map);
-    });
-    return () => {
-      unsubTpl();
-      unsubAssign();
-    };
-  }, []);
-
-  const [cuttingPart, setCuttingPart] = useState("FRT"); // 정치절단 전용: "FRT" (A/B/C) | "RR" (A/B)
-  const [cuttingLot, setCuttingLot] = useState({
-    FRT: {
-      a: { start: "", mid: "", end: "" },
-      b: { start: "", mid: "", end: "" },
-      c: { start: "", mid: "", end: "" }
-    },
-    RR: {
-      a: { start: "", mid: "", end: "" },
-      b: { start: "", mid: "", end: "" }
-    }
-  });
   const [jointType, setJointType] = useState("FRT"); // For "조인트": "FRT" | "FIXED_LH" | "FIXED_RH" | "RR"
   const [inspectionType, setInspectionType] = useState("LENGTH"); // For "검사": "LENGTH" | "SQUARE" | "FINAL_PAIR" | "FINAL_LH"
-  const [bladeChangeTime, setBladeChangeTime] = useState("");
-  const [machineTrouble, setMachineTrouble] = useState("");
-  const [downtimeEvents, setDowntimeEvents] = useState(() =>
-    Array.isArray(editReport?.downtimeEvents) ? editReport.downtimeEvents : []
-  );
-  const [jointGradeName, setJointGradeName] = useState("W60664$OS");
-  const [jointGradeLot, setJointGradeLot] = useState("");
-  const [subMaterialsLot, setSubMaterialsLot] = useState({
-    glass: { start: "", mid: "", end: "" },
-    dv: { start: "", mid: "", end: "" },
-    bracket: { start: "", mid: "", end: "" }
-  });
-  const [padLot, setPadLot] = useState("");
-  const [dvInspLot, setDvInspLot] = useState({ start: "", mid: "", end: "" });
-  const [rrExtLot, setRrExtLot] = useState({
-    a: { start: "", mid: "", end: "" },
-    b: { start: "", mid: "", end: "" }
-  });
+
   const [date, setDate] = useState(() => getKSTDateString());
   const [shift, setShift] = useState("주간");
   const [worker, setWorker] = useState(() =>
@@ -113,13 +52,10 @@ export const useHanulWorkReportState = ({
   const [startTime, setStartTime] = useState("06:30");
   const [endTime, setEndTime] = useState("17:30");
   const [machineNo, setMachineNo] = useState("");
-
-  // Lot tracking
-  const [materialLot, setMaterialLot] = useState({ start: "", mid: "", end: "" });
-  const [jointLot, setJointLot] = useState("");
-  const [clipLot, setClipLot] = useState({ start: "", mid: "", end: "" });
-  const [dollyNo, setDollyNo] = useState("");
-  const [extTimeRange, setExtTimeRange] = useState({ start: "", end: "" });
+  const [machineTrouble, setMachineTrouble] = useState("");
+  const [downtimeEvents, setDowntimeEvents] = useState(() =>
+    Array.isArray(editReport?.downtimeEvents) ? editReport.downtimeEvents : []
+  );
 
   // Production Quantities
   const [production, setProduction] = useState({
@@ -137,7 +73,7 @@ export const useHanulWorkReportState = ({
     badC: 0
   });
 
-  // 🌟 검사 전용 4개 컬럼 생산 수량 (검사/정품/리워크/폐기)
+  // 검사 전용 4개 컬럼 생산 수량 (검사/정품/리워크/폐기)
   const [inspProduction, setInspProduction] = useState({
     col1: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
     col2: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
@@ -145,91 +81,7 @@ export const useHanulWorkReportState = ({
     col4: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 }
   });
 
-  const currentDefectKeys = useMemo(() => {
-    return getDefectKeysForProcess({ project, processId, subProcess, jointType, inspectionType });
-  }, [project, processId, subProcess, jointType, inspectionType]);
-
   const [defects, setDefects] = useState({});
-
-  const currentSpecs = useMemo(() => {
-    return getSpecsForProcess({ project, processId, subProcess, jointType, inspectionType, cuttingPart });
-  }, [project, processId, subProcess, jointType, inspectionType, cuttingPart]);
-
-  // 🌟 동적 LOT 목록 및 실측 상태 (한울 모든 일보 공통 지원)
-  const [lotEntries, setLotEntries] = useState(() => [
-    {
-      id: "lot_1",
-      lotNo: "",
-      subLotNo: "",
-      measurements: {}
-    }
-  ]);
-
-  const handleAddLot = () => {
-    const nextIdx = lotEntries.length + 1;
-    const newId = `lot_${Date.now()}_${nextIdx}`;
-    setLotEntries((prev) => [
-      ...prev,
-      {
-        id: newId,
-        lotNo: "",
-        subLotNo: "",
-        measurements: {}
-      }
-    ]);
-  };
-
-  const handleRemoveLot = (idToRemove) => {
-    setLotEntries((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((item) => item.id !== idToRemove);
-    });
-  };
-
-  const handleUpdateLotField = (lotId, field, val) => {
-    setLotEntries((prev) =>
-      prev.map((item) => (item.id === lotId ? { ...item, [field]: val } : item))
-    );
-    if (lotEntries[0]?.id === lotId) {
-      if (field === "lotNo") {
-        setMaterialLot((prev) => ({ ...prev, start: val }));
-      } else if (field === "subLotNo") {
-        if (processId === "조인트") setJointLot(val);
-        if (processId === "검사") setPadLot(val);
-      }
-    }
-  };
-
-  const [measurements, setMeasurements] = useState({});
-
-  const handleUpdateLotMeasurement = (lotId, specKey, timing, val) => {
-    setLotEntries((prev) =>
-      prev.map((item) => {
-        if (item.id !== lotId) return item;
-        const prevMeas = item.measurements || {};
-        const curSpec = prevMeas[specKey] || {};
-        return {
-          ...item,
-          measurements: {
-            ...prevMeas,
-            [specKey]: {
-              ...curSpec,
-              [timing]: val
-            }
-          }
-        };
-      })
-    );
-    if (lotEntries[0]?.id === lotId) {
-      setMeasurements((prev) => ({
-        ...prev,
-        [specKey]: {
-          ...(prev[specKey] || {}),
-          [timing]: val
-        }
-      }));
-    }
-  };
 
   // Process-specific conditions
   const [conditions, setConditions] = useState({
@@ -271,211 +123,153 @@ export const useHanulWorkReportState = ({
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
   const modalRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const overlayRef = useRef(null);
 
-  // 🌟 9BQC 칼날 수명 및 누적 생산량 관리 (5만개 주기 알림)
-  const [allReports, setAllReports] = useState(() => getLocalHanulWorkReports());
-  const [bladeResetInfo, setBladeResetInfo] = useState(() => {
-    try {
-      const raw = localStorage.getItem(BLADE_RESET_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      return null;
-    }
+  // LOT & 측정 상태 서브 훅 연동
+  const {
+    cuttingPart,
+    setCuttingPart,
+    cuttingLot,
+    setCuttingLot,
+    jointGradeName,
+    jointGradeLot,
+    subMaterialsLot,
+    padLot,
+    dvInspLot,
+    rrExtLot,
+    materialLot,
+    jointLot,
+    clipLot,
+    dollyNo,
+    extTimeRange,
+    lotEntries,
+    measurements,
+    handleAddLot,
+    handleRemoveLot,
+    handleUpdateLotField,
+    handleUpdateLotMeasurement
+  } = useHanulLotMeasurements({
+    isOpen,
+    editReport,
+    processId
   });
-  const [isBladeTestMode, setIsBladeTestMode] = useState(false);
 
-  const [currentStep, setCurrentStep] = useState(editReport ? "report" : "tpm");
-  const [tpmChecks, setTpmChecks] = useState(() => createDefaultHanulTpmChecks());
-  const [tpmActionNote, setTpmActionNote] = useState("");
-  const [isHanulTpmDone, setIsHanulTpmDone] = useState(false);
-
-  // 🌐 다국어 번역 상태 및 근로자 국적 기반 자동 언어 동기화
-  const [currentLang, setCurrentLang] = useState(() => getCurrentWorkLogLanguage());
-
-  // 작업자 변경 시 해당 작업자의 국적을 확인하여 모국어로 자동 전환
-  useEffect(() => {
-    const targetW = customWorker.trim() || worker;
-    if (targetW) {
-      const synched = syncWorkerLanguage({ name: targetW, company: "한울" });
-      setCurrentLang(synched);
-    }
-  }, [worker, customWorker]);
-
-  // 언어 변경 리스너
-  useEffect(() => {
-    const handleLangChange = (e) => {
-      if (e?.detail?.lang) {
-        setCurrentLang(e.detail.lang);
-      }
-    };
-    window.addEventListener("factory_language_changed", handleLangChange);
-    return () => window.removeEventListener("factory_language_changed", handleLangChange);
-  }, []);
-
-  const workerLangInfo = useMemo(() => {
-    const targetW = customWorker.trim() || worker;
-    return getWorkerLanguageInfo({ name: targetW, company: "한울" });
-  }, [worker, customWorker]);
-
-  // 🌟 공정표에서 현재 선택된 공정/단계 위치(Slot)의 지정 양식 매칭
-  const activeSubSlot = useMemo(() => {
-    const normProj = String(project || "").toUpperCase() === "LQ2A" ? "LQ2A" : "9BQC";
-    if (processId === "소재준비") {
-      return normProj === "9BQC" ? (subProcess || "정치절단") : "작업일보";
-    }
-    if (processId === "조인트") return jointType || "FRT";
-    if (processId === "검사") return inspectionType || "LENGTH";
-    return "MAIN";
+  // 계산 항목
+  const currentDefectKeys = useMemo(() => {
+    return getDefectKeysForProcess({ project, processId, subProcess, jointType, inspectionType });
   }, [project, processId, subProcess, jointType, inspectionType]);
 
-  const activeSlotKey = useMemo(() => {
-    return buildHanulProcessSlotKey(project, processId, activeSubSlot);
-  }, [project, processId, activeSubSlot]);
+  const currentSpecs = useMemo(() => {
+    return getSpecsForProcess({ project, processId, subProcess, jointType, inspectionType, cuttingPart });
+  }, [project, processId, subProcess, jointType, inspectionType, cuttingPart]);
 
-  const effectiveWorkerName = (customWorker.trim() || worker || "").trim();
-
-  const existingWorkerReport = useMemo(() => {
-    if (editReport) return editReport;
-    if (!effectiveWorkerName || !date || !allReports || allReports.length === 0) return null;
-    return allReports.find((r) => {
-      if (!r) return false;
-      const matchWorker = String(r.worker || "").trim() === effectiveWorkerName;
-      const matchDate = r.date === date;
-      const matchProj = String(r.project || "").toUpperCase() === String(project || "").toUpperCase();
-      const matchProc = r.processId === processId;
-      if (!matchWorker || !matchDate || !matchProj || !matchProc) return false;
-
-      if (processId === "소재준비") {
-        return (r.subProcess || "정치절단") === (subProcess || "정치절단");
-      }
-      if (processId === "조인트") {
-        return (r.jointType || "FRT") === (jointType || "FRT");
-      }
-      if (processId === "검사") {
-        return (r.inspectionType || "LENGTH") === (inspectionType || "LENGTH");
-      }
-      return true;
-    }) || null;
-  }, [editReport, effectiveWorkerName, date, allReports, project, processId, subProcess, jointType, inspectionType]);
-
-  const activeAssignedTemplate = useMemo(() => {
-    const baseAssigned = getAssignedTemplateForWorker({
-      company: companyMode,
-      project,
+  const totals = useMemo(() => {
+    return calculateTotals({
+      production,
+      defects,
       processId,
       subProcess,
-      jointType,
+      project,
+      inspProduction,
       inspectionType,
-      allTemplates: allCatalogTemplates,
-      assignments: templateAssignments
+      cuttingPart
     });
+  }, [production, defects, processId, subProcess, project, inspProduction, inspectionType, cuttingPart]);
 
-    if (existingWorkerReport) {
-      return {
-        id: existingWorkerReport.assignedTemplateId || baseAssigned?.id || existingWorkerReport.id || "edit_lego_tpl",
-        reportDocId: existingWorkerReport.id,
-        title: existingWorkerReport.processName || existingWorkerReport.title || baseAssigned?.title || "작업일보",
-        carModel: existingWorkerReport.carModel || project,
-        partName: existingWorkerReport.partName || baseAssigned?.partName || "G/RUN",
-        processName: existingWorkerReport.processId || processId || baseAssigned?.processName || "소재준비",
-        targetQty: existingWorkerReport.targetQty || existingWorkerReport.orderQty || existingWorkerReport.legoConfig?.targetQty || baseAssigned?.targetQty || 350,
-        orderQty: existingWorkerReport.orderQty || existingWorkerReport.targetQty || existingWorkerReport.legoConfig?.orderQty || baseAssigned?.orderQty || 350,
-        legoConfig: existingWorkerReport.legoConfig || baseAssigned?.legoConfig || null,
-        isExistingDraft: true
-      };
-    }
-    return baseAssigned;
-  }, [
-    existingWorkerReport,
+  const inspColumns = useMemo(() => {
+    return getInspColumnsForType(inspectionType);
+  }, [inspectionType]);
+
+  // 칼날 수명 및 누적 생산량 관리 서브 훅 연동
+  const {
+    allReports,
+    bladeChangeTime,
+    setBladeChangeTime,
+    bladeResetInfo,
+    handleClearBladeReset,
+    isBladeTestMode,
+    setIsBladeTestMode,
+    totalCumulativeQty,
+    isBladeOverdue,
+    bladeLifePercent,
+    BLADE_LIMIT,
+    handleRecordBladeChangeNow
+  } = useHanulBladeTracker({
+    project,
+    totals,
+    customWorker,
+    worker,
+    editReport
+  });
+
+  // 5대 공정 지정 양식 및 다국어 서브 훅 연동
+  const {
     templateAssignments,
-    allCatalogTemplates,
+    forceLegacyMode,
+    setForceLegacyMode,
+    currentLang,
+    setCurrentLang,
+    workerLangInfo,
+    activeSlotKey,
+    effectiveWorkerName,
+    existingWorkerReport,
+    activeAssignedTemplate,
+    isAssignedTemplateMode
+  } = useHanulAssignedTemplate({
     companyMode,
     project,
     processId,
     subProcess,
     jointType,
-    inspectionType
-  ]);
+    inspectionType,
+    worker,
+    customWorker,
+    date,
+    editReport,
+    allReports
+  });
 
-  const isAssignedTemplateMode = Boolean(activeAssignedTemplate) && !forceLegacyMode;
+  // TPM 점검 상태 및 다국어 텍스트 서브 훅 연동
+  const {
+    currentStep,
+    setCurrentStep,
+    tpmChecks,
+    tpmActionNote,
+    setTpmActionNote,
+    isHanulTpmDone,
+    tpmI18n,
+    tpmSummary,
+    handleToggleTpmCheck,
+    handleSetAllTpmOk,
+    handleSetMachineAllOk,
+    handleProceedToReport
+  } = useHanulTpmState({
+    isOpen,
+    editReport,
+    initialProcess,
+    processId,
+    worker,
+    customWorker,
+    date,
+    allReports,
+    currentLang,
+    scrollContainerRef
+  });
 
-  // ⚡ TPM 다국어 라벨 일괄 사전 계산
-  const tpmI18n = useMemo(() => {
-    const machines = {};
-    HANUL_TPM_MACHINES.forEach((m) => {
-      const machKey = `tpm_mach_${m.id}`;
-      const txt = getWorkLogText(machKey, currentLang);
-      machines[m.id] = {
-        fullName: txt !== machKey ? txt : m.name,
-        shortName: txt !== machKey ? txt : m.shortName
-      };
-    });
-
-    const items = {};
-    HANUL_TPM_CHECK_ITEMS.forEach((it) => {
-      const itemKey = `tpm_item_${it.no}`;
-      const txt = getWorkLogText(itemKey, currentLang);
-      items[it.no] = txt !== itemKey ? txt : it.content;
-    });
-
-    return {
-      statusOk: getWorkLogText("tpm_status_ok", currentLang),
-      statusNg: getWorkLogText("tpm_status_ng", currentLang),
-      machineOk: getWorkLogText("machine_ok", currentLang),
-      allOk: getWorkLogText("all_ok", currentLang),
-      checkItemsTitle: getWorkLogText("tpm_check_items_title", currentLang),
-      sheetTitle: getWorkLogText("tpm_sheet_title", currentLang),
-      sheetSubtitle: getWorkLogText("tpm_sheet_subtitle", currentLang),
-      saveAndNext: getWorkLogText("tpm_save_and_next", currentLang),
-      abnormalityNote: getWorkLogText("abnormality_note", currentLang),
-      abnormalityPlaceholder: getWorkLogText("abnormality_placeholder", currentLang),
-      backToTpm: getWorkLogText("back_to_tpm", currentLang),
-      close: getWorkLogText("close", currentLang),
-      saveReport: getWorkLogText("save_report", currentLang),
-      autoTranslatedBadge: getWorkLogText("auto_translated_badge", currentLang),
-      machines,
-      items
-    };
-  }, [currentLang]);
-
-  useEffect(() => {
-    const unsub = subscribeHanulWorkReports((list) => {
-      setAllReports(list || []);
-    });
-    return () => unsub();
-  }, []);
-
-  // 🚀 통합 초기화 Effect
+  // 통합 초기화 Effect (기본 필드 복원)
   useEffect(() => {
     if (!isOpen) return;
 
-    const effectiveW = editReport?.worker || initialWorker || "박종미";
-    const targetD = editReport?.date || getKSTDateString();
-    const alreadyDone = isHanulTpmAlreadyDone(targetD, effectiveW, allReports, editReport);
-    setIsHanulTpmDone(alreadyDone);
-
     if (editReport) {
-      setCurrentStep("report");
-      setTpmChecks(editReport.tpmChecks || createDefaultHanulTpmChecks());
-      setTpmActionNote(editReport.tpmActionNote || "");
       setProject(editReport.project || "9BQC");
       setProcessId(editReport.processId || "소재준비");
       if (editReport.subProcess) setSubProcess(editReport.subProcess);
       if (editReport.jointType) setJointType(editReport.jointType);
-      if (editReport.cuttingPart) setCuttingPart(editReport.cuttingPart);
-      if (editReport.cuttingLot) setCuttingLot(editReport.cuttingLot);
       if (editReport.inspectionType) setInspectionType(editReport.inspectionType);
-      if (editReport.bladeChangeTime) setBladeChangeTime(editReport.bladeChangeTime);
       if (editReport.machineTrouble) setMachineTrouble(editReport.machineTrouble);
-      if (editReport.jointGradeName) setJointGradeName(editReport.jointGradeName);
-      if (editReport.jointGradeLot) setJointGradeLot(editReport.jointGradeLot);
-      if (editReport.subMaterialsLot) setSubMaterialsLot(editReport.subMaterialsLot);
-      if (editReport.padLot) setPadLot(editReport.padLot);
-      if (editReport.dvInspLot) setDvInspLot(editReport.dvInspLot);
-      if (editReport.rrExtLot) setRrExtLot(editReport.rrExtLot);
       if (editReport.inspProduction) setInspProduction(editReport.inspProduction);
       setDate(editReport.date || getKSTDateString());
       setShift(editReport.shift || "주간");
@@ -483,73 +277,18 @@ export const useHanulWorkReportState = ({
       setStartTime(editReport.startTime || "06:30");
       setEndTime(editReport.endTime || "17:30");
       setMachineNo(editReport.machineNo || "");
-      if (editReport.materialLot) setMaterialLot(editReport.materialLot);
-      if (editReport.jointLot) setJointLot(editReport.jointLot);
-      if (editReport.clipLot) setClipLot(editReport.clipLot);
-      if (editReport.dollyNo) setDollyNo(editReport.dollyNo);
-      if (editReport.extTimeRange) setExtTimeRange(editReport.extTimeRange);
       if (editReport.production) setProduction(editReport.production);
       if (editReport.defects) setDefects(editReport.defects);
-      if (editReport.measurements) setMeasurements(editReport.measurements);
-      if (Array.isArray(editReport.lotEntries) && editReport.lotEntries.length > 0) {
-        setLotEntries(editReport.lotEntries);
-      } else {
-        const initialLotNo =
-          editReport.materialLot?.start ||
-          (typeof editReport.materialLot === "string" ? editReport.materialLot : "") ||
-          Object.values(editReport.measurements || {}).map((m) => m?.lot).filter(Boolean)[0] ||
-          "";
-        setLotEntries([
-          {
-            id: "lot_1",
-            lotNo: initialLotNo,
-            subLotNo: editReport.jointLot || editReport.padLot || editReport.jointGradeLot || "",
-            measurements: editReport.measurements || {}
-          }
-        ]);
-      }
       if (editReport.conditions) setConditions(editReport.conditions);
       if (editReport.cleaningTimes) setCleaningTimes(editReport.cleaningTimes);
       if (editReport.notes) setNotes(editReport.notes);
     } else {
-      const isSojae = (initialProcess || processId) === "소재준비";
-      setCurrentStep(isSojae && !alreadyDone ? "tpm" : "report");
-      setTpmChecks(createDefaultHanulTpmChecks());
-      setTpmActionNote("");
-
       setProject(initialProject);
       setProcessId(initialProcess);
       setSubProcess("정치절단");
-      setCuttingPart("FRT");
-      setCuttingLot({
-        FRT: {
-          a: { start: "", mid: "", end: "" },
-          b: { start: "", mid: "", end: "" },
-          c: { start: "", mid: "", end: "" }
-        },
-        RR: {
-          a: { start: "", mid: "", end: "" },
-          b: { start: "", mid: "", end: "" }
-        }
-      });
       setJointType("FRT");
       setInspectionType("LENGTH");
-      setBladeChangeTime("");
       setMachineTrouble("");
-      setPadLot("");
-      setDvInspLot({ start: "", mid: "", end: "" });
-      setRrExtLot({
-        a: { start: "", mid: "", end: "" },
-        b: { start: "", mid: "", end: "" }
-      });
-      setLotEntries([
-        {
-          id: "lot_1",
-          lotNo: "",
-          subLotNo: "",
-          measurements: {}
-        }
-      ]);
       setInspProduction({
         col1: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
         col2: { insp: 0, genuine: 0, rework: 0, reworkDv: 0, reworkAngle: 0, scrap: 0 },
@@ -611,134 +350,6 @@ export const useHanulWorkReportState = ({
 
   useModalHistory(Boolean(isOpen), onClose, "hanulWorkReportModal");
 
-  // Sum calculations
-  const totals = useMemo(() => {
-    return calculateTotals({
-      production,
-      defects,
-      processId,
-      subProcess,
-      project,
-      inspProduction,
-      inspectionType,
-      cuttingPart
-    });
-  }, [production, defects, processId, subProcess, project, inspProduction, inspectionType, cuttingPart]);
-
-  // 🌟 9BQC 누적 생산량 (저장된 9BQC 일보들의 총생산량)
-  const past9BQCGross = useMemo(() => {
-    return (allReports || []).reduce((acc, r) => {
-      if (r.project === "9BQC" && !isExcludedFromWorkReport(r.worker)) {
-        const g = Number(r.totals?.gross) || ((Number(r.totals?.genuine) || 0) + (Number(r.totals?.bad) || 0));
-        return acc + g;
-      }
-      return acc;
-    }, 0);
-  }, [allReports]);
-
-  // 현재 모달에서 작성 중인 실적
-  const currentGross = useMemo(() => {
-    if (project !== "9BQC") return 0;
-    return Number(totals.gross) || 0;
-  }, [project, totals.gross]);
-
-  // 총 누적 생산량 (최근 교체 리셋 기준량 차감 반영)
-  const totalCumulativeQty = useMemo(() => {
-    if (isBladeTestMode) return 52450;
-    const grossTotal = past9BQCGross + currentGross;
-    const resetOffset = Number(bladeResetInfo?.resetGross) || 0;
-    return Math.max(0, grossTotal - resetOffset);
-  }, [past9BQCGross, currentGross, bladeResetInfo, isBladeTestMode]);
-
-  const isBladeOverdue = totalCumulativeQty >= BLADE_LIMIT;
-  const bladeLifePercent = Math.min(100, (totalCumulativeQty / BLADE_LIMIT) * 100);
-
-  // 칼날 교체 완료 및 누적 리셋 핸들러
-  const handleRecordBladeChangeNow = () => {
-    const kstTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
-    const kstDate = getKSTDateString();
-    setBladeChangeTime(kstTime);
-    const newReset = {
-      resetDate: kstDate,
-      resetTime: kstTime,
-      resetGross: past9BQCGross + currentGross,
-      worker: customWorker.trim() || worker
-    };
-    setBladeResetInfo(newReset);
-    try {
-      localStorage.setItem(BLADE_RESET_KEY, JSON.stringify(newReset));
-    } catch (e) {}
-  };
-
-  const handleClearBladeReset = () => {
-    setBladeResetInfo(null);
-    try {
-      localStorage.removeItem(BLADE_RESET_KEY);
-    } catch (e) {}
-  };
-
-  // 🌟 TPM 점검 이벤트 핸들러 및 요약 통계
-  const handleToggleTpmCheck = useCallback((machineId, itemNo) => {
-    setTpmChecks((prev) => {
-      const cur = prev[machineId]?.[itemNo] || "OK";
-      const nextVal = cur === "OK" ? "NG" : "OK";
-      return {
-        ...prev,
-        [machineId]: {
-          ...(prev[machineId] || {}),
-          [itemNo]: nextVal
-        }
-      };
-    });
-  }, []);
-
-  const handleSetAllTpmOk = useCallback(() => {
-    setTpmChecks(createDefaultHanulTpmChecks());
-  }, []);
-
-  const handleSetMachineAllOk = useCallback((machineId) => {
-    setTpmChecks((prev) => {
-      const machineChecks = {};
-      HANUL_TPM_CHECK_ITEMS.forEach((it) => {
-        machineChecks[it.no] = "OK";
-      });
-      return {
-        ...prev,
-        [machineId]: machineChecks
-      };
-    });
-  }, []);
-
-  const handleProceedToReport = () => {
-    const effectiveWorkerName = (customWorker.trim() || worker).trim();
-    const key = `hanul_tpm_done_${date}_${effectiveWorkerName}`;
-    try {
-      localStorage.setItem(key, "true");
-    } catch (e) {}
-    setIsHanulTpmDone(true);
-    setCurrentStep("report");
-    setTimeout(() => {
-      if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
-    }, 50);
-  };
-
-  const tpmSummary = useMemo(() => {
-    let okCount = 0;
-    let ngCount = 0;
-    const ngList = [];
-    HANUL_TPM_MACHINES.forEach((m) => {
-      HANUL_TPM_CHECK_ITEMS.forEach((it) => {
-        const st = tpmChecks[m.id]?.[it.no] || "OK";
-        if (st === "OK") okCount++;
-        else {
-          ngCount++;
-          ngList.push({ machine: m.shortName, machineName: m.name, item: it.content, itemNo: it.no, method: it.method });
-        }
-      });
-    });
-    return { okCount, ngCount, ngList, total: okCount + ngCount };
-  }, [tpmChecks]);
-
   const currentProjectObj = HANUL_PROJECTS.find((p) => p.id === project) || HANUL_PROJECTS[0];
   const currentProcessObj = (HANUL_PROCESSES[project] || []).find((p) => p.id === processId) || { name: processId };
 
@@ -764,10 +375,6 @@ export const useHanulWorkReportState = ({
       }
     }));
   };
-
-  const inspColumns = useMemo(() => {
-    return getInspColumnsForType(inspectionType);
-  }, [inspectionType]);
 
   const handleSave = async () => {
     const effectiveWorker = customWorker.trim() || worker;
@@ -875,7 +482,7 @@ export const useHanulWorkReportState = ({
         editReport?.id ||
         activeAssignedTemplate?.reportDocId ||
         existingWorkerReport?.id ||
-        `hwr_${project}_${legoPayload?.workDate || date}_${processId}_${activeSubSlot}_${effectiveWorker}`.replace(/[\s/]/g, "_");
+        `hwr_${project}_${legoPayload?.workDate || date}_${processId}_${activeSlotKey}_${effectiveWorker}`.replace(/[\s/]/g, "_");
 
       const hanulPayload = {
         id: targetDocId,
