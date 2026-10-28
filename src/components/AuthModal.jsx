@@ -17,6 +17,7 @@ import { saveExtrusionReport } from "../services/extrusionProductionService";
 
 import { CheckCircle2 } from "lucide-react";
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
+import { FieldWorkerLoginPortalSection } from "./auth/FieldWorkerLoginPortalSection";
 import { RealtimeIssueBoard } from "./issues/RealtimeIssueBoard";
 import { SevereDisasterModal } from "./common/SevereDisasterModal";
 import { SqStatusBannerCard } from "./sq/SqStatusBannerCard";
@@ -332,23 +333,30 @@ export const AuthModal = () => {
             </div>
           )}
 
-          {/* Header Brand with Logo on Left and [압출동] / [가공동] Badges on Right */}
+          {/* Header Brand with Logo on Left (Top badges deleted per request) */}
           <AuthModalHeaderNav
             onAdminClick={() => handleUserClick(ADMIN_USERS[0])}
-            onOpenExtrusionModal={() => setIsExtrusionModalOpen(true)}
-            onOpenMachiningModal={() => setIsMachiningModalOpen(true)}
-            onOpenHanulModal={() => setIsHanulModalOpen(true)}
-            onOpenBulimtechModal={() => setIsBulimtechModalOpen(true)}
-            onOpenYuseongModal={() => setIsYuseongModalOpen(true)}
-            onOpenJoyoungModal={() => setIsJoyoungModalOpen(true)}
-            machiningWorkersCount={machiningWorkers.length}
-            hanulWorkersCount={hanulWorkers.length}
-            bulimtechWorkersCount={bulimtechWorkers.length}
-            yuseongWorkersCount={yuseongWorkers.length}
-            joyoungWorkersCount={joyoungWorkers.length}
           />
 
-          {/* 🎯 첫화면 회사로고 바로 아래: SQ 진행상황 현황표 배너/카드 */}
+          {/* 🌟 현장작업자 전용 빠른 로그인 포털 (공장동 및 가공/협력업체 6개사) - 최상단 배치 */}
+          <div className="mb-3 sm:mb-3.5">
+            <FieldWorkerLoginPortalSection
+              onOpenExtrusionModal={() => setIsExtrusionModalOpen(true)}
+              onOpenMachiningModal={() => setIsMachiningModalOpen(true)}
+              onOpenHanulModal={() => setIsHanulModalOpen(true)}
+              onOpenBulimtechModal={() => setIsBulimtechModalOpen(true)}
+              onOpenYuseongModal={() => setIsYuseongModalOpen(true)}
+              onOpenJoyoungModal={() => setIsJoyoungModalOpen(true)}
+              extrusionWorkersCount={EXTRUSION_WORKERS.length}
+              machiningWorkersCount={machiningWorkers.length}
+              hanulWorkersCount={hanulWorkers.length}
+              bulimtechWorkersCount={bulimtechWorkers.length}
+              yuseongWorkersCount={yuseongWorkers.length}
+              joyoungWorkersCount={joyoungWorkers.length}
+            />
+          </div>
+
+          {/* 🎯 SQ 진행상황 현황표 배너/카드 */}
           <div className="mb-3.5 sm:mb-4">
             <SqStatusBannerCard
               onOpenSqModal={() => setIsSqLevelUpModalOpen(true)}
