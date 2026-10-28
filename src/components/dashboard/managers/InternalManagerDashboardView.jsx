@@ -16,10 +16,23 @@ import { MachiningWorkReportTable } from "../../machining/MachiningWorkReportTab
 import { SeolExtrusionWorkReportTable } from "../../extrusion/SeolExtrusionWorkReportTable";
 import { TestBadgeBlockStudio } from "./TestBadgeBlockStudio";
 import { PanelDesignCustomizerModal } from "./PanelDesignCustomizerModal";
-import { Palette } from "lucide-react";
+import { BatchThemeCustomizerModal } from "./BatchThemeCustomizerModal";
+import { AddPanelModal } from "./AddPanelModal";
+import {
+  Palette,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Plus,
+  Save,
+  Sparkles,
+  Eye,
+  EyeOff
+} from "lucide-react";
 import {
   PANEL_KEYS,
   STUDIO_MANAGERS,
+  ALL_DASHBOARD_BLOCKS,
   getPanelsForUser,
   MANAGER_PANEL_CONFIG,
   DEFAULT_INTERNAL_MANAGER_PANELS
@@ -172,6 +185,10 @@ export const InternalManagerDashboardView = ({
     return getCustomSettingsForManager(key);
   });
   const [editingBlockKeyFromDashboard, setEditingBlockKeyFromDashboard] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [insertTargetIndex, setInsertTargetIndex] = useState(null);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isTopStudioVisible, setIsTopStudioVisible] = useState(true);
 
   // Firestore 실시간 레이아웃 및 디자인 변경 구독
   useEffect(() => {
@@ -264,6 +281,45 @@ export const InternalManagerDashboardView = ({
     } finally {
       setIsSavingStudio(false);
     }
+  };
+
+  // 🌟 대시보드 실시간 렌더링 화면에서 블록 순서 이동
+  const handleMoveBlockOnDashboard = (index, direction) => {
+    const nextPanels = [...studioPanels];
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= nextPanels.length) return;
+    const temp = nextPanels[index];
+    nextPanels[index] = nextPanels[targetIdx];
+    nextPanels[targetIdx] = temp;
+    setStudioPanels(nextPanels);
+  };
+
+  // 🌟 대시보드 실시간 렌더링 화면에서 블록 삭제(제외)
+  const handleRemoveBlockFromDashboard = (blockKey) => {
+    const meta = ALL_DASHBOARD_BLOCKS.find((b) => b.key === blockKey);
+    const label = panelCustomSettings[blockKey]?.customTitle || meta?.label || blockKey;
+    if (window.confirm(`[${label}] 패널을 현재 화면에서 제외(삭제)하시겠습니까?`)) {
+      const nextPanels = studioPanels.filter((k) => k !== blockKey);
+      setStudioPanels(nextPanels);
+    }
+  };
+
+  // 🌟 대시보드 실시간 렌더링 화면에서 블록 추가
+  const handleAddBlockToDashboard = (blockKey, targetIndex = null) => {
+    if (studioPanels.includes(blockKey)) return;
+    const nextPanels = [...studioPanels];
+    if (targetIndex !== null && targetIndex >= 0 && targetIndex <= nextPanels.length) {
+      nextPanels.splice(targetIndex, 0, blockKey);
+    } else {
+      nextPanels.push(blockKey);
+    }
+    setStudioPanels(nextPanels);
+  };
+
+  // 🌟 패널 추가 모달 열기
+  const handleOpenAddModal = (index = null) => {
+    setInsertTargetIndex(index);
+    setIsAddModalOpen(true);
   };
 
   // 커스텀 레이아웃 기본값 복원 핸들러
@@ -596,7 +652,7 @@ export const InternalManagerDashboardView = ({
   return (
     <>
       {/* 🛠️ [TEST 뱃지 전용] 최상단 관리자 대시보드 블록 조립 & 커스터마이저 스튜디오 */}
-      {isTest && (
+      {isTest && isTopStudioVisible && (
         <TestBadgeBlockStudio
           selectedManagerId={selectedStudioManagerId}
           onSelectManager={handleSelectStudioManager}
@@ -648,33 +704,206 @@ export const InternalManagerDashboardView = ({
           </div>
         )}
 
-      {/* 🌟 블록 배열 순서대로 동적 렌더링 (설정된 블록 순서 100% 반영) */}
-      {activePanelKeys.map((blockKey) => {
+      {/* 🌟 TEST 모드: 최상단 첫 번째 위치 패널 추가 버튼 */}
+      {isTest && activePanelKeys.length > 0 && (
+        <div className="py-1 flex items-center justify-center relative group/add">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-dashed border-cyan-500/20 group-hover/add:border-cyan-500/50 transition"></div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal(0)}
+            className="relative z-10 px-3 py-1 rounded-full bg-slate-900 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/40 text-[10.5px] font-bold shadow-md transition flex items-center gap-1 cursor-pointer active:scale-95"
+          >
+            <Plus className="w-3 h-3 text-emerald-400" />
+            <span>최상단에 새 패널/뱃지 추가</span>
+          </button>
+        </div>
+      )}
+
+      {/* 🌟 빈 화면 안내 (모든 패널 제외 시) */}
+      {isTest && activePanelKeys.length === 0 && (
+        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900 border-2 border-dashed border-cyan-500/40 text-center space-y-3 animate-fadeIn">
+          <p className="text-slate-300 font-bold text-sm">현재 화면에 배치된 패널 블록이 없습니다.</p>
+          <p className="text-xs text-slate-500">원하는 패널을 추가하여 맞춤형 대시보드를 구성하세요.</p>
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal(0)}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>첫 번째 패널 추가하기</span>
+          </button>
+        </div>
+      )}
+
+      {/* 🌟 블록 배열 순서대로 동적 렌더링 (실시간 렌더링 화면에서 직접 수정 가능) */}
+      {activePanelKeys.map((blockKey, idx) => {
         const blockElement = renderDashboardBlock(blockKey);
         if (!blockElement) return null;
+        const meta = ALL_DASHBOARD_BLOCKS.find((b) => b.key === blockKey) || {
+          label: blockKey,
+          badge: "패널"
+        };
+        const customTitle = panelCustomSettings[blockKey]?.customTitle ||
+          panelCustomSettings[blockKey]?.customBottomTitle ||
+          panelCustomSettings[blockKey]?.customTopTitle;
 
         return (
-          <div key={blockKey} className="relative group/panel">
-            {/* TEST 모드: 패널 우측 상단 플로팅 제목/디자인 수정 버튼 */}
+          <div key={blockKey} className="relative group/panel space-y-2">
+            {/* 🛠️ [TEST 모드]: 각 패널 상단 직관적 실시간 컨트롤 바 */}
             {isTest && (
-              <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity flex items-center gap-1 bg-slate-950/90 backdrop-blur-xs p-1 rounded-xl border border-cyan-500/50 shadow-lg">
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-900/95 border-2 border-cyan-500/40 shadow-lg flex items-center justify-between gap-2 flex-wrap animate-fadeIn">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-5 h-5 rounded-lg bg-cyan-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <span className="font-black text-xs text-white truncate">
+                    {customTitle || meta.label}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-bold shrink-0 border border-slate-700">
+                    {meta.badge}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleMoveBlockOnDashboard(idx, "up")}
+                    disabled={idx === 0}
+                    title="위로 이동"
+                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveBlockOnDashboard(idx, "down")}
+                    disabled={idx === activePanelKeys.length - 1}
+                    title="아래로 이동"
+                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingBlockKeyFromDashboard(blockKey)}
+                    title="제목 및 디자인 수정"
+                    className="px-2 py-1 rounded-lg bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition active:scale-95"
+                  >
+                    <Palette className="w-3.5 h-3.5" />
+                    <span>제목/디자인</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBlockFromDashboard(blockKey)}
+                    title="이 패널 화면에서 삭제(제외)"
+                    className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>삭제</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {blockElement}
+
+            {/* ➕ [TEST 모드]: 패널 사이 인서트 버튼 */}
+            {isTest && (
+              <div className="py-2.5 flex items-center justify-center relative my-1 group/add">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-dashed border-cyan-500/25 group-hover/add:border-cyan-500/60 transition"></div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setEditingBlockKeyFromDashboard(blockKey)}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10.5px] flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="이 패널의 제목 및 디자인 직접 수정"
+                  onClick={() => handleOpenAddModal(idx + 1)}
+                  className="relative z-10 px-3.5 py-1 rounded-full bg-slate-900 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-500/40 text-[11px] font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  <Palette className="w-3 h-3" />
-                  <span>패널 제목/디자인 수정</span>
+                  <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>여기에 새 패널/뱃지 추가</span>
                 </button>
               </div>
             )}
-            {blockElement}
           </div>
         );
       })}
 
-      {/* 🎨 TEST 모드: 대시보드에서 직접 패널 클릭 시 열리는 제목 & 디자인 커스터마이저 모달 */}
+      {/* 🚀 [TEST 모드 전용] 화면 하단 고정 플로팅 퀵 액션바 */}
+      {isTest && (
+        <div className="sticky bottom-4 z-40 max-w-fit mx-auto px-3.5 sm:px-4 py-2 rounded-2xl bg-slate-900/95 backdrop-blur-md border-2 border-cyan-500/60 shadow-2xl shadow-cyan-950/80 flex items-center gap-2 sm:gap-2.5 flex-wrap animate-fadeIn text-xs">
+          {/* 시점 선택기 */}
+          <div className="flex items-center gap-1.5 pr-2.5 border-r border-slate-700">
+            <span className="text-[11px] text-slate-400 font-bold hidden sm:inline">관리자 뱃지:</span>
+            <select
+              value={selectedStudioManagerId}
+              onChange={(e) => handleSelectStudioManager(e.target.value)}
+              className="px-2 py-1 rounded-xl bg-slate-800 border border-cyan-500/40 text-cyan-300 font-black text-xs cursor-pointer outline-none hover:border-cyan-400"
+            >
+              {STUDIO_MANAGERS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.icon} {m.name} {m.title} ({m.plant.replace("공장", "")})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 패널 추가 버튼 */}
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal(activePanelKeys.length)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-cyan-700 text-cyan-300 hover:text-white border border-slate-700 font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>패널 추가</span>
+          </button>
+
+          {/* 전체 통일 버튼 */}
+          <button
+            type="button"
+            onClick={() => setIsBatchModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-teal-700 text-teal-300 hover:text-white border border-slate-700 font-bold flex items-center gap-1 cursor-pointer transition active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">디자인 통일</span>
+          </button>
+
+          {/* 상단 스튜디오 접기/펼치기 토글 */}
+          <button
+            type="button"
+            onClick={() => setIsTopStudioVisible((v) => !v)}
+            className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition"
+            title={isTopStudioVisible ? "상단 스튜디오 접기" : "상단 스튜디오 펼치기"}
+          >
+            {isTopStudioVisible ? <EyeOff className="w-3.5 h-3.5 text-slate-400" /> : <Eye className="w-3.5 h-3.5 text-cyan-400" />}
+            <span className="hidden sm:inline">{isTopStudioVisible ? "스튜디오 접기" : "스튜디오 펼치기"}</span>
+          </button>
+
+          {/* 실시간 렌더링 화면 설정 저장 */}
+          <button
+            type="button"
+            onClick={handleSaveStudioLayout}
+            disabled={isSavingStudio}
+            className="px-3.5 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-black flex items-center gap-1.5 shadow-md shadow-cyan-950/50 cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            {isSavingStudio ? <span className="animate-spin">⏳</span> : <Save className="w-3.5 h-3.5" />}
+            <span>이 화면 설정 저장</span>
+          </button>
+        </div>
+      )}
+
+      {/* ➕ [모달]: 패널 블록 추가 모달 */}
+      {isAddModalOpen && (
+        <AddPanelModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          activePanels={studioPanels}
+          insertIndex={insertTargetIndex}
+          onAddBlock={handleAddBlockToDashboard}
+        />
+      )}
+
+      {/* 🎨 [모달]: 대시보드에서 직접 패널 클릭 시 열리는 제목 & 디자인 커스터마이저 모달 */}
       {editingBlockKeyFromDashboard && (
         <PanelDesignCustomizerModal
           isOpen={Boolean(editingBlockKeyFromDashboard)}
@@ -684,6 +913,17 @@ export const InternalManagerDashboardView = ({
           initialSettings={panelCustomSettings[editingBlockKeyFromDashboard] || {}}
           onSave={handleSavePanelSetting}
           onReset={handleResetPanelSetting}
+        />
+      )}
+
+      {/* 🌟 [모달]: 전체 패널 디자인 일괄 통일 모달 */}
+      {isBatchModalOpen && (
+        <BatchThemeCustomizerModal
+          isOpen={isBatchModalOpen}
+          onClose={() => setIsBatchModalOpen(false)}
+          activePanels={studioPanels}
+          currentManager={STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId) || STUDIO_MANAGERS[0]}
+          onApplyBatch={handleBatchApplyTheme}
         />
       )}
     </>
