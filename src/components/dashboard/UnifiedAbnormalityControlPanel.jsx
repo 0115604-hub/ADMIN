@@ -202,27 +202,8 @@ export const UnifiedAbnormalityControlPanel = ({
   );
 
   return (
-    <div className="space-y-3 sm:space-y-3.5 animate-fadeIn">
-      {/* 1. Header Banner */}
-      <AbnormalityHeader
-        currentProfile={currentProfile}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        isLoading={isLoading}
-        onRefresh={handleManualRefresh}
-        onExportExcel={handleExportExcel}
-        stats={stats}
-        selected4MTab={selected4MTab}
-        setSelected4MTab={setSelected4MTab}
-        selectedOriginFilter={selectedOriginFilter}
-        setSelectedOriginFilter={setSelectedOriginFilter}
-        filteredCount={filteredRecords.length}
-        customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
-        hideSubtitle={customSettings?.hideSubtitle !== false}
-        theme={customSettings?.theme || "indigo"}
-      />
-
-      {/* 2. 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자 vs 2단계 생산관리자) */}
+    <div className="space-y-4 animate-fadeIn">
+      {/* 1. 상단: 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자[이창엽의 4M 정식대장] vs 2단계 생산관리자) */}
       {isExecutiveUser ? (
         <Step4ExecutiveApprovalPanel
           currentProfile={currentProfile}
@@ -248,26 +229,47 @@ export const UnifiedAbnormalityControlPanel = ({
         />
       )}
 
-      {/* 3. Table View or Card View */}
-      {viewMode === "table" ? (
-        <AbnormalityTableView
-          filteredRecords={filteredRecords}
-          onOpenDetailModal={(item) => setSelectedItemForDetail(item)}
-          onUpdateItemFourM={handleUpdateItemFourM}
-          onToggleLedger={handleToggleLedger}
-          onRegisterAsInternalMgmt={handleRegisterAsInternalMgmt}
-          internalMgmtMap={internalMgmtMap}
-          onPreviewImage={(src) => setPreviewImage(src)}
+      {/* 2. 하단: [전사 4M 취합대장] 전용 패널 (헤더 + 1줄 테이블이 표 바로 위에 직결된 구조) */}
+      <div className="space-y-2.5">
+        <AbnormalityHeader
+          currentProfile={currentProfile}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          isLoading={isLoading}
+          onRefresh={handleManualRefresh}
+          onExportExcel={handleExportExcel}
+          stats={stats}
+          selected4MTab={selected4MTab}
+          setSelected4MTab={setSelected4MTab}
+          selectedOriginFilter={selectedOriginFilter}
+          setSelectedOriginFilter={setSelectedOriginFilter}
+          filteredCount={filteredRecords.length}
           customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
+          hideSubtitle={customSettings?.hideSubtitle !== false}
           theme={customSettings?.theme || "indigo"}
         />
-      ) : (
-        <AbnormalityCardView
-          filteredRecords={filteredRecords}
-          onOpenDetailModal={(item) => setSelectedItemForDetail(item)}
-          onUpdateItemFourM={handleUpdateItemFourM}
-        />
-      )}
+
+        {/* 3. Table View or Card View */}
+        {viewMode === "table" ? (
+          <AbnormalityTableView
+            filteredRecords={filteredRecords}
+            onOpenDetailModal={(item) => setSelectedItemForDetail(item)}
+            onUpdateItemFourM={handleUpdateItemFourM}
+            onToggleLedger={handleToggleLedger}
+            onRegisterAsInternalMgmt={handleRegisterAsInternalMgmt}
+            internalMgmtMap={internalMgmtMap}
+            onPreviewImage={(src) => setPreviewImage(src)}
+            customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
+            theme={customSettings?.theme || "indigo"}
+          />
+        ) : (
+          <AbnormalityCardView
+            filteredRecords={filteredRecords}
+            onOpenDetailModal={(item) => setSelectedItemForDetail(item)}
+            onUpdateItemFourM={handleUpdateItemFourM}
+          />
+        )}
+      </div>
 
       {/* 4. Detail & Action Modal */}
       {selectedItemForDetail && (
