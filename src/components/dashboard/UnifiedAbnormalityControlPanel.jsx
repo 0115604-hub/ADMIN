@@ -26,7 +26,8 @@ export const UnifiedAbnormalityControlPanel = ({
   onOpenIssueModal = null,
   onOpenExtrusionReport = null,
   currentProfile = null,
-  onNavigateTab = null
+  onNavigateTab = null,
+  customSettings = null
 }) => {
   // 1. Data Aggregation & Realtime Subscriptions
   const {
@@ -216,6 +217,9 @@ export const UnifiedAbnormalityControlPanel = ({
         selectedOriginFilter={selectedOriginFilter}
         setSelectedOriginFilter={setSelectedOriginFilter}
         filteredCount={filteredRecords.length}
+        customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
+        hideSubtitle={customSettings?.hideSubtitle !== false}
+        theme={customSettings?.theme || "indigo"}
       />
 
       {/* 2. 단계별 맞춤 관제 패널 (4단계 경영진 vs 3단계 품질관리자 vs 2단계 생산관리자) */}
@@ -230,6 +234,11 @@ export const UnifiedAbnormalityControlPanel = ({
           currentProfile={currentProfile}
           onOpenIssueModal={onOpenIssueModal}
           onNavigateTab={onNavigateTab}
+          customTitle={customSettings?.customTopTitle || customSettings?.customTitle}
+          hideSubtitle={customSettings?.hideSubtitle !== false}
+          theme={customSettings?.theme || "indigo"}
+          borderRadius={customSettings?.borderRadius}
+          borderStyle={customSettings?.borderStyle}
         />
       ) : (
         <Step2ProductionManagerPanel
@@ -249,6 +258,8 @@ export const UnifiedAbnormalityControlPanel = ({
           onRegisterAsInternalMgmt={handleRegisterAsInternalMgmt}
           internalMgmtMap={internalMgmtMap}
           onPreviewImage={(src) => setPreviewImage(src)}
+          customTitle={customSettings?.customBottomTitle || customSettings?.customTitle}
+          theme={customSettings?.theme || "indigo"}
         />
       ) : (
         <AbnormalityCardView

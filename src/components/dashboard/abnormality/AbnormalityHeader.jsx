@@ -10,6 +10,7 @@ import {
   TrendingDown,
   X
 } from "lucide-react";
+import { PANEL_THEMES } from "../../../config/panelThemeConfig";
 
 /**
  * AbnormalityHeader
@@ -27,25 +28,35 @@ export const AbnormalityHeader = ({
   setSelected4MTab,
   selectedOriginFilter,
   setSelectedOriginFilter,
-  filteredCount
+  filteredCount,
+  customTitle,
+  hideSubtitle = true,
+  theme = "indigo"
 }) => {
+  const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
+
   return (
     <>
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-2 border-indigo-500/40 shadow-xl space-y-2.5 relative overflow-hidden">
+      <div className={`p-3.5 sm:p-4 rounded-2xl ${themeObj.headerBg} text-white border-2 ${themeObj.borderClass} shadow-xl space-y-2.5 relative overflow-hidden`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-500 via-amber-500 to-indigo-500 text-white shadow-md shrink-0">
+            <div className={`p-2 rounded-xl bg-gradient-to-tr ${themeObj.iconGradient} text-white shadow-md shrink-0`}>
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-black text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
-                  <span>📋 전사 4M 취합대장</span>
+                  <span>{customTitle || "📋 전사 4M 취합대장"}</span>
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500 text-white shadow-xs border border-indigo-400/40">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj.accentBadge}`}>
                   {currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "관리자"} 관제` : "4M 변동점 관제"}
                 </span>
               </div>
+              {!hideSubtitle && (
+                <p className="text-[11px] text-indigo-200/90 font-medium mt-0.5">
+                  작업일보 <b>비가동·불량·TPM</b> + 전재율 <b>설비수리</b> + 관리자 <b>부적합경보</b>를 취합하고 <b>변동점 관리대장</b>으로 공식 등록합니다.
+                </p>
+              )}
             </div>
           </div>
 

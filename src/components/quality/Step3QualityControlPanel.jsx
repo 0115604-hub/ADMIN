@@ -5,6 +5,7 @@ import { Step3QualityHeader } from "./step3/Step3QualityHeader";
 import { Step3IncomingTransferredSection } from "./step3/Step3IncomingTransferredSection";
 import { Step3Official4MLedgerSection } from "./step3/Step3Official4MLedgerSection";
 import { Step3CapaActionModal } from "./step3/Step3CapaActionModal";
+import { PANEL_THEMES } from "../../config/panelThemeConfig";
 
 /**
  * 🛡️ 3단계 품질관리자 변동점 재검토 · 4M 대장 등재 및 시정조치(CAPA) 패널
@@ -19,21 +20,31 @@ import { Step3CapaActionModal } from "./step3/Step3CapaActionModal";
 export default function Step3QualityControlPanel({
   currentProfile = null,
   onOpenIssueModal = null,
-  onNavigateTab = null
+  onNavigateTab = null,
+  customTitle = null,
+  hideSubtitle = true,
+  theme = "indigo",
+  borderRadius = "rounded-2xl",
+  borderStyle = "border-2"
 }) {
   const state = useStep3QualityState({
     currentProfile,
     onNavigateTab
   });
 
+  const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500/30 shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all">
+    <div className={`bg-white dark:bg-slate-900 ${borderRadius} ${borderStyle} ${themeObj.borderClass} shadow-xl p-3.5 sm:p-4 space-y-3.5 text-left transition-all`}>
       {/* 1. Header Bar with Step 3 Identity */}
       <Step3QualityHeader
         managerName={state.managerName}
         activeTab={state.activeTab}
         setActiveTab={state.setActiveTab}
         stats={state.stats}
+        customTitle={customTitle}
+        hideSubtitle={hideSubtitle}
+        themeObj={themeObj}
       />
 
       {/* 2. SECTION 1: 2단계 관리자 이관 건 재검토 및 4M 대장 등재 (접수함) */}
@@ -60,6 +71,8 @@ export default function Step3QualityControlPanel({
         approvalDocsMap={state.approvalDocsMap}
         checkIsCeoApproved={state.checkIsCeoApproved}
         handleOpenCapaModal={state.handleOpenCapaModal}
+        customTitle={customTitle}
+        themeObj={themeObj}
       />
 
       {/* 4. 팝업창: 4M 변동점 및 이상내용 + 조치결과 + 전후사진 각 5장 + 전자결재 상신 모달 */}

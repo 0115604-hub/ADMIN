@@ -15,6 +15,8 @@ import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPane
 import { MachiningWorkReportTable } from "../../machining/MachiningWorkReportTable";
 import { SeolExtrusionWorkReportTable } from "../../extrusion/SeolExtrusionWorkReportTable";
 import { TestBadgeBlockStudio } from "./TestBadgeBlockStudio";
+import { PanelDesignCustomizerModal } from "./PanelDesignCustomizerModal";
+import { Palette } from "lucide-react";
 import {
   PANEL_KEYS,
   STUDIO_MANAGERS,
@@ -25,7 +27,11 @@ import {
 import {
   saveManagerCustomLayout,
   resetManagerCustomLayout,
-  subscribeManagerLayouts
+  subscribeManagerLayouts,
+  getCustomSettingsForManager,
+  savePanelCustomSetting,
+  resetPanelCustomSetting,
+  batchApplyThemeToManagerPanels
 } from "../../../services/dashboardLayoutService";
 
 export const InternalManagerDashboardView = ({
@@ -160,7 +166,14 @@ export const InternalManagerDashboardView = ({
   const [isSavingStudio, setIsSavingStudio] = useState(false);
   const [layoutVersionTick, setLayoutVersionTick] = useState(0);
 
-  // Firestore 실시간 레이아웃 변경 구독
+  // 🎨 패널별 커스텀 제목 & 디자인 설정 상태
+  const [panelCustomSettings, setPanelCustomSettings] = useState(() => {
+    const key = isTest ? "sam_cy" : (currentProfile?.id || currentProfile?.name);
+    return getCustomSettingsForManager(key);
+  });
+  const [editingBlockKeyFromDashboard, setEditingBlockKeyFromDashboard] = useState(null);
+
+  // Firestore 실시간 레이아웃 및 디자인 변경 구독
   useEffect(() => {
     const unsub = subscribeManagerLayouts(() => {
       setLayoutVersionTick((v) => v + 1);
@@ -171,18 +184,66 @@ export const InternalManagerDashboardView = ({
         setStudioPanels(e.detail.panels);
       }
     };
+    const handlePanelSettingsEvent = (e) => {
+      const activeKey = isTest ? selectedStudioManagerId : (currentProfile?.id || currentProfile?.name);
+      if (e.detail?.managerKey === activeKey || e.detail?.allUpdated) {
+        setPanelCustomSettings({ ...getCustomSettingsForManager(activeKey) });
+        setLayoutVersionTick((v) => v + 1);
+      }
+    };
+
     window.addEventListener("oryuk_dashboard_layout_updated", handleLayoutEvent);
+    window.addEventListener("oryuk_panel_settings_updated", handlePanelSettingsEvent);
+
     return () => {
       unsub();
       window.removeEventListener("oryuk_dashboard_layout_updated", handleLayoutEvent);
+      window.removeEventListener("oryuk_panel_settings_updated", handlePanelSettingsEvent);
     };
-  }, [isTest, selectedStudioManagerId]);
+  }, [isTest, selectedStudioManagerId, currentProfile]);
 
   // 관리자 선택 변경 핸들러
   const handleSelectStudioManager = (mgrId) => {
     setSelectedStudioManagerId(mgrId);
     const targetMgr = STUDIO_MANAGERS.find((m) => m.id === mgrId);
     setStudioPanels(getPanelsForUser(targetMgr));
+    setPanelCustomSettings(getCustomSettingsForManager(mgrId));
+  };
+
+  // 패널 제목 & 디자인 단건 저장 핸들러
+  const handleSavePanelSetting = async (blockKey, setting) => {
+    const targetKey = isTest ? selectedStudioManagerId : (currentProfile?.id || currentProfile?.name);
+    const currentMgr = STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId);
+    await savePanelCustomSetting(targetKey, blockKey, setting, "TEST");
+    if (currentMgr?.name && isTest) {
+      await savePanelCustomSetting(currentMgr.name, blockKey, setting, "TEST");
+    }
+    setPanelCustomSettings({ ...getCustomSettingsForManager(targetKey) });
+    setLayoutVersionTick((v) => v + 1);
+  };
+
+  // 패널 제목 & 디자인 초기화 핸들러
+  const handleResetPanelSetting = async (blockKey) => {
+    const targetKey = isTest ? selectedStudioManagerId : (currentProfile?.id || currentProfile?.name);
+    const currentMgr = STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId);
+    await resetPanelCustomSetting(targetKey, blockKey);
+    if (currentMgr?.name && isTest) {
+      await resetPanelCustomSetting(currentMgr.name, blockKey);
+    }
+    setPanelCustomSettings({ ...getCustomSettingsForManager(targetKey) });
+    setLayoutVersionTick((v) => v + 1);
+  };
+
+  // 전체 패널 디자인 일괄 통일 핸들러
+  const handleBatchApplyTheme = async (designOptions) => {
+    const targetKey = isTest ? selectedStudioManagerId : (currentProfile?.id || currentProfile?.name);
+    const currentMgr = STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId);
+    await batchApplyThemeToManagerPanels(targetKey, studioPanels, designOptions, "TEST");
+    if (currentMgr?.name && isTest) {
+      await batchApplyThemeToManagerPanels(currentMgr.name, studioPanels, designOptions, "TEST");
+    }
+    setPanelCustomSettings({ ...getCustomSettingsForManager(targetKey) });
+    setLayoutVersionTick((v) => v + 1);
   };
 
   // 커스텀 레이아웃 저장 핸들러
@@ -196,7 +257,7 @@ export const InternalManagerDashboardView = ({
         await saveManagerCustomLayout(currentMgr.name, studioPanels, "TEST");
       }
       alert(
-        `🎉 [${currentMgr?.plant} • ${currentMgr?.name} ${currentMgr?.title || ""}] 대시보드 블록 설정이 저장되었습니다!\n\n해당 관리자가 로그인 시 저장된 블록 구성과 순서로 즉시 표시됩니다.`
+        `🎉 [${currentMgr?.plant} • ${currentMgr?.name} ${currentMgr?.title || ""}] 대시보드 블록 및 디자인 설정이 저장되었습니다!\n\n해당 관리자가 로그인 시 저장된 블록 구성, 커스텀 제목, 테마로 즉시 표시됩니다.`
       );
     } catch (e) {
       alert("설정 저장 중 오류가 발생했습니다: " + e.message);
@@ -417,6 +478,7 @@ export const InternalManagerDashboardView = ({
             liveQualityCurrentMonthly={liveQualityCurrentMonthly}
             liveQualityPrevMonthly={liveQualityPrevMonthly}
             handleOpenQualityPopup={handleOpenQualityPopup}
+            customSettings={panelCustomSettings[PANEL_KEYS.QUALITY_SUMMARY]}
           />
         );
 
@@ -427,6 +489,7 @@ export const InternalManagerDashboardView = ({
             workLogs={workLogs}
             currentProfile={activeProfile}
             onNavigateTab={onNavigateTab}
+            customSettings={panelCustomSettings[PANEL_KEYS.ABNORMALITY_4M]}
             onOpenWorkLogDetail={handleOpenLogDetail}
             onOpenExtrusionReport={() => {
               try {
@@ -508,6 +571,7 @@ export const InternalManagerDashboardView = ({
             LOGS_PER_PAGE={LOGS_PER_PAGE}
             totalLogPages={totalLogPages}
             handleOpenWorkLogModal={handleOpenWorkLogModal}
+            customSettings={panelCustomSettings[PANEL_KEYS.WORK_LOGS]}
           />
         );
 
@@ -540,6 +604,10 @@ export const InternalManagerDashboardView = ({
           onChangePanels={setStudioPanels}
           onSaveLayout={handleSaveStudioLayout}
           onResetLayout={handleResetStudioLayout}
+          panelCustomSettings={panelCustomSettings}
+          onSavePanelSetting={handleSavePanelSetting}
+          onResetPanelSetting={handleResetPanelSetting}
+          onBatchApplyTheme={handleBatchApplyTheme}
           isSaving={isSavingStudio}
         />
       )}
@@ -581,11 +649,43 @@ export const InternalManagerDashboardView = ({
         )}
 
       {/* 🌟 블록 배열 순서대로 동적 렌더링 (설정된 블록 순서 100% 반영) */}
-      {activePanelKeys.map((blockKey) => (
-        <React.Fragment key={blockKey}>
-          {renderDashboardBlock(blockKey)}
-        </React.Fragment>
-      ))}
+      {activePanelKeys.map((blockKey) => {
+        const blockElement = renderDashboardBlock(blockKey);
+        if (!blockElement) return null;
+
+        return (
+          <div key={blockKey} className="relative group/panel">
+            {/* TEST 모드: 패널 우측 상단 플로팅 제목/디자인 수정 버튼 */}
+            {isTest && (
+              <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/panel:opacity-100 transition-opacity flex items-center gap-1 bg-slate-950/90 backdrop-blur-xs p-1 rounded-xl border border-cyan-500/50 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setEditingBlockKeyFromDashboard(blockKey)}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10.5px] flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="이 패널의 제목 및 디자인 직접 수정"
+                >
+                  <Palette className="w-3 h-3" />
+                  <span>패널 제목/디자인 수정</span>
+                </button>
+              </div>
+            )}
+            {blockElement}
+          </div>
+        );
+      })}
+
+      {/* 🎨 TEST 모드: 대시보드에서 직접 패널 클릭 시 열리는 제목 & 디자인 커스터마이저 모달 */}
+      {editingBlockKeyFromDashboard && (
+        <PanelDesignCustomizerModal
+          isOpen={Boolean(editingBlockKeyFromDashboard)}
+          onClose={() => setEditingBlockKeyFromDashboard(null)}
+          blockKey={editingBlockKeyFromDashboard}
+          currentManager={STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId) || STUDIO_MANAGERS[0]}
+          initialSettings={panelCustomSettings[editingBlockKeyFromDashboard] || {}}
+          onSave={handleSavePanelSetting}
+          onReset={handleResetPanelSetting}
+        />
+      )}
     </>
   );
 };

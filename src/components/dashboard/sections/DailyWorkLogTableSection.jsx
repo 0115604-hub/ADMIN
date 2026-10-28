@@ -34,10 +34,13 @@ export const DailyWorkLogTableSection = ({
   setCurrentLogPage,
   LOGS_PER_PAGE = 12,
   totalLogPages = 1,
-  handleOpenWorkLogModal
+  handleOpenWorkLogModal,
+  customSettings = null
 }) => {
+  const title = customSettings?.customTitle || "5. 일일업무일지 현황";
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+    <div className={`bg-white dark:bg-slate-900 ${customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl"} p-3.5 sm:p-5 border ${customSettings?.borderStyle || "border"} border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden`}>
       {/* Manager Dedicated Information Banners (No batch approval - Requires reading details) */}
       {isMyeongjae && pendingSamrangjinCount > 0 && (
         <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
@@ -137,7 +140,7 @@ export const DailyWorkLogTableSection = ({
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0 truncate">
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            5. 일일업무일지 현황
+            {title}
           </h2>
         </div>
 

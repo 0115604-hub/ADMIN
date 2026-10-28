@@ -5,23 +5,33 @@ export const Step3QualityHeader = ({
   managerName,
   activeTab,
   setActiveTab,
-  stats
+  stats,
+  customTitle,
+  hideSubtitle = true,
+  themeObj
 }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
       <div className="flex items-center gap-2.5">
-        <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-rose-600 text-white shadow-md shrink-0">
+        <div className={`p-2 rounded-xl bg-gradient-to-tr ${themeObj?.iconGradient || "from-indigo-600 to-rose-600"} text-white shadow-md shrink-0`}>
           <ShieldAlert className="w-5 h-5" />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-              <span>📋 이창엽의 4M 정식대장</span>
+              <span>{customTitle || "📋 이창엽의 4M 정식대장"}</span>
             </h3>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-xs border border-rose-400/40">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${themeObj?.accentBadge || "bg-rose-500 text-white shadow-xs border border-rose-400/40"}`}>
               {managerName ? `${managerName} 책임 전용` : "품질관리자 전용"}
             </span>
           </div>
+          {!hideSubtitle && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+              <span>담당: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{managerName} 책임</strong> (품질보증팀)</span>
+              <span>•</span>
+              <span>4M 변동점 결재라인: 이창엽 책임(상신) ➔ 이명재 이사(검토) ➔ 권태형 대표이사(최종승인)</span>
+            </p>
+          )}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
+import { PANEL_THEMES } from "../../../config/panelThemeConfig";
 
 /**
  * AbnormalityTableView
@@ -22,10 +23,13 @@ export const AbnormalityTableView = ({
   onToggleLedger,
   onRegisterAsInternalMgmt,
   internalMgmtMap,
-  onPreviewImage
+  onPreviewImage,
+  customTitle,
+  theme = "indigo"
 }) => {
   const PAGE_SIZE = 8;
   const [currentPage, setCurrentPage] = useState(1);
+  const themeObj = PANEL_THEMES[theme] || PANEL_THEMES.indigo;
 
   // 레코드 개수나 필터가 변경되면 1페이지로 리셋
   useEffect(() => {
@@ -51,7 +55,7 @@ export const AbnormalityTableView = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]">
+            <tr className={`${themeObj.tableThead} font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]`}>
               <th className="py-2.5 px-2 text-center w-8">NO</th>
               <th className="py-2.5 px-2 text-center w-36">4M 분류 (수정)</th>
               <th className="py-2.5 px-2 text-center w-20">출처</th>
@@ -319,7 +323,7 @@ export const AbnormalityTableView = ({
       {totalPages > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 text-xs">
           <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
-            <span>전사 4M 취합대장 총 {filteredRecords.length}건 중 </span>
+            <span>{customTitle ? `${customTitle} 총 ` : "전사 4M 취합대장 총 "}{filteredRecords.length}건 중 </span>
             <span className="text-indigo-600 dark:text-indigo-400 font-black">
               {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredRecords.length)}건
             </span>

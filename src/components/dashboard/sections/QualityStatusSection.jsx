@@ -1,22 +1,28 @@
 import React from "react";
 import { ArrowRight } from "lucide-react";
+import { PANEL_THEMES } from "../../../config/panelThemeConfig";
 
 export const QualityStatusSection = ({
   selectedMonth,
   onNavigateTab,
   liveQualityCurrentMonthly,
   liveQualityPrevMonthly,
-  handleOpenQualityPopup
+  handleOpenQualityPopup,
+  customSettings = null
 }) => {
   const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly?.items || [];
+  const themeObj = PANEL_THEMES[customSettings?.theme || "indigo"];
+  const title = customSettings?.customTitle || "3. 중요ITEM 품질현황";
+  const radius = customSettings?.borderRadius || "rounded-2xl sm:rounded-3xl";
+  const border = customSettings?.borderStyle ? `${customSettings.borderStyle} ${themeObj.borderClass}` : "border border-slate-200/80 dark:border-slate-800";
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden">
+    <div className={`bg-white dark:bg-slate-900 ${radius} p-3.5 sm:p-5 ${border} shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden`}>
       {/* Header with Quality Detail Link */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
           <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
-            3. 중요ITEM 품질현황
+            {title}
           </h2>
           <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
             {selectedMonth?.slice(5, 7) || "9"}월 실적
