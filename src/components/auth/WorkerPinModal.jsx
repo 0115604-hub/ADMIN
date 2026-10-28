@@ -1957,41 +1957,19 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || "사원"}님, <br className="hidden sm:inline" />
-                    {isFieldWorker ? "안전수칙과 현장 품질공지 확인을 위해 PIN을 입력해 주세요." : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
+                    {isFieldWorker ? "안전수칙과 현장 품질공지 확인을 위해 상단 PIN을 입력해 주세요." : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isFieldWorker
-                      ? "인증 시 [중대재해공유판 + 현장 품질이슈 & 공지] 확인 후 작업개시가 가능합니다."
-                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 현황요약 + 근태정보]가 표시됩니다."}
+                      ? "상단 [PIN 입력] 시 [중대재해공유판 + 현장 품질이슈 & 공지] 확인 후 작업개시가 가능합니다."
+                      : "상단 [PIN 입력] 시 [중대재해공유판 + 관리자 일정 + 4M 현황요약 + 근태정보]가 표시됩니다."}
                   </p>
-                </div>
-
-                {/* 모바일 및 터치 환경을 위한 중앙 대형 PIN 입력 폼 */}
-                <form onSubmit={handlePinSubmit} className="w-full max-w-xs space-y-3 pt-2">
-                  <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-blue-400 dark:border-blue-500 bg-white dark:bg-slate-800 shadow-sm focus-within:ring-4 focus-within:ring-blue-400/30">
-                    <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder="PIN 4자리 입력"
-                      value={pinInput}
-                      onChange={handlePinChange}
-                      className="w-36 text-center text-lg font-black tracking-widest bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:text-sm placeholder:tracking-normal"
-                    />
-                  </div>
                   {pinError && (
-                    <p className="text-xs font-bold text-rose-600 dark:text-rose-400 animate-pulse">
-                      {pinError}
+                    <p className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 animate-pulse pt-2">
+                      ⚠️ PIN 번호가 일치하지 않습니다. 상단 PIN 입력을 다시 확인해 주세요.
                     </p>
                   )}
-                  <button
-                    type="submit"
-                    className="w-full py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-black text-sm shadow-md shadow-blue-500/25 transition-all cursor-pointer"
-                  >
-                    비밀번호 확인
-                  </button>
-                </form>
+                </div>
               </div>
             ) : (
               /* ✅ PIN 인증 완료 시 역할별 통합 화면 */
