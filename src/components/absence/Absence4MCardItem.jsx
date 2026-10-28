@@ -67,7 +67,7 @@ export default function Absence4MCardItem({
         qualityStatus: "NORMAL"
       }
     }));
-  }, [item.id, item.updatedAt, item.actionResult, item.substituteWorker?.name]);
+  }, [item]);
 
   const company = cleanCompanyName(formState.company);
   const theme = COMPANY_THEMES[company] || COMPANY_THEMES["오륙"];
@@ -129,7 +129,7 @@ export default function Absence4MCardItem({
   // 표준 조치결과 기본 문구 계산
   const defaultActionResult = useMemo(() => {
     return generate4MActionResult(formState);
-  }, [formState.substituteWorker, formState.checkpoints]);
+  }, [formState]);
 
   // 실시간 유효 조치결과 (사용자 입력값 또는 기본 생성 문구 또는 아이템 저장값)
   const effectiveActionResult = useMemo(() => {

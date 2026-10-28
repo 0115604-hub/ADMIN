@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useMonth } from "../../context/MonthContext";
 import {
@@ -144,7 +144,7 @@ export const useTelegramViewState = () => {
     [morningOpenIssues]
   );
 
-  const getGeneratedUnifiedText = () =>
+  const getGeneratedUnifiedText = useCallback(() =>
     generateDefaultUnifiedMessage({
       unifiedMsgType,
       qualityStage,
@@ -159,7 +159,21 @@ export const useTelegramViewState = () => {
       morningOpenIssues,
       morningOpenIssueLines,
       prevDateInfo
-    });
+    }), [
+      unifiedMsgType,
+      qualityStage,
+      noticeMeetingType,
+      approvalType,
+      todayDateStr,
+      currentProfile,
+      morningAttendanceSamStr,
+      morningAttendanceHanStr,
+      morningApprovalDocs,
+      morningWorkLogLines,
+      morningOpenIssues,
+      morningOpenIssueLines,
+      prevDateInfo
+    ]);
 
   // Load custom template if exists, else load default text from Aggregator
   useEffect(() => {
@@ -201,7 +215,7 @@ export const useTelegramViewState = () => {
         setEditableUnifiedText(getGeneratedUnifiedText());
       }
     }
-  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines]);
+  }, [currentUnifiedTemplateKey, savedTemplates, unifiedMsgType, morningAttendanceSamStr, morningAttendanceHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, getGeneratedUnifiedText]);
 
   // 2. 경영총괄 실시간 데이터
   const [selectedPnLChannel, setSelectedPnLChannel] = useState("-1003939516875"); // Default: 경영방
@@ -255,7 +269,7 @@ export const useTelegramViewState = () => {
     ? ` (${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준 누적)`
     : "";
 
-  const getGeneratedManagementText = () =>
+  const getGeneratedManagementText = useCallback(() =>
     generateDefaultManagementMessage({
       managementMsgType,
       todayDateStr,
@@ -269,7 +283,20 @@ export const useTelegramViewState = () => {
       commonSchedsText,
       asOfUploadBadge,
       dateFormatted
-    });
+    }), [
+      managementMsgType,
+      todayDateStr,
+      todayCommonSchedules,
+      totalSales,
+      totalPurchases,
+      costRatio,
+      salesAchievementPct,
+      purchaseAchievementPct,
+      prevMonthKey,
+      commonSchedsText,
+      asOfUploadBadge,
+      dateFormatted
+    ]);
 
   // Load custom management template if exists, else load default text
   useEffect(() => {
@@ -300,7 +327,7 @@ export const useTelegramViewState = () => {
     } else {
       setEditableManagementText(getGeneratedManagementText());
     }
-  }, [currentManagementTemplateKey, managementMsgType, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, commonSchedsText, todayCommonSchedules, selectedPnLChannel, dateFormatted]);
+  }, [currentManagementTemplateKey, managementMsgType, savedTemplates, totalSales, totalPurchases, costRatio, salesAchievementPct, purchaseAchievementPct, commonSchedsText, todayCommonSchedules, selectedPnLChannel, dateFormatted, getGeneratedManagementText]);
 
   // Handlers
   const handleSaveTelegramConfig = async (e) => {

@@ -117,6 +117,9 @@ export const HanulWorkReportTable = ({
               } catch (err) {}
               setLedgerState(nextState);
             }
+          },
+          (err) => {
+            console.warn("HanulWorkReportTable ledger onSnapshot error:", err);
           }
         );
       } catch (err) {}

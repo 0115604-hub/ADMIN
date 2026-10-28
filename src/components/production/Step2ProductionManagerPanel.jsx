@@ -147,6 +147,9 @@ export default function Step2ProductionManagerPanel({
               } catch (err) {}
               setLedgerState(nextState);
             }
+          },
+          (err) => {
+            console.warn("Step 2 ledger onSnapshot error:", err);
           }
         );
       } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Download, X, ZoomIn, ZoomOut, RotateCw, LocateFixed, Move, ChevronLeft, ChevronRight } from "lucide-react";
 import { useModalHistory } from "../../utils/modalHistory";
@@ -51,23 +51,23 @@ export const ImagePreviewModal = ({ previewImage, imageList, initialIndex = 0, o
     ? `사진 (${currentIndex + 1}/${images.length})`
     : (currentItem?.name || `사진 (${currentIndex + 1}/${images.length})`);
 
-  const handlePrev = (e) => {
+  const handlePrev = useCallback((e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     if (!hasMultiple) return;
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setRotation(0);
-  };
+  }, [hasMultiple, images.length]);
 
-  const handleNext = (e) => {
+  const handleNext = useCallback((e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     if (!hasMultiple) return;
     setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setRotation(0);
-  };
+  }, [hasMultiple, images.length]);
 
   // Keyboard Navigation (Left / Right arrow keys, PageUp / PageDown, Escape)
   useEffect(() => {
@@ -86,7 +86,7 @@ export const ImagePreviewModal = ({ previewImage, imageList, initialIndex = 0, o
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [previewImage, hasMultiple, images.length, onClose]);
+  }, [previewImage, hasMultiple, images.length, onClose, handlePrev, handleNext]);
 
   // Wheel Zoom
   useEffect(() => {

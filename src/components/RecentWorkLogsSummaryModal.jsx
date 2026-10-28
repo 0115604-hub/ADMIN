@@ -65,7 +65,7 @@ export const RecentWorkLogsSummaryModal = ({
     if (availableDates.length > 0 && (!selectedDate || !availableDates.includes(selectedDate))) {
       setSelectedDate(availableDates[0]);
     }
-  }, [availableDates]);
+  }, [availableDates, selectedDate]);
 
   const [copiedToast, setCopiedToast] = useState(false);
 

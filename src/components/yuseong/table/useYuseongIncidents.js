@@ -42,6 +42,8 @@ export const useYuseongIncidents = ({ filteredReports = [], currentWorkerName = 
             } catch (err) {}
             setLedgerState(nextState);
           }
+        }, (err) => {
+          console.warn("useYuseongIncidents ledger listen error:", err);
         });
       } catch (err) {}
     }

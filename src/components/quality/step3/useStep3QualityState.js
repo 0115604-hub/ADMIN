@@ -135,6 +135,9 @@ export const useStep3QualityState = ({
               } catch (err) {}
               setNcLedgerState(nextState);
             }
+          },
+          (err) => {
+            console.warn("useStep3QualityState nc ledger onSnapshot error:", err);
           }
         );
       } catch (err) {

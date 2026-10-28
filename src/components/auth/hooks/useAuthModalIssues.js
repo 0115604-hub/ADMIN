@@ -676,6 +676,7 @@ export const useAuthModalIssues = ({ todayDateStr, currentKstTimeStr, allWorkers
     });
 
     return sortIssuesByCustomPriority(list);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- currentKstTimeStr triggers re-check for expired meetings every minute
   }, [allQualityAlerts, urgentIssues, todayDateStr, currentKstTimeStr]);
 
   // Metric counts

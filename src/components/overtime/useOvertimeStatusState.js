@@ -234,13 +234,14 @@ export const useOvertimeStatusState = () => {
     try {
       const kst = getKSTDateString(new Date());
       const day = parseInt(kst.split("-")[2], 10);
-      if (!isNaN(day) && day >= 1 && day <= daysInMonth) {
-        setSelectedDay(day);
-      } else if (selectedDay > daysInMonth) {
-        setSelectedDay(daysInMonth);
-      }
+      setSelectedDay((prev) => {
+        if (!isNaN(day) && day >= 1 && day <= daysInMonth) {
+          return day;
+        }
+        return prev > daysInMonth ? daysInMonth : prev;
+      });
     } catch (e) {
-      if (selectedDay > daysInMonth) setSelectedDay(daysInMonth);
+      setSelectedDay((prev) => (prev > daysInMonth ? daysInMonth : prev));
     }
   }, [currentProfile?.name, daysInMonth]);
 
@@ -280,8 +281,8 @@ export const useOvertimeStatusState = () => {
 
     const unsubLegacy = subscribeOvertimeReports((reports) => {
       setLegacyReports(reports);
-      if (reports.length > 0 && !selectedLegacyReport) {
-        setSelectedLegacyReport(reports[0]);
+      if (reports.length > 0) {
+        setSelectedLegacyReport((prev) => prev || reports[0]);
       }
     });
 
@@ -358,7 +359,7 @@ export const useOvertimeStatusState = () => {
       smartData,
       effectiveMatrix
     });
-  }, [effectiveMatrix, smartData?.companyApprovalStatus, legacyReports, selectedDay, currentYear, currentMonthNum]);
+  }, [effectiveMatrix, smartData, legacyReports, selectedDay, currentYear, currentMonthNum]);
 
   const filteredAttendanceWorkers = useMemo(() => {
     return buildFilteredAttendanceWorkers({

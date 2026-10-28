@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Award,
   Calendar,
@@ -142,7 +142,7 @@ export const SqLevelUpView = () => {
   };
 
   // 💾 재등록: 모든 관리자 및 완료예정일자 변경사항을 클라우드 Firestore & 로컬에 일괄 재등록
-  const handleSaveAllChanges = async () => {
+  const handleSaveAllChanges = useCallback(async () => {
     setIsSaving(true);
     try {
       await batchUpdateSqLevelUpItems(items);
@@ -161,7 +161,7 @@ export const SqLevelUpView = () => {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [items, modifiedSeqs]);
 
   // Listen to custom trigger event from modal header or external actions
   useEffect(() => {
@@ -170,7 +170,7 @@ export const SqLevelUpView = () => {
     };
     window.addEventListener("trigger-sq-reregister", handleTrigger);
     return () => window.removeEventListener("trigger-sq-reregister", handleTrigger);
-  }, [items, modifiedSeqs]);
+  }, [handleSaveAllChanges]);
 
   return (
     <div className="space-y-5 animate-fadeIn relative">

@@ -79,6 +79,9 @@ export const BurimtechWorkReportTable = ({
               } catch (err) {}
               setLedgerState(nextState);
             }
+          },
+          (err) => {
+            console.warn("BurimtechWorkReportTable ledger onSnapshot error:", err);
           }
         );
       } catch (err) {}

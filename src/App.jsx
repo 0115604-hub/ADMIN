@@ -44,21 +44,19 @@ import {
   bulkAddTransactions,
   updateTransaction,
   deleteTransaction,
-  clearAllTransactions,
-  getLocalData
+  clearAllTransactions
 } from "./services/dbService";
 import {
   checkAndAutoSendDailyMorningBriefing,
   checkAndAutoSendDailyClosingBriefing,
   subscribeTelegramConfig
 } from "./services/telegramService";
-import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
+import { pushModalHistory, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
 import { initDailyMaintenanceScheduler } from "./services/dailyMaintenanceService";
 import { syncAllOvertimeReportsToApprovalBox } from "./services/approvalService";
 
 export const App = () => {
-  const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
-  const { resetToCurrentMonth } = useMonth();
+  const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const target = localStorage.getItem("admin_target_tab");
@@ -78,22 +76,6 @@ export const App = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTopBtn, setShowTopBtn] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-
-  const isFieldWorkerProfile = Boolean(
-    !isAdmin && (
-      currentProfile?.isFieldWorker ||
-      currentProfile?.portalType === "extrusion" ||
-      currentProfile?.portalType === "bulimtech" ||
-      ["한울", "유성", "부림텍"].includes(currentProfile?.company) ||
-      currentProfile?.assignedProcess === "외주가공" ||
-      currentProfile?.assignedProcess === "가공/협력업체" ||
-      currentProfile?.assignedProcess?.includes("협력") ||
-      currentProfile?.assignedProcess === "압출동" ||
-      currentProfile?.assignedProcess === "가공동" ||
-      currentProfile?.building === "압출동" ||
-      (typeof currentProfile?.department === "string" && currentProfile.department.includes("가공"))
-    )
-  );
 
   // Daily Maintenance & HealthCheck Scheduler (매일 새벽 자동 헬스체크, 무결성 정제 및 스냅샷 백업)
   useEffect(() => {
@@ -318,26 +300,6 @@ export const App = () => {
       setExcelModalOpen(false);
     } catch (error) {
       console.error("Bulk upload error:", error);
-    }
-  };
-
-  // Delete Transaction
-  const handleDeleteTransaction = async (id) => {
-    try {
-      await deleteTransaction(id);
-      setTransactions((prev) => prev.filter((t) => t.id !== id));
-    } catch (error) {
-      console.error("Delete transaction error:", error);
-    }
-  };
-
-  // Clear All Transactions
-  const handleClearAllTransactions = async () => {
-    try {
-      await clearAllTransactions();
-      setTransactions([]);
-    } catch (error) {
-      console.error("Clear all error:", error);
     }
   };
 

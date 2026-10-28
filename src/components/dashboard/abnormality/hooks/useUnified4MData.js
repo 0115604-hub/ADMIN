@@ -845,9 +845,9 @@ export const useUnified4MData = (workLogs = []) => {
         if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
         return String(b.id || "").localeCompare(String(a.id || ""));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fourMRevision triggers recalculation when 4M records update
   }, [
     urgentIssues,
-    extrusionReports,
     workLogs,
     extrusionQualityAlerts,
     hanulQualityIssues,

@@ -63,8 +63,12 @@ export const AuthModal = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const todayDateStr = useMemo(() => getKSTDateString(), [currentTimeTick]);
+  const todayDateStr = useMemo(() => {
+    if (currentTimeTick < 0) return "";
+    return getKSTDateString();
+  }, [currentTimeTick]);
   const currentKstTimeStr = useMemo(() => {
+    if (currentTimeTick < 0) return "";
     const info = getKSTTimeInfo();
     return `${String(info.hour).padStart(2, "0")}:${String(info.minute).padStart(2, "0")}`;
   }, [currentTimeTick]);

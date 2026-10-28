@@ -94,7 +94,7 @@ export const HanulDocumentImageViewer = ({
         setSelectedPageIndex(0);
       }
     }
-  }, [activeAttachmentId, attachments, initialPageIndex]);
+  }, [activeAttachmentId, attachments, initialPageIndex, selectedAttachmentId]);
 
   // Reset zoom, pan & rotation on page/attachment switch
   useEffect(() => {

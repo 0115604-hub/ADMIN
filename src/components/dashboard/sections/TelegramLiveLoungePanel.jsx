@@ -430,12 +430,17 @@ export const TelegramLiveLoungePanel = ({ currentProfile }) => {
     }
   };
 
+  const pollTelegramUpdatesRef = useRef(pollTelegramUpdates);
+  useEffect(() => {
+    pollTelegramUpdatesRef.current = pollTelegramUpdates;
+  });
+
   useEffect(() => {
     const initTimer = setTimeout(() => {
-      pollTelegramUpdates(false);
+      pollTelegramUpdatesRef.current(false);
     }, 1200);
     const timer = setInterval(() => {
-      pollTelegramUpdates(false);
+      pollTelegramUpdatesRef.current(false);
     }, 8000);
     return () => {
       clearTimeout(initTimer);

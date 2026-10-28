@@ -123,7 +123,7 @@ export const useExtrusionWorkReportState = ({
   // Sync on modal open or initialData change
   useEffect(() => {
     if (isOpen) {
-      const targetWorker = initialData?.worker || formData?.worker || "공영국 대리";
+      const targetWorker = initialData?.worker || "공영국 대리";
       const targetDate = initialData?.date || todayStr;
       const alreadyDone = isEditing || isTpmAlreadyDone(targetDate, targetWorker, existingReports);
       setCurrentStep(alreadyDone ? "report" : "tpm");

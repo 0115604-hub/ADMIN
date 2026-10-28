@@ -103,6 +103,9 @@ export default function WorkReportNonconformanceLedgerPanel({
                 setLedgerState(nextState);
               }
             }
+          },
+          (err) => {
+            console.warn("WorkReportNonconformanceLedgerPanel ledger onSnapshot error:", err);
           }
         );
       } catch (e) {

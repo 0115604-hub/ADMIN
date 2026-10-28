@@ -213,7 +213,7 @@ export const InternalManagerDashboardView = ({
       }
       setLayoutVersionTick((v) => v + 1);
     }
-  }, [currentProfile?.id, currentProfile?.name, isTest]);
+  }, [currentProfile?.id, currentProfile?.name, isTest, currentProfile]);
 
   // ✏️ [실시간 인패널 직접 편집] 상태 (팝업창 없이 화면 패널 내에서 직접 제목·뱃지·KPI 편집)
   const [inlineEditingBlockKey, setInlineEditingBlockKey] = useState(null);
@@ -441,6 +441,7 @@ export const InternalManagerDashboardView = ({
   const activePanelKeys = useMemo(() => {
     if (isTest) return studioPanels;
     return getPanelsForUser(currentProfile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- layoutVersionTick triggers recalculation on layout save
   }, [isTest, studioPanels, currentProfile, layoutVersionTick]);
 
   // 🧩 개별 패널 블록 렌더러 (14대 표준 대시보드 블록)
