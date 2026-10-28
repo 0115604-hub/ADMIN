@@ -1957,10 +1957,12 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || "사원"}님, <br className="hidden sm:inline" />
-                    안전수칙과 4M 변동점 확인을 위해 PIN을 입력해 주세요.
+                    {isFieldWorker ? "안전수칙과 현장 품질공지 확인을 위해 PIN을 입력해 주세요." : "중대재해공유판, 관리자 일정 및 근태정보를 확인바랍니다."}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    인증 시 [중대재해공유판 + 4M 현황요약 + 품질·안전 공지] 확인 후 작업개시가 가능합니다.
+                    {isFieldWorker
+                      ? "인증 시 [중대재해공유판 + 현장 품질이슈 & 공지] 확인 후 작업개시가 가능합니다."
+                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 현황요약 + 근태정보]가 표시됩니다."}
                   </p>
                 </div>
 
@@ -2136,104 +2138,7 @@ export const WorkerPinModal = ({
                   {!isAdminUser && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
                       {/* =============================================================== */}
-                      {/* [패널 1] 📋 4M 현황요약 (이창엽 책임 4M 정식 관리대장 최신 5건 시간순) */}
-                      {/* =============================================================== */}
-                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5 flex-1 flex flex-col justify-between">
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between pb-1 shrink-0">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                                <Activity className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  📋 4M 현황요약
-                                </span>
-                                <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                  이창엽 책임 4M 정식 관리대장 (시간순 최신 5건)
-                                </span>
-                              </div>
-                            </div>
-
-                            <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700 shrink-0">
-                              {official4MLedgerTop5.length}건 등재
-                            </span>
-                          </div>
-
-                          {official4MLedgerTop5.length > 0 ? (
-                            <div className="space-y-1.5 max-h-48 sm:max-h-56 overflow-y-auto pr-0.5 custom-scrollbar">
-                              {official4MLedgerTop5.map((item) => {
-                                const isQuality = item.origin === "부적합경보" || item.origin === "품질경보" || item.fourM === "Method" || item.sourceType === "QUALITY_ALERT";
-                                return (
-                                  <div
-                                    key={item.id}
-                                    className={`p-2.5 rounded-xl bg-white dark:bg-slate-900 text-xs space-y-1 shadow-2xs border transition-all ${
-                                      isQuality
-                                        ? "border-rose-300 dark:border-rose-800/90 ring-1 ring-rose-300/40 dark:ring-rose-900/40 bg-rose-50/20"
-                                        : "border-indigo-100 dark:border-indigo-900/60"
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-1">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
-                                          isQuality
-                                            ? "bg-rose-600 text-white shadow-xs"
-                                            : item.origin === "설비수리" || item.fourM === "Machine"
-                                            ? "bg-indigo-600 text-white shadow-xs"
-                                            : item.origin === "비가동"
-                                            ? "bg-orange-600 text-white shadow-xs"
-                                            : item.origin === "TPM 이상신고"
-                                            ? "bg-amber-600 text-white shadow-xs"
-                                            : item.origin === "불량손실" || item.fourM === "Material"
-                                            ? "bg-rose-500 text-white shadow-xs"
-                                            : item.fourM === "Man"
-                                            ? "bg-purple-600 text-white shadow-xs"
-                                            : "bg-indigo-100 text-indigo-800 border border-indigo-300"
-                                        }`}>
-                                          {item.origin || item.fourM || "4M"}
-                                        </span>
-                                        <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
-                                          {item.company ? `${item.company} • ` : ""}{item.plant ? `${item.plant.replace("공장", "")} • ` : ""}{item.line}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-400 font-mono shrink-0">{item.date}</span>
-                                    </div>
-                                    <h6 className="font-black text-slate-900 dark:text-white text-xs leading-snug">{item.title}</h6>
-                                    {item.content && item.content !== item.title && (
-                                      <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed line-clamp-2">
-                                        {item.content}
-                                      </p>
-                                    )}
-                                    {item.actionResult ? (
-                                      <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                        ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
-                                      </div>
-                                    ) : (
-                                      isQuality && (
-                                        <div className="text-[10px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1 rounded-md border border-rose-200 dark:border-rose-800">
-                                          ↳ 🚨 <b>[조치대기]</b> 현장 조치 및 유효성 확인 대기중
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="py-4 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900">
-                              등록된 4M 정식대장 변동점이 없습니다.
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pt-2 border-t border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-                          <span>품질책임: 이창엽 책임</span>
-                          <span>시간순 최신 5건</span>
-                        </div>
-                      </div>
-
-                      {/* =============================================================== */}
-                      {/* [패널 2] 소속 관리자 품질이슈 또는 긴급공지 */}
+                      {/* [패널 1] 소속 관리자 품질이슈 또는 긴급공지 */}
                       {/* =============================================================== */}
                       <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5 flex-1 flex flex-col justify-between">
                         <div className="space-y-2.5">
@@ -2658,7 +2563,9 @@ export const WorkerPinModal = ({
                     <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                   </button>
                   <p className="text-center text-[11.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2 font-bold">
-                    중대재해 안전수칙과 4M 변동점을 모두 확인하였으며, 안전 작업을 시작합니다.
+                    {isFieldWorker
+                      ? "중대재해 안전수칙과 현장 품질공지를 모두 확인하였으며, 안전 작업을 시작합니다."
+                      : "중대재해 안전수칙과 4M 변동점을 모두 확인하였으며, 확인을 완료합니다."}
                   </p>
                 </div>
               </div>
