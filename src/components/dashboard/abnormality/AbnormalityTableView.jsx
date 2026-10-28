@@ -1,18 +1,22 @@
+import { useState, useMemo, useEffect } from "react";
 import {
   CheckCircle2,
   Calendar,
   Camera,
   Check,
   Plus,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 /**
  * AbnormalityTableView
- * High-density 1-line table view showing all columns with interactive 4M category select and registration toggles.
+ * High-density 1-line table view showing all columns with interactive 4M category select,
+ * registration toggles, and 8-item pagination per page.
  */
 export const AbnormalityTableView = ({
-  filteredRecords,
+  filteredRecords = [],
   onOpenDetailModal,
   onUpdateItemFourM,
   onToggleLedger,
@@ -20,6 +24,28 @@ export const AbnormalityTableView = ({
   internalMgmtMap,
   onPreviewImage
 }) => {
+  const PAGE_SIZE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // 레코드 개수나 필터가 변경되면 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredRecords.length]);
+
+  const totalPages = Math.max(1, Math.ceil((filteredRecords?.length || 0) / PAGE_SIZE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // 8개씩 페이지 슬라이스
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return (filteredRecords || []).slice(start, start + PAGE_SIZE);
+  }, [filteredRecords, currentPage]);
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
       <div className="overflow-x-auto">
@@ -49,9 +75,13 @@ export const AbnormalityTableView = ({
                 </td>
               </tr>
             ) : (
-              filteredRecords.map((item, idx) => {
-                const hasPhotos = (item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0);
-                const photoCount = (item.images?.length || 0) + (item.actionImages?.length || 0);
+              paginatedRecords.map((item, idx) => {
+                const globalIdx = (currentPage - 1) * PAGE_SIZE + idx + 1;
+                const hasPhotos =
+                  (item.images && item.images.length > 0) ||
+                  (item.actionImages && item.actionImages.length > 0);
+                const photoCount =
+                  (item.images?.length || 0) + (item.actionImages?.length || 0);
 
                 const badgeClass =
                   item.origin === "설비수리"
@@ -75,13 +105,16 @@ export const AbnormalityTableView = ({
                     className="hover:bg-indigo-50/60 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
                     title="클릭하여 상세 내용 및 조치 등록 팝업 열기"
                   >
-                    {/* 1. NO */}
+                    {/* 1. NO (전체 인덱스 반영) */}
                     <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-[10.5px] whitespace-nowrap">
-                      {idx + 1}
+                      {globalIdx}
                     </td>
 
                     {/* 2. 4M 분류 */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="py-2 px-1 text-center whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <select
                         value={item.fourM || "Method"}
                         onChange={(e) => onUpdateItemFourM(item, e.target.value)}
@@ -96,53 +129,76 @@ export const AbnormalityTableView = ({
                         }`}
                         title="4M 카테고리 수정 (클릭하여 Machine / Material / Man / Method 직접 변경)"
                       >
-                        <option value="Machine" className="bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-bold">⚙️ Machine (설비)</option>
-                        <option value="Material" className="bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 font-bold">🧱 Material (재료)</option>
-                        <option value="Man" className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-bold">👤 Man (인원)</option>
-                        <option value="Method" className="bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 font-bold">📐 Method (공법)</option>
+                        <option
+                          value="Machine"
+                          className="bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-bold"
+                        >
+                          ⚙️ Machine (설비)
+                        </option>
+                        <option
+                          value="Material"
+                          className="bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 font-bold"
+                        >
+                          🧱 Material (재료)
+                        </option>
+                        <option
+                          value="Man"
+                          className="bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 font-bold"
+                        >
+                          👤 Man (작업자)
+                        </option>
+                        <option
+                          value="Method"
+                          className="bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 font-bold"
+                        >
+                          📐 Method (방법)
+                        </option>
                       </select>
                     </td>
 
-                    {/* 3. 출처 구분 */}
+                    {/* 3. 출처 */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${badgeClass}`}>
                         {item.origin}
                       </span>
                     </td>
 
                     {/* 4. 등록일자 */}
-                    <td className="py-2.5 px-2 text-center font-mono text-slate-700 dark:text-slate-300 font-bold text-[10.5px] whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>{item.date}</span>
+                    <td className="py-2.5 px-2 text-center font-mono text-slate-500 whitespace-nowrap text-[11px]">
+                      <div className="font-bold text-slate-700 dark:text-slate-300">
+                        {item.date || "-"}
                       </div>
-                      {item.time ? <div className="text-[9.5px] text-slate-400 font-normal">{item.time}</div> : null}
+                      {item.time && (
+                        <div className="text-[10px] text-slate-400">{item.time}</div>
+                      )}
                     </td>
 
                     {/* 5. 공장 */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded border font-black text-[10.5px] ${
-                        isHallim
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700"
-                      }`}>
-                        {isHallim ? "한림" : "삼랑진"}
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          isHallim
+                            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                            : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                        }`}
+                      >
+                        {item.plant ? item.plant.replace("공장", "") : "-"}
                       </span>
                     </td>
 
                     {/* 6. 변동점내용 */}
-                    <td className="py-2.5 px-3 min-w-[320px] w-full">
-                      <div className="font-black text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
+                    <td className="py-2.5 px-3">
+                      <div className="font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {item.title}
                       </div>
                       {item.content && item.content.trim() !== item.title.trim() && (
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line break-words leading-relaxed font-normal">
+                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
                           {item.content}
                         </div>
                       )}
-                      {item.actionResult && item.actionResult.trim() && (
-                        <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                          <span>↳ 🟢 <b>[조치결과]</b> {item.actionResult}</span>
+                      {item.actionResult && (
+                        <div className="text-[10.5px] text-emerald-600 dark:text-emerald-400 line-clamp-1 mt-0.5 font-bold">
+                          ↳ 조치: {item.actionResult}
                         </div>
                       )}
                     </td>
@@ -154,66 +210,68 @@ export const AbnormalityTableView = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const firstImg = item.images?.[0] || item.actionImages?.[0];
-                            const src = typeof firstImg === "object" ? firstImg.dataUrl || firstImg.url : firstImg;
-                            if (src) onPreviewImage(src);
+                            const img =
+                              item.actionImages?.[0] || item.images?.[0];
+                            if (img && onPreviewImage) onPreviewImage(img);
                           }}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10.5px] font-bold hover:scale-105 cursor-pointer shadow-2xs"
-                          title="사진 미리보기"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
+                          title="클릭하여 원본 사진 미리보기"
                         >
-                          <Camera className="w-3 h-3 text-amber-600" />
-                          <span>{photoCount}장</span>
+                          <Camera className="w-3 h-3" />
+                          <span>{photoCount}</span>
                         </button>
                       ) : (
-                        <span className="text-slate-300 dark:text-slate-700 text-xs font-mono">-</span>
+                        <span className="text-[10px] text-slate-300 dark:text-slate-600">
+                          -
+                        </span>
                       )}
                     </td>
 
                     {/* 8. 진행상태 */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                        className={`px-2 py-0.5 rounded text-[10.5px] font-bold inline-flex items-center gap-0.5 ${
                           item.isResolved
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse"
+                            ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
+                            : "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300"
                         }`}
                       >
-                        {item.isResolved ? "조치완료" : "진행중"}
+                        {item.isResolved ? "완료" : "미조치"}
                       </span>
                     </td>
 
                     {/* 9. 유효성검증 */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          item.isResolved
-                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
-                        }`}
-                        title={item.validation}
-                      >
-                        <span className="flex items-center justify-center gap-1">
-                          <CheckCircle2 className={`w-3 h-3 ${item.isResolved ? "text-blue-500" : "text-slate-400"}`} />
-                          <span className="truncate max-w-[95px]">{item.validation || "초·중·종물 검증"}</span>
+                      {item.isEffectVerified || item.effectivenessVerified ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>검증완료</span>
                         </span>
-                      </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 text-[10px] font-bold">
+                          확인대기
+                        </span>
+                      )}
                     </td>
 
                     {/* 10. 등록구분 */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <div className="inline-flex items-center gap-1">
+                    <td
+                      className="py-2.5 px-2 text-center whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-center gap-1">
                         {/* 변동점등록 뱃지 */}
                         {item.isRegisteredInLedger ? (
                           <button
                             type="button"
                             onClick={() => onToggleLedger(item)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-rose-600 text-white text-[10px] font-black transition-all shadow-2xs group/btn cursor-pointer"
-                            title="변동점관리대장 등록됨 (클릭 시 해제)"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-rose-600 text-[10px] font-black transition-all cursor-pointer shadow-xs group/btn"
+                            title="변동점관리대장에 등록됨 (클릭 시 등록 해제)"
                           >
                             <Check className="w-2.5 h-2.5 group-hover/btn:hidden" />
                             <X className="w-2.5 h-2.5 hidden group-hover/btn:inline" />
-                            <span className="group-hover/btn:hidden">🔄 변동점등록됨</span>
-                            <span className="hidden group-hover/btn:inline">해제</span>
+                            <span className="group-hover/btn:hidden">⭐ 대장등록됨</span>
+                            <span className="hidden group-hover/btn:inline">등록 해제</span>
                           </button>
                         ) : (
                           <button
@@ -256,6 +314,58 @@ export const AbnormalityTableView = ({
           </tbody>
         </table>
       </div>
+
+      {/* 🌟 8개씩 페이지네이션 컨트롤 바 */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 text-xs">
+          <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
+            <span>전체 취합대장 총 {filteredRecords.length}건 중 </span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-black">
+              {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredRecords.length)}건
+            </span>
+            <span> 노출 (페이지 {currentPage} / {totalPages})</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              title="이전 페이지"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => setCurrentPage(num)}
+                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-black transition cursor-pointer ${
+                  currentPage === num
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              title="다음 페이지"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+export default AbnormalityTableView;

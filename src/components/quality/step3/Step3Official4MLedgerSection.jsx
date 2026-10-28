@@ -1,5 +1,5 @@
-import React from "react";
-import { Search, Edit3 } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Edit3, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFourMBadgeColor, getFourMRecordCompany } from "../../../services/fourMChangePointService";
 
 export const Step3Official4MLedgerSection = ({
@@ -13,17 +13,65 @@ export const Step3Official4MLedgerSection = ({
   checkIsCeoApproved,
   handleOpenCapaModal
 }) => {
+  const PAGE_SIZE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // 1. 4M 구분 및 검색어 필터링
+  const filteredItems = useMemo(() => {
+    return (official4MItems || []).filter((rec) => {
+      if (selectedFourMFilter !== "ALL" && rec.fourM !== selectedFourMFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const comp = getFourMRecordCompany(rec).toLowerCase();
+        const line = String(rec.line || "").toLowerCase();
+        const plant = String(rec.plant || "").toLowerCase();
+        const title = String(rec.title || "").toLowerCase();
+        const content = String(rec.content || "").toLowerCase();
+        const action = String(rec.actionResult || "").toLowerCase();
+        return (
+          comp.includes(q) ||
+          line.includes(q) ||
+          plant.includes(q) ||
+          title.includes(q) ||
+          content.includes(q) ||
+          action.includes(q)
+        );
+      }
+      return true;
+    });
+  }, [official4MItems, selectedFourMFilter, searchQuery]);
+
+  // 필터나 검색어가 바뀌면 페이지를 1페이지로 자동 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFourMFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+
+  // 현재 페이지가 전체 페이지 수를 초과하지 않도록 보정
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // 2. 8개씩 페이지네이션 슬라이스
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, currentPage]);
+
   return (
     <div className="space-y-3 pt-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs">
-            4M 대장
+            4M 정식대장
           </span>
           <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
             <span>📋 2. 공식 4M 변동점 관리대장 & 시정/예방조치(CAPA) 실행</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-              {official4MItems.length}건
+              총 {filteredItems.length}건
             </span>
           </h4>
         </div>
@@ -71,22 +119,14 @@ export const Step3Official4MLedgerSection = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
-            {official4MItems
-              .filter((rec) => {
-                if (selectedFourMFilter !== "ALL" && rec.fourM !== selectedFourMFilter) return false;
-                if (searchQuery.trim()) {
-                  const q = searchQuery.toLowerCase();
-                  const comp = getFourMRecordCompany(rec).toLowerCase();
-                  const line = String(rec.line || "").toLowerCase();
-                  const plant = String(rec.plant || "").toLowerCase();
-                  const title = String(rec.title || "").toLowerCase();
-                  const content = String(rec.content || "").toLowerCase();
-                  const action = String(rec.actionResult || "").toLowerCase();
-                  return comp.includes(q) || line.includes(q) || plant.includes(q) || title.includes(q) || content.includes(q) || action.includes(q);
-                }
-                return true;
-              })
-              .map((rec) => {
+            {paginatedItems.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-slate-400 font-bold text-xs">
+                  등록된 4M 정식대장 항목이 없습니다.
+                </td>
+              </tr>
+            ) : (
+              paginatedItems.map((rec) => {
                 const badgeColor = getFourMBadgeColor(rec.fourM);
                 const isCeoApproved = checkIsCeoApproved(rec);
                 const isApproved = isCeoApproved || rec.approvalStatus === "APPROVED";
@@ -237,10 +277,61 @@ export const Step3Official4MLedgerSection = ({
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* 🌟 8개씩 페이지네이션 컨트롤 바 */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
+            <span>총 {filteredItems.length}건 중 </span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-black">
+              {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredItems.length)}건
+            </span>
+            <span> 노출 (페이지 {currentPage} / {totalPages})</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              title="이전 페이지"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => setCurrentPage(num)}
+                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-black transition cursor-pointer ${
+                  currentPage === num
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition cursor-pointer"
+              title="다음 페이지"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

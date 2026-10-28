@@ -27,7 +27,9 @@ import {
   RotateCcw,
   Stamp,
   AlertTriangle,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   subscribeFourMChangePoints,
@@ -82,6 +84,7 @@ export default function Step4ExecutiveApprovalPanel({
   const [activeTab, setActiveTab] = useState("PENDING"); // PENDING | APPROVED | ALL_LEDGER | PIPELINE
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFourMFilter, setSelectedFourMFilter] = useState("ALL");
+  const [officialLedgerPage, setOfficialLedgerPage] = useState(1);
   const [previewImage, setPreviewImage] = useState(null);
 
   // Reject / Revision Request Modal state
@@ -184,6 +187,25 @@ export default function Step4ExecutiveApprovalPanel({
       return rec.isOfficialLedger || String(rec.id || "").startsWith("ledger_") || rec.sourceType === "WORK_REPORT_NC" || rec.origin === "변동점";
     });
   }, [fourMRecords]);
+
+  // 4M 대장 8개씩 페이지네이션
+  const PAGE_SIZE_OFFICIAL = 8;
+  const filteredAllOfficialItems = useMemo(() => {
+    return allOfficialItems.filter(
+      (rec) => selectedFourMFilter === "ALL" || rec.fourM === selectedFourMFilter
+    );
+  }, [allOfficialItems, selectedFourMFilter]);
+
+  useEffect(() => {
+    setOfficialLedgerPage(1);
+  }, [selectedFourMFilter]);
+
+  const officialTotalPages = Math.max(1, Math.ceil(filteredAllOfficialItems.length / PAGE_SIZE_OFFICIAL));
+
+  const paginatedAllOfficialItems = useMemo(() => {
+    const start = (officialLedgerPage - 1) * PAGE_SIZE_OFFICIAL;
+    return filteredAllOfficialItems.slice(start, start + PAGE_SIZE_OFFICIAL);
+  }, [filteredAllOfficialItems, officialLedgerPage]);
 
   // Executive Approval Action (최종 승인 및 전자날인)
   const handleApproveItem = async (item) => {
@@ -734,9 +756,14 @@ export default function Step4ExecutiveApprovalPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
-                {allOfficialItems
-                  .filter((rec) => selectedFourMFilter === "ALL" || rec.fourM === selectedFourMFilter)
-                  .map((rec) => {
+                {paginatedAllOfficialItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400 font-bold text-xs">
+                      등록된 공식 4M 변동점 대장 항목이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedAllOfficialItems.map((rec) => {
                     const badgeColor = getFourMBadgeColor(rec.fourM);
                     const isApproved = rec.approvalStatus === "APPROVED" || Boolean(rec.approvedBy);
                     const isPending = rec.approvalStatus === "PENDING_APPROVAL";
@@ -802,10 +829,61 @@ export default function Step4ExecutiveApprovalPanel({
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* 🌟 전사 공식 4M 변동점 관리대장 8개씩 페이지네이션 */}
+          {officialTotalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+              <div className="text-slate-500 dark:text-slate-400 font-bold text-[11.5px]">
+                <span>총 {filteredAllOfficialItems.length}건 중 </span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                  {(officialLedgerPage - 1) * PAGE_SIZE_OFFICIAL + 1} - {Math.min(officialLedgerPage * PAGE_SIZE_OFFICIAL, filteredAllOfficialItems.length)}건
+                </span>
+                <span> 노출 (페이지 {officialLedgerPage} / {officialTotalPages})</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOfficialLedgerPage((p) => Math.max(1, p - 1))}
+                  disabled={officialLedgerPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 font-bold transition cursor-pointer"
+                  title="이전 페이지"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                {Array.from({ length: officialTotalPages }, (_, i) => i + 1).map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setOfficialLedgerPage(num)}
+                    className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-black transition cursor-pointer ${
+                      officialLedgerPage === num
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setOfficialLedgerPage((p) => Math.min(officialTotalPages, p + 1))}
+                  disabled={officialLedgerPage === officialTotalPages}
+                  className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 font-bold transition cursor-pointer"
+                  title="다음 페이지"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
