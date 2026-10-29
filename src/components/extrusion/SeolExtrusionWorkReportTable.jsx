@@ -120,11 +120,23 @@ export const SeolExtrusionWorkReportTable = ({
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
       if (!r) return false;
-      if (lineFilter !== "all" && r.line !== lineFilter && r.extrusionLine !== lineFilter) return false;
+      if (lineFilter !== "all") {
+        const reportLine = (r.lineId || r.line || r.extrusionLine || r.lineName || "").toLowerCase();
+        const target = lineFilter.toLowerCase();
+        const matches =
+          reportLine === target ||
+          reportLine.includes(target) ||
+          (target === "pcm1" && (reportLine.includes("pcm #1") || reportLine.includes("pcm 1") || reportLine.includes("1호"))) ||
+          (target === "pcm3" && (reportLine.includes("pcm #3") || reportLine.includes("pcm 3") || reportLine.includes("3호"))) ||
+          (target === "pvc" && reportLine.includes("pvc")) ||
+          (target === "tpe" && reportLine.includes("tpe"));
+        if (!matches) return false;
+      }
       if (searchWorker.trim()) {
         const query = searchWorker.trim().toLowerCase();
         const w = String(r.worker || r.author || r.leader || "").toLowerCase();
-        if (!w.includes(query)) return false;
+        const sub = String(r.subWorkers || "").toLowerCase();
+        if (!w.includes(query) && !sub.includes(query)) return false;
       }
       if (searchDate) {
         const d = r.date || r.workDate || "";
@@ -171,7 +183,7 @@ export const SeolExtrusionWorkReportTable = ({
       const rId = String(r.id || "");
       const date = String(r.date || r.workDate || "").trim();
       const worker = String(r.worker || r.author || r.leader || "설유철").trim();
-      const line = String(r.line || r.extrusionLine || "압출라인").trim();
+      const line = String(r.lineName || r.lineId || r.line || r.extrusionLine || "압출라인").trim();
       const dtEvents = Array.isArray(r.downtimeEvents) ? r.downtimeEvents : [];
 
       dtEvents.forEach((ev, idx) => {

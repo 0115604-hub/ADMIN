@@ -3,9 +3,12 @@ import {
   TPM_CHECK_ITEMS,
   EXTRUSION_STANDARD_SPECS,
   DOWNTIME_CATEGORIES,
+  WORKER_PRESETS,
   exportExtrusionCheckSheetExcel,
   sanitizeExtrusionReport
 } from "../../../services/extrusionProductionService";
+import { useAuth } from "../../../context/AuthContext";
+import { getKSTDateString } from "../../../utils/dateUtils";
 import { getItemsByLine } from "../../../data/extrusionItemsData";
 import { getMaterialBOMForItem } from "../../../data/extrusionRawMaterialsData";
 import { useModalHistory } from "../../../utils/modalHistory";
@@ -27,7 +30,18 @@ export const useExtrusionWorkReportState = ({
   existingReports = []
 }) => {
   useModalHistory(isOpen, onClose, "extrusionWorkReportModal");
-  const todayStr = new Date().toISOString().split("T")[0];
+  const { currentProfile } = useAuth();
+  const todayStr = useMemo(() => getKSTDateString(), []);
+
+  // Compute defaultWorker dynamically from logged-in operator/profile
+  const defaultWorker = useMemo(() => {
+    if (!currentProfile?.name) return "공영국 대리";
+    const matched = WORKER_PRESETS.find((w) => w.name === currentProfile.name);
+    if (matched) {
+      return matched.title ? `${matched.name} ${matched.title}` : matched.name;
+    }
+    return currentProfile.title ? `${currentProfile.name} ${currentProfile.title}` : currentProfile.name;
+  }, [currentProfile]);
 
   // Step state: 'tpm' (1단계: TPM 점검) or 'report' (2단계: 작업일보 작성)
   const [currentStep, setCurrentStep] = useState(isEditing ? "report" : "tpm");
@@ -58,7 +72,7 @@ export const useExtrusionWorkReportState = ({
   });
 
   const [formData, setFormData] = useState(() => {
-    return mapInitialFormData(initialData, todayStr);
+    return mapInitialFormData(initialData, todayStr, defaultWorker);
   });
 
   const [errors, setErrors] = useState({});
@@ -123,7 +137,7 @@ export const useExtrusionWorkReportState = ({
   // Sync on modal open or initialData change
   useEffect(() => {
     if (isOpen) {
-      const targetWorker = initialData?.worker || "공영국 대리";
+      const targetWorker = initialData?.worker || defaultWorker;
       const targetDate = initialData?.date || todayStr;
       const alreadyDone = isEditing || isTpmAlreadyDone(targetDate, targetWorker, existingReports);
       setCurrentStep(alreadyDone ? "report" : "tpm");
@@ -134,14 +148,14 @@ export const useExtrusionWorkReportState = ({
         } else {
           setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
         }
-        setFormData(mapInitialFormData(initialData, todayStr));
+        setFormData(mapInitialFormData(initialData, targetDate, defaultWorker));
       } else {
         setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
-        setFormData(createDefaultFormData(todayStr));
+        setFormData(createDefaultFormData(targetDate, defaultWorker));
       }
       setErrors({});
     }
-  }, [isOpen, initialData, isEditing, existingReports, todayStr]);
+  }, [isOpen, initialData, isEditing, existingReports, todayStr, defaultWorker]);
 
   // Multi-item shift-level aggregated totals
   const itemsList = Array.isArray(formData?.items) ? formData.items : [];
@@ -540,6 +554,8 @@ export const useExtrusionWorkReportState = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      const firstErrMsg = Object.values(newErrors)[0];
+      if (firstErrMsg) alert(firstErrMsg);
       return;
     }
 

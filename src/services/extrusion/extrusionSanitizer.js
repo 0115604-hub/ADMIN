@@ -1,4 +1,5 @@
 import { EXTRUSION_STANDARD_SPECS, TPM_CHECK_ITEMS } from "./extrusionProductionConstants";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 /**
  * Clean & Format raw materials data object
@@ -114,7 +115,7 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
   const vehicle = items.length > 0 ? items.map((it) => it.vehicle).filter(Boolean).join(", ") : String(raw.vehicle || "NX4");
   const itemName = items.length > 0 ? items.map((it) => it.itemName).filter(Boolean).join(", ") : String(raw.itemName || "WEATHER STRIP");
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getKSTDateString();
   const topRawMaterials = sanitizeRawMaterials(raw.rawMaterials || items[0]?.rawMaterials || {});
 
   return {

@@ -106,6 +106,9 @@ export const Header = ({
               <button
                 type="button"
                 onClick={() => {
+                  try {
+                    sessionStorage.setItem("auto_open_extrusion_report", "true");
+                  } catch (e) {}
                   if (activeTab !== "extrusion_downtime" && setActiveTab) {
                     try {
                       localStorage.setItem("factory_extrusion_active_subtab", "production");

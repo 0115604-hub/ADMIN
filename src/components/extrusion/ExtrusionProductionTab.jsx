@@ -20,6 +20,7 @@ import {
   exportExtrusionCheckSheetExcel
 } from "../../services/extrusionProductionService";
 import { useAuth } from "../../context/AuthContext";
+import { getKSTDateString } from "../../utils/dateUtils";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
@@ -75,7 +76,7 @@ export const ExtrusionProductionTab = () => {
 
   // Filtered and Sorted reports (최근순 정렬: 최신 일자/등록순)
   const filteredReports = useMemo(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getKSTDateString();
 
     const list = reports.filter((r) => {
       // 1. Date Filter
@@ -90,8 +91,17 @@ export const ExtrusionProductionTab = () => {
       }
 
       // 2. Line Filter
-      if (selectedLineFilter !== "all" && r.lineId !== selectedLineFilter) {
-        return false;
+      if (selectedLineFilter !== "all") {
+        const line = (r.lineId || r.line || r.extrusionLine || r.lineName || "").toLowerCase();
+        const sel = selectedLineFilter.toLowerCase();
+        const lineMatch =
+          line === sel ||
+          line.includes(sel) ||
+          (sel === "pcm1" && (line.includes("1호") || line.includes("pcm #1") || line.includes("pcm 1"))) ||
+          (sel === "pcm3" && (line.includes("3호") || line.includes("pcm #3") || line.includes("pcm 3"))) ||
+          (sel === "pvc" && line.includes("pvc")) ||
+          (sel === "tpe" && line.includes("tpe"));
+        if (!lineMatch) return false;
       }
 
       // 3. Shift Filter

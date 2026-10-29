@@ -4,6 +4,7 @@ import {
 } from "../../../services/extrusionProductionService";
 import { getItemsByLine } from "../../../data/extrusionItemsData";
 import { getMaterialBOMForItem } from "../../../data/extrusionRawMaterialsData";
+import { getKSTDateString } from "../../../utils/dateUtils";
 
 // Client-side image compression for fast sync & light Firestore storage
 export const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -241,8 +242,8 @@ export const isTpmAlreadyDone = (targetDate, targetWorker, existingReports = [])
   return false;
 };
 
-export const mapInitialFormData = (initialData, todayStr) => {
-  if (!initialData) return createDefaultFormData(todayStr);
+export const mapInitialFormData = (initialData, todayStr, defaultWorker = "공영국 대리") => {
+  if (!initialData) return createDefaultFormData(todayStr, defaultWorker);
 
   const items = mapInitialItems(initialData, initialData?.lineId || "pcm1");
   const primaryRaw = items[0]?.rawMaterials || {};
@@ -404,15 +405,15 @@ export const mapInitialFormData = (initialData, todayStr) => {
   };
 };
 
-export const createDefaultFormData = (todayStr) => {
+export const createDefaultFormData = (todayStr, defaultWorker = "공영국 대리") => {
   const defaultItem = createDefaultItem("pcm1");
   return {
-    date: todayStr,
+    date: todayStr || getKSTDateString(),
     shift: "주간",
     plant: "삼랑진공장",
     lineId: "pcm1",
     lineName: "PCM #1 LINE",
-    worker: "공영국 대리",
+    worker: defaultWorker,
     subWorkers: "",
     items: [defaultItem],
     tpmIssueText: "",

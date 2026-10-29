@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   Factory,
   ShieldAlert,
@@ -45,6 +45,7 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import { getKSTDateString } from "../../utils/dateUtils";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 const ExtrusionWorkReportModal = lazy(() =>
@@ -73,7 +74,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
     (isManager ? "반장" : "사원")
   );
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getKSTDateString(), []);
 
   // Subscribe to Extrusion Quality Issues
   useEffect(() => {
