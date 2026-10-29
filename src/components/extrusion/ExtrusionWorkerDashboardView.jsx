@@ -48,6 +48,7 @@ import {
 import { getKSTDateString } from "../../utils/dateUtils";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 import { WorkerPersonalExtrusionReportList } from "./WorkerPersonalExtrusionReportList";
+import { ExtrusionWorkerDowntimeSummaryBar } from "./ExtrusionWorkerDowntimeSummaryBar";
 
 const ExtrusionWorkReportModal = lazy(() =>
   import("./ExtrusionWorkReportModal").then((m) => ({
@@ -259,6 +260,11 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
           </span>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 📊 1. 라인별 비가동 실시간 요약 (작업일보 건수 제외, 비가동 시간만 강조)   */}
+      {/* ========================================================================= */}
+      <ExtrusionWorkerDowntimeSummaryBar reports={extrusionReports} />
 
       {/* Save Success Toast */}
       {saveToastMessage && (
