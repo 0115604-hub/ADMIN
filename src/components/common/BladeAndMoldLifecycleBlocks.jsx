@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Scissors, Wrench, RotateCcw, CheckCircle2, AlertTriangle, History } from "lucide-react";
 import { translateTerm } from "../../services/workLogI18nService";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 /**
  * 🔪 [블록 19] 칼날교체주기 관리 블록 (Blade Replacement Cycle Block)
@@ -54,7 +55,7 @@ export const BladeReplacementCycleBlock = ({
   };
 
   const handleResetBlade = () => {
-    const nowDate = new Date().toISOString().slice(0, 10);
+    const nowDate = getKSTDateString();
     const newLog = {
       id: `bh_${Date.now()}`,
       date: nowDate,
@@ -315,7 +316,7 @@ export const MoldShotCountManageBlock = ({
   };
 
   const handleResetMoldShot = () => {
-    const nowDate = new Date().toISOString().slice(0, 10);
+    const nowDate = getKSTDateString();
     const newLog = {
       id: `mh_${Date.now()}`,
       date: nowDate,

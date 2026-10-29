@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { getKSTDateString } from "../../utils/dateUtils";
 import { saveMachiningWorkReport } from "../../services/machiningWorkReportService";
 import {
   translateTerm,
@@ -470,7 +471,7 @@ export const useLegoWorkReportBuilderState = ({
   const handleAddCuttingSpecRow = () => {
     const count = currentReport.specsCutting?.length || 0;
     const nextChar = String.fromCharCode(65 + count);
-    const datePrefix = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+    const datePrefix = getKSTDateString().slice(2).replace(/-/g, "");
     const newRow = {
       id: `c_${Date.now()}`,
       section: nextChar,
@@ -648,8 +649,8 @@ export const useLegoWorkReportBuilderState = ({
         workerName: fullLegoConfig.workerName || "작업자",
         worker: fullLegoConfig.workerName || "작업자",
         writer: fullLegoConfig.workerName || "작업자",
-        workDate: fullLegoConfig.workDate || new Date().toISOString().slice(0, 10),
-        date: fullLegoConfig.workDate || new Date().toISOString().slice(0, 10),
+        workDate: fullLegoConfig.workDate || getKSTDateString(),
+        date: fullLegoConfig.workDate || getKSTDateString(),
         shift: fullLegoConfig.shift || "주간",
         startTime: fullLegoConfig.startTime || "08:00",
         finishTime: fullLegoConfig.finishTime || "17:00",

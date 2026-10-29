@@ -42,6 +42,7 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import { getKSTDateString } from "../../utils/dateUtils";
 import {
   getWorkLogText,
   getCurrentWorkLogLanguage,
@@ -105,7 +106,7 @@ export const HanulWorkerDashboardView = () => {
     currentProfile?.name === "박종미" ? "반장" : (isManager ? "반장" : "사원")
   );
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getKSTDateString(), []);
 
   // 1. Subscribe to Hanul Quality Issues
   useEffect(() => {

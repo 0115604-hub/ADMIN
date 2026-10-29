@@ -1,6 +1,7 @@
 // =============================================================================
 // 🧱 Lego Work Report Builder - Preset Templates & Master Image References
 // =============================================================================
+import { getKSTDateString } from "../../utils/dateUtils";
 
 export const LEGO_IMAGE_REFERENCES = [
   {
@@ -165,7 +166,7 @@ export const PRESET_REPORTS = [
     targetQty: 350,
     orderQty: 350,
     workerName: "김작업",
-    workDate: new Date().toISOString().slice(0, 10),
+    workDate: getKSTDateString(),
     shift: "주간",
     startTime: "08:00",
     finishTime: "17:00",
@@ -280,7 +281,7 @@ export const PRESET_REPORTS = [
     targetQty: 350,
     orderQty: 350,
     workerName: "박조인트",
-    workDate: new Date().toISOString().slice(0, 10),
+    workDate: getKSTDateString(),
     shift: "주간",
     startTime: "08:00",
     finishTime: "17:00",
@@ -352,7 +353,7 @@ export const PRESET_REPORTS = [
     targetQty: 350,
     orderQty: 350,
     workerName: "이검사",
-    workDate: new Date().toISOString().slice(0, 10),
+    workDate: getKSTDateString(),
     shift: "주간",
     startTime: "08:00",
     finishTime: "17:00",
@@ -442,7 +443,7 @@ export const PRESET_REPORTS = [
     targetQty: 350,
     orderQty: 350,
     workerName: "정품질",
-    workDate: new Date().toISOString().slice(0, 10),
+    workDate: getKSTDateString(),
     shift: "주간",
     startTime: "08:00",
     finishTime: "17:00",

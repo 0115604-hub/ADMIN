@@ -13,6 +13,7 @@ import {
 } from "../../services/workReportTemplateService";
 import Step3CapaActionModal from "../quality/step3/Step3CapaActionModal";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import { getKSTDateString } from "../../utils/dateUtils";
 import { useYuseongIncidents } from "./table/useYuseongIncidents";
 import YuseongTemplateAssignmentModal from "./table/YuseongTemplateAssignmentModal";
 import YuseongReportListView from "./table/YuseongReportListView";
@@ -145,7 +146,7 @@ export const YuseongWorkReportTable = ({ onOpenReportModal, currentWorkerName = 
       alert("다운로드할 유성 작업일보 데이터가 없습니다.");
       return;
     }
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getKSTDateString();
     exportYuseongReportToExcel(filteredReports, `유성_가공협력업체_작업일보_${today}.xlsx`);
   };
 

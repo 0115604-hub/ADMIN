@@ -2,6 +2,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { sanitizeForFirestore } from "../../../utils/firestoreUtils";
 import { determineFourMCategory } from "../../../services/fourMChangePointService";
+import { getKSTDateString } from "../../../utils/dateUtils";
 
 export const WORK_REPORT_NC_STORAGE_KEY = "work_report_nonconformance_ledger_v1";
 
@@ -89,7 +90,7 @@ export const extractWorkReportNonconformances = ({
   const processReportEvents = (report, defaultCompany, defaultPlant, defaultLine) => {
     if (!report) return;
     const rId = String(report.id || "");
-    const date = String(report.date || (report.createdAt ? String(report.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)));
+    const date = String(report.date || (report.createdAt ? String(report.createdAt).slice(0, 10) : getKSTDateString()));
     const company = String(report.company || defaultCompany || "사내").trim();
     const plant = String(report.plant || defaultPlant || "삼랑진공장").trim();
     const line = String(

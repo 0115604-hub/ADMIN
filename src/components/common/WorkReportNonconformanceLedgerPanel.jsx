@@ -10,6 +10,7 @@ import {
   unregisterFromFourMLedger,
   determineFourMCategory
 } from "../../services/fourMChangePointService";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 // Re-export core services for 100% backward compatibility
 export {
@@ -274,7 +275,7 @@ export default function WorkReportNonconformanceLedgerPanel({
 
   const handleSaveForm = async () => {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = getKSTDateString();
     const nowStr = now.toLocaleString("ko-KR", {
       year: "numeric",
       month: "2-digit",

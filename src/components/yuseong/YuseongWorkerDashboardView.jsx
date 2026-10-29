@@ -42,6 +42,7 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 const YuseongWorkReportModal = lazy(() =>
   import("./YuseongWorkReportModal").then((m) => ({
@@ -70,7 +71,7 @@ export const YuseongWorkerDashboardView = () => {
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || currentProfile?.position || (isManager ? "반장" : "사원");
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getKSTDateString(), []);
 
   // 1. Subscribe to Yuseong Quality Issues
   useEffect(() => {

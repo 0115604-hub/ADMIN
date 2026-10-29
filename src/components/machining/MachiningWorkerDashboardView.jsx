@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   Factory,
   ShieldAlert,
@@ -43,6 +43,7 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 const MachiningWorkReportModal = lazy(() =>
   import("./MachiningWorkReportModal").then((m) => ({
@@ -71,7 +72,7 @@ export const MachiningWorkerDashboardView = () => {
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
   const displayTitle = currentProfile?.title || currentProfile?.position || (isManager ? "반장" : "사원");
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getKSTDateString(), []);
 
   // 1. Subscribe to Machining Quality Issues
   useEffect(() => {

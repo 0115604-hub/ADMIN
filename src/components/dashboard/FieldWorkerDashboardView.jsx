@@ -21,6 +21,7 @@ import {
   getOverallDaySampleStatus,
   getSampleInspectionStatus
 } from "../../utils/sampleInspectionUtils";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 export default function FieldWorkerDashboardView({
   workerPlant = "",
@@ -98,7 +99,7 @@ export default function FieldWorkerDashboardView({
 
   const workerBadgeText = `[작업자] ${workerFullName || currentProfile?.name || (isBurimtech ? "부림텍" : "")} ${displayTitle}`;
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getKSTDateString(), []);
 
   const sampleStatus = useMemo(() => {
     return getOverallDaySampleStatus(workerLogsList, todayStr);
