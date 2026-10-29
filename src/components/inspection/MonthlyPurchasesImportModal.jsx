@@ -66,7 +66,7 @@ export const MonthlyPurchasesImportModal = ({
   // 로컬 스토리지 키: 등록된 검사대상 업체 목록 영구 보존
   const storageKey = `INJOO_REGISTERED_SUPPLIERS_${activeTab}`;
 
-  // 등록된 업체 목록 상태 (재수정 전까지 등록된 업체만 내용 표시)
+  // 등록된 업체 목록 상태 (재수정/재등록 시까지 이 분류/등록 상태를 영구 유지)
   const [registeredSuppliers, setRegisteredSuppliers] = useState(() => {
     try {
       const saved = localStorage.getItem(`INJOO_REGISTERED_SUPPLIERS_${initialTab}`);
@@ -77,7 +77,6 @@ export const MonthlyPurchasesImportModal = ({
     } catch (e) {
       console.warn("Failed to load registered suppliers from storage:", e);
     }
-    // 기본값: 초기에는 전체 15개사 등을 등록 상태로 시작
     return initialTab === "RAW_MATERIAL"
       ? PURCHASES_RAW_SUPPLIERS
       : initialTab === "SUB_MATERIAL"
@@ -102,59 +101,51 @@ export const MonthlyPurchasesImportModal = ({
     setRegisteredSuppliers(fullSuppliersPool);
   }, [activeTab, storageKey, fullSuppliersPool]);
 
-  // 업체 관리(추가/삭제 편집) 모드 토글
-  const [isManagingSuppliers, setIsManagingSuppliers] = useState(false);
-  // 편집 중인 임시 등록 업체 목록
-  const [editRegisteredSuppliers, setEditRegisteredSuppliers] = useState(registeredSuppliers);
-
-  // 관리 모드 열 때 현재 등록 목록으로 동기화
-  const handleOpenManager = () => {
-    setEditRegisteredSuppliers([...registeredSuppliers]);
-    setIsManagingSuppliers(true);
-  };
-
-  // 등록 저장: 재수정 전까지 이 목록만 영구 보존 및 화면 표시
-  const handleSaveRegisteredSuppliers = () => {
-    if (editRegisteredSuppliers.length === 0) {
-      alert("최소 1개 이상의 업체를 등록해야 합니다.");
-      return;
-    }
-    setRegisteredSuppliers(editRegisteredSuppliers);
+  // 블록 풀에서 등록 목록으로 추가 (+ 클릭 시 즉시 추가 및 로컬스토리지 영구 반영)
+  const handleAddSupplier = (supp) => {
+    if (registeredSuppliers.some((s) => normalizeSupplier(s) === normalizeSupplier(supp))) return;
+    const nextList = [...registeredSuppliers, supp];
+    setRegisteredSuppliers(nextList);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(editRegisteredSuppliers));
+      localStorage.setItem(storageKey, JSON.stringify(nextList));
     } catch (e) {
       console.warn("Failed to save registered suppliers:", e);
     }
-    // 현재 선택된 공급사가 삭제된 경우 첫 번째 등록 업체로 변경하거나 초기화
-    if (selectedSupplier && !editRegisteredSuppliers.some((s) => normalizeSupplier(s) === normalizeSupplier(selectedSupplier))) {
-      setSelectedSupplier(editRegisteredSuppliers[0] || "");
-    }
-    setIsManagingSuppliers(false);
   };
 
-  // 블록 풀에서 등록 목록으로 추가
-  const handleAddSupplier = (supp) => {
-    if (editRegisteredSuppliers.some((s) => normalizeSupplier(s) === normalizeSupplier(supp))) return;
-    setEditRegisteredSuppliers([...editRegisteredSuppliers, supp]);
-  };
-
-  // 등록 목록에서 제거 (블록 풀로 이동)
+  // 등록 목록에서 제거 (X 클릭 시 즉시 제거 및 로컬스토리지 영구 반영)
   const handleRemoveSupplier = (supp) => {
-    setEditRegisteredSuppliers(
-      editRegisteredSuppliers.filter((s) => normalizeSupplier(s) !== normalizeSupplier(supp))
-    );
+    if (registeredSuppliers.length <= 1) {
+      alert("최소 1개 이상의 업체가 유지되어야 합니다.");
+      return;
+    }
+    const nextList = registeredSuppliers.filter((s) => normalizeSupplier(s) !== normalizeSupplier(supp));
+    setRegisteredSuppliers(nextList);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(nextList));
+    } catch (e) {
+      console.warn("Failed to save registered suppliers:", e);
+    }
+    if (selectedSupplier && normalizeSupplier(selectedSupplier) === normalizeSupplier(supp)) {
+      setSelectedSupplier("");
+    }
   };
 
-  // 전체 등록 / 초기화
+  // 전체 15개사 복원 초기화
   const handleResetToAll = () => {
-    setEditRegisteredSuppliers([...fullSuppliersPool]);
+    setRegisteredSuppliers([...fullSuppliersPool]);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(fullSuppliersPool));
+    } catch (e) {
+      console.warn("Failed to reset registered suppliers:", e);
+    }
   };
 
-  // 추가 가능한 공급사 풀 (등록되지 않은 업체들)
+  // 추가 가능한 공급사 풀 (현재 등록되지 않은 15개사 중 업체들)
   const unselectedSuppliersPool = useMemo(() => {
-    const activeNormSet = new Set(editRegisteredSuppliers.map(normalizeSupplier));
+    const activeNormSet = new Set(registeredSuppliers.map(normalizeSupplier));
     return fullSuppliersPool.filter((s) => !activeNormSet.has(normalizeSupplier(s)));
-  }, [fullSuppliersPool, editRegisteredSuppliers]);
+  }, [fullSuppliersPool, registeredSuppliers]);
 
   // 고유 키 생성
   const getShipmentKey = (item, idx) =>
@@ -460,170 +451,105 @@ export const MonthlyPurchasesImportModal = ({
           </div>
         </div>
 
-        {/* 🏢 등록된 검사대상 업체 패널 & 추가/삭제 관리 스튜디오 */}
+        {/* 🏢 검사대상 업체 추가/삭제 블록 스튜디오 (오른쪽 참고화면과 동일한 2단 블록 구조) */}
         <div className="p-3 bg-slate-900 border-b border-slate-800 space-y-3">
-          {/* 패널 헤더: 등록 업체 수, 모드 전환 버튼 */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-700/60">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-white flex items-center gap-1.5">
-                  <span>수입검사 대상 등록 업체</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700">
-                    {registeredSuppliers.length}개사 등록됨
+          {/* 1. 상단: 현재 등록/배치된 검사대상 업체 블록 (순서/개별 X 삭제 기능) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <label className="font-bold text-slate-300 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>
+                  현재 등록된 검사대상 업체 ({registeredSuppliers.length}개)
+                  <span className="text-[11px] font-normal text-slate-400 ml-1.5">
+                    — [X] 클릭 시 제외되며 재등록 전까지 유지됩니다.
                   </span>
                 </span>
-                <span className="text-[10px] text-slate-400 block">
-                  {isManagingSuppliers
-                    ? "등록할 업체를 아래 풀에서 클릭하여 추가하거나, 등록된 업체의 X를 눌러 삭제 후 [등록 저장]하세요."
-                    : "현재 등록된 업체만 내용이 보이며, [업체 추가/삭제]를 통해 자유롭게 재구성할 수 있습니다."}
-                </span>
+              </label>
+              <div className="flex items-center gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={handleResetToAll}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                  title="전체 15개사 복원"
+                >
+                  전체 15개사 복원
+                </button>
               </div>
             </div>
 
-            {/* 업체 추가/삭제 편집 버튼 */}
-            <div className="flex items-center gap-1.5">
-              {!isManagingSuppliers ? (
-                <button
-                  type="button"
-                  onClick={handleOpenManager}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950/80 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500/60 text-xs font-bold transition cursor-pointer"
-                  title="검사할 업체를 추가하거나 삭제합니다"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>업체 추가 / 삭제</span>
-                </button>
+            {/* 등록된 업체 블록 그리드/플렉스 */}
+            <div className="flex flex-wrap gap-1.5 min-h-[38px] p-2 rounded-xl bg-slate-950 border border-slate-800">
+              {registeredSuppliers.length === 0 ? (
+                <span className="text-xs text-rose-400 p-1">
+                  등록된 업체가 없습니다. 아래 풀에서 업체를 추가해주세요.
+                </span>
               ) : (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleResetToAll}
-                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
-                    title="전체 15개사 일괄 등록 상태로 초기화"
-                  >
-                    전체 선택
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsManagingSuppliers(false)}
-                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-bold transition cursor-pointer"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveRegisteredSuppliers}
-                    className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-950 transition cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>등록 저장</span>
-                  </button>
-                </div>
+                registeredSuppliers.map((supp, idx) => {
+                  const isFiltered =
+                    selectedSupplier &&
+                    normalizeSupplier(selectedSupplier) === normalizeSupplier(supp);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setSelectedSupplier(isFiltered ? "" : supp);
+                        setSelectedKeys(new Set());
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border shadow-xs ${
+                        isFiltered
+                          ? "bg-cyan-900/90 border-cyan-400 text-white shadow-cyan-950/60 ring-1 ring-cyan-400"
+                          : "bg-slate-900/90 border-slate-700 text-slate-200 hover:border-slate-500"
+                      }`}
+                      title={
+                        isFiltered
+                          ? "클릭 시 전체 보기로 복귀"
+                          : "클릭 시 이 업체 내역만 단독 필터링"
+                      }
+                    >
+                      <Building2 className={`w-3 h-3 ${isFiltered ? "text-cyan-300" : "text-cyan-400"}`} />
+                      <span>{normalizeSupplier(supp)}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSupplier(supp);
+                        }}
+                        className="p-0.5 rounded hover:bg-rose-900 hover:text-white text-rose-400 transition cursor-pointer ml-0.5"
+                        title="이 업체 제외"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* 1. 일반 보기 모드: 등록된 업체 목록 (개별 필터 선택 가능) */}
-          {!isManagingSuppliers ? (
-            <div>
-              <div className="flex items-center justify-between text-[11px] mb-1.5">
-                <span className="text-slate-400">
-                  {selectedSupplier
-                    ? <><strong className="text-cyan-300">[{normalizeSupplier(selectedSupplier)}]</strong> 내역만 단독 표시 중</>
-                    : "아래 등록된 업체 전체의 매입내역이 표시 중입니다. (특정 업체를 누르면 단독 표시)"}
+          {/* 2. 하단: 추가 가능한 대시보드 블록 풀 (클릭 시 즉시 추가) */}
+          {unselectedSuppliersPool.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+              <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  + 추가 가능한 구매처 풀 ({unselectedSuppliersPool.length}개 선택 가능)
+                  <span className="font-normal text-slate-500 ml-1">— 클릭 시 상단에 추가됩니다.</span>
                 </span>
-                {selectedSupplier && (
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {unselectedSuppliersPool.map((supp, idx) => (
                   <button
+                    key={idx}
                     type="button"
-                    onClick={() => setSelectedSupplier("")}
-                    className="text-cyan-400 hover:underline cursor-pointer"
+                    onClick={() => handleAddSupplier(supp)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-950/70 hover:bg-slate-800 border border-dashed border-slate-800 hover:border-emerald-500 text-slate-300 hover:text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer group"
+                    title="클릭하여 검사대상 업체로 추가"
                   >
-                    전체 보기로 복귀
+                    <span>{normalizeSupplier(supp)}</span>
+                    <Plus className="w-3 h-3 text-emerald-400 group-hover:scale-125 transition-transform" />
                   </button>
-                )}
+                ))}
               </div>
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                {registeredSuppliers.map((supp, idx) => {
-                  const isSelected = selectedSupplier === supp || normalizeSupplier(selectedSupplier) === normalizeSupplier(supp);
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSupplier(isSelected ? "" : supp);
-                        setSelectedKeys(new Set());
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                        isSelected
-                          ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white border-cyan-400 shadow-md shadow-cyan-950 font-black"
-                          : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/70"
-                      }`}
-                    >
-                      <Building2 className={`w-3 h-3 ${isSelected ? "text-white" : "text-cyan-400"}`} />
-                      <span>{normalizeSupplier(supp)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* 2. 관리/편집 모드: 사용자 스크린샷과 동일한 [현재 등록된 업체] vs [추가 가능한 업체 풀] 구조 */
-            <div className="space-y-3 bg-slate-950 p-3 rounded-2xl border border-cyan-500/40 animate-fadeIn">
-              {/* 상단: 현재 등록된 업체 블록 (X 버튼으로 삭제) */}
-              <div>
-                <label className="text-[11px] font-bold text-cyan-300 mb-1.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>현재 등록된 검사대상 업체 ({editRegisteredSuppliers.length}개) - [X] 클릭 시 제외</span>
-                </label>
-                <div className="flex flex-wrap gap-1.5 min-h-[38px] p-1.5 rounded-xl bg-slate-900 border border-slate-800">
-                  {editRegisteredSuppliers.length === 0 ? (
-                    <span className="text-xs text-rose-400 p-1">등록된 업체가 없습니다. 아래 풀에서 추가해주세요.</span>
-                  ) : (
-                    editRegisteredSuppliers.map((supp, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/90 border border-indigo-600/70 text-indigo-200 text-xs font-bold shadow-xs"
-                      >
-                        <Building2 className="w-3 h-3 text-cyan-400" />
-                        <span>{normalizeSupplier(supp)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSupplier(supp)}
-                          className="p-0.5 rounded hover:bg-rose-900 hover:text-white text-rose-400 transition cursor-pointer ml-1"
-                          title="이 업체 제외"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* 하단: 추가 가능한 대시보드 블록 풀 (클릭 시 추가) */}
-              {unselectedSuppliersPool.length > 0 && (
-                <div className="pt-2 border-t border-slate-800">
-                  <label className="text-[11px] font-bold text-slate-400 mb-1.5 flex items-center gap-1">
-                    <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>추가 가능한 구매처 풀 ({unselectedSuppliersPool.length}개 선택 가능) - 클릭 시 추가</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {unselectedSuppliersPool.map((supp, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleAddSupplier(supp)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 hover:text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer group"
-                      >
-                        <span>{normalizeSupplier(supp)}</span>
-                        <Plus className="w-3 h-3 text-emerald-400 group-hover:scale-125 transition-transform" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
