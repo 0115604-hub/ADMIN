@@ -65,6 +65,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [editingReportData, setEditingReportData] = useState(null);
   const [saveToastMessage, setSaveToastMessage] = useState("");
 
   const isManager = useMemo(() => isWorkerManagerRole(currentProfile), [currentProfile]);
@@ -616,12 +617,19 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📋 4. 본인 작성 압출 작업일보 목록 (5건씩 페이징 표출)                   */}
+      {/* 📋 4. 본인 작성 압출 작업일보 목록 (5건씩 페이징 표출 & 미승인건 수정 가능) */}
       {/* ========================================================================= */}
       <WorkerPersonalExtrusionReportList
         reports={extrusionReports}
         currentWorkerName={currentProfile?.name || "작업자"}
-        onOpenReportModal={() => setIsReportModalOpen(true)}
+        onOpenReportModal={() => {
+          setEditingReportData(null);
+          setIsReportModalOpen(true);
+        }}
+        onEditReport={(report) => {
+          setEditingReportData(report);
+          setIsReportModalOpen(true);
+        }}
       />
 
       {/* Image Lightbox Modal */}
@@ -640,7 +648,12 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
         <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/50" />}>
           <ExtrusionWorkReportModal
             isOpen={isReportModalOpen}
-            onClose={() => setIsReportModalOpen(false)}
+            onClose={() => {
+              setIsReportModalOpen(false);
+              setEditingReportData(null);
+            }}
+            initialData={editingReportData}
+            isEditing={Boolean(editingReportData)}
             onSave={handleSaveExtrusionReport}
           />
         </Suspense>

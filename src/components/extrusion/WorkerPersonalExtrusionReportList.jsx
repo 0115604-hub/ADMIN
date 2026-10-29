@@ -17,59 +17,55 @@ import {
 export const WorkerPersonalExtrusionReportList = ({
   reports = [],
   currentWorkerName = "",
-  onOpenReportModal
+  onOpenReportModal,
+  onEditReport = null
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  // 본인이 단독 작성했거나 동료와 공동 작업자로 포함된 일보 모두 추출
+  // 이름에서 호칭(반장, 대리, 사원 등)을 제거하고 순수 이름만 추출
+  const normalizeName = (str) => {
+    if (!str) return "";
+    return String(str)
+      .replace(/(반장|대리|사원|과장|차장|부장|팀장|주임|기사|선임|책임|수석|이사|대표)/g, "")
+      .trim();
+  };
+
+  // 본인이 단독 작성했거나 동료와 공동 작업자로 포함된 일보만 엄격하게 매칭
   const myReports = useMemo(() => {
     if (!currentWorkerName) return [];
-    const targetName = String(currentWorkerName).trim();
+    const pureMyName = normalizeName(currentWorkerName);
+    if (!pureMyName) return [];
 
     return (reports || []).filter((r) => {
       if (!r) return false;
 
-      // 1. 주작성자 / 등록자 체크 (예: "심임대", "심임대 반장")
-      const writer = String(r.writer || r.author || r.registeredBy || "").trim();
-      if (writer === targetName || writer.includes(targetName) || targetName.includes(writer)) {
-        return true;
-      }
+      // 1. 단독/공동 작업자 문자열 또는 배열 수집
+      const allWorkerTokens = [];
 
-      // 2. 단독 및 복수 작업자 필드 (worker, subWorkers 문자열)
-      const mainWorker = String(r.worker || "").trim();
-      if (mainWorker && (mainWorker === targetName || mainWorker.includes(targetName) || targetName.includes(mainWorker))) {
-        return true;
+      if (r.worker) {
+        String(r.worker)
+          .split(/[,/·+&]/)
+          .forEach((t) => allWorkerTokens.push(normalizeName(t)));
       }
-
-      const subWorkers = String(r.subWorkers || "").trim();
-      if (subWorkers && (subWorkers.includes(targetName) || targetName.includes(subWorkers))) {
-        return true;
+      if (r.subWorkers) {
+        String(r.subWorkers)
+          .split(/[,/·+&]/)
+          .forEach((t) => allWorkerTokens.push(normalizeName(t)));
       }
+      if (r.writer) allWorkerTokens.push(normalizeName(r.writer));
+      if (r.author) allWorkerTokens.push(normalizeName(r.author));
+      if (r.registeredBy) allWorkerTokens.push(normalizeName(r.registeredBy));
 
-      // 3. 배열 형태 작업자 목록 (workers, workerList 등)
       if (Array.isArray(r.workers)) {
-        if (
-          r.workers.some((w) => {
-            const nameStr = String(w?.name || w || "").trim();
-            return nameStr === targetName || nameStr.includes(targetName) || targetName.includes(nameStr);
-          })
-        ) {
-          return true;
-        }
+        r.workers.forEach((w) => allWorkerTokens.push(normalizeName(w?.name || w)));
       }
       if (Array.isArray(r.workerList)) {
-        if (
-          r.workerList.some((w) => {
-            const nameStr = String(w?.name || w || "").trim();
-            return nameStr === targetName || nameStr.includes(targetName) || targetName.includes(nameStr);
-          })
-        ) {
-          return true;
-        }
+        r.workerList.forEach((w) => allWorkerTokens.push(normalizeName(w?.name || w)));
       }
 
-      return false;
+      // 정확하게 토큰 목록 중에 본인의 순수 이름이 포함되어 있는지 확인
+      return allWorkerTokens.some((tok) => tok === pureMyName);
     });
   }, [reports, currentWorkerName]);
 
@@ -138,7 +134,8 @@ export const WorkerPersonalExtrusionReportList = ({
                   <th className="py-2.5 px-3 text-right">총 실적 (EA)</th>
                   <th className="py-2.5 px-3 text-right">양품수량</th>
                   <th className="py-2.5 px-3 text-right">불량&스크랩(kg)</th>
-                  <th className="py-2.5 px-3 text-center">TPM 점검</th>
+                  <th className="py-2.5 px-3 text-center">결재상태</th>
+                  <th className="py-2.5 px-3 text-center">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -155,6 +152,12 @@ export const WorkerPersonalExtrusionReportList = ({
                   const actualQty = Number(r.actualQty || r.totalActualQty || 0);
                   const goodQty = Number(r.goodQty || r.totalGoodQty || 0);
                   const scrapKg = Number(r.scrapKg || r.totalScrapKg || r.scrapWeightKg || 0);
+
+                  // 설유철 승인 여부 판별 (승인 완료 시 수정 불가)
+                  const isApproved =
+                    Boolean(r.isApproved || r.approved) ||
+                    String(r.approvalStatus || "").trim() === "승인" ||
+                    String(r.approvalStatus || "").trim() === "승인완료";
 
                   // 작업자 표시 (공동 작업자 포함)
                   const allWorkersList = [];
@@ -211,11 +214,32 @@ export const WorkerPersonalExtrusionReportList = ({
                         {scrapKg > 0 ? `${scrapKg.toLocaleString()} kg` : "-"}
                       </td>
 
+                      {/* 설유철 결재 상태 */}
                       <td className="py-3 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>완료</span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black border ${
+                            isApproved
+                              ? "bg-emerald-950 text-emerald-400 border-emerald-800"
+                              : "bg-amber-950/80 text-amber-400 border-amber-800"
+                          }`}
+                        >
+                          {isApproved ? "✓ 승인완료" : "⏳ 승인대기"}
                         </span>
+                      </td>
+
+                      {/* 수정 버튼: 설유철의 승인이 나지 않은 경우 수정 가능 */}
+                      <td className="py-3 px-3 text-center">
+                        {isApproved ? (
+                          <span className="text-[10px] text-slate-500 font-bold">수정불가(승인됨)</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onEditReport && onEditReport(r)}
+                            className="px-2.5 py-1 rounded-lg bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white border border-teal-500/50 text-xs font-bold transition active:scale-95 cursor-pointer shadow-xs"
+                          >
+                            ✏️ 수정
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
