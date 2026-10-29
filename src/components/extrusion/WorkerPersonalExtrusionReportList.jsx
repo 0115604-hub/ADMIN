@@ -22,24 +22,52 @@ export const WorkerPersonalExtrusionReportList = ({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  // 본인이 작성한 일보만 엄격하게 필터링 (writer, worker, workers 배열, author 등 매칭)
+  // 본인이 단독 작성했거나 동료와 공동 작업자로 포함된 일보 모두 추출
   const myReports = useMemo(() => {
     if (!currentWorkerName) return [];
     const targetName = String(currentWorkerName).trim();
 
     return (reports || []).filter((r) => {
       if (!r) return false;
-      const writer = String(r.writer || r.author || r.registeredBy || "").trim();
-      if (writer === targetName) return true;
 
+      // 1. 주작성자 / 등록자 체크 (예: "심임대", "심임대 반장")
+      const writer = String(r.writer || r.author || r.registeredBy || "").trim();
+      if (writer === targetName || writer.includes(targetName) || targetName.includes(writer)) {
+        return true;
+      }
+
+      // 2. 단독 및 복수 작업자 필드 (worker, subWorkers 문자열)
+      const mainWorker = String(r.worker || "").trim();
+      if (mainWorker && (mainWorker === targetName || mainWorker.includes(targetName) || targetName.includes(mainWorker))) {
+        return true;
+      }
+
+      const subWorkers = String(r.subWorkers || "").trim();
+      if (subWorkers && (subWorkers.includes(targetName) || targetName.includes(subWorkers))) {
+        return true;
+      }
+
+      // 3. 배열 형태 작업자 목록 (workers, workerList 등)
       if (Array.isArray(r.workers)) {
-        if (r.workers.some((w) => String(w?.name || w).trim() === targetName)) return true;
+        if (
+          r.workers.some((w) => {
+            const nameStr = String(w?.name || w || "").trim();
+            return nameStr === targetName || nameStr.includes(targetName) || targetName.includes(nameStr);
+          })
+        ) {
+          return true;
+        }
       }
       if (Array.isArray(r.workerList)) {
-        if (r.workerList.some((w) => String(w?.name || w).trim() === targetName)) return true;
+        if (
+          r.workerList.some((w) => {
+            const nameStr = String(w?.name || w || "").trim();
+            return nameStr === targetName || nameStr.includes(targetName) || targetName.includes(nameStr);
+          })
+        ) {
+          return true;
+        }
       }
-      const directWorker = String(r.worker || "").trim();
-      if (directWorker === targetName) return true;
 
       return false;
     });
@@ -105,6 +133,7 @@ export const WorkerPersonalExtrusionReportList = ({
               <thead>
                 <tr className="bg-slate-950/70 border-b border-slate-800 text-[11px] font-bold text-slate-400">
                   <th className="py-2.5 px-3">일자 / 라인</th>
+                  <th className="py-2.5 px-3">작업자 (공동작업)</th>
                   <th className="py-2.5 px-3">생산 품목 / 차종</th>
                   <th className="py-2.5 px-3 text-right">총 실적 (EA)</th>
                   <th className="py-2.5 px-3 text-right">양품수량</th>
@@ -127,6 +156,23 @@ export const WorkerPersonalExtrusionReportList = ({
                   const goodQty = Number(r.goodQty || r.totalGoodQty || 0);
                   const scrapKg = Number(r.scrapKg || r.totalScrapKg || r.scrapWeightKg || 0);
 
+                  // 작업자 표시 (공동 작업자 포함)
+                  const allWorkersList = [];
+                  if (r.worker) allWorkersList.push(r.worker);
+                  if (r.subWorkers) {
+                    r.subWorkers.split(",").forEach((sw) => {
+                      const trimmed = sw.trim();
+                      if (trimmed && !allWorkersList.includes(trimmed)) allWorkersList.push(trimmed);
+                    });
+                  }
+                  if (Array.isArray(r.workers)) {
+                    r.workers.forEach((w) => {
+                      const name = String(w?.name || w || "").trim();
+                      if (name && !allWorkersList.includes(name)) allWorkersList.push(name);
+                    });
+                  }
+                  const workersDisplay = allWorkersList.join(", ") || r.writer || "작업자";
+
                   return (
                     <tr
                       key={r.id || r._docId || idx}
@@ -141,6 +187,12 @@ export const WorkerPersonalExtrusionReportList = ({
                             {r.lineId || r.line || "압출"}
                           </span>
                         </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-800/80 text-amber-300 border border-amber-600/30">
+                          👥 {workersDisplay}
+                        </span>
                       </td>
 
                       <td className="py-3 px-3">
