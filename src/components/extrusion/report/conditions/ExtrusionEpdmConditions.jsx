@@ -85,9 +85,9 @@ const ExtrusionEpdmConditions = ({
                 value={formData.conditions?.haulOffSpeed ?? ""}
                 onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
                 placeholder="속도 입력"
-                className="w-full text-right pr-13 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                className="w-full text-right pr-14 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-white/80 dark:bg-slate-800/80 px-1 py-0.5 rounded pointer-events-none">
                 m/분
               </span>
             </div>
@@ -204,77 +204,92 @@ const ExtrusionEpdmConditions = ({
         </div>
       </div>
 
-      {/* 3. 가류조 온도: 1~13존 한줄 패널 */}
-      <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
-        <div className="flex items-center justify-between gap-1">
-          <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
-            🔥 가류조 (210±20℃)
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const val = prompt("13개 가류존에 일괄 적용할 온도를 입력하세요(℃):", "210.0");
-              if (val && !isNaN(Number(val))) {
-                const num = Number(val);
-                setFormData((prev) => ({
-                  ...prev,
-                  conditions: {
-                    ...(prev.conditions || {}),
-                    cureZoneTemp: String(num),
-                    pcmZones: Array(13).fill(num)
-                  }
-                }));
-              }
-            }}
-            className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
-          >
-            ⚡ 일괄설정
-          </button>
-        </div>
+      {/* 3. 가류조 온도: PCM 1호(13존) / PCM 3호(11존) 동적 분기 */}
+      {(() => {
+        const isPcm3 = formData.lineId === "pcm3";
+        const zoneCount = isPcm3 ? 11 : 13;
 
-        {/* 13 Zones Horizontal Strip */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth">
-          {Array.from({ length: 13 }).map((_, zIdx) => {
-            const zoneNum = zIdx + 1;
-            const currentZoneVal = formData.conditions?.pcmZones?.[zIdx] ?? EXTRUSION_STANDARD_SPECS?.pcmZones?.[zIdx] ?? 210.0;
-            return (
-              <div
-                key={`pcm_zone_${zoneNum}`}
-                className="flex flex-col items-center justify-between min-w-[56px] sm:min-w-[62px] p-1.5 rounded-xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 shrink-0"
+        return (
+          <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
+            <div className="flex items-center justify-between gap-1">
+              <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
+                🔥 가류조 ({zoneCount}존, 210±20℃)
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const val = prompt(`${zoneCount}개 가류존에 일괄 적용할 온도를 입력하세요(℃):`, "210.0");
+                  if (val && !isNaN(Number(val))) {
+                    const num = Number(val);
+                    setFormData((prev) => ({
+                      ...prev,
+                      conditions: {
+                        ...(prev.conditions || {}),
+                        cureZoneTemp: String(num),
+                        pcmZones: Array(zoneCount).fill(num)
+                      }
+                    }));
+                  }
+                }}
+                className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
               >
-                <span className="text-[9.5px] font-black text-orange-800 dark:text-orange-300">
-                  {zoneNum}존
-                </span>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={currentZoneVal}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData((prev) => {
-                      const baseZones = EXTRUSION_STANDARD_SPECS?.pcmZones || Array(13).fill(210);
-                      const curZones = Array.isArray(prev.conditions?.pcmZones) && prev.conditions.pcmZones.length === 13
-                        ? [...prev.conditions.pcmZones]
-                        : [...baseZones];
-                      curZones[zIdx] = val === "" ? "" : Number(val);
-                      return {
-                        ...prev,
-                        conditions: {
-                          ...(prev.conditions || {}),
-                          pcmZones: curZones,
-                          cureZoneTemp: String(curZones[0] || 210.0)
-                        }
-                      };
-                    });
-                  }}
-                  className="w-full text-center bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700 rounded py-1 font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
-                />
-                <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                ⚡ 일괄설정
+              </button>
+            </div>
+
+            {/* Vulcanization Zones Strip (11존 or 13존) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth">
+              {Array.from({ length: zoneCount }).map((_, zIdx) => {
+                const zoneNum = zIdx + 1;
+                const currentZoneVal =
+                  formData.conditions?.pcmZones?.[zIdx] ??
+                  EXTRUSION_STANDARD_SPECS?.pcmZones?.[zIdx] ??
+                  210.0;
+
+                return (
+                  <div
+                    key={`pcm_zone_${zoneNum}`}
+                    className="flex flex-col items-center justify-between min-w-[56px] sm:min-w-[62px] p-1.5 rounded-xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 shrink-0"
+                  >
+                    <span className="text-[9.5px] font-black text-orange-800 dark:text-orange-300">
+                      {zoneNum}존
+                    </span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={currentZoneVal}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData((prev) => {
+                          const baseZones =
+                            EXTRUSION_STANDARD_SPECS?.pcmZones?.slice(0, zoneCount) ||
+                            Array(zoneCount).fill(210);
+                          const curZones =
+                            Array.isArray(prev.conditions?.pcmZones) &&
+                            prev.conditions.pcmZones.length === zoneCount
+                              ? [...prev.conditions.pcmZones]
+                              : [...baseZones];
+                          curZones[zIdx] = val === "" ? "" : Number(val);
+                          return {
+                            ...prev,
+                            conditions: {
+                              ...(prev.conditions || {}),
+                              pcmZones: curZones,
+                              cureZoneTemp: String(curZones[0] || 210.0)
+                            }
+                          };
+                        });
+                      }}
+                      className="w-full text-center bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700 rounded py-1 font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                    />
+                    <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 4. 코팅 분사압력: 1~3번건 한줄 패널 */}
       <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">

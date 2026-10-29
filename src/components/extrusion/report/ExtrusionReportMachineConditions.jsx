@@ -65,7 +65,7 @@ const ExtrusionReportMachineConditions = ({
                 온조기(9구간)
               </span>
               <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
-                가류조(13존)
+                {formData.lineId === "pcm3" ? "가류조(11존)" : "가류조(13존)"}
               </span>
               <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
                 코팅압력
