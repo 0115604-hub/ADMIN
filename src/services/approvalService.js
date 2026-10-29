@@ -7,6 +7,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { safeFirestoreWrite } from "./common/safeFirestore";
 
 export const COLLECTION_NAME = "approval_documents";
 export const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -463,12 +464,18 @@ export async function saveApprovalDocument(docData, options = {}) {
   const nextList = [fullDoc, ...existing.filter((d) => d.id !== id)];
   saveLocalApprovalDocs(nextList);
 
-  // 2. Persist to Firestore
-  try {
-    await setDoc(doc(db, COLLECTION_NAME, id), sanitizeForFirestore(fullDoc), { merge: true });
-  } catch (e) {
-    console.warn("Firestore save approval document error:", e);
-  }
+  // 2. Persist to Firestore with safe offline fallback
+  const cleanPayload = sanitizeForFirestore(fullDoc);
+  await safeFirestoreWrite(
+    () => setDoc(doc(db, COLLECTION_NAME, id), cleanPayload, { merge: true }),
+    {
+      operationName: "전자결재 문서 저장",
+      collectionName: COLLECTION_NAME,
+      docId: id,
+      payload: cleanPayload,
+      fallbackValue: fullDoc
+    }
+  );
 
   return fullDoc;
 }

@@ -863,8 +863,8 @@ export const InternalManagerDashboardView = ({
                 : ""
             }`}
           >
-            {/* 🛠️ [TEST 모드]: 패널 우측 상단 직관적 인패널 컨트롤러 (팝업창 없이 화면 패널 내 직접 수정) */}
-            {isTest && (
+            {/* 🛠️ [TEST 모드]: 상단 스튜디오가 열려있을 때만 패널 우측 상단 인패널 컨트롤러 노출 (설정저장 시 함께 닫힘) */}
+            {isTest && isTopStudioVisible && (
               <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 opacity-90 group-hover/panel:opacity-100 transition-opacity bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-cyan-500/50 shadow-xl">
                 {isEditingThisBlock ? (
                   <>

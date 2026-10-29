@@ -26,6 +26,7 @@ import { AuthWorkerSelectModals } from "./auth/modals/AuthWorkerSelectModals";
 import { AuthIssueSubModals } from "./auth/modals/AuthIssueSubModals";
 import { SqLiveMonitoringModal } from "./auth/modals/SqLiveMonitoringModal";
 import { useAuthModalIssues } from "./auth/hooks/useAuthModalIssues";
+import { NasQualityControlPanel } from "./dashboard/sections/NasQualityControlPanel";
 
 export const AuthModal = () => {
   // Modal visibility states
@@ -339,6 +340,14 @@ export const AuthModal = () => {
             urgentIssues={issues.urgentIssues}
             onUserClick={handleUserClick}
           />
+
+          {/* 🗄️ NAS 품질관리 문서 통합 연동 단일 행 패널 (첫 접속 로그인 메인 화면 최하단) */}
+          <div className="pt-2 sm:pt-3">
+            <NasQualityControlPanel
+              nasStatus="CONNECTED"
+              lastSyncTime="2026-10-29 09:30"
+            />
+          </div>
         </div>
       </div>
 

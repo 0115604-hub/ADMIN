@@ -31,10 +31,12 @@ import {
   RECEIVING_STATUS,
   subscribeIncomingInspections,
   saveIncomingInspection,
+  saveBatchIncomingInspections,
   deleteIncomingInspection,
   syncInspectionToFourMLedger
 } from "../../services/incomingInspectionService";
 import { IncomingInspectionModal } from "./IncomingInspectionModal";
+import { MonthlyPurchasesImportModal } from "./MonthlyPurchasesImportModal";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import { PANEL_THEMES, cleanTitleWithoutEmoji } from "../../config/panelThemeConfig";
 
@@ -55,7 +57,10 @@ export const IncomingInspectionPanel = ({
   const [selectedCategoryTab, setSelectedCategoryTab] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultMode, setModalDefaultMode] = useState("FULL");
+  const [modalInitialCategory, setModalInitialCategory] = useState("RAW_MATERIAL");
   const [selectedItemForEdit, setSelectedItemForEdit] = useState(null);
+  const [isPurchasesModalOpen, setIsPurchasesModalOpen] = useState(false);
+  const [purchasesModalInitialTab, setPurchasesModalInitialTab] = useState("RAW_MATERIAL");
   const [previewImage, setPreviewImage] = useState(null);
   const [syncingId, setSyncingId] = useState(null);
 
@@ -136,9 +141,10 @@ export const IncomingInspectionPanel = ({
   }, [inspections, selectedCategoryTab, searchTerm]);
 
   // 신규 등록 열기 (입고+검사 동시)
-  const handleOpenNewModal = (mode = "FULL") => {
+  const handleOpenNewModal = (mode = "FULL", initialCategory = "RAW_MATERIAL") => {
     setSelectedItemForEdit(null);
     setModalDefaultMode(mode);
+    setModalInitialCategory(initialCategory);
     setIsModalOpen(true);
   };
 
@@ -320,24 +326,46 @@ export const IncomingInspectionPanel = ({
           )}
         </div>
 
-        {/* 🌟 상단 뷰 모드 탭 (입고대장 뷰 ↔ 수입검사 뷰 ↔ 통합 뷰) */}
-        <div className="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-xl border border-slate-700/60 self-start md:self-auto">
+        {/* 🌟 상단 뷰 모드 탭 (원자재(FMB) 입고대장 ↔ 부자재 입고대장 ↔ 수입검사 성적서 ↔ 통합) */}
+        <div className="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-xl border border-slate-700/60 self-start md:self-auto flex-wrap">
           <button
             type="button"
-            onClick={() => setActiveLedgerView("RECEIVING")}
+            onClick={() => {
+              setActiveLedgerView("RECEIVING");
+              setSelectedCategoryTab("RAW_MATERIAL");
+            }}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
-              activeLedgerView === "RECEIVING"
+              activeLedgerView === "RECEIVING" && selectedCategoryTab === "RAW_MATERIAL"
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            <Truck className="w-3.5 h-3.5" />
-            <span>📋 원부자재 입고대장</span>
+            <Layers className="w-3.5 h-3.5 text-blue-400" />
+            <span>📋 원자재(FMB) 입고대장</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveLedgerView("INSPECTION")}
+            onClick={() => {
+              setActiveLedgerView("RECEIVING");
+              setSelectedCategoryTab("SUB_MATERIAL");
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              activeLedgerView === "RECEIVING" && selectedCategoryTab === "SUB_MATERIAL"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Component className="w-3.5 h-3.5 text-emerald-400" />
+            <span>📦 부자재 입고대장</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveLedgerView("INSPECTION");
+              setSelectedCategoryTab("ALL");
+            }}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
               activeLedgerView === "INSPECTION"
                 ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-sm"
@@ -350,7 +378,10 @@ export const IncomingInspectionPanel = ({
 
           <button
             type="button"
-            onClick={() => setActiveLedgerView("ALL")}
+            onClick={() => {
+              setActiveLedgerView("ALL");
+              setSelectedCategoryTab("ALL");
+            }}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition ${
               activeLedgerView === "ALL"
                 ? "bg-slate-700 text-white shadow-sm"
@@ -361,8 +392,8 @@ export const IncomingInspectionPanel = ({
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 self-end md:self-auto">
+        {/* Action Buttons: 2가지 분리된 신규 등록 버튼 (원자재 vs 부자재) + 조인주 매입내역 연동 */}
+        <div className="flex items-center gap-1.5 self-end md:self-auto flex-wrap">
           <button
             type="button"
             onClick={handleExportCSV}
@@ -373,14 +404,41 @@ export const IncomingInspectionPanel = ({
             <span className="hidden sm:inline">엑셀</span>
           </button>
 
-          <div className="flex items-center gap-1">
+          {/* 🌟 조인주 매입내역 연동 버튼 */}
+          <button
+            type="button"
+            onClick={() => {
+              setPurchasesModalInitialTab(selectedCategoryTab === "SUB_MATERIAL" ? "SUB_MATERIAL" : "RAW_MATERIAL");
+              setIsPurchasesModalOpen(true);
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/60 text-indigo-300 hover:text-white text-[11px] font-black shadow-sm transition active:scale-95 cursor-pointer"
+            title="조인주 선임이 올린 매입매출 파일에서 구매처별 원자재/부자재 품목을 조회하고 입고대장으로 가져옵니다."
+          >
+            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            <span>조인주 매입내역 연동</span>
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            {/* 1. 원자재(FMB) 신규 등록 버튼 */}
             <button
               type="button"
-              onClick={() => handleOpenNewModal("FULL")}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[11px] font-black shadow-md shadow-cyan-950/60 transition active:scale-95"
+              onClick={() => handleOpenNewModal("FULL", "RAW_MATERIAL")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-black shadow-md shadow-blue-950/60 transition active:scale-95 cursor-pointer"
+              title="고무/압출 원소재(FMB, CMB, 펠릿, 심재) 입고 및 수입검사 등록"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>신규 입고·검사 등록</span>
+              <span>원자재(FMB) 입고·검사</span>
+            </button>
+
+            {/* 2. 부자재 신규 등록 버튼 */}
+            <button
+              type="button"
+              onClick={() => handleOpenNewModal("FULL", "SUB_MATERIAL")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-black shadow-md shadow-emerald-950/60 transition active:scale-95 cursor-pointer"
+              title="조립/체결 부자재(클립, 브라켓, 테이프, 본드 등) 입고 및 수입검사 등록"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>부자재 입고·검사</span>
             </button>
           </div>
         </div>
@@ -1042,6 +1100,7 @@ export const IncomingInspectionPanel = ({
           initialData={selectedItemForEdit}
           currentProfile={currentProfile}
           defaultMode={modalDefaultMode}
+          initialCategory={modalInitialCategory}
         />
       )}
 
@@ -1050,6 +1109,39 @@ export const IncomingInspectionPanel = ({
         <ImagePreviewModal
           previewImage={previewImage}
           onClose={() => setPreviewImage(null)}
+        />
+      )}
+
+      {/* 7. 조인주 매입내역 연동 모달 */}
+      {isPurchasesModalOpen && (
+        <MonthlyPurchasesImportModal
+          isOpen={isPurchasesModalOpen}
+          onClose={() => setIsPurchasesModalOpen(false)}
+          initialTab={purchasesModalInitialTab}
+          onImportItem={(importedItem) => {
+            setSelectedItemForEdit({
+              category: importedItem.category,
+              supplier: importedItem.supplier,
+              itemName: importedItem.itemName,
+              quantityNum: importedItem.quantityNum,
+              quantityUnit: importedItem.quantityUnit,
+              lotNo: importedItem.lotNo,
+              storageLocation: importedItem.category === "RAW_MATERIAL" ? "삼랑진 원재료창고" : "삼랑진 가공동 부자재랙",
+              receivingDate: new Date().toISOString().slice(0, 10),
+              receivingTime: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
+            });
+            setModalDefaultMode("FULL");
+            setModalInitialCategory(importedItem.category);
+            setIsModalOpen(true);
+          }}
+          onBatchImport={async (batchItems) => {
+            const registeredBy = currentProfile?.name || "유동길";
+            await saveBatchIncomingInspections(batchItems, registeredBy);
+            // 등록 완료 후 검사대기 탭으로 전환하여 한눈에 보이도록 함
+            setSelectedCategoryTab("PENDING_ONLY");
+            setActiveLedgerView("RECEIVING");
+            alert(`선택하신 ${batchItems.length}건이 입고대장에 [검사대기 (PENDING)] 상태로 일괄 등록되었습니다.\n이제 입고대장의 [검사실시] 버튼을 눌러 SQ 수입검사를 진행할 수 있습니다.`);
+          }}
         />
       )}
     </div>
