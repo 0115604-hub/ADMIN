@@ -135,6 +135,7 @@ export default function ExtrusionBOMCatalogModal({
                   <th className="p-2.5">컴파운드 (1·2·3·4종)</th>
                   <th className="p-2.5">심금</th>
                   <th className="p-2.5">코팅액</th>
+                  <th className="p-2.5 text-center w-20">단위중량</th>
                   <th className="p-2.5 text-center w-16">상태</th>
                   <th className="p-2.5 text-center w-24">수정 / 삭제</th>
                 </tr>
@@ -217,6 +218,11 @@ export default function ExtrusionBOMCatalogModal({
                       ) : (
                         <span className="text-slate-400 text-[10.5px]">미사용</span>
                       )}
+                    </td>
+
+                    {/* 단위중량 */}
+                    <td className="p-2.5 text-center font-mono font-black text-teal-600 dark:text-teal-400 whitespace-nowrap">
+                      {row.unitWeightG || 500}g
                     </td>
 
                     {/* 상태 */}

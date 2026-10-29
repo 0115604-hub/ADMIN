@@ -55,6 +55,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const [compoundType4, setCompoundType4] = useState("");
   const [insertType, setInsertType] = useState("");
   const [coatingType, setCoatingType] = useState("");
+  const [unitWeightG, setUnitWeightG] = useState(500);
 
   // Safeguard refs against frequent unwanted resets while writing
   const hasInitializedRef = useRef(false);
@@ -123,6 +124,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     setCompoundType4(resolvedBOM.compoundType4 === "없음" || resolvedBOM.compoundType4 === "미사용" || resolvedBOM.compoundType4 === "비사용" ? "" : (resolvedBOM.compoundType4 || ""));
     setInsertType(resolvedBOM.insertType === "미사용" || resolvedBOM.insertType === "비사용" || resolvedBOM.insertType === "없음" ? "" : (resolvedBOM.insertType || ""));
     setCoatingType(resolvedBOM.coatingType === "미사용" || resolvedBOM.coatingType === "비사용" || resolvedBOM.coatingType === "없음" ? "" : (resolvedBOM.coatingType || ""));
+    const wG = resolvedBOM.unitWeightG !== undefined ? Number(resolvedBOM.unitWeightG) : (resolvedBOM.unitWeightKg ? Math.round(Number(resolvedBOM.unitWeightKg) * 1000) : 500);
+    setUnitWeightG(wG || 500);
   };
 
   // Initial load: Only once on mount to prevent wiping user's typing
@@ -148,6 +151,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           setCompoundType4(d.compoundType4 || "");
           setInsertType(d.insertType || "");
           setCoatingType(d.coatingType || "");
+          setUnitWeightG(d.unitWeightG !== undefined ? Number(d.unitWeightG) : 500);
           hasInitializedRef.current = true;
           return;
         }
@@ -273,7 +277,9 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         compoundType3: cleanVal(compoundType3),
         compoundType4: cleanVal(compoundType4),
         insertType: cleanVal(insertType) || "미사용",
-        coatingType: cleanVal(coatingType) || "미사용"
+        coatingType: cleanVal(coatingType) || "미사용",
+        unitWeightKg: Number(unitWeightG) > 0 ? Number(unitWeightG) / 1000 : 0.5,
+        unitWeightG: Number(unitWeightG) > 0 ? Number(unitWeightG) : 500
       };
 
       await saveBOMMapping(
@@ -350,6 +356,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           compoundType4: bom.compoundType4 || "",
           insertType: bom.insertType || "미사용",
           coatingType: bom.coatingType || "미사용",
+          unitWeightG: bom.unitWeightG || (bom.unitWeightKg ? Math.round(bom.unitWeightKg * 1000) : 500),
+          unitWeightKg: bom.unitWeightKg || (bom.unitWeightG ? bom.unitWeightG / 1000 : 0.5),
           matchType: bom.matchType || (isCustom ? "CUSTOM" : "EXCEL"),
           updatedAt: isCustom ? customBOMMap[key]?.updatedAt : null,
           registeredBy: isCustom ? customBOMMap[key]?.registeredBy : "엑셀 기준"
@@ -435,6 +443,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         setInsertType={setInsertType}
         coatingType={coatingType}
         setCoatingType={setCoatingType}
+        unitWeightG={unitWeightG}
+        setUnitWeightG={setUnitWeightG}
         compoundOptions={compoundOptions}
         isSaving={isSaving}
         onSubmit={handleRegisterBOM}

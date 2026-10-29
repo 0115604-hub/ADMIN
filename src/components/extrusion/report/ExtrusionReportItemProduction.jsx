@@ -346,28 +346,23 @@ export const ExtrusionReportItemProduction = ({
                                     </button>
                                   </div>
 
-                                  {/* Right Direct Inputs: 중량(kg) & LOT 넘버 in a single line */}
+                                  {/* Right Direct Inputs: 소진량 이론치(자동계산) & LOT 넘버 (➕ LOT 추가 지원) */}
                                   <div className="flex items-center gap-2 flex-1">
-                                    <div className="flex items-center gap-1 flex-1">
-                                      <span className="text-[10px] font-black text-emerald-400 whitespace-nowrap shrink-0">
-                                        중량(kg)
+                                    {/* 이론 소진량 (양품수량 * 단위중량) 자동 산출 배지 */}
+                                    <div className="flex items-center gap-1 bg-slate-950/60 px-2 py-1 rounded-lg border border-emerald-500/50 shrink-0">
+                                      <span className="text-[10px] font-black text-emerald-400 whitespace-nowrap">
+                                        이론소진량
                                       </span>
-                                      <input
-                                        type="number"
-                                        step="0.1"
-                                        value={currentWeight}
-                                        onChange={(e) =>
-                                          handleItemRawMaterialChange(
-                                            index,
-                                            slot.weightKey,
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder="0.0"
-                                        className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-emerald-500/80 text-xs font-black text-emerald-300 placeholder-emerald-600/60 text-right focus:ring-1 focus:ring-emerald-400 focus:outline-hidden"
-                                      />
+                                      <span className="text-xs font-mono font-black text-emerald-300">
+                                        {(itGood * ((itemBOM.unitWeightKg || 0.5))).toFixed(1)}kg
+                                      </span>
+                                      <span className="text-[9.5px] text-slate-400">
+                                        ({itemBOM.unitWeightG || 500}g/EA)
+                                      </span>
                                     </div>
-                                    <div className="flex items-center gap-1 flex-1">
+
+                                    {/* LOT 넘버 입력란 & 원터치 [➕ LOT 추가] */}
+                                    <div className="flex items-center gap-1.5 flex-1">
                                       <span className="text-[10px] font-black text-indigo-300 whitespace-nowrap shrink-0">
                                         LOT
                                       </span>
@@ -381,9 +376,21 @@ export const ExtrusionReportItemProduction = ({
                                             e.target.value
                                           )
                                         }
-                                        placeholder="LOT No."
+                                        placeholder="LOT No. (교체 시 ➕ 추가)"
                                         className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-400 focus:outline-hidden"
                                       />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const nextLot = currentLot ? `${currentLot} ➔ ` : "";
+                                          handleItemRawMaterialChange(index, slot.lotKey, nextLot);
+                                        }}
+                                        className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10.5px] font-black whitespace-nowrap transition cursor-pointer flex items-center gap-0.5 shadow-2xs active:scale-95 shrink-0"
+                                        title="재료 교체 시 새 LOT 추가 기록"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                        <span>LOT추가</span>
+                                      </button>
                                     </div>
                                     <button
                                       type="button"

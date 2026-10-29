@@ -79,6 +79,8 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
     compoundType4: normalizeVal(bomData.compoundType4),
     insertType: normalizeVal(bomData.insertType, "미사용"),
     coatingType: normalizeVal(bomData.coatingType, "미사용"),
+    unitWeightKg: Number(bomData.unitWeightKg || bomData.unitWeight) > 0 ? Number(bomData.unitWeightKg || bomData.unitWeight) : 0.5,
+    unitWeightG: Number(bomData.unitWeightKg || bomData.unitWeight) > 0 ? Math.round(Number(bomData.unitWeightKg || bomData.unitWeight) * 1000) : 500,
     registeredBy: String(registeredBy || "설유철 책임"),
     updatedAt: new Date().toISOString()
   };

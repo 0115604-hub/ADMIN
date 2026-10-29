@@ -128,13 +128,27 @@ export const getMaterialBOMForItem = (vehicle, itemName, lineId = "") => {
   if (v && n) {
     const fullKey = `${v}:::${n}`;
     if (customMap[fullKey]) {
-      return { ...customMap[fullKey], matchedKey: fullKey, matchType: "CUSTOM_EXACT" };
+      const it = customMap[fullKey];
+      return {
+        unitWeightKg: it.unitWeightKg !== undefined ? Number(it.unitWeightKg) : (it.unitWeightG ? Number(it.unitWeightG) / 1000 : 0.5),
+        unitWeightG: it.unitWeightG !== undefined ? Number(it.unitWeightG) : (it.unitWeightKg ? Math.round(Number(it.unitWeightKg) * 1000) : 500),
+        ...it,
+        matchedKey: fullKey,
+        matchType: "CUSTOM_EXACT"
+      };
     }
   }
 
   // 1-2. Custom vehicle match
   if (v && customMap[v]) {
-    return { ...customMap[v], matchedKey: v, matchType: "CUSTOM_VEHICLE" };
+    const it = customMap[v];
+    return {
+      unitWeightKg: it.unitWeightKg !== undefined ? Number(it.unitWeightKg) : (it.unitWeightG ? Number(it.unitWeightG) / 1000 : 0.5),
+      unitWeightG: it.unitWeightG !== undefined ? Number(it.unitWeightG) : (it.unitWeightKg ? Math.round(Number(it.unitWeightKg) * 1000) : 500),
+      ...it,
+      matchedKey: v,
+      matchType: "CUSTOM_VEHICLE"
+    };
   }
 
   // 2. 🌟 Excel Baseline BOM (from 압출라인별 BOM자료.xls)
@@ -149,6 +163,8 @@ export const getMaterialBOMForItem = (vehicle, itemName, lineId = "") => {
       compoundType4: excelMatch.compoundType4 || "",
       insertType: excelMatch.insertType || "미사용",
       coatingType: excelMatch.coatingType || "미사용",
+      unitWeightKg: 0.5,
+      unitWeightG: 500,
       defaultRubberWeight: 120.0,
       defaultCoatingWeight: 15.0,
       defaultInsertWeight: 85.0,
@@ -164,11 +180,25 @@ export const getMaterialBOMForItem = (vehicle, itemName, lineId = "") => {
   if (v && n) {
     const fullKey = `${v}:::${n}`;
     if (ITEM_MATERIAL_BOM_MAP[fullKey]) {
-      return { ...ITEM_MATERIAL_BOM_MAP[fullKey], matchedKey: fullKey, matchType: "EXACT" };
+      const it = ITEM_MATERIAL_BOM_MAP[fullKey];
+      return {
+        unitWeightKg: it.unitWeightKg || 0.5,
+        unitWeightG: it.unitWeightG || 500,
+        ...it,
+        matchedKey: fullKey,
+        matchType: "EXACT"
+      };
     }
   }
   if (v && ITEM_MATERIAL_BOM_MAP[v]) {
-    return { ...ITEM_MATERIAL_BOM_MAP[v], matchedKey: v, matchType: "VEHICLE" };
+    const it = ITEM_MATERIAL_BOM_MAP[v];
+    return {
+      unitWeightKg: it.unitWeightKg || 0.5,
+      unitWeightG: it.unitWeightG || 500,
+      ...it,
+      matchedKey: v,
+      matchType: "VEHICLE"
+    };
   }
 
   // 4. Default Fallback
@@ -182,6 +212,8 @@ export const getMaterialBOMForItem = (vehicle, itemName, lineId = "") => {
     compoundType4: "",
     insertType: isPcmLine ? "미사용" : "SUS430(0.4*51*3)",
     coatingType: isPcmLine ? "미사용" : "HSC-2000-B-3",
+    unitWeightKg: 0.5,
+    unitWeightG: 500,
     defaultRubberWeight: 120.0,
     defaultCoatingWeight: 15.0,
     defaultInsertWeight: 85.0,

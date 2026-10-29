@@ -37,6 +37,8 @@ export default function ExtrusionBOMQuickForm({
   setInsertType,
   coatingType,
   setCoatingType,
+  unitWeightG = 500,
+  setUnitWeightG,
   compoundOptions,
   isSaving,
   onSubmit,
@@ -149,6 +151,30 @@ export default function ExtrusionBOMQuickForm({
             theme="sky"
             className="w-[130px]"
           />
+
+          {/* ⚖️ 단위중량 (기본 500g, 설유철 직접 수정 가능) */}
+          <div className="flex items-center gap-1 bg-slate-800/90 px-2 py-1 rounded-xl border border-teal-500/60 shadow-xs">
+            <span className="text-[10.5px] font-black text-teal-300 whitespace-nowrap">
+              ⚖️ 단위중량
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="10"
+              value={unitWeightG || ""}
+              onChange={(e) => {
+                if (isUserEditingRef) isUserEditingRef.current = true;
+                if (setUnitWeightG) setUnitWeightG(e.target.value);
+              }}
+              placeholder="500"
+              className="w-[60px] px-1.5 py-0.5 rounded bg-slate-900 border border-teal-400 text-teal-200 text-xs font-black text-right focus:outline-hidden focus:ring-1 focus:ring-teal-300"
+              title="품목 1개(EA)당 단위중량 (g)"
+            />
+            <span className="text-[10px] font-bold text-teal-400">g</span>
+            <span className="text-[9.5px] text-slate-400 font-mono">
+              ({((Number(unitWeightG) || 500) / 1000).toFixed(2)}kg)
+            </span>
+          </div>
 
           {/* 저장/등록 버튼 & 전체목록 버튼 */}
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">
