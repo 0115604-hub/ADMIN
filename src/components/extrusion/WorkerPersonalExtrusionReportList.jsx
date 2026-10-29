@@ -159,22 +159,34 @@ export const WorkerPersonalExtrusionReportList = ({
                     String(r.approvalStatus || "").trim() === "승인" ||
                     String(r.approvalStatus || "").trim() === "승인완료";
 
-                  // 작업자 표시 (공동 작업자 포함)
-                  const allWorkersList = [];
-                  if (r.worker) allWorkersList.push(r.worker);
+                  // 작업자 표시 (공동 작업자 중복 완벽 제거)
+                  const seenPureNames = new Set();
+                  const uniqueWorkersList = [];
+
+                  const addWorkerToken = (rawToken) => {
+                    if (!rawToken) return;
+                    const cleanLabel = String(rawToken).trim();
+                    const pure = normalizeName(cleanLabel);
+                    if (pure && !seenPureNames.has(pure)) {
+                      seenPureNames.add(pure);
+                      uniqueWorkersList.push(cleanLabel);
+                    }
+                  };
+
+                  if (r.worker) {
+                    String(r.worker).split(/[,/·+&]/).forEach(addWorkerToken);
+                  }
                   if (r.subWorkers) {
-                    r.subWorkers.split(",").forEach((sw) => {
-                      const trimmed = sw.trim();
-                      if (trimmed && !allWorkersList.includes(trimmed)) allWorkersList.push(trimmed);
-                    });
+                    String(r.subWorkers).split(/[,/·+&]/).forEach(addWorkerToken);
                   }
                   if (Array.isArray(r.workers)) {
-                    r.workers.forEach((w) => {
-                      const name = String(w?.name || w || "").trim();
-                      if (name && !allWorkersList.includes(name)) allWorkersList.push(name);
-                    });
+                    r.workers.forEach((w) => addWorkerToken(w?.name || w));
                   }
-                  const workersDisplay = allWorkersList.join(", ") || r.writer || "작업자";
+                  if (Array.isArray(r.workerList)) {
+                    r.workerList.forEach((w) => addWorkerToken(w?.name || w));
+                  }
+
+                  const workersDisplay = uniqueWorkersList.join(", ") || r.writer || "작업자";
 
                   return (
                     <tr
