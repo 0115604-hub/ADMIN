@@ -190,9 +190,14 @@ export const saveExtrusionReport = async (reportData) => {
   // 주 작업자 및 공동 작업자 병합
   addWorkerToken(sanitized.worker);
   String(sanitized.subWorkers || "").split(/[,/·+&]/).forEach(addWorkerToken);
+  if (sanitized.writer) addWorkerToken(sanitized.writer);
+  if (sanitized.registeredBy) addWorkerToken(sanitized.registeredBy);
+  if (sanitized.createdBy) addWorkerToken(sanitized.createdBy);
   if (existingSameTicket) {
     addWorkerToken(existingSameTicket.worker);
     String(existingSameTicket.subWorkers || "").split(/[,/·+&]/).forEach(addWorkerToken);
+    if (existingSameTicket.writer) addWorkerToken(existingSameTicket.writer);
+    if (existingSameTicket.registeredBy) addWorkerToken(existingSameTicket.registeredBy);
   }
 
   const finalWorker = cleanWorkerTokens[0] || sanitized.worker || "작업자";

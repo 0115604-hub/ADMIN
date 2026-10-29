@@ -664,8 +664,46 @@ export const useExtrusionWorkReportState = ({
         formData.downtimeDetail ||
         "";
 
+      // 로그인한 작업자(작성자)가 작업자 명단에 없다면 자동으로 공동작업자로 포함
+      let finalWorker = formData.worker;
+      let finalSubWorkers = formData.subWorkers;
+      const pureMyName = currentProfile?.name
+        ? String(currentProfile.name).replace(/(반장|대리|사원|과장|차장|부장|팀장|주임|기사|선임|책임|수석|이사|대표)/g, "").trim()
+        : "";
+
+      if (pureMyName) {
+        const existingTokens = [];
+        if (finalWorker) {
+          String(finalWorker).split(/[,/·+&]/).forEach((t) => {
+            const clean = t.replace(/(반장|대리|사원|과장|차장|부장|팀장|주임|기사|선임|책임|수석|이사|대표)/g, "").trim();
+            if (clean) existingTokens.push(clean);
+          });
+        }
+        if (finalSubWorkers) {
+          String(finalSubWorkers).split(/[,/·+&]/).forEach((t) => {
+            const clean = t.replace(/(반장|대리|사원|과장|차장|부장|팀장|주임|기사|선임|책임|수석|이사|대표)/g, "").trim();
+            if (clean) existingTokens.push(clean);
+          });
+        }
+
+        const isMeIncluded = existingTokens.some((tok) => tok === pureMyName || tok.includes(pureMyName) || pureMyName.includes(tok));
+        if (!isMeIncluded) {
+          const myLabel = currentProfile.title ? `${currentProfile.name} ${currentProfile.title}` : currentProfile.name;
+          if (!finalWorker) {
+            finalWorker = myLabel;
+          } else {
+            finalSubWorkers = finalSubWorkers ? `${finalSubWorkers}, ${myLabel}` : myLabel;
+          }
+        }
+      }
+
       const reportToSave = sanitizeExtrusionReport({
         ...formData,
+        worker: finalWorker,
+        subWorkers: finalSubWorkers,
+        writer: currentProfile?.name || formData.worker || "작업자",
+        registeredBy: currentProfile?.name || formData.worker || "작업자",
+        createdBy: currentProfile?.name || formData.worker || "작업자",
         items: formData.items,
         targetQty: totalTargetQty,
         actualQty: totalActualQty,

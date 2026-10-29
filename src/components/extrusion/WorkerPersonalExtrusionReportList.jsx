@@ -46,16 +46,24 @@ export const WorkerPersonalExtrusionReportList = ({
       if (r.worker) {
         String(r.worker)
           .split(/[,/·+&]/)
-          .forEach((t) => allWorkerTokens.push(normalizeName(t)));
+          .forEach((t) => {
+            const norm = normalizeName(t);
+            if (norm) allWorkerTokens.push(norm);
+          });
       }
       if (r.subWorkers) {
         String(r.subWorkers)
           .split(/[,/·+&]/)
-          .forEach((t) => allWorkerTokens.push(normalizeName(t)));
+          .forEach((t) => {
+            const norm = normalizeName(t);
+            if (norm) allWorkerTokens.push(norm);
+          });
       }
       if (r.writer) allWorkerTokens.push(normalizeName(r.writer));
       if (r.author) allWorkerTokens.push(normalizeName(r.author));
       if (r.registeredBy) allWorkerTokens.push(normalizeName(r.registeredBy));
+      if (r.createdBy) allWorkerTokens.push(normalizeName(r.createdBy));
+      if (r.updatedBy) allWorkerTokens.push(normalizeName(r.updatedBy));
 
       if (Array.isArray(r.workers)) {
         r.workers.forEach((w) => allWorkerTokens.push(normalizeName(w?.name || w)));
@@ -64,8 +72,10 @@ export const WorkerPersonalExtrusionReportList = ({
         r.workerList.forEach((w) => allWorkerTokens.push(normalizeName(w?.name || w)));
       }
 
-      // 정확하게 토큰 목록 중에 본인의 순수 이름이 포함되어 있는지 확인
-      return allWorkerTokens.some((tok) => tok === pureMyName);
+      // 정확하게 토큰 목록 중에 본인의 순수 이름이 포함되어 있는지 확인 (부분일치/동등 모두 검증)
+      return allWorkerTokens.some(
+        (tok) => tok === pureMyName || tok.includes(pureMyName) || pureMyName.includes(tok)
+      );
     });
   }, [reports, currentWorkerName]);
 
