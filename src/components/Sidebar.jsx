@@ -126,7 +126,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       : [])
   ];
 
-  // ⭐ 현장 작업자 모드: 압출동 작업자 -> 압출 작업일보만 노출 / 가공동 일반작업자 -> 오늘의 작업일보만 노출
+  // ⭐ 현장 작업자 모드: 압출동 작업자 -> 오늘의 작업일보(요약 대시보드) 표출 / 가공동 일반작업자 -> 오늘의 작업일보만 노출
   let navigationTabs;
   if (isAdmin) {
     navigationTabs = ADMIN_TABS;
@@ -135,8 +135,8 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
   } else if (isExtrusion) {
     navigationTabs = [
       {
-        id: "extrusion_downtime",
-        label: "압출 작업일보",
+        id: "worker_dashboard",
+        label: "압출 생산 현황",
         icon: ClipboardList,
         color: "teal",
         activeClass: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 ring-1 ring-teal-500/30",

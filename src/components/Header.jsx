@@ -109,11 +109,8 @@ export const Header = ({
                   try {
                     sessionStorage.setItem("auto_open_extrusion_report", "true");
                   } catch (e) {}
-                  if (activeTab !== "extrusion_downtime" && setActiveTab) {
-                    try {
-                      localStorage.setItem("factory_extrusion_active_subtab", "production");
-                    } catch (e) {}
-                    setActiveTab("extrusion_downtime");
+                  if (activeTab !== "worker_dashboard" && setActiveTab) {
+                    setActiveTab("worker_dashboard");
                   }
                   window.dispatchEvent(new CustomEvent("open-extrusion-work-report-modal"));
                 }}
