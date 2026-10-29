@@ -11,7 +11,6 @@ import {
   orderBy
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { safeFirestoreWrite } from "./common/safeFirestore";
 import { syncPlantOvertimeToApprovalBox, syncAllOvertimeReportsToApprovalBox } from "./approvalService";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import {
@@ -479,18 +478,13 @@ export const saveOvertimeReport = async (report) => {
     console.warn("Auto-sync report to ledger matrix error:", e);
   }
 
-  // Sync to Cloud Firestore with safe offline fallback & recursive sanitization
-  const payload = sanitizeForFirestore(cleanReport);
-  await safeFirestoreWrite(
-    () => setDoc(doc(db, COLLECTION_NAME, cleanReport.id), payload, { merge: true }),
-    {
-      operationName: "근태/특근 보고서 저장",
-      collectionName: COLLECTION_NAME,
-      docId: cleanReport.id,
-      payload,
-      fallbackValue: cleanReport
-    }
-  );
+  // Sync to Cloud Firestore with recursive sanitization
+  try {
+    const payload = sanitizeForFirestore(cleanReport);
+    await setDoc(doc(db, COLLECTION_NAME, cleanReport.id), payload, { merge: true });
+  } catch (e) {
+    console.warn("Firestore overtime save error:", e);
+  }
 
   // ⭐ Auto-sync to Electronic Approval Box ONLY for weekend overtime
   if (isWeekendReport || isExplicitOvertime) {

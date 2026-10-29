@@ -21,21 +21,11 @@ export const PANEL_KEYS = {
   TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge", // ✈️ 텔레그램 실시간 소통 라운지
   WORK_REPORT_TEMPLATES: "work_report_templates", // 🧩 레고블록 작업일보 빌더
   SEVERE_DISASTER: "severe_disaster", // 🚨 중대재해 안전판
-  INCOMING_INSPECTION: "incoming_inspection", // 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
-  NAS_QUALITY_FILES: "nas_quality_files" // 🗄️ NAS 품질문서 연동 패널 (4개 뱃지 카드)
+  INCOMING_INSPECTION: "incoming_inspection" // 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
 };
 
 // 🌟 전체 패널 블록 메타데이터 목록 (TEST 뱃지 스튜디오에서 사용)
 export const ALL_DASHBOARD_BLOCKS = [
-  {
-    key: PANEL_KEYS.NAS_QUALITY_FILES,
-    label: "NAS 품질관리 문서 연동 패널",
-    category: "품질/스토리지",
-    badge: "🗄️ NAS 연동",
-    icon: "FolderOpen",
-    description: "NAS 연결상태, 최근/즐겨찾기 품질문서 및 전체 폴더 탐색기 (4개 뱃지형)",
-    color: "from-blue-600 to-indigo-700"
-  },
   {
     key: PANEL_KEYS.INCOMING_INSPECTION,
     label: "원부자재 입고 및 수입검사 통합대장",
@@ -195,7 +185,6 @@ export const STUDIO_MANAGERS = [
 export const DEFAULT_INTERNAL_MANAGER_PANELS = [
   PANEL_KEYS.COMMON_SCHEDULE,
   PANEL_KEYS.CALENDAR_SCHEDULE,
-  PANEL_KEYS.NAS_QUALITY_FILES,
   PANEL_KEYS.SALES_PURCHASE,
   PANEL_KEYS.QUALITY_SUMMARY,
   PANEL_KEYS.WORK_LOGS
@@ -203,10 +192,9 @@ export const DEFAULT_INTERNAL_MANAGER_PANELS = [
 
 // 관리자(ID 또는 이름)별 맞춤 패널 기본 설정표 (초기 공장 기본값: 각 관리자별 전담 공정/업무 패널을 최상단에 우선 배치)
 export const MANAGER_PANEL_CONFIG = {
-  // ⭐ [품질총괄: 이창엽 책임 - 원부자재 수입검사 & NAS 품질문서 & 부적합경보 & 4M 변동점 & 일일품질]
+  // ⭐ [품질총괄: 이창엽 책임 - 원부자재 수입검사 & 부적합경보 & 4M 변동점 & 일일품질]
   "sam_cy": [
     PANEL_KEYS.INCOMING_INSPECTION,
-    PANEL_KEYS.NAS_QUALITY_FILES,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.QUALITY_SUMMARY,
@@ -216,7 +204,6 @@ export const MANAGER_PANEL_CONFIG = {
   ],
   "이창엽": [
     PANEL_KEYS.INCOMING_INSPECTION,
-    PANEL_KEYS.NAS_QUALITY_FILES,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.QUALITY_SUMMARY,
@@ -440,8 +427,8 @@ export const MANAGER_PANEL_CONFIG = {
   ]
 };
 
-// 패널 설정 캐시 버전 (버전 업으로 로컬스토리지 강제 동기화)
-export const PANEL_CONFIG_VERSION = "20261029_v17_supplier_studio_live";
+// 패널 설정 캐시 버전
+export const PANEL_CONFIG_VERSION = "20261029_v15_role_tailored";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회

@@ -11,7 +11,6 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { safeFirestoreWrite } from "./common/safeFirestore";
 
 export const INITIAL_WORK_LOGS = [];
 
@@ -362,17 +361,13 @@ export const saveWorkLog = async (newLog) => {
   const updatedLocal = [parsedClean, ...current.filter((l) => String(l.id) !== logId)];
   saveLocalWorkLogs(updatedLocal);
 
-  // 2. Sync to Firestore cloud safely with offline fallback
-  await safeFirestoreWrite(
-    () => setDoc(doc(db, COLLECTION_NAME, logId), cleanData),
-    {
-      operationName: "작업일보 저장",
-      collectionName: COLLECTION_NAME,
-      docId: logId,
-      payload: cleanData,
-      fallbackValue: updatedLocal
-    }
-  );
+  // 2. Sync to Firestore cloud
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, logId), cleanData);
+    console.log("Work log successfully synced to Firestore cloud:", logId);
+  } catch (e) {
+    console.error("Firestore cloud sync error:", e);
+  }
 
   return updatedLocal;
 };

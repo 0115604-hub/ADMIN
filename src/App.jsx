@@ -603,32 +603,28 @@ export const App = () => {
 
       {/* Transaction Add/Edit Modal (Admin Only) */}
       {isAdmin && modalOpen && (
-        <ErrorBoundary title="거래 입력/수정 모달" onReset={() => { setModalOpen(false); setEditingItem(null); }}>
-          <Suspense fallback={null}>
-            <TransactionModal
-              isOpen={modalOpen}
-              onClose={() => {
-                setModalOpen(false);
-                setEditingItem(null);
-              }}
-              onSave={handleSaveTransaction}
-              editingItem={editingItem}
-            />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={null}>
+          <TransactionModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+              setEditingItem(null);
+            }}
+            onSave={handleSaveTransaction}
+            editingItem={editingItem}
+          />
+        </Suspense>
       )}
 
       {/* Excel Upload Modal */}
       {excelModalOpen && (
-        <ErrorBoundary title="엑셀 일괄 업로드 모달" onReset={() => setExcelModalOpen(false)}>
-          <Suspense fallback={null}>
-            <ExcelUploadModal
-              isOpen={excelModalOpen}
-              onClose={() => setExcelModalOpen(false)}
-              onBulkUpload={handleBulkUpload}
-            />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={null}>
+          <ExcelUploadModal
+            isOpen={excelModalOpen}
+            onClose={() => setExcelModalOpen(false)}
+            onBulkUpload={handleBulkUpload}
+          />
+        </Suspense>
       )}
     </div>
   );
