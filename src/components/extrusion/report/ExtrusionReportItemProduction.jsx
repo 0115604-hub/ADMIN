@@ -433,7 +433,7 @@ export const ExtrusionReportItemProduction = ({
               </div>
 
               {/* Item Quantities */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
                 <div>
                   <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
                     지시/계획수량 (EA)
@@ -482,25 +482,9 @@ export const ExtrusionReportItemProduction = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    불량수량 (EA)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={item.defectQty}
-                    onChange={(e) =>
-                      handleItemFieldChange(index, "defectQty", e.target.value)
-                    }
-                    placeholder="EA"
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-rose-600 dark:text-rose-400 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
-                  />
-                </div>
-
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    스크랩 (kg)
+                  <label className="block text-[10.5px] font-black text-rose-600 dark:text-rose-400 mb-1 flex items-center justify-between">
+                    <span>불량 & 스크랩 중량 (kg)</span>
                   </label>
                   <input
                     type="number"
@@ -510,7 +494,8 @@ export const ExtrusionReportItemProduction = ({
                     onChange={(e) =>
                       handleItemFieldChange(index, "scrapKg", e.target.value)
                     }
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-amber-600 dark:text-amber-400 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    placeholder="0.0"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border-2 border-rose-400/80 font-black text-right text-rose-600 dark:text-rose-400 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                   />
                 </div>
               </div>

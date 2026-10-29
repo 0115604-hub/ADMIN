@@ -10,6 +10,7 @@ const ExtrusionReportNotesAndDowntime = ({
   formData,
   setFormData,
   dtEvents,
+  defaultWasteWeight = ""
 }) => {
   const events = dtEvents || (Array.isArray(formData?.downtimeEvents) ? formData.downtimeEvents : []);
 
@@ -23,6 +24,7 @@ const ExtrusionReportNotesAndDowntime = ({
         plantLabel="압출동"
         unitLabel="폐기중량(kg)"
         events={events}
+        defaultScrapKg={defaultWasteWeight}
         onChangeEvents={(nextEvents) =>
           setFormData((prev) => ({
             ...prev,

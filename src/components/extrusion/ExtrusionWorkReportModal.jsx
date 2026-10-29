@@ -148,6 +148,9 @@ export const ExtrusionWorkReportModal = ({
               formData={formData}
               setFormData={setFormData}
               dtEvents={formData?.downtimeEvents}
+              defaultWasteWeight={
+                formData.items?.reduce((sum, it) => sum + (Number(it?.scrapKg) || 0), 0) || ""
+              }
             />
           </form>
         )}

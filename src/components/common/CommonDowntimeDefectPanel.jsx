@@ -105,6 +105,7 @@ const CommonDowntimeDefectPanel = ({
   events,
   onChangeEvents,
   defaultEvents = [],
+  defaultScrapKg = "",
   onSyncSummary,
   currentLang = null
 }) => {
@@ -137,11 +138,21 @@ const CommonDowntimeDefectPanel = ({
     startTime: "08:00",
     endTime: "08:30",
     minutes: 30,
-    scrapKg: "",
+    scrapKg: defaultScrapKg !== "" && defaultScrapKg !== undefined ? defaultScrapKg : "",
     detail: "표면 미세 뜯김 발생 → 다이스 클리닝 및 조건 보정 후 정상 복구",
     beforePhoto: null,
     afterPhoto: null
   });
+
+  // 위 품목별 불량 & 스크랩 중량 변경 시 폐기중량 기본값 자동 반영
+  React.useEffect(() => {
+    if (defaultScrapKg !== "" && defaultScrapKg !== undefined) {
+      setDraft((prev) => ({
+        ...prev,
+        scrapKg: prev.scrapKg === "" || prev.scrapKg === 0 || prev.scrapKg === undefined ? defaultScrapKg : prev.scrapKg
+      }));
+    }
+  }, [defaultScrapKg]);
 
   const [previewModal, setPreviewModal] = useState(null);
 
