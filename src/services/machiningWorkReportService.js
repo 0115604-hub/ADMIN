@@ -12,6 +12,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
+import {
+  persistWorkReportWithSync,
+  mergeReportsOnSnapshot
+} from "./common/workReportSyncEngine";
 import * as XLSX from "xlsx";
 
 export const MACHINING_STORAGE_KEY = "machining_work_reports_store_v1";
@@ -405,13 +409,15 @@ export const subscribeMachiningWorkReports = (callback) => {
           return db_.localeCompare(da);
         });
 
-        machiningCache = reports;
-        saveLocalMachiningWorkReports(reports); // Only 1 localStorage write
+        const currentLocal = getLocalMachiningWorkReports();
+        const merged = mergeReportsOnSnapshot(reports, currentLocal);
+        machiningCache = merged;
+        saveLocalMachiningWorkReports(merged);
 
         // Dispatch to all subscribers
         machiningSubscribers.forEach((cb) => {
           try {
-            cb(reports);
+            cb(merged);
           } catch (err) {
             console.error("Machining subscriber callback error:", err);
           }
@@ -440,9 +446,8 @@ export const subscribeMachiningWorkReports = (callback) => {
   };
 };
 
-// Save Machining Work Report (Create or Update)
+// Save Machining Work Report (Create or Update) with 100% offline resilience and incident logging
 export const saveMachiningWorkReport = async (reportData) => {
-  const now = new Date().toISOString();
   const id = reportData.id || `mwr_${reportData.project || "JA"}_${reportData.processId || "work"}_${Date.now()}`;
 
   const cleanReport = {
@@ -450,34 +455,25 @@ export const saveMachiningWorkReport = async (reportData) => {
     id,
     plant: "삼랑진공장",
     building: "가공동",
-    company: "오륙",
-    updatedAt: now,
-    createdAt: reportData.createdAt || now
+    company: "오륙"
   };
 
-  // 1. Update local cache immediately
-  const localList = getLocalMachiningWorkReports();
-  const existingIdx = localList.findIndex((r) => r.id === id);
-  let updatedList;
-  if (existingIdx >= 0) {
-    updatedList = [...localList];
-    updatedList[existingIdx] = cleanReport;
-  } else {
-    updatedList = [cleanReport, ...localList];
-  }
-  saveLocalMachiningWorkReports(updatedList);
+  const result = await persistWorkReportWithSync({
+    collectionName: COLLECTION_NAME,
+    report: cleanReport,
+    getLocalReports: getLocalMachiningWorkReports,
+    saveLocalReports: (list) => {
+      saveLocalMachiningWorkReports(list);
+      machiningCache = list;
+      machiningSubscribers.forEach((cb) => {
+        try { cb(list); } catch (e) {}
+      });
+    },
+    sanitizeForDb: sanitizeForFirestore,
+    incidentCategory: "일일생산정보"
+  });
 
-  // 2. Persist to Firestore
-  if (db) {
-    try {
-      const payload = sanitizeForFirestore(cleanReport);
-      await setDoc(doc(db, COLLECTION_NAME, id), payload);
-    } catch (e) {
-      console.warn("Firestore save Machining report error (cached locally):", e);
-    }
-  }
-
-  return cleanReport;
+  return result.report;
 };
 
 // Delete Machining Work Report

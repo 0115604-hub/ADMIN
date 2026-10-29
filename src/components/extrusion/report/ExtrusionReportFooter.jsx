@@ -12,6 +12,7 @@ const ExtrusionReportFooter = ({
   handleProceedToReport,
   handleSubmit,
   isEditing,
+  isSubmitting = false
 }) => {
   return (
     <div className="px-6 py-3.5 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
@@ -37,8 +38,9 @@ const ExtrusionReportFooter = ({
         <>
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => setCurrentStep("tpm")}
-            className="px-4 py-2 rounded-xl bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 font-black text-xs transition active:scale-95 cursor-pointer border border-slate-300 dark:border-slate-600 flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 font-black text-xs transition active:scale-95 cursor-pointer border border-slate-300 dark:border-slate-600 flex items-center gap-1.5 disabled:opacity-50"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>TPM 점검표 다시보기</span>
@@ -46,11 +48,25 @@ const ExtrusionReportFooter = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={handleSubmit}
-              className="px-6 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+              className={`px-6 py-2 rounded-xl text-white font-black text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5 ${
+                isSubmitting
+                  ? "bg-slate-400 dark:bg-slate-600 cursor-not-allowed opacity-80"
+                  : "bg-teal-600 hover:bg-teal-700"
+              }`}
             >
-              <Save className="w-4 h-4" />
-              <span>{isEditing ? "작업일보 수정 저장" : "실시간 작업일보 등록"}</span>
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span>실시간 저장 중...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>{isEditing ? "작업일보 수정 저장" : "실시간 작업일보 등록"}</span>
+                </>
+              )}
             </button>
           </div>
         </>

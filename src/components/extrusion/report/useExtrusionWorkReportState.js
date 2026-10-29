@@ -45,6 +45,7 @@ export const useExtrusionWorkReportState = ({
 
   // Step state: 'tpm' (1단계: TPM 점검) or 'report' (2단계: 작업일보 작성)
   const [currentStep, setCurrentStep] = useState(isEditing ? "report" : "tpm");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Photo Capture & Preview states
   const fileInputRef = useRef(null);
@@ -536,8 +537,10 @@ export const useExtrusionWorkReportState = ({
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (isSubmitting) return;
+
     const newErrors = {};
 
     if (!formData.date) newErrors.date = "작업일자를 입력해주세요.";
@@ -559,79 +562,89 @@ export const useExtrusionWorkReportState = ({
       return;
     }
 
-    // Mark TPM as completed for this worker today
-    const key = `extrusion_tpm_done_${formData.date}_${String(formData.worker).trim()}`;
+    setIsSubmitting(true);
     try {
-      localStorage.setItem(key, "true");
-    } catch (err) {
-      console.warn("localStorage error:", err);
-    }
+      // Mark TPM as completed for this worker today
+      const key = `extrusion_tpm_done_${formData.date}_${String(formData.worker).trim()}`;
+      try {
+        localStorage.setItem(key, "true");
+      } catch (err) {
+        console.warn("localStorage error:", err);
+      }
 
-    let dtList = Array.isArray(formData?.downtimeEvents) ? [...formData.downtimeEvents] : [];
+      let dtList = Array.isArray(formData?.downtimeEvents) ? [...formData.downtimeEvents] : [];
 
-    // Auto-bundle draft if user filled out the form but forgot to click "내역 등록"
-    if (
-      dtList.length === 0 &&
-      (Number(downtimeDraft.minutes) > 0 ||
-        downtimeDraft.detail ||
-        downtimeDraft.scrapKg !== "" ||
-        (downtimeDraft.startTime && downtimeDraft.endTime))
-    ) {
-      const category = downtimeDraft.category || "압개시";
-      const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category);
-      dtList.push({
-        id: `dt_${Date.now()}_auto`,
-        type: downtimeDraft.type || "비가동",
-        category,
-        startTime: downtimeDraft.startTime || "",
-        endTime: downtimeDraft.endTime || "",
-        minutes:
-          Number(downtimeDraft.minutes) ||
-          (downtimeDraft.startTime && downtimeDraft.endTime
-            ? calculateMinutesFromTime(downtimeDraft.startTime, downtimeDraft.endTime)
-            : 0),
-        scrapKg: Number(downtimeDraft.scrapKg) || 0,
-        detail: String(downtimeDraft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치`
+      // Auto-bundle draft if user filled out the form but forgot to click "내역 등록"
+      if (
+        dtList.length === 0 &&
+        (Number(downtimeDraft.minutes) > 0 ||
+          downtimeDraft.detail ||
+          downtimeDraft.scrapKg !== "" ||
+          (downtimeDraft.startTime && downtimeDraft.endTime))
+      ) {
+        const category = downtimeDraft.category || "압개시";
+        const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category);
+        dtList.push({
+          id: `dt_${Date.now()}_auto`,
+          type: downtimeDraft.type || "비가동",
+          category,
+          startTime: downtimeDraft.startTime || "",
+          endTime: downtimeDraft.endTime || "",
+          minutes:
+            Number(downtimeDraft.minutes) ||
+            (downtimeDraft.startTime && downtimeDraft.endTime
+              ? calculateMinutesFromTime(downtimeDraft.startTime, downtimeDraft.endTime)
+              : 0),
+          scrapKg: Number(downtimeDraft.scrapKg) || 0,
+          detail: String(downtimeDraft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치`
+        });
+      }
+
+      const sumDtMinutes = dtList.reduce((acc, ev) => acc + (Number(ev?.minutes) || 0), 0);
+      const sumDtScrapKg = Number(dtList.reduce((acc, ev) => acc + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
+      const primaryCategory = dtList[0]?.category || formData.downtimeCategory || "형교환";
+      const primaryDetail =
+        dtList
+          .map((ev) =>
+            ev.detail
+              ? `[${ev.startTime || ""}~${ev.endTime || ""} ${ev.category || ""}] ${ev.detail}${
+                  Number(ev.scrapKg) > 0 ? ` (폐기 ${ev.scrapKg}kg)` : ""
+                }`
+              : ""
+          )
+          .filter(Boolean)
+          .join(" / ") ||
+        formData.downtimeDetail ||
+        "";
+
+      const reportToSave = sanitizeExtrusionReport({
+        ...formData,
+        items: formData.items,
+        targetQty: totalTargetQty,
+        actualQty: totalActualQty,
+        goodQty: totalGoodQty,
+        defectQty: totalDefectQty,
+        scrapKg: totalScrapKg,
+        tpmStatus: "완료",
+        tpmChecks,
+        tpmIssueText: formData.tpmIssueText || "",
+        tpmIssuePhotos: formData.tpmIssuePhotos || [],
+        downtimeEvents: dtList,
+        downtimeMinutes: sumDtMinutes,
+        downtimeScrapKg: sumDtScrapKg,
+        downtimeCategory: primaryCategory,
+        downtimeDetail: primaryDetail
       });
+
+      if (typeof onSave === "function") {
+        await onSave(reportToSave);
+      }
+    } catch (saveErr) {
+      console.error("Extrusion submit error:", saveErr);
+      alert("작업일보 저장 중 오류가 발생했습니다: " + (saveErr?.message || "다시 시도해주세요."));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const sumDtMinutes = dtList.reduce((acc, ev) => acc + (Number(ev?.minutes) || 0), 0);
-    const sumDtScrapKg = Number(dtList.reduce((acc, ev) => acc + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
-    const primaryCategory = dtList[0]?.category || formData.downtimeCategory || "형교환";
-    const primaryDetail =
-      dtList
-        .map((ev) =>
-          ev.detail
-            ? `[${ev.startTime || ""}~${ev.endTime || ""} ${ev.category || ""}] ${ev.detail}${
-                Number(ev.scrapKg) > 0 ? ` (폐기 ${ev.scrapKg}kg)` : ""
-              }`
-            : ""
-        )
-        .filter(Boolean)
-        .join(" / ") ||
-      formData.downtimeDetail ||
-      "";
-
-    const reportToSave = sanitizeExtrusionReport({
-      ...formData,
-      items: formData.items,
-      targetQty: totalTargetQty,
-      actualQty: totalActualQty,
-      goodQty: totalGoodQty,
-      defectQty: totalDefectQty,
-      scrapKg: totalScrapKg,
-      tpmStatus: "완료",
-      tpmChecks,
-      tpmIssueText: formData.tpmIssueText || "",
-      tpmIssuePhotos: formData.tpmIssuePhotos || [],
-      downtimeEvents: dtList,
-      downtimeMinutes: sumDtMinutes,
-      downtimeScrapKg: sumDtScrapKg,
-      downtimeCategory: primaryCategory,
-      downtimeDetail: primaryDetail
-    });
-
-    onSave(reportToSave);
   };
 
   return {
@@ -671,6 +684,7 @@ export const useExtrusionWorkReportState = ({
     handlePvcTempChange,
     handlePvcDryerZoneChange,
     handleDownloadCheckSheet,
-    handleSubmit
+    handleSubmit,
+    isSubmitting
   };
 };

@@ -9,6 +9,10 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { getKSTDateString } from "../utils/dateUtils";
+import {
+  persistWorkReportWithSync,
+  mergeReportsOnSnapshot
+} from "./common/workReportSyncEngine";
 import * as XLSX from "xlsx";
 
 const COLLECTION_NAME = "yuseong_work_reports";
@@ -215,41 +219,32 @@ export const subscribeYuseongWorkReports = (onUpdate) => {
   };
 };
 
-// Save Work Report
+// Save Work Report with 100% offline resilience and incident logging
 export const saveYuseongWorkReport = async (reportData) => {
-  const isNew = !reportData.id;
   const id = reportData.id || `yuseong_rep_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-  const now = new Date().toISOString();
 
   const record = {
     ...reportData,
     id,
-    company: "유성",
-    updatedAt: now,
-    createdAt: reportData.createdAt || now
+    company: "유성"
   };
 
-  // 1. Save to Local Storage immediately
-  const localList = getLocalYuseongWorkReports();
-  const existingIdx = localList.findIndex((it) => it.id === id);
-  if (existingIdx >= 0) {
-    localList[existingIdx] = record;
-  } else {
-    localList.unshift(record);
-  }
-  saveLocalYuseongWorkReports(localList);
+  const result = await persistWorkReportWithSync({
+    collectionName: COLLECTION_NAME,
+    report: record,
+    getLocalReports: getLocalYuseongWorkReports,
+    saveLocalReports: (list) => {
+      saveLocalYuseongWorkReports(list);
+      cachedYuseongReports = list;
+      yuseongReportsSubscribers.forEach((cb) => {
+        try { cb(list); } catch (e) {}
+      });
+    },
+    sanitizeForDb: sanitizeForFirestore,
+    incidentCategory: "일일생산정보"
+  });
 
-  // 2. Sync to Firestore
-  if (db) {
-    try {
-      const docRef = doc(db, COLLECTION_NAME, id);
-      await setDoc(docRef, sanitizeForFirestore(record), { merge: true });
-    } catch (e) {
-      console.warn("Firestore save error for yuseong report, local saved:", e);
-    }
-  }
-
-  return record;
+  return result.report;
 };
 
 // Delete Work Report

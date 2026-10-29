@@ -9,6 +9,10 @@ import { db } from "../../firebase";
 import { sanitizeForFirestore } from "../../utils/firestoreUtils";
 import { COLLECTION_NAME, EXTRUSION_PROD_STORAGE_KEY } from "./extrusionProductionConstants";
 import { sanitizeExtrusionReport } from "./extrusionSanitizer";
+import {
+  persistWorkReportWithSync,
+  mergeReportsOnSnapshot
+} from "../common/workReportSyncEngine";
 
 // Local storage reader
 export const getLocalExtrusionReports = () => {
@@ -100,20 +104,24 @@ export const subscribeToExtrusionReports = (onDataCallback) => {
               return (b.createdAt || "").localeCompare(a.createdAt || "");
             });
             const sanitizedList = list.map((r, i) => sanitizeExtrusionReport(r, i));
-            extrusionCache = sanitizedList;
-            saveLocalExtrusionReports(sanitizedList);
+            const currentLocal = getLocalExtrusionReports();
+            const mergedList = mergeReportsOnSnapshot(sanitizedList, currentLocal);
+            extrusionCache = mergedList;
+            saveLocalExtrusionReports(mergedList);
 
             // Dispatch to all subscribers
             extrusionSubscribers.forEach((cb) => {
               try {
-                cb(sanitizedList);
+                cb(mergedList);
               } catch (err) {
                 console.error("Extrusion subscriber callback error:", err);
               }
             });
           } else {
-            extrusionCache = [];
-            extrusionSubscribers.forEach((cb) => cb([]));
+            const currentLocal = getLocalExtrusionReports();
+            const mergedList = mergeReportsOnSnapshot([], currentLocal);
+            extrusionCache = mergedList;
+            extrusionSubscribers.forEach((cb) => cb(mergedList));
           }
         },
         (error) => {
@@ -143,34 +151,27 @@ export const subscribeToExtrusionReports = (onDataCallback) => {
 };
 
 /**
- * Create or Update a work report
+ * Create or Update a work report with 100% offline resilience and incident logging
  */
 export const saveExtrusionReport = async (reportData) => {
-  const sanitized = sanitizeExtrusionReport({
-    ...reportData,
-    updatedAt: new Date().toISOString()
+  const sanitized = sanitizeExtrusionReport(reportData);
+
+  const result = await persistWorkReportWithSync({
+    collectionName: COLLECTION_NAME,
+    report: sanitized,
+    getLocalReports: getLocalExtrusionReports,
+    saveLocalReports: (list) => {
+      saveLocalExtrusionReports(list);
+      extrusionCache = list;
+      extrusionSubscribers.forEach((cb) => {
+        try { cb(list); } catch (e) {}
+      });
+    },
+    sanitizeForDb: sanitizeForFirestore,
+    incidentCategory: "압출비가동"
   });
 
-  // 1. Update local storage immediately
-  const local = getLocalExtrusionReports();
-  const existingIndex = local.findIndex((r) => r.id === sanitized.id);
-  let updatedList;
-  if (existingIndex >= 0) {
-    updatedList = [...local];
-    updatedList[existingIndex] = sanitized;
-  } else {
-    updatedList = [sanitized, ...local];
-  }
-  saveLocalExtrusionReports(updatedList);
-
-  // 2. Sync to Firestore
-  try {
-    await setDoc(doc(db, COLLECTION_NAME, sanitized.id), sanitizeForFirestore(sanitized), { merge: true });
-  } catch (e) {
-    console.warn("Firestore save error (cached locally):", e);
-  }
-
-  return sanitized;
+  return result.report;
 };
 
 /**

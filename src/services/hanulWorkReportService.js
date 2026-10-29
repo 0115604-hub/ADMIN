@@ -12,6 +12,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
+import {
+  persistWorkReportWithSync,
+  mergeReportsOnSnapshot
+} from "./common/workReportSyncEngine";
 import * as XLSX from "xlsx";
 
 export const HANUL_STORAGE_KEY = "hanul_work_reports_store_v1";
@@ -474,10 +478,12 @@ export const subscribeHanulWorkReports = (callback) => {
             const db_ = `${b.date || ""} ${b.createdAt || ""}`;
             return db_.localeCompare(da);
           });
-          cachedHanulReports = reports;
-          saveLocalHanulWorkReports(reports);
+          const currentLocal = getLocalHanulWorkReports();
+          const merged = mergeReportsOnSnapshot(reports, currentLocal);
+          cachedHanulReports = merged;
+          saveLocalHanulWorkReports(merged);
           hanulReportsSubscribers.forEach((cb) => {
-            try { cb(reports); } catch (e) { console.error("Hanul subscriber cb error:", e); }
+            try { cb(merged); } catch (e) { console.error("Hanul subscriber cb error:", e); }
           });
         },
         (error) => {
@@ -509,41 +515,30 @@ export const subscribeHanulWorkReports = (callback) => {
   };
 };
 
-// Save Hanul Work Report (Create or Update)
+// Save Hanul Work Report (Create or Update) with 100% offline resilience and incident logging
 export const saveHanulWorkReport = async (reportData) => {
-  const now = new Date().toISOString();
   const id = reportData.id || `hwr_${reportData.project || "9BQC"}_${reportData.processId || "work"}_${Date.now()}`;
-
   const cleanReport = {
     ...reportData,
-    id,
-    updatedAt: now,
-    createdAt: reportData.createdAt || now
+    id
   };
 
-  // 1. Update local cache immediately
-  const localList = getLocalHanulWorkReports();
-  const existingIdx = localList.findIndex((r) => r.id === id);
-  let updatedList;
-  if (existingIdx >= 0) {
-    updatedList = [...localList];
-    updatedList[existingIdx] = cleanReport;
-  } else {
-    updatedList = [cleanReport, ...localList];
-  }
-  saveLocalHanulWorkReports(updatedList);
+  const result = await persistWorkReportWithSync({
+    collectionName: COLLECTION_NAME,
+    report: cleanReport,
+    getLocalReports: getLocalHanulWorkReports,
+    saveLocalReports: (list) => {
+      saveLocalHanulWorkReports(list);
+      cachedHanulReports = list;
+      hanulReportsSubscribers.forEach((cb) => {
+        try { cb(list); } catch (e) {}
+      });
+    },
+    sanitizeForDb: sanitizeForFirestore,
+    incidentCategory: "일일생산정보"
+  });
 
-  // 2. Persist to Firestore
-  if (db) {
-    try {
-      const payload = sanitizeForFirestore(cleanReport);
-      await setDoc(doc(db, COLLECTION_NAME, id), payload);
-    } catch (e) {
-      console.warn("Firestore save Hanul report error (cached locally):", e);
-    }
-  }
-
-  return cleanReport;
+  return result.report;
 };
 
 // Delete Hanul Work Report

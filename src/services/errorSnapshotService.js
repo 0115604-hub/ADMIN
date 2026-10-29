@@ -1,6 +1,7 @@
-﻿import { saveIncidentLog } from "./incidentLogService";
+import { saveIncidentLog } from "./incidentLogService";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { getKSTDateString } from "../utils/dateUtils";
 
 // Helper to safely extract user profile from storage
 export const getCurrentUserProfile = () => {
@@ -168,7 +169,7 @@ export const autoReportRuntimeIncident = async ({ title = "", error = null, erro
     const fullSymptoms = `[오류 메시지]: ${errorMsg}\n\n[화면 상태 스냅샷]:\n${snapshot.oneLineSummary}\n\n[스택 정보]:\n${errorStack}\n\n[컴포넌트 트리]:\n${compStack}`.trim();
 
     const incidentPayload = {
-      workDate: new Date().toISOString().slice(0, 10),
+      workDate: getKSTDateString(),
       category: category,
       severity: "P0", // 런타임 크래시는 P0 긴급 접수
       title: `[자동접수] ${title || snapshot.view.activeTab} 런타임 오류 (${errorMsg.slice(0, 50)})`,

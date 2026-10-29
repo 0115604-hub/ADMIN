@@ -57,7 +57,8 @@ export const ExtrusionWorkReportModal = ({
     handlePvcTempChange,
     handlePvcDryerZoneChange,
     handleDownloadCheckSheet,
-    handleSubmit
+    handleSubmit,
+    isSubmitting
   } = useExtrusionWorkReportState({
     isOpen,
     onClose,
@@ -159,6 +160,7 @@ export const ExtrusionWorkReportModal = ({
           handleProceedToReport={handleProceedToReport}
           handleSubmit={handleSubmit}
           isEditing={isEditing}
+          isSubmitting={isSubmitting}
         />
       </div>
 
