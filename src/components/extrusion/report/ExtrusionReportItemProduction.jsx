@@ -44,6 +44,9 @@ export const ExtrusionReportItemProduction = ({
           const itYield = itActual > 0 ? ((itGood / itActual) * 100).toFixed(1) : "100.0";
           const itAttain = itTarget > 0 ? ((itActual / itTarget) * 100).toFixed(1) : "100.0";
           const currentVal = `${item?.vehicle || ""}:::${item?.itemName || ""}`;
+          const currentItemBOM = (item?.vehicle && item?.itemName)
+            ? (getMaterialBOMForItem(item.vehicle, item.itemName, formData?.lineId) || {})
+            : {};
 
           return (
             <div
@@ -313,7 +316,6 @@ export const ExtrusionReportItemProduction = ({
                           {/* Single-line compact material cards */}
                           <div className="space-y-1.5">
                             {activeSlots.map((slot) => {
-                              const currentWeight = itemRawMat[slot.weightKey] ?? "";
                               const currentLot = itemRawMat[slot.lotKey] || "";
 
                               return (
@@ -461,7 +463,7 @@ export const ExtrusionReportItemProduction = ({
                   <label className="block text-xs font-black text-emerald-700 dark:text-emerald-400 mb-1 flex items-center justify-between">
                     <span>총생산량 (EA) *</span>
                     <span className="text-[10px] font-bold text-slate-400 font-mono">
-                      (이론원재료: {(Number(item.actualQty || 0) * (itemBOM.unitWeightKg || 0.5)).toFixed(1)}kg)
+                      (이론원재료: {(Number(item.actualQty || 0) * (currentItemBOM.unitWeightKg || 0.5)).toFixed(1)}kg)
                     </span>
                   </label>
                   <input
