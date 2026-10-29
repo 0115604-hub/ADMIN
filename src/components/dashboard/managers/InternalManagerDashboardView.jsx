@@ -14,7 +14,6 @@ import {
 import { UnifiedAbnormalityControlPanel } from "../UnifiedAbnormalityControlPanel";
 import { MachiningWorkReportTable } from "../../machining/MachiningWorkReportTable";
 import { SeolExtrusionWorkReportTable } from "../../extrusion/SeolExtrusionWorkReportTable";
-import { IncomingInspectionPanel } from "../../inspection/IncomingInspectionPanel";
 import { TestBadgeBlockStudio } from "./TestBadgeBlockStudio";
 import { PanelDesignCustomizerModal } from "./PanelDesignCustomizerModal";
 import { BatchThemeCustomizerModal } from "./BatchThemeCustomizerModal";
@@ -741,18 +740,6 @@ export const InternalManagerDashboardView = ({
           <LegoWorkReportBuilderBar
             onNavigateTab={onNavigateTab}
             currentProfile={activeProfile}
-          />
-        );
-
-      // 15. 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
-      case PANEL_KEYS.INCOMING_INSPECTION:
-        return (
-          <IncomingInspectionPanel
-            currentProfile={activeProfile}
-            onNavigateTab={onNavigateTab}
-            customSettings={currentBlockSettings}
-            isInlineEditing={isThisBlockEditing}
-            onUpdateDraft={handleUpdateInlineDraft}
           />
         );
 

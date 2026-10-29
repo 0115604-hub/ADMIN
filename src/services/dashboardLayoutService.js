@@ -5,7 +5,7 @@ import { DEFAULT_PANEL_SETTING } from "../config/panelThemeConfig";
 const LOCAL_STORAGE_KEY_LAYOUTS = "oryuk_manager_custom_layouts";
 const LOCAL_STORAGE_KEY_SETTINGS = "oryuk_panel_custom_settings";
 const LOCAL_STORAGE_KEY_VERSION = "oryuk_manager_layout_version";
-const CURRENT_LAYOUT_VERSION = "20261029_v15_role_tailored";
+const CURRENT_LAYOUT_VERSION = "20261029_v16_purge_incoming";
 const SETTINGS_DOC_PATH = ["system_settings", "manager_dashboard_layouts"];
 
 // Memory cache for synchronous lookups
@@ -325,9 +325,19 @@ export const subscribeManagerLayouts = (callback) => {
           let hasUpdates = false;
 
           if (data && data.layouts && typeof data.layouts === "object") {
-            inMemoryLayouts = data.layouts;
+            const sanitizedLayouts = {};
+            Object.keys(data.layouts).forEach((mgrKey) => {
+              if (Array.isArray(data.layouts[mgrKey])) {
+                sanitizedLayouts[mgrKey] = data.layouts[mgrKey].filter(
+                  (k) => k !== "incoming_inspection"
+                );
+              } else {
+                sanitizedLayouts[mgrKey] = data.layouts[mgrKey];
+              }
+            });
+            inMemoryLayouts = sanitizedLayouts;
             try {
-              localStorage.setItem(LOCAL_STORAGE_KEY_LAYOUTS, JSON.stringify(data.layouts));
+              localStorage.setItem(LOCAL_STORAGE_KEY_LAYOUTS, JSON.stringify(sanitizedLayouts));
             } catch (e) {}
             hasUpdates = true;
           }

@@ -20,21 +20,11 @@ export const PANEL_KEYS = {
   WORK_LOGS: "work_logs", // 📋 일일업무일지 현황
   TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge", // ✈️ 텔레그램 실시간 소통 라운지
   WORK_REPORT_TEMPLATES: "work_report_templates", // 🧩 레고블록 작업일보 빌더
-  SEVERE_DISASTER: "severe_disaster", // 🚨 중대재해 안전판
-  INCOMING_INSPECTION: "incoming_inspection" // 🔍 원부자재 수입검사 센터 (고무/압출 원소재 & 조립/체결 부자재)
+  SEVERE_DISASTER: "severe_disaster" // 🚨 중대재해 안전판
 };
 
 // 🌟 전체 패널 블록 메타데이터 목록 (TEST 뱃지 스튜디오에서 사용)
 export const ALL_DASHBOARD_BLOCKS = [
-  {
-    key: PANEL_KEYS.INCOMING_INSPECTION,
-    label: "원부자재 입고 및 수입검사 통합대장",
-    category: "품질/4M",
-    badge: "📦 입고·검사",
-    icon: "ClipboardCheck",
-    description: "원부자재 입고대장(송장/수량/창고) & 수입검사 성적서 4M 자동연동",
-    color: "from-cyan-600 to-teal-700"
-  },
   {
     key: PANEL_KEYS.COMMON_SCHEDULE,
     label: "사내 공통일정",
@@ -192,9 +182,8 @@ export const DEFAULT_INTERNAL_MANAGER_PANELS = [
 
 // 관리자(ID 또는 이름)별 맞춤 패널 기본 설정표 (초기 공장 기본값: 각 관리자별 전담 공정/업무 패널을 최상단에 우선 배치)
 export const MANAGER_PANEL_CONFIG = {
-  // ⭐ [품질총괄: 이창엽 책임 - 원부자재 수입검사 & 부적합경보 & 4M 변동점 & 일일품질]
+  // ⭐ [품질총괄: 이창엽 책임 - 부적합경보 & 4M 변동점 & 일일품질]
   "sam_cy": [
-    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.QUALITY_SUMMARY,
@@ -203,7 +192,6 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.WORK_LOGS
   ],
   "이창엽": [
-    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
     PANEL_KEYS.ABNORMALITY_4M,
     PANEL_KEYS.QUALITY_SUMMARY,
@@ -410,16 +398,14 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.CALENDAR_SCHEDULE
   ],
 
-  // 🛡️ [한림공장 TEST 관리자 - 원부자재 수입검사 & 공통일정 & 캘린더 & 텔레그램 & 양식빌더]
+  // 🛡️ [한림공장 TEST 관리자 - 공통일정 & 캘린더 & 텔레그램 & 양식빌더]
   "hal_test": [
-    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
     PANEL_KEYS.WORK_REPORT_TEMPLATES
   ],
   "TEST": [
-    PANEL_KEYS.INCOMING_INSPECTION,
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
     PANEL_KEYS.TELEGRAM_LIVE_LOUNGE,
@@ -428,7 +414,7 @@ export const MANAGER_PANEL_CONFIG = {
 };
 
 // 패널 설정 캐시 버전
-export const PANEL_CONFIG_VERSION = "20261029_v15_role_tailored";
+export const PANEL_CONFIG_VERSION = "20261029_v16_purge_incoming";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회
@@ -443,13 +429,13 @@ export const getPanelsForUser = (profile) => {
   if (id) {
     const customById = getCustomLayoutForManager(id);
     if (customById && Array.isArray(customById) && customById.length > 0) {
-      return customById;
+      return customById.filter((key) => key !== "incoming_inspection");
     }
   }
   if (name) {
     const customByName = getCustomLayoutForManager(name);
     if (customByName && Array.isArray(customByName) && customByName.length > 0) {
-      return customByName;
+      return customByName.filter((key) => key !== "incoming_inspection");
     }
   }
 
