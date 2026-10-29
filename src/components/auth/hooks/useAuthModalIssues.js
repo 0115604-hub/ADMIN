@@ -657,7 +657,13 @@ export const useAuthModalIssues = ({ todayDateStr, currentKstTimeStr, allWorkers
 
       if (!isFirstScreenIssue(item)) return;
 
-      // 조치 완료된 오픈이슈/회의/공지 등은 첫 화면 활성 목록에서 제외
+      // 3) 오픈이슈: 다수 관리자의 진행상황 & 의견이 등록되어도 첫 화면에서 사라지지 않고 관리자가 직접 삭제할 때까지 상시 표출
+      if (isCatOpenIssue(item.category)) {
+        list.push(item);
+        return;
+      }
+
+      // 조치 완료된 회의/공지 등은 첫 화면 활성 목록에서 제외 (오픈이슈는 제외되지 않음)
       const isResolved = Boolean(item.isResolved) || item.status === "RESOLVED" || item.status === "CLOSED" || item.status === "DONE" || Boolean(item.actionResult && item.actionResult.trim());
       if (isResolved) return;
 
@@ -671,7 +677,6 @@ export const useAuthModalIssues = ({ todayDateStr, currentKstTimeStr, allWorkers
         if (item.expireDate && item.expireDate < todayDateStr && !item.isManuallyRestored) return;
       }
 
-      // 3) 오픈이슈
       list.push(item);
     });
 

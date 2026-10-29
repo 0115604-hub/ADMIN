@@ -345,6 +345,13 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     }
   }
 
+  const isQuality = target.category === "품질경보" || target.category === "부적합경보" || String(target.category || "").includes("경보");
+  const isMeeting = target.category === "회의일정" || String(target.category || "").includes("회의");
+  const isOpenIssueCategory = !isQuality && !isMeeting && (target.category === "오픈이슈" || target.category === "open_issue" || target.category === "품질이슈" || String(target.category || "").includes("이슈"));
+
+  // 🔒 오픈이슈는 진행상황 및 의견이 추가되어도 첫 화면에서 즉시 사라지지 않고, 관리자 삭제 전까지 첫 화면 활성 유지
+  const shouldMarkResolved = isOpenIssueCategory ? false : hasActionData;
+
   const updatedTarget = {
     ...target,
     ...(fallbackIssue ? {
@@ -360,8 +367,8 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     actionImages: effectiveImages,
     actionAt: hasActionData ? nowStr : "",
     replies: existingReplies,
-    isResolved: hasActionData,
-    status: hasActionData ? "RESOLVED" : (target.status || "ACTIVE"),
+    isResolved: shouldMarkResolved,
+    status: shouldMarkResolved ? "RESOLVED" : "ACTIVE",
     isDeleted: target.isDeleted === true ? true : false,
     isClosedByAdmin: target.isDeleted === true ? true : false,
     isManuallyRestored: target.isDeleted === true ? Boolean(target.isManuallyRestored) : true
