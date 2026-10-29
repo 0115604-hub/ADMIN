@@ -137,9 +137,9 @@ const CommonDowntimeDefectPanel = ({
     category: "뜯김",
     startTime: "08:00",
     endTime: "08:30",
-    minutes: 30,
+    minutes: 0,
     scrapKg: defaultScrapKg !== "" && defaultScrapKg !== undefined ? defaultScrapKg : "",
-    detail: "표면 미세 뜯김 발생 → 다이스 클리닝 및 조건 보정 후 정상 복구",
+    detail: "",
     beforePhoto: null,
     afterPhoto: null
   });
@@ -164,21 +164,19 @@ const CommonDowntimeDefectPanel = ({
   const handleModeSwitch = (targetType) => {
     if (targetType === "불량") {
       const defaultCat = "뜯김";
-      const catObj = MERGED_CATEGORIES.find((c) => c.id === defaultCat);
       setDraft((prev) => ({
         ...prev,
         type: "불량",
         category: DEFECT_CATEGORY_IDS.includes(prev.category) ? prev.category : defaultCat,
-        detail: prev.detail || catObj?.defaultDetail || ""
+        detail: prev.detail || ""
       }));
     } else {
       const defaultCat = "압개시";
-      const catObj = MERGED_CATEGORIES.find((c) => c.id === defaultCat);
       setDraft((prev) => ({
         ...prev,
         type: "비가동",
         category: !DEFECT_CATEGORY_IDS.includes(prev.category) ? prev.category : defaultCat,
-        detail: prev.detail || catObj?.defaultDetail || ""
+        detail: prev.detail || ""
       }));
     }
   };
@@ -193,9 +191,6 @@ const CommonDowntimeDefectPanel = ({
         const catObj = MERGED_CATEGORIES.find((c) => c.id === value);
         const isDef = DEFECT_CATEGORY_IDS.includes(value) || catObj?.type === "불량";
         next.type = isDef ? "불량" : "비가동";
-        if (!next.detail || MERGED_CATEGORIES.some((c) => c.defaultDetail === next.detail)) {
-          next.detail = catObj?.defaultDetail || "";
-        }
       } else {
         next[field] = value;
       }
@@ -238,8 +233,7 @@ const CommonDowntimeDefectPanel = ({
   const handleAddEvent = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const category = draft.category || "압개시";
-    const catObj = MERGED_CATEGORIES.find((c) => c.id === category);
-    const detail = String(draft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치 완료`;
+    const detail = String(draft.detail || "").trim() || `${category} 조치 완료`;
     const minutes =
       Number(draft.minutes) ||
       (draft.startTime && draft.endTime ? calculateMinutes(draft.startTime, draft.endTime) : 0);
