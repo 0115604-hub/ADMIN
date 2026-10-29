@@ -183,7 +183,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         compoundType3,
         compoundType4,
         insertType,
-        coatingType
+        coatingType,
+        unitWeightG
       };
       sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
     } catch (e) {}
@@ -199,7 +200,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     compoundType3,
     compoundType4,
     insertType,
-    coatingType
+    coatingType,
+    unitWeightG
   ]);
 
   // When dropdown item selection changes, pre-fill with current BOM
