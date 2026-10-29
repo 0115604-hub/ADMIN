@@ -151,8 +151,30 @@ export const useExtrusionWorkReportState = ({
         }
         setFormData(mapInitialFormData(initialData, targetDate, defaultWorker));
       } else {
-        setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
-        setFormData(createDefaultFormData(targetDate, defaultWorker));
+        // 신규 작성 진입 시에도 동일 날짜+기본라인+주간에 작성된 일보가 이미 존재하는지 자동 확인
+        const initialLineId = "pcm1";
+        const initialShift = "주간";
+        const existingTicket = (existingReports || []).find((r) => {
+          if (!r) return false;
+          const rDate = r.date || r.workDate;
+          const rLine = r.lineId || r.line;
+          const rShift = r.shift || "주간";
+          return rDate === targetDate && (rLine === initialLineId || String(r.lineName || "").includes("1호")) && rShift === initialShift;
+        });
+
+        if (existingTicket) {
+          // 이미 관리자나 동료 작업자가 등록해둔 일보가 있으면 그대로 열어 이어쓰기 지원
+          setFormData(mapInitialFormData(existingTicket, targetDate, defaultWorker));
+          if (Array.isArray(existingTicket.tpmChecks) && existingTicket.tpmChecks.length > 0) {
+            setTpmChecks(existingTicket.tpmChecks);
+          } else {
+            setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
+          }
+          setCurrentStep("report");
+        } else {
+          setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
+          setFormData(createDefaultFormData(targetDate, defaultWorker));
+        }
       }
       setErrors({});
     }

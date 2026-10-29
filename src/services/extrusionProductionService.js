@@ -16,6 +16,8 @@ export {
 export {
   sanitizeRawMaterials,
   sanitizeExtrusionReport,
+  normalizeExtrusionLineKey,
+  computeExtrusionDocKey,
   INITIAL_EXTRUSION_REPORTS
 } from "./extrusion/extrusionSanitizer";
 

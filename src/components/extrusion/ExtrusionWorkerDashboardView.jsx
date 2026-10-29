@@ -660,6 +660,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
             }}
             initialData={editingReportData}
             isEditing={Boolean(editingReportData)}
+            existingReports={extrusionReports}
             onSave={handleSaveExtrusionReport}
           />
         </Suspense>

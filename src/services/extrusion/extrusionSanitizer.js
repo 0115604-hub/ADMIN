@@ -2,6 +2,29 @@ import { EXTRUSION_STANDARD_SPECS, TPM_CHECK_ITEMS } from "./extrusionProduction
 import { getKSTDateString } from "../../utils/dateUtils";
 
 /**
+ * 표준 라인 키 정규화 (pcm1, pcm3, pvc, tpe)
+ */
+export const normalizeExtrusionLineKey = (lineVal) => {
+  const s = String(lineVal || "").toLowerCase().trim();
+  if (s.includes("pcm1") || s.includes("1호") || s.includes("pcm #1")) return "pcm1";
+  if (s.includes("pcm3") || s.includes("3호") || s.includes("pcm #3")) return "pcm3";
+  if (s.includes("pvc")) return "pvc";
+  if (s.includes("tpe") || s.includes("4호")) return "tpe";
+  return s.replace(/[^a-z0-9]/g, "") || "pcm1";
+};
+
+/**
+ * 🎯 1일자 + 1라인 + 1근무조 = 단 1장의 일보 고유 식별키 생성
+ * 예: 2026-10-29_pcm3_주간
+ */
+export const computeExtrusionDocKey = (date, line, shift = "주간") => {
+  const d = String(date || getKSTDateString()).slice(0, 10);
+  const l = normalizeExtrusionLineKey(line);
+  const s = String(shift || "주간").includes("야") ? "야간" : "주간";
+  return `${d}_${l}_${s}`;
+};
+
+/**
  * Clean & Format raw materials data object
  */
 export const sanitizeRawMaterials = (rawMat = {}) => {
@@ -118,12 +141,18 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
   const todayStr = getKSTDateString();
   const topRawMaterials = sanitizeRawMaterials(raw.rawMaterials || items[0]?.rawMaterials || {});
 
+  const repDate = String(raw.date || todayStr).slice(0, 10);
+  const repLineId = normalizeExtrusionLineKey(raw.lineId || raw.line || raw.lineName || "pcm1");
+  const repShift = String(raw.shift || "주간").includes("야") ? "야간" : "주간";
+  const standardDocKey = computeExtrusionDocKey(repDate, repLineId, repShift);
+
   return {
-    id: String(raw.id || `epr_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`),
-    date: String(raw.date || todayStr),
-    shift: String(raw.shift || "주간"), // 주간 | 야간
+    id: String(raw.id || standardDocKey),
+    docKey: standardDocKey,
+    date: repDate,
+    shift: repShift, // 주간 | 야간
     plant: String(raw.plant || "삼랑진공장"),
-    lineId: String(raw.lineId || "pcm1"),
+    lineId: repLineId,
     lineName: String(raw.lineName || "PCM #1 LINE"),
     worker: String(raw.worker || "공영국 대리"),
     subWorkers: String(raw.subWorkers || ""),
