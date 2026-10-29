@@ -266,6 +266,11 @@ export const InternalManagerDashboardView = ({
       setLayoutVersionTick((v) => v + 1);
     });
     const handleLayoutEvent = (e) => {
+      // 내가 직접 방금 저장한 이벤트인 경우 루프 재설정 방지
+      if (e.detail?.updatedBy === "TEST" && isTest) {
+        setLayoutVersionTick((v) => v + 1);
+        return;
+      }
       setLayoutVersionTick((v) => v + 1);
       if (isTest && e.detail?.managerKey === selectedStudioManagerId && Array.isArray(e.detail?.panels)) {
         setStudioPanels(e.detail.panels);
@@ -338,18 +343,29 @@ export const InternalManagerDashboardView = ({
     const currentMgr = STUDIO_MANAGERS.find((m) => m.id === selectedStudioManagerId);
     setIsSavingStudio(true);
     try {
-      await saveManagerCustomLayout(selectedStudioManagerId, studioPanels, "TEST");
-      // 이름 키로도 동시 매핑 보장
+      const panelsToSave = [...studioPanels];
+      // 1. 현재 선택된 관리자 키로 저장
+      await saveManagerCustomLayout(selectedStudioManagerId, panelsToSave, "TEST");
+      // 2. 관리자 이름 키로도 동시 저장
       if (currentMgr?.name) {
-        await saveManagerCustomLayout(currentMgr.name, studioPanels, "TEST");
+        await saveManagerCustomLayout(currentMgr.name, panelsToSave, "TEST");
+      }
+      // 3. 현재 로그인된 TEST 계정 자체에도 동시 저장하여 즉각 동기화 보장
+      if (isTest) {
+        await saveManagerCustomLayout("hal_test", panelsToSave, "TEST");
+        await saveManagerCustomLayout("TEST", panelsToSave, "TEST");
       }
 
-      // ⭐ 설정 저장 즉시 수정패널(상단 스튜디오) 사라지게 처리
+      // 화면 패널 목록 상태 강제 동기화 (외부 루프에 덮어씌워지지 않도록 확정)
+      setStudioPanels(panelsToSave);
+      setLayoutVersionTick((v) => v + 1);
+
+      // ⭐ 설정 저장 즉시 수정패널(상단 스튜디오) 닫기
       setIsTopStudioVisible(false);
 
       // 상단 저장 완료 알림 토스트
       setSaveSuccessToast(
-        `🎉 [${currentMgr?.plant} • ${currentMgr?.name}] 대시보드 설정이 저장되었으며 수정패널을 닫았습니다.`
+        `🎉 [${currentMgr?.plant} • ${currentMgr?.name}] 선택하신 ${panelsToSave.length}개 패널이 저장 및 화면에 고정 반영되었습니다.`
       );
       setTimeout(() => setSaveSuccessToast(null), 3500);
     } catch (e) {
