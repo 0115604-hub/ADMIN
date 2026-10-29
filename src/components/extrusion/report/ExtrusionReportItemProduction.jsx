@@ -283,7 +283,7 @@ export const ExtrusionReportItemProduction = ({
                                 🌿 원재료 BOM
                               </span>
                               <span className="text-[11px] font-bold text-emerald-300">
-                                투입 중량 &amp; LOT
+                                투입 LOT 및 이론 소진량
                               </span>
                             </div>
 
@@ -348,15 +348,15 @@ export const ExtrusionReportItemProduction = ({
 
                                   {/* Right Direct Inputs: 소진량 이론치(자동계산) & LOT 넘버 (➕ LOT 추가 지원) */}
                                   <div className="flex items-center gap-2 flex-1">
-                                    {/* 이론 소진량 (양품수량 * 단위중량) 자동 산출 배지 */}
-                                    <div className="flex items-center gap-1 bg-slate-950/60 px-2 py-1 rounded-lg border border-emerald-500/50 shrink-0">
-                                      <span className="text-[10px] font-black text-emerald-400 whitespace-nowrap">
-                                        이론소진량
+                                    {/* 이론 소진량 (총생산량 * 단위중량) 자동 산출 배지 */}
+                                    <div className="flex items-center gap-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-emerald-500/60 shrink-0">
+                                      <span className="text-[10.5px] font-black text-emerald-400 whitespace-nowrap">
+                                        이론 소진량
                                       </span>
-                                      <span className="text-xs font-mono font-black text-emerald-300">
-                                        {(itGood * ((itemBOM.unitWeightKg || 0.5))).toFixed(1)}kg
+                                      <span className="text-xs sm:text-sm font-mono font-black text-emerald-300">
+                                        {(itActual * ((itemBOM.unitWeightKg || 0.5))).toFixed(1)}kg
                                       </span>
-                                      <span className="text-[9.5px] text-slate-400">
+                                      <span className="text-[9.5px] text-slate-400 font-mono">
                                         ({itemBOM.unitWeightG || 500}g/EA)
                                       </span>
                                     </div>
@@ -376,8 +376,8 @@ export const ExtrusionReportItemProduction = ({
                                             e.target.value
                                           )
                                         }
-                                        placeholder="LOT No. (교체 시 ➕ 추가)"
-                                        className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-400 focus:outline-hidden"
+                                        placeholder="LOT No. 입력 (교체 시 ➕LOT추가)"
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-400 focus:outline-hidden"
                                       />
                                       <button
                                         type="button"
@@ -385,10 +385,10 @@ export const ExtrusionReportItemProduction = ({
                                           const nextLot = currentLot ? `${currentLot} ➔ ` : "";
                                           handleItemRawMaterialChange(index, slot.lotKey, nextLot);
                                         }}
-                                        className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10.5px] font-black whitespace-nowrap transition cursor-pointer flex items-center gap-0.5 shadow-2xs active:scale-95 shrink-0"
+                                        className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black whitespace-nowrap transition cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95 shrink-0"
                                         title="재료 교체 시 새 LOT 추가 기록"
                                       >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-3.5 h-3.5" />
                                         <span>LOT추가</span>
                                       </button>
                                     </div>
@@ -439,10 +439,10 @@ export const ExtrusionReportItemProduction = ({
                 })()}
               </div>
 
-              {/* Item Quantities */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              {/* Item Quantities: 지시/계획수량 & 총생산량만 노출 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-400 mb-1">
                     지시/계획수량 (EA)
                   </label>
                   <input
@@ -452,57 +452,30 @@ export const ExtrusionReportItemProduction = ({
                     onChange={(e) =>
                       handleItemFieldChange(index, "targetQty", e.target.value)
                     }
-                    placeholder="EA"
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-xs focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-sm focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    작업/총실적 (EA) *
+                  <label className="block text-xs font-black text-emerald-700 dark:text-emerald-400 mb-1 flex items-center justify-between">
+                    <span>총생산량 (EA) *</span>
+                    <span className="text-[10px] font-bold text-slate-400 font-mono">
+                      (이론원재료: {(Number(item.actualQty || 0) * (itemBOM.unitWeightKg || 0.5)).toFixed(1)}kg)
+                    </span>
                   </label>
                   <input
                     type="number"
                     min="0"
                     value={item.actualQty}
-                    onChange={(e) =>
-                      handleItemFieldChange(index, "actualQty", e.target.value)
-                    }
-                    placeholder="EA"
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-emerald-500 font-black text-right text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    양품수량 (EA) *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={item.goodQty}
-                    onChange={(e) =>
-                      handleItemFieldChange(index, "goodQty", e.target.value)
-                    }
-                    placeholder="EA"
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-blue-700 dark:text-blue-400 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10.5px] font-black text-rose-600 dark:text-rose-400 mb-1 flex items-center justify-between">
-                    <span>불량 & 스크랩 중량 (kg)</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={item.scrapKg}
-                    onChange={(e) =>
-                      handleItemFieldChange(index, "scrapKg", e.target.value)
-                    }
-                    placeholder="0.0"
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border-2 border-rose-400/80 font-black text-right text-rose-600 dark:text-rose-400 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      handleItemFieldChange(index, "actualQty", v);
+                      // 양품수량도 총생산량과 동일하게 자동 연동 (내부 데이터 보존)
+                      handleItemFieldChange(index, "goodQty", v);
+                    }}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border-2 border-emerald-500 font-black text-right text-emerald-700 dark:text-emerald-400 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
               </div>
