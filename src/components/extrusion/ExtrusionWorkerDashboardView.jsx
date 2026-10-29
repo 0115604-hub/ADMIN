@@ -47,7 +47,7 @@ import {
 } from "../../utils/sampleInspectionUtils";
 import { getKSTDateString } from "../../utils/dateUtils";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
-import { SeolExtrusionWorkReportTable } from "./SeolExtrusionWorkReportTable";
+import { WorkerPersonalExtrusionReportList } from "./WorkerPersonalExtrusionReportList";
 
 const ExtrusionWorkReportModal = lazy(() =>
   import("./ExtrusionWorkReportModal").then((m) => ({
@@ -616,14 +616,13 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📋 4. 압출동 실시간 작업일보 및 생산 실적 대장 (작성된 일보 목록화)        */}
+      {/* 📋 4. 본인 작성 압출 작업일보 목록 (5건씩 페이징 표출)                   */}
       {/* ========================================================================= */}
-      <div className="bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-800 shadow-xl space-y-4">
-        <SeolExtrusionWorkReportTable
-          onOpenReportModal={() => setIsReportModalOpen(true)}
-          currentWorkerName={currentProfile?.name || "작업자"}
-        />
-      </div>
+      <WorkerPersonalExtrusionReportList
+        reports={extrusionReports}
+        currentWorkerName={currentProfile?.name || "작업자"}
+        onOpenReportModal={() => setIsReportModalOpen(true)}
+      />
 
       {/* Image Lightbox Modal */}
       {previewImage && (
