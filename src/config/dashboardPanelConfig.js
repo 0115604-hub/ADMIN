@@ -440,8 +440,8 @@ export const MANAGER_PANEL_CONFIG = {
   ]
 };
 
-// 패널 설정 캐시 버전
-export const PANEL_CONFIG_VERSION = "20261029_v15_role_tailored";
+// 패널 설정 캐시 버전 (버전 업으로 로컬스토리지 강제 동기화)
+export const PANEL_CONFIG_VERSION = "20261029_v17_supplier_studio_live";
 
 /**
  * 특정 사용자의 활성 대시보드 패널 목록 조회
