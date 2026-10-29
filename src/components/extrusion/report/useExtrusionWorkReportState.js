@@ -227,8 +227,33 @@ export const useExtrusionWorkReportState = ({
     }));
   };
 
-  // Switch line
+  // Switch line (동일 일자+라인+근무조에 이미 작성된 공동 작업일보가 있을 경우 자동 이어쓰기 취합)
   const handleLineSelect = (lineId, fullName) => {
+    const nextDate = formData?.date || todayStr;
+    const nextShift = formData?.shift || "주간";
+
+    // 기존 일보 중 [일자 + 라인 + 주/야간]이 일치하는 공동 일보 탐색
+    const existingSameReport = (existingReports || []).find((r) => {
+      if (!r || r.id === formData?.id) return false;
+      return (
+        (r.date === nextDate || r.workDate === nextDate) &&
+        (r.lineId === lineId || r.line === lineId || r.lineName === fullName) &&
+        (r.shift || "주간") === nextShift
+      );
+    });
+
+    if (existingSameReport && !isEditing) {
+      // 이미 해당 라인에 작성 중인 일보가 있으면 그대로 승계하여 1장으로 취합
+      const mapped = mapInitialFormData(existingSameReport, nextDate, defaultWorker);
+      setFormData({
+        ...mapped,
+        id: existingSameReport.id,
+        lineId,
+        lineName: fullName || existingSameReport.lineName
+      });
+      return;
+    }
+
     const newLineItems = getItemsByLine(lineId);
     const defaultNewItem = newLineItems[0] || { vehicle: "BC4T", itemName: "D/SIDE D" };
 
