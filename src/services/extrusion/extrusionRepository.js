@@ -187,12 +187,13 @@ export const saveExtrusionReport = async (reportData) => {
     }
   };
 
-  // 주 작업자 및 공동 작업자 병합
-  addWorkerToken(sanitized.worker);
-  String(sanitized.subWorkers || "").split(/[,/·+&]/).forEach(addWorkerToken);
+  // 주 작업자 및 공동 작업자 병합:
+  // 🌟 작성자(현재 등록 요청자)의 이름을 cleanWorkerTokens 최상단에 우선 배치
+  if (sanitized.worker) addWorkerToken(sanitized.worker);
   if (sanitized.writer) addWorkerToken(sanitized.writer);
   if (sanitized.registeredBy) addWorkerToken(sanitized.registeredBy);
   if (sanitized.createdBy) addWorkerToken(sanitized.createdBy);
+  String(sanitized.subWorkers || "").split(/[,/·+&]/).forEach(addWorkerToken);
   if (existingSameTicket) {
     addWorkerToken(existingSameTicket.worker);
     String(existingSameTicket.subWorkers || "").split(/[,/·+&]/).forEach(addWorkerToken);

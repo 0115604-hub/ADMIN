@@ -164,7 +164,18 @@ export const useExtrusionWorkReportState = ({
 
         if (existingTicket) {
           // 이미 관리자나 동료 작업자가 등록해둔 일보가 있으면 그대로 열어 이어쓰기 지원
-          setFormData(mapInitialFormData(existingTicket, targetDate, defaultWorker));
+          const initialFormData = mapInitialFormData(existingTicket, targetDate, defaultWorker);
+          // 🌟 로그인한 작업자가 기존 티켓 작업자 목록에 없다면 자동으로 추가하여 버튼이 활성화되도록 보장
+          if (defaultWorker) {
+            const hasMe = (initialFormData.worker === defaultWorker) ||
+              String(initialFormData.subWorkers || "").includes(currentProfile?.name || defaultWorker);
+            if (!hasMe) {
+              initialFormData.subWorkers = initialFormData.subWorkers
+                ? `${initialFormData.subWorkers}, ${defaultWorker}`
+                : defaultWorker;
+            }
+          }
+          setFormData(initialFormData);
           if (Array.isArray(existingTicket.tpmChecks) && existingTicket.tpmChecks.length > 0) {
             setTpmChecks(existingTicket.tpmChecks);
           } else {
@@ -267,6 +278,15 @@ export const useExtrusionWorkReportState = ({
     if (existingSameReport && !isEditing) {
       // 이미 해당 라인에 작성 중인 일보가 있으면 그대로 승계하여 1장으로 취합
       const mapped = mapInitialFormData(existingSameReport, nextDate, defaultWorker);
+      if (defaultWorker) {
+        const hasMe = (mapped.worker === defaultWorker) ||
+          String(mapped.subWorkers || "").includes(currentProfile?.name || defaultWorker);
+        if (!hasMe) {
+          mapped.subWorkers = mapped.subWorkers
+            ? `${mapped.subWorkers}, ${defaultWorker}`
+            : defaultWorker;
+        }
+      }
       setFormData({
         ...mapped,
         id: existingSameReport.id,

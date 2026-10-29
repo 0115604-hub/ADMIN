@@ -72,6 +72,10 @@ export const WorkerPersonalExtrusionReportList = ({
         r.workerList.forEach((w) => allWorkerTokens.push(normalizeName(w?.name || w)));
       }
 
+      // 🌟 또한 문자열 전체에 순수 이름이 포함되어 있는지 확인 (원문 검색)
+      const rawCombinedString = `${r.worker || ""} ${r.subWorkers || ""} ${r.writer || ""} ${r.registeredBy || ""} ${r.createdBy || ""}`;
+      if (rawCombinedString.includes(pureMyName)) return true;
+
       // 정확하게 토큰 목록 중에 본인의 순수 이름이 포함되어 있는지 확인 (부분일치/동등 모두 검증)
       return allWorkerTokens.some(
         (tok) => tok === pureMyName || tok.includes(pureMyName) || pureMyName.includes(tok)
