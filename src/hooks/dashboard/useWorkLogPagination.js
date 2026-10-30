@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { isWorkLogApproved } from "../../services/workLogService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { LOGS_PER_PAGE } from "./workLogConstants.js";
+import { resolveWorkLogAffiliation } from "../../utils/workLogCompanyMapping.js";
 
 export function useWorkLogPagination({
   workLogs,
@@ -75,21 +76,16 @@ export function useWorkLogPagination({
           line.includes(term) ||
           issues.includes(term);
 
-        const logPlant =
-          log.plant ||
-          log.approverPlant ||
-          (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(log.writer)
-            ? "한림공장"
-            : ["권태형", "최미영"].includes(log.writer) || log.department === "본사 관리팀"
-            ? "본사"
-            : "삼랑진공장");
+        const { company: logCompany, plant: logPlant } = resolveWorkLogAffiliation(log);
 
         const matchPlant =
+          !filterPlant ||
           filterPlant === "all" ||
+          logCompany === filterPlant ||
           logPlant === filterPlant ||
-          (filterPlant === "한림공장" && (logPlant.includes("한림") || logPlant === "한림")) ||
-          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || logPlant === "삼랑진")) ||
-          (filterPlant === "본사" && (logPlant.includes("본사") || logPlant === "본사"));
+          (filterPlant === "한림공장" && (logPlant.includes("한림") || ["조영", "한울", "부림텍"].includes(logCompany))) ||
+          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || ["오륙", "유성"].includes(logCompany))) ||
+          (filterPlant === "본사" && (logPlant.includes("본사") || logCompany === "본사"));
 
         return matchSearch && matchPlant;
       })

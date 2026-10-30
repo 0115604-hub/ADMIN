@@ -104,6 +104,19 @@ export const OvertimeReportsTab = ({
               <span>5개사 개별 특근보고서:</span>
             </span>
 
+            {/* 전체 버튼 추가 */}
+            <button
+              type="button"
+              onClick={() => setReportListFilter("전체")}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                reportListFilter === "전체"
+                  ? "bg-cyan-500 text-slate-950 font-black border-cyan-400 shadow-xs"
+                  : "bg-slate-900 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              전체
+            </button>
+
             {/* 삼랑진 그룹 */}
             <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">
               <span className="px-2 py-0.5 rounded-lg bg-amber-950 text-amber-300 font-black text-xs border border-amber-700/60 flex items-center gap-1">

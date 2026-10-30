@@ -11,7 +11,7 @@ import {
 import { registerToFourMLedger } from "./fourMChangePointService.js";
 
 const COLLECTION_NAME = "incoming_inspections";
-const STORAGE_KEY = "oryuk_incoming_inspections_v2";
+const STORAGE_KEY = "oryuk_incoming_inspections_v3";
 
 // 📦 입고 상태 정의 (SQ 인증 및 물류·품질 연계)
 export const RECEIVING_STATUS = {
@@ -218,147 +218,32 @@ export const INSPECTION_CATEGORIES = {
   }
 };
 
-// 🌟 초기 샘플 데이터 (입고대장 + 수입검사 통합 데모)
-const INITIAL_INSPECTIONS = [
-  {
-    id: "mat_rec_01",
-    date: new Date().toISOString().slice(0, 10),
-    time: "09:30",
-    receivingDate: new Date().toISOString().slice(0, 10),
-    receivingTime: "09:30",
-    category: "RAW_MATERIAL",
-    itemType: "FMB",
-    itemName: "EPDM FMB-BLACK-70A",
-    supplier: "한국합성(주)",
-    lotNo: "261028-F01",
-    deliveryNoteNo: "TR-261028-01",
-    storageLocation: "삼랑진 원재료창고",
-    quantity: "1,500 kg (60포)",
-    quantityNum: 1500,
-    quantityUnit: "kg",
-    plant: "삼랑진공장",
-    receivedBy: "유동길",
-    inspector: "이창엽",
-    receivingStatus: "PASSED", // 정상입고
-    overallResult: "PASS",
-    remarks: "M/Sheet 성적서 전 항목 스펙 합격. 경도 66Hs 및 비중 1.148 정상 입고 완료.",
-    inspectionChecks: [
-      { id: "chk_msheet", name: "M/Sheet(원재료 성적서) 대조", type: "JUDGMENT", spec: "성적서 전 항목 스펙 일치", measured: "전항목 일치", result: "PASS", note: "COA 첨부완료" },
-      { id: "chk_hardness", name: "경도 (Hardness)", type: "NUMERIC", unit: "Hs (Shore A)", spec: "65 ± 5", specMin: 60, specMax: 70, measured: "66", result: "PASS", note: "양호" },
-      { id: "chk_gravity", name: "비중 (Specific Gravity)", type: "NUMERIC", unit: "g/cm³", spec: "1.15 ± 0.03", specMin: 1.12, specMax: 1.18, measured: "1.148", result: "PASS", note: "양호" },
-      { id: "chk_mooney", name: "무늬점도 (Mooney ML1+4@100℃)", type: "NUMERIC", unit: "MU", spec: "50 ± 5", specMin: 45, specMax: 55, measured: "51.2", result: "PASS", note: "양호" },
-      { id: "chk_moisture", name: "수분율 (Moisture Content)", type: "NUMERIC", unit: "%", spec: "≤ 0.50", specMin: 0, specMax: 0.50, measured: "0.22", result: "PASS", note: "기준치 이내" },
-      { id: "chk_foreign", name: "이물 / 기포 검사", type: "JUDGMENT", spec: "외관 및 단면 이물, 기포 결함 없을 것", measured: "양호", result: "PASS", note: "이물 무" }
-    ],
-    mSheetPhotos: [],
-    defectPhotos: [],
-    deliverySlipPhotos: [],
-    syncedTo4M: false,
-    fourMLedgerId: null,
-    syncedTo4MAt: null,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "mat_rec_02",
-    date: new Date().toISOString().slice(0, 10),
-    time: "11:15",
-    receivingDate: new Date().toISOString().slice(0, 10),
-    receivingTime: "11:15",
-    category: "SUB_MATERIAL",
-    itemType: "CLIP",
-    itemName: "도어 고정 클립 (CLIP-DR-104)",
-    supplier: "태영정밀",
-    lotNo: "TY261028-09",
-    deliveryNoteNo: "TY-261028-09",
-    storageLocation: "삼랑진 격리보관장 (부적합품)",
-    quantity: "20,000 EA",
-    quantityNum: 20000,
-    quantityUnit: "EA",
-    plant: "삼랑진공장",
-    receivedBy: "유동길",
-    inspector: "이창엽",
-    receivingStatus: "REJECTED", // 불합격반품
-    overallResult: "REJECT",
-    remarks: "체결부 버(Burr) 돌출 및 결합력 기준 미달 (실측 42N / 스펙 50N 이상). 전량 반품 요청 및 4M 대장 자동등록.",
-    inspectionChecks: [
-      { id: "chk_qty", name: "수량 대조", type: "JUDGMENT", spec: "거래명세서 및 송장 수량 100% 일치", measured: "20,000 EA 일치", result: "PASS", note: "정상" },
-      { id: "chk_appearance", name: "외관 검사 (버, 미성형)", type: "JUDGMENT", spec: "버, 미성형 없을 것", measured: "체결부 버(Burr) 0.5mm 돌출 다수", result: "FAIL", note: "버 발생" },
-      { id: "chk_force", name: "결합력 (인발력)", type: "NUMERIC", unit: "N", spec: "≥ 50.0", specMin: 50.0, specMax: null, measured: "42.3", result: "FAIL", note: "규격 미달" },
-      { id: "chk_dimension", name: "주요 치수 (캘리퍼스)", type: "NUMERIC", unit: "mm", spec: "12.5 ± 0.2", specMin: 12.3, specMax: 12.7, measured: "12.45", result: "PASS", note: "정상" },
-      { id: "chk_expiry", name: "유효기간 / 제조일자", type: "JUDGMENT", spec: "유효기간 잔여 확인", measured: "제조 2026-10", result: "PASS", note: "양호" }
-    ],
-    mSheetPhotos: [],
-    defectPhotos: [],
-    deliverySlipPhotos: [],
-    syncedTo4M: true,
-    fourMLedgerId: "ledger_mat_rec_02",
-    syncedTo4MAt: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "mat_rec_03",
-    date: new Date().toISOString().slice(0, 10),
-    time: "14:20",
-    receivingDate: new Date().toISOString().slice(0, 10),
-    receivingTime: "14:20",
-    category: "RAW_MATERIAL",
-    itemType: "WIRE_INSERT",
-    itemName: "심재 철심 Wire Insert (W-0.45T)",
-    supplier: "대성스틸",
-    lotNo: "DS261029-W01",
-    deliveryNoteNo: "DS-261029-01",
-    storageLocation: "삼랑진 압출 원자재랙",
-    quantity: "5,000 m (10 Coils)",
-    quantityNum: 5000,
-    quantityUnit: "m",
-    plant: "삼랑진공장",
-    receivedBy: "설유철",
-    inspector: "",
-    receivingStatus: "PENDING", // 검사대기
-    overallResult: "PENDING",
-    remarks: "물류 입고 확인 완료. 거래명세표 수량 일치. 품질팀 수입검사 실시 대기 상태.",
-    inspectionChecks: [],
-    mSheetPhotos: [],
-    defectPhotos: [],
-    deliverySlipPhotos: [],
-    syncedTo4M: false,
-    fourMLedgerId: null,
-    syncedTo4MAt: null,
-    createdAt: new Date().toISOString()
-  }
-];
+// 🌟 초기 기본 데이터 (더미 데이터 삭제: 빈 배열로 초기화)
+const INITIAL_INSPECTIONS = [];
 
 // 로컬스토리지 로드
 export const getLocalIncomingInspections = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // v1 데이터 마이그레이션 확인
-      const oldRaw = localStorage.getItem("oryuk_incoming_inspections_v1");
-      if (oldRaw) {
-        try {
-          const parsedOld = JSON.parse(oldRaw);
-          if (Array.isArray(parsedOld) && parsedOld.length > 0) {
-            const migrated = parsedOld.map((it) => ({
-              ...it,
-              receivingStatus: it.overallResult === "PASS" ? "PASSED" : it.overallResult === "REJECT" ? "REJECTED" : "CONDITIONAL",
-              deliveryNoteNo: it.deliveryNoteNo || `TR-${it.date?.replace(/-/g, "") || "01"}`,
-              storageLocation: it.storageLocation || (it.category === "RAW_MATERIAL" ? "삼랑진 원재료창고" : "삼랑진 가공동 부자재랙"),
-              receivedBy: it.receivedBy || it.inspector || "유동길"
-            }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-            return migrated;
-          }
-        } catch (e) {}
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_INSPECTIONS));
-      return INITIAL_INSPECTIONS;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_INSPECTIONS;
+    if (Array.isArray(parsed)) {
+      // 기존 더미 데이터("mat_rec_01", "mat_rec_02", "mat_rec_03") 필터링 및 제거
+      const cleaned = parsed.filter(
+        (it) => it.id !== "mat_rec_01" && it.id !== "mat_rec_02" && it.id !== "mat_rec_03"
+      );
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+      }
+      return cleaned;
+    }
+    return [];
   } catch (err) {
     console.error("[IncomingInspectionService] LocalStorage load error:", err);
-    return INITIAL_INSPECTIONS;
+    return [];
   }
 };
 
@@ -443,19 +328,18 @@ export const subscribeIncomingInspections = (onUpdate) => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        if (!snapshot.empty) {
-          const list = [];
-          snapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() });
-          });
-          setLocalIncomingInspections(list);
-          onUpdate(list);
-        } else {
-          // Firestore 비어있을 시 로컬 데이터 업로드
-          localData.forEach((item) => {
-            setDoc(doc(db, COLLECTION_NAME, item.id), item).catch(() => {});
-          });
-        }
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        // 더미 데이터 강제 필터링
+        const filteredList = list.filter(
+          (it) => it.id !== "mat_rec_01" && it.id !== "mat_rec_02" && it.id !== "mat_rec_03" &&
+                  it.id !== "insp_demo_01" && it.id !== "insp_demo_02" &&
+                  it.lotNo !== "261028-F01" && it.lotNo !== "TY261028-09"
+        );
+        setLocalIncomingInspections(filteredList);
+        onUpdate(filteredList);
       },
       (err) => {
         console.warn("[IncomingInspectionService] Firestore subscription warning:", err);
@@ -521,6 +405,67 @@ export const saveIncomingInspection = async (record, registeredBy = "이창엽")
   return updatedRecord;
 };
 
+// 원부자재 입고 대량 등록 (매입내역 일괄 등록 - 상태: 검사대기 PENDING)
+export const saveBatchIncomingInspections = async (records = [], registeredBy = "유동길") => {
+  if (!Array.isArray(records) || records.length === 0) return [];
+
+  const currentList = getLocalIncomingInspections();
+  const newRecords = records.map((record, index) => {
+    const todayShort = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const id = record.id || `INSP-${Date.now()}-${index}-${randomSuffix}`;
+    return {
+      id,
+      date: record.date || new Date().toISOString().slice(0, 10),
+      time: record.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      receivingDate: record.receivingDate || new Date().toISOString().slice(0, 10),
+      receivingTime: record.receivingTime || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      plant: record.plant || "삼랑진공장",
+      deliveryNoteNo: record.deliveryNoteNo || `TR-${todayShort}-${String(index + 1).padStart(2, "0")}`,
+      supplier: record.supplier || "",
+      category: record.category || "RAW_MATERIAL",
+      itemType: record.itemType || (record.category === "RAW_MATERIAL" ? "FMB" : "부자재"),
+      itemName: record.itemName || "",
+      lotNo: record.lotNo || `LOT-${todayShort}-${String(index + 1).padStart(2, "0")}`,
+      quantityNum: record.quantityNum !== undefined ? record.quantityNum : "",
+      quantityUnit: record.quantityUnit || (record.category === "RAW_MATERIAL" ? "kg" : "EA"),
+      quantity: record.quantity || (record.quantityNum ? `${Number(record.quantityNum).toLocaleString()} ${record.quantityUnit || "EA"}` : "-"),
+      storageLocation: record.storageLocation || (record.category === "RAW_MATERIAL" ? "삼랑진 원재료창고" : "삼랑진 가공동 부자재랙"),
+      receivedBy: record.receivedBy || registeredBy,
+      inspector: record.inspector || "이창엽",
+      overallResult: "PENDING",
+      receivingStatus: "PENDING",
+      remarks: record.remarks || "조인주 매입내역 연동 일괄입고 (검사대기)",
+      inspectionChecks: record.inspectionChecks || JSON.parse(JSON.stringify(INSPECTION_CATEGORIES[record.category || "RAW_MATERIAL"].defaultChecks)),
+      mSheetPhotos: [],
+      defectPhotos: [],
+      deliverySlipPhotos: [],
+      syncedTo4M: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  });
+
+  const nextList = [...newRecords, ...currentList];
+  setLocalIncomingInspections(nextList);
+
+  if (db) {
+    try {
+      await Promise.all(
+        newRecords.map((item) =>
+          setDoc(doc(db, COLLECTION_NAME, item.id), item, { merge: true }).catch((err) =>
+            console.warn(`[IncomingInspectionService] batch firestore error for ${item.id}:`, err)
+          )
+        )
+      );
+    } catch (err) {
+      console.warn("[IncomingInspectionService] batch Firestore save error:", err);
+    }
+  }
+
+  return newRecords;
+};
+
 // 수입검사 삭제
 export const deleteIncomingInspection = async (id) => {
   if (!id) return;
@@ -534,5 +479,65 @@ export const deleteIncomingInspection = async (id) => {
     } catch (err) {
       console.warn("[IncomingInspectionService] Firestore delete warning:", err);
     }
+  }
+};
+
+// 🌟 [관리자 영구 설정] 수입검사 대상 업체(15개사 중 선택) 영구 보존 키 & API
+export const INSPECTION_TARGET_SUPPLIERS_KEY = "oryuk_incoming_inspection_target_suppliers_v1";
+
+// 15개사 기본 추천 리스트
+export const DEFAULT_RAW_SUPPLIERS = [
+  "(주)화승소재",
+  "화승코프레이션",
+  "㈜위스컴",
+  "해동무역",
+  "(주)경기금속",
+  "우진금속",
+  "㈜ 재 영",
+  "부미",
+  "세진SL",
+  "삼오테크",
+  "대하"
+];
+
+export const DEFAULT_SUB_SUPPLIERS = [
+  "건화플라테크",
+  "거승플라테크",
+  "우봉",
+  "삼도산업",
+  "유한산업",
+  "㈜KCC글라스",
+  "성창테크",
+  "태영지관"
+];
+
+export const getTargetSuppliersConfig = () => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(INSPECTION_TARGET_SUPPLIERS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    }
+  } catch (e) {}
+  // 기본값: 원자재 주요 5개사, 부자재 주요 3개사 활성화
+  return {
+    rawMaterials: ["(주)화승소재", "화승코프레이션", "㈜위스컴", "해동무역", "(주)경기금속"],
+    subMaterials: ["건화플라테크", "우봉", "삼도산업"]
+  };
+};
+
+export const saveTargetSuppliersConfig = async (config) => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(INSPECTION_TARGET_SUPPLIERS_KEY, JSON.stringify(config));
+      window.dispatchEvent(new CustomEvent("oryuk_incoming_suppliers_config_updated", { detail: config }));
+    }
+    if (db) {
+      await setDoc(doc(db, "app_settings", INSPECTION_TARGET_SUPPLIERS_KEY), config, { merge: true }).catch(() => {});
+    }
+  } catch (e) {
+    console.error("Failed to save target suppliers config:", e);
   }
 };

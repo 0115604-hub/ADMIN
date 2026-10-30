@@ -16,7 +16,7 @@ import {
   getLocalCustomLegoBlocks,
   subscribeCustomLegoBlocks
 } from "../../../services/workReportTemplateService";
-import { LEGO_IMAGE_REFERENCES } from "../../lego/LegoWorkReportBuilder";
+import { LEGO_IMAGE_REFERENCES } from "../../lego/legoPresetData.js";
 import LegoBlockCollectionModal from "../../lego/LegoBlockCollectionModal";
 
 const WorkReportTemplateManagerView = React.lazy(() =>

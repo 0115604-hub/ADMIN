@@ -34,7 +34,12 @@ export {
   calculateExtrusionMetrics
 } from "./extrusion/extrusionMetrics";
 
-export {
-  exportExtrusionReportsToExcel,
-  exportExtrusionCheckSheetExcel
-} from "./extrusion/extrusionExcelExporter";
+export const exportExtrusionReportsToExcel = async (...args) => {
+  const mod = await import("./extrusion/extrusionExcelExporter");
+  return mod.exportExtrusionReportsToExcel(...args);
+};
+
+export const exportExtrusionCheckSheetExcel = async (...args) => {
+  const mod = await import("./extrusion/extrusionExcelExporter");
+  return mod.exportExtrusionCheckSheetExcel(...args);
+};

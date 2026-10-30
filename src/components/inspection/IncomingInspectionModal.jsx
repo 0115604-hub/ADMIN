@@ -27,6 +27,7 @@ import {
   RECEIVING_STATUS
 } from "../../services/incomingInspectionService";
 import { compressImage } from "../../utils/imageCompressor";
+import { SUB_MATERIALS_LIST, SUB_MATERIAL_COMPANIES, getMaterialsByCompany } from "../../data/subMaterialsData";
 
 export const IncomingInspectionModal = ({
   isOpen,
@@ -34,7 +35,8 @@ export const IncomingInspectionModal = ({
   onSave,
   initialData = null,
   currentProfile = null,
-  defaultMode = "FULL" // "FULL" (입고+검사) or "RECEIVE_ONLY" (입고만)
+  defaultMode = "FULL", // "FULL" (입고+검사) or "RECEIVE_ONLY" (입고만)
+  initialCategory = "RAW_MATERIAL"
 }) => {
   // 모드 상태: "FULL" (입고+검사 동시 진행) vs "RECEIVE_ONLY" (입고만 먼저 등록)
   const [modalMode, setModalMode] = useState("FULL");
@@ -112,7 +114,7 @@ export const IncomingInspectionModal = ({
     } else {
       // 신규 등록
       setModalMode(defaultMode);
-      const defaultCat = "RAW_MATERIAL";
+      const defaultCat = initialCategory || "RAW_MATERIAL";
       setCategory(defaultCat);
       const catConfig = INSPECTION_CATEGORIES[defaultCat];
       setItemType(catConfig.items[0]?.id || "");
@@ -121,9 +123,9 @@ export const IncomingInspectionModal = ({
       const todayShort = new Date().toISOString().slice(2, 10).replace(/-/g, "");
       setLotNo(`LOT-${todayShort}-01`);
       setDeliveryNoteNo(`TR-${todayShort}-01`);
-      setStorageLocation("삼랑진 원재료창고");
+      setStorageLocation(defaultCat === "RAW_MATERIAL" ? "삼랑진 원재료창고" : "삼랑진 가공동 부자재랙");
       setQuantityNum("");
-      setQuantityUnit("kg");
+      setQuantityUnit(defaultCat === "RAW_MATERIAL" ? "kg" : "EA");
       setPlant(currentProfile?.plant || "삼랑진공장");
       setReceivedBy(currentProfile?.name || "유동길");
       setReceivingDate(new Date().toISOString().slice(0, 10));
@@ -139,7 +141,7 @@ export const IncomingInspectionModal = ({
       setDefectPhotos([]);
       setDeliverySlipPhotos([]);
     }
-  }, [isOpen, initialData, currentProfile, defaultMode]);
+  }, [isOpen, initialData, currentProfile, defaultMode, initialCategory]);
 
   // 카테고리 변경
   const handleCategoryChange = (newCat) => {
@@ -474,34 +476,95 @@ export const IncomingInspectionModal = ({
                 </select>
               </div>
 
-              {/* 품명 / 규격 */}
-              <div className="col-span-1 sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                  품명 및 규격 (스펙) <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: EPDM FMB-70A / DR-CLIP-01"
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600"
-                />
-              </div>
-
               {/* 공급사 (가공/협력업체) */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                  공급사 (가공/협력업체) <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 한국합성, 태영정밀"
-                  value={supplier}
-                  onChange={(e) => setSupplier(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400">
+                    공급사 (업체) <span className="text-rose-400">*</span>
+                  </label>
+                  {category === "SUB_MATERIAL" && (
+                    <span className="text-[10px] text-cyan-400 font-bold">10개사 등록</span>
+                  )}
+                </div>
+                {category === "SUB_MATERIAL" ? (
+                  <select
+                    value={supplier}
+                    onChange={(e) => {
+                      const newSupplier = e.target.value;
+                      setSupplier(newSupplier);
+                      const materials = getMaterialsByCompany(newSupplier);
+                      if (materials.length > 0) {
+                        setItemName(`${materials[0].materialName} (${materials[0].materialCode})`);
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500"
+                  >
+                    <option value="">-- 부자재 협력업체 선택 --</option>
+                    {SUB_MATERIAL_COMPANIES.map((comp) => (
+                      <option key={comp} value={comp}>
+                        {comp}
+                      </option>
+                    ))}
+                    <option value="CUSTOM">직접 입력</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    placeholder="예: 한국합성, 태영정밀"
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600"
+                  />
+                )}
+              </div>
+
+              {/* 품명 / 규격 (업체 선택 시 자재리스트 드롭다운 지원) */}
+              <div className="col-span-1 sm:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400">
+                    품명 및 규격 (스펙) <span className="text-rose-400">*</span>
+                  </label>
+                  {category === "SUB_MATERIAL" && supplier && (
+                    <span className="text-[10px] text-emerald-400 font-bold">
+                      {getMaterialsByCompany(supplier).length}개 품목 연동됨
+                    </span>
+                  )}
+                </div>
+
+                {category === "SUB_MATERIAL" && supplier && getMaterialsByCompany(supplier).length > 0 ? (
+                  <div className="space-y-1.5">
+                    <select
+                      value={itemName}
+                      onChange={(e) => setItemName(e.target.value)}
+                      className="w-full bg-slate-900 border border-emerald-600/70 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500 text-xs"
+                    >
+                      <option value="">-- [{supplier}] 자재 리스트 선택 --</option>
+                      {getMaterialsByCompany(supplier).map((mat, idx) => (
+                        <option key={idx} value={`${mat.materialName} (${mat.materialCode})`}>
+                          [{mat.materialCode}] {mat.materialName}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      required
+                      placeholder="직접 수정 또는 추가 스펙 입력"
+                      value={itemName}
+                      onChange={(e) => setItemName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300 font-medium focus:ring-1 focus:ring-cyan-500"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    placeholder="예: EPDM FMB-70A / DR-CLIP-01"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-medium focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600"
+                  />
+                )}
               </div>
 
               {/* 거래명세서 번호 */}

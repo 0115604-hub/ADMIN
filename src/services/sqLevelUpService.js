@@ -1,6 +1,5 @@
-﻿import { db } from "../firebase";
+import { db } from "../firebase";
 import { collection, doc, setDoc, getDocs, onSnapshot } from "firebase/firestore";
-import * as XLSX from "xlsx";
 import { SQ_LEVEL_UP_METADATA, SQ_LEVEL_UP_ITEMS } from "../data/sqLevelUpMasterData";
 
 const COLLECTION_NAME = "sq_level_up_items";
@@ -236,7 +235,8 @@ export const calculateSqKPIs = (items) => {
 };
 
 // 6. Export to Excel
-export const exportSqToExcel = (items) => {
+export const exportSqToExcel = async (items) => {
+  const XLSX = await import("xlsx");
   const rows = [
     ["(주)오륙 SQ 레벨업 추진 대장 (실시간 조치 현황)"],
     [`출력일시: ${new Date().toLocaleString("ko-KR")} | 목표일: ${SQ_LEVEL_UP_METADATA.targetDate}`],

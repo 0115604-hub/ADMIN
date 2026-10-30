@@ -10,7 +10,8 @@ import {
   query,
   writeBatch
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
+import { resolveWorkLogAffiliation } from "../utils/workLogCompanyMapping.js";
 
 export const INITIAL_WORK_LOGS = [];
 
@@ -105,13 +106,10 @@ export const normalizeWorkLogApproval = (log) => {
   if (!log || typeof log !== "object") return log;
   const parsed = parseLogFields(log);
 
-  // 1. Authoritative plant resolution (prevents plant disappearing)
-  if (!parsed.plant || parsed.plant === "undefined" || parsed.plant === "null") {
-    parsed.plant =
-      parsed.approverPlant ||
-      WRITER_PLANT_MAP[parsed.writer] ||
-      (parsed.approverName === "김동욱" ? "한림공장" : (parsed.writer === "권태형" || parsed.writer === "최미영" ? "본사" : "삼랑진공장"));
-  }
+  // 1. Authoritative 5-company & plant resolution
+  const affiliation = resolveWorkLogAffiliation(parsed);
+  parsed.company = parsed.company || affiliation.company;
+  parsed.plant = parsed.plant && parsed.plant !== "undefined" && parsed.plant !== "null" ? parsed.plant : affiliation.plant;
 
   const isHeadquarterOrAdmin =
     parsed.plant === "본사" ||

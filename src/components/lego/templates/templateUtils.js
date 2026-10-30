@@ -1,5 +1,5 @@
 import { getLocalCustomLegoBlocks } from "../../../services/workReportTemplateService";
-import { LEGO_BLOCK_SWITCH_CATALOG } from "../LegoWorkReportBuilder.jsx";
+import { LEGO_BLOCK_SWITCH_CATALOG } from "../legoPresetData.js";
 
 /**
  * Helper to resolve all catalog items (standard + custom blocks) for a template in exact assembled blockOrder

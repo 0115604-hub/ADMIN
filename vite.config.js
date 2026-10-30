@@ -11,6 +11,20 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 4000,
+    modulePreload: {
+      polyfill: false,
+      resolveDependencies: (filename, deps) => {
+        // 첫 화면 초기 구동 시 불필요한 무거운 라이브러리(exceljs, xlsx, pdf, 대용량json) 사전 다운로드 완전 차단
+        return deps.filter(
+          (dep) =>
+            !dep.includes('vendor-exceljs') &&
+            !dep.includes('vendor-xlsx') &&
+            !dep.includes('vendor-pdf') &&
+            !dep.includes('bundled-templates-data') &&
+            !dep.includes('data-large-dataset')
+        );
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

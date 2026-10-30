@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection,
   doc,
   setDoc,
@@ -24,7 +24,12 @@ export const getLocalAnnualLeaves = () => {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_ANNUAL_LEAVES));
       return INITIAL_ANNUAL_LEAVES;
     }
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return INITIAL_ANNUAL_LEAVES;
+    // 💡 과거 완료/해제(isDismissed/isCompleted) 처리된 잔상이 초기 로드 시 찰나 깜빡이지 않도록 선제 필터링
+    return parsed.filter(
+      (l) => l && l.isDismissed !== true && l.isCompleted !== true
+    );
   } catch (e) {
     console.error("Local storage read error for annual leaves:", e);
     return INITIAL_ANNUAL_LEAVES;

@@ -21,11 +21,11 @@ export const runStorageHealthCheck = () => {
     const criticalKeys = [
       { key: "factory_daily_work_logs_v17_pure_sync", type: "array" },
       { key: "oryuk_urgent_issues_v2", type: "array" },
+      { key: "official_electronic_approval_documents_v10", type: "array" },
       { key: "oryuk_approval_documents_v9_master", type: "array" },
       { key: "official_overtime_reports_store_v7_company_reports", type: "array" },
       { key: "oryuk_smart_overtime_data_v2_sept", type: "object" },
       { key: "oryuk_smart_overtime_data_2026_09", type: "object" },
-      { key: "oryuk_smart_overtime_data_2026_10", type: "object" },
       { key: "oryuk_common_schedules_v1", type: "array" },
       { key: "factory_daily_quality_records_v4_exact", type: "array" },
       { key: "oryuk_telegram_config_v4", type: "object" },
@@ -110,6 +110,7 @@ export const runStorageHealthCheck = () => {
     ];
 
     const exactObsoleteKeys = [
+      "oryuk_smart_overtime_data_2026_10", // 구버전 통합 키 영구 삭제 (5개사 독립 키로 완전 분리됨)
       "oryuk_daily_backup_latest_v1", // Legacy 3MB duplicate snapshot - purged to prevent quota exhaustion
       "admin_multi_month_store_v1",
       "admin_multi_month_store_v2",

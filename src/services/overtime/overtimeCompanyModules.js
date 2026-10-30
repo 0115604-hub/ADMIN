@@ -243,6 +243,8 @@ export const safeSetLocalStorage = (key, valueStr) => {
     try {
       const legacyKeysToPurge = [
         STORAGE_KEY,
+        "oryuk_smart_overtime_data_2026_10",
+        "oryuk_smart_overtime_data_2026-10",
         "oryuk_smart_overtime_data_2026_09",
         "oryuk_smart_overtime_data_2026-09",
         "oryuk_overtime_reports_backup",
@@ -281,10 +283,9 @@ export const debouncedSaveCompanyLocal = (compKey, payloadObj, delayMs = 120) =>
   }, delayMs);
 };
 
-// 🌟 클라우드 스냅샷 수신 완료 여부 및 1회 복구 완료 여부 캐시
+// 🌟 클라우드 스냅샷 수신 완료 여부 캐시
 export const cloudSnapshotHydrated = {};
 export const healedCloudOnce = {};
-const legacyHealParsedCache = {};
 export const pendingCloudSyncTimers = {};
 export const pendingCloudSyncMeta = {};
 
@@ -318,50 +319,11 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
           parsed.addedWorkers
         );
 
-        // 🌟 혹시 이전 통합 키(`oryuk_smart_overtime_data_YYYY_MM`)에 누락된 일자의 근태나 마감 상태가 남아있다면 월별 1회만 파싱하여 병합 복구
-        const legacyKeyForHeal = getStorageKeyForMonth(ym);
-        let legacyWorkersMap = null;
-        let legacyApprovalsMap = {};
-        try {
-          if (legacyHealParsedCache[legacyKeyForHeal] === undefined) {
-            const rawLegHeal = localStorage.getItem(legacyKeyForHeal);
-            legacyHealParsedCache[legacyKeyForHeal] = rawLegHeal ? JSON.parse(rawLegHeal) : null;
-          }
-          const parsedLegHeal = legacyHealParsedCache[legacyKeyForHeal];
-          if (parsedLegHeal) {
-            if (Array.isArray(parsedLegHeal.attendanceMatrix)) {
-              legacyWorkersMap = new Map();
-              parsedLegHeal.attendanceMatrix.forEach((lw) => {
-                if (cleanCompanyName(lw?.company) === cleanComp && lw?.name) {
-                  legacyWorkersMap.set(String(lw.name).trim(), lw.daily || {});
-                }
-              });
-            }
-            if (parsedLegHeal.companyApprovalStatus) {
-              Object.entries(parsedLegHeal.companyApprovalStatus).forEach(([k, v]) => {
-                if (k.startsWith(`${cleanComp}_`) || cleanCompanyName(v?.company) === cleanComp) {
-                  legacyApprovalsMap[k] = v;
-                }
-              });
-            }
-          }
-        } catch (e) {}
-
-        const healedWorkers = legacyWorkersMap
-          ? workers.map((w) => {
-              const legDaily = legacyWorkersMap.get(String(w.name).trim()) || {};
-              return {
-                ...w,
-                daily: { ...legDaily, ...(w.daily || {}) }
-              };
-            })
-          : workers;
-
         const loaded = {
           company: cleanComp,
           year,
           month,
-          masterWorkers: healedWorkers.map((w, idx) => ({
+          masterWorkers: workers.map((w, idx) => ({
             no: idx + 1,
             companyNo: idx + 1,
             company: cleanComp,
@@ -373,8 +335,8 @@ export const getLocalCompanyOvertimeData = (company, targetYearMonth = null) => 
             status: w.status || "재직",
             note: w.note || ""
           })),
-          attendanceMatrix: healedWorkers,
-          companyApprovalStatus: { ...legacyApprovalsMap, ...(parsed.companyApprovalStatus || {}) },
+          attendanceMatrix: workers,
+          companyApprovalStatus: parsed.companyApprovalStatus || {},
           recentAuditLogs: (parsed.recentAuditLogs || []).slice(0, 30),
           updatedAt: parsed.updatedAt || null
         };

@@ -27,6 +27,8 @@ export const OvertimeDailyInputTab = ({
   handleApproveCompanyDayAttendance,
   handleSubmitCompanyDayAttendance,
   isSaving,
+  currentProfile,
+  isAdmin,
   filteredAttendanceWorkers = [],
   handleSetAllFilteredWorkersSameAsPrevDay,
   handleSetAllFilteredWorkersRegular,
@@ -155,21 +157,24 @@ export const OvertimeDailyInputTab = ({
               }
 
               if (isSubmitted) {
+                const canFinalApprove = isAdmin || currentProfile?.role === "CEO" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영";
                 return (
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1.5 shadow-sm animate-pulse">
                       <span>🟡 특근보고서 상신됨 (승인 대기)</span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleApproveCompanyDayAttendance}
-                      disabled={isSaving}
-                      className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-                      title="클릭 시 당일 특근을 최종 승인 완료(마감)합니다."
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>✅ 최종 승인</span>
-                    </button>
+                    {canFinalApprove && (
+                      <button
+                        type="button"
+                        onClick={handleApproveCompanyDayAttendance}
+                        disabled={isSaving}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                        title="클릭 시 당일 특근을 최종 승인 완료(마감)합니다."
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>✅ 최종 승인</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleUnlockCompanyDayAttendance}

@@ -137,25 +137,7 @@ export const calculateUnwrittenCompanies = ({
   const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   return COMPANIES.filter((comp) => {
     const cleanComp = cleanCompanyName(comp);
-    // 1. 등록된 특근 보고서가 존재하는지 확인
-    const hasReport = (legacyReports || []).some((r) => {
-      if (!r) return false;
-      const rDateKey = getReportDateSortKey(r);
-      if (rDateKey !== targetDateStr) return false;
-      const rComp = cleanCompanyName(r.company || "");
-      return rComp === cleanComp;
-    });
-    if (hasReport) return false;
-
-    // 2. 전자결재 승인/상신 상태 확인
-    const approvalKey = `${cleanComp}_${d}`;
-    const approvalEntry = smartData?.companyApprovalStatus?.[approvalKey];
-    const approvalStatus = approvalEntry?.status || "DRAFT";
-    if (approvalStatus === "APPROVED" || approvalStatus === "SUBMITTED" || (approvalEntry?.attendedCount > 0)) {
-      return false;
-    }
-
-    // 3. 당일 원장 상의 근태 입력 인원수 (1명 이상 입력 시 작성후로 판정)
+    // 당일 원장 상의 근태 입력 인원수 (단일 진실 원천: 1명 이상 실제 등록 시 작성후)
     const compWorkers = (effectiveMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp);
     if (compWorkers.length === 0) return true;
 
@@ -165,6 +147,7 @@ export const calculateUnwrittenCompanies = ({
       return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
     }).length;
 
+    // 실제 입력된 인원이 1명 이상이어야만 작성후(!isUnwritten)로 판정 (캐시/보고서/더미 의존 영구 제거)
     const isWritten = enteredCount > 0;
     return !isWritten;
   }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));

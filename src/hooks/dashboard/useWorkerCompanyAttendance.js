@@ -118,30 +118,23 @@ export function useWorkerCompanyAttendance({
       const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
 
-      // 당일 원장 상의 근태 입력 인원수 (단일 진실 원천)
+      // 당일 원장 상의 근태 입력 인원수 (단일 진실 원천: 사용자가 당일 셀에 직접 근태를 등록한 경우만 인정)
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
         const str = String(v ?? "").trim();
         return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      // 1단계 심플 결재 상태 확인 (APPROVED: 마감, SUBMITTED: 상신대기, DRAFT: 작성중)
+      // 1단계 결재 상태 확인 (APPROVED: 마감, SUBMITTED: 상신대기, DRAFT: 작성중)
       const approvalKey = `${cleanCompName}_${todayDayNum}`;
       const approvalInfo = smartOvertimeData?.companyApprovalStatus?.[approvalKey] || {};
       const approvalStatus = approvalInfo.status || "DRAFT";
 
-      const hasReport = (overtimeReports || []).some((r) => {
-        if (!r) return false;
-        const rDateKey = getReportDateSortKey(r);
-        if (rDateKey !== todayStr) return false;
-        return cleanCompanyName(r.company || "") === cleanCompName;
-      });
-
-      // 작성전/후 2단계 단일화 로직 (1명 이상 입력 or 승인/상신 or 일보보고서 등록 -> 작성후)
-      const hasAnyAttendance = enteredCount > 0;
-      const isApproved = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "APPROVED";
-      const isSubmitted = (hasAnyAttendance || approvalInfo.attendedCount > 0) && approvalStatus === "SUBMITTED";
-      const isWritten = hasAnyAttendance || isApproved || isSubmitted || (approvalInfo.attendedCount > 0) || hasReport;
+      // 🌟 [강력한 원칙]: 사용자가 실제 당일 근태를 1명 이상 입력했거나 실제 결재 승인/상신이 들어간 경우에만 작성후로 인정
+      // - 작업자가 0명 등록 상태인데 과거 캐시, 더미 카운트, 레거시 보고서 잔여물 등으로 '작성후'로 오인되는 취약 구문 완전 영구 제거
+      const isApproved = enteredCount > 0 && approvalStatus === "APPROVED";
+      const isSubmitted = enteredCount > 0 && approvalStatus === "SUBMITTED";
+      const isWritten = enteredCount > 0;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;

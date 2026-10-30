@@ -13,6 +13,7 @@ import {
   X
 } from "lucide-react";
 import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
+import { WorkLogCompanyFilterNav } from "./WorkLogCompanyFilterNav.jsx";
 
 export const DailyWorkLogTableSection = ({
   isMyeongjae,
@@ -203,52 +204,12 @@ export const DailyWorkLogTableSection = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          <select
-            value={filterPlant}
-            onChange={(e) => setFilterPlant(e.target.value)}
-            className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
-          >
-            <option value="all">전체 ({workLogs.length})</option>
-            <option value="본사">
-              본사 (
-              {
-                workLogs.filter(
-                  (l) =>
-                    l.plant === "본사" ||
-                    l.writer === "권태형" ||
-                    l.writer === "최미영" ||
-                    l.department === "본사 관리팀"
-                ).length
-              }
-              )
-            </option>
-            <option value="삼랑진공장">
-              삼랑진 (
-              {
-                workLogs.filter(
-                  (l) =>
-                    (l.plant === "삼랑진공장" || !l.plant) &&
-                    l.plant !== "본사" &&
-                    l.writer !== "권태형" &&
-                    l.writer !== "최미영" &&
-                    !["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)
-                ).length
-              }
-              )
-            </option>
-            <option value="한림공장">
-              한림 (
-              {
-                workLogs.filter(
-                  (l) =>
-                    l.plant === "한림공장" ||
-                    ["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer)
-                ).length
-              }
-              )
-            </option>
-          </select>
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto flex-wrap sm:flex-nowrap">
+          <WorkLogCompanyFilterNav
+            filterPlant={filterPlant}
+            setFilterPlant={setFilterPlant}
+            workLogs={workLogs}
+          />
           <button
             type="button"
             onClick={() => {

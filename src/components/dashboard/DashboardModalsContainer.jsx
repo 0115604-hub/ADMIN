@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from "react";
 import WorkLogDetailModal from "./modals/WorkLogDetailModal";
 import WorkLogEditModal from "./modals/WorkLogEditModal";
 import WorkerLogListModal from "./modals/WorkerLogListModal";
-import CreateWorkLogModal from "./modals/CreateWorkLogModal";
+const CreateWorkLogModal = lazy(() => import("./modals/CreateWorkLogModal"));
 import CommonScheduleModal from "./modals/CommonScheduleModal";
 import DailyPnLModal from "./modals/DailyPnLModal";
 import ScheduleDetailModal from "./modals/ScheduleDetailModal";
@@ -276,71 +276,75 @@ export const DashboardModalsContainer = ({
 
 
       {/* Write Work Log & Upload Modal */}
-      <CreateWorkLogModal
-        isModalOpen={isModalOpen}
-        setIsModalOpen={setIsModalOpen}
-        isInjoo={isInjoo}
-        isJaeyul={isJaeyul}
-        isExtrusionWorker={isExtrusionWorker}
-        isQualityWorker={isQualityWorker}
-        isAdmin={isAdmin}
-        isGeneralManager={isGeneralManager}
-        logout={logout}
-        assignedProcess={assignedProcess}
-        formData={formData}
-        setFormData={setFormData}
-        handleSaveLog={handleSaveLog}
-        isSavingLog={isSavingLog}
-        logSavedToast={logSavedToast}
-        formatAmount={formatAmount}
-        currentProfile={currentProfile}
-        workerFullName={workerFullName}
-        workerPlant={workerPlant}
-        officialTitle={officialTitle}
-        workerDept={workerDept}
-        workerPosition={workerPosition}
-        isProcessingImages={isProcessingImages}
-        handleWorkLogImageFiles={handleWorkLogImageFiles}
-        handleRemoveWorkLogImage={handleRemoveWorkLogImage}
-        previewImageModal={previewImageModal}
-        setPreviewImageModal={setPreviewImageModal}
-        selectedMonth={selectedMonth}
-        currentYearMonth={currentYearMonth}
-        availableMonths={availableMonths}
-        DEFAULT_MONTH_LIST={DEFAULT_MONTH_LIST}
-        parsedResult={parsedResult}
-        setParsedResult={setParsedResult}
-        uploadSuccess={uploadSuccess}
-        setUploadSuccess={setUploadSuccess}
-        fileInputRef={fileInputRef}
-        handleExcelFile={handleExcelFile}
-        handleDrag={handleDrag}
-        handleDrop={handleDrop}
-        dragActive={dragActive}
-        parsing={parsing}
-        uploading={uploading}
-        successMessage={successMessage}
-        handleConfirmExcelUpload={handleConfirmExcelUpload}
-        maintenanceItems={maintenanceItems}
-        handleAddMaintenanceItem={handleAddMaintenanceItem}
-        handleRemoveMaintenanceItem={handleRemoveMaintenanceItem}
-        handleUpdateMaintenanceItem={handleUpdateMaintenanceItem}
-        handleMaintenanceItemImageFiles={handleMaintenanceItemImageFiles}
-        handleRemoveMaintenanceItemImage={handleRemoveMaintenanceItemImage}
-        qualityFiles={qualityFiles}
-        setQualityFiles={setQualityFiles}
-        qualityUploadSuccess={qualityUploadSuccess}
-        setQualityUploadSuccess={setQualityUploadSuccess}
-        qualityFileInputRef={qualityFileInputRef}
-        handleQualityFiles={handleQualityFiles}
-        handleQualityDrag={handleQualityDrag}
-        handleQualityDrop={handleQualityDrop}
-        qualityDragActive={qualityDragActive}
-        qualityParsing={qualityParsing}
-        qualityUploading={qualityUploading}
-        qualitySuccessMessage={qualitySuccessMessage}
-        handleConfirmQualityUpload={handleConfirmQualityUpload}
-      />
+      {isModalOpen && (
+        <Suspense fallback={null}>
+          <CreateWorkLogModal
+            isModalOpen={isModalOpen}
+            setIsModalOpen={setIsModalOpen}
+            isInjoo={isInjoo}
+            isJaeyul={isJaeyul}
+            isExtrusionWorker={isExtrusionWorker}
+            isQualityWorker={isQualityWorker}
+            isAdmin={isAdmin}
+            isGeneralManager={isGeneralManager}
+            logout={logout}
+            assignedProcess={assignedProcess}
+            formData={formData}
+            setFormData={setFormData}
+            handleSaveLog={handleSaveLog}
+            isSavingLog={isSavingLog}
+            logSavedToast={logSavedToast}
+            formatAmount={formatAmount}
+            currentProfile={currentProfile}
+            workerFullName={workerFullName}
+            workerPlant={workerPlant}
+            officialTitle={officialTitle}
+            workerDept={workerDept}
+            workerPosition={workerPosition}
+            isProcessingImages={isProcessingImages}
+            handleWorkLogImageFiles={handleWorkLogImageFiles}
+            handleRemoveWorkLogImage={handleRemoveWorkLogImage}
+            previewImageModal={previewImageModal}
+            setPreviewImageModal={setPreviewImageModal}
+            selectedMonth={selectedMonth}
+            currentYearMonth={currentYearMonth}
+            availableMonths={availableMonths}
+            DEFAULT_MONTH_LIST={DEFAULT_MONTH_LIST}
+            parsedResult={parsedResult}
+            setParsedResult={setParsedResult}
+            uploadSuccess={uploadSuccess}
+            setUploadSuccess={setUploadSuccess}
+            fileInputRef={fileInputRef}
+            handleExcelFile={handleExcelFile}
+            handleDrag={handleDrag}
+            handleDrop={handleDrop}
+            dragActive={dragActive}
+            parsing={parsing}
+            uploading={uploading}
+            successMessage={successMessage}
+            handleConfirmExcelUpload={handleConfirmExcelUpload}
+            maintenanceItems={maintenanceItems}
+            handleAddMaintenanceItem={handleAddMaintenanceItem}
+            handleRemoveMaintenanceItem={handleRemoveMaintenanceItem}
+            handleUpdateMaintenanceItem={handleUpdateMaintenanceItem}
+            handleMaintenanceItemImageFiles={handleMaintenanceItemImageFiles}
+            handleRemoveMaintenanceItemImage={handleRemoveMaintenanceItemImage}
+            qualityFiles={qualityFiles}
+            setQualityFiles={setQualityFiles}
+            qualityUploadSuccess={qualityUploadSuccess}
+            setQualityUploadSuccess={setQualityUploadSuccess}
+            qualityFileInputRef={qualityFileInputRef}
+            handleQualityFiles={handleQualityFiles}
+            handleQualityDrag={handleQualityDrag}
+            handleQualityDrop={handleQualityDrop}
+            qualityDragActive={qualityDragActive}
+            qualityParsing={qualityParsing}
+            qualityUploading={qualityUploading}
+            qualitySuccessMessage={qualitySuccessMessage}
+            handleConfirmQualityUpload={handleConfirmQualityUpload}
+          />
+        </Suspense>
+      )}
 
       {/* 📌 태형&미영 일정 등록 및 완료 관리 모달 */}
       <CommonScheduleModal

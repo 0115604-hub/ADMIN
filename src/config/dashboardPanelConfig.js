@@ -20,7 +20,9 @@ export const PANEL_KEYS = {
   WORK_LOGS: "work_logs", // 📋 일일업무일지 현황
   TELEGRAM_LIVE_LOUNGE: "telegram_live_lounge", // ✈️ 텔레그램 실시간 소통 라운지
   WORK_REPORT_TEMPLATES: "work_report_templates", // 🧩 레고블록 작업일보 빌더
-  SEVERE_DISASTER: "severe_disaster" // 🚨 중대재해 안전판
+  SEVERE_DISASTER: "severe_disaster", // 🚨 중대재해 안전판
+  INCOMING_INSPECTION: "incoming_inspection", // 🔬 수입검사 & 입고대장 관리 (원자재/부자재)
+  LUX_INSPECTION: "lux_inspection" // 💡 조도측정일보 (월 1회 정기점검)
 };
 
 // 🌟 전체 패널 블록 메타데이터 목록 (TEST 뱃지 스튜디오에서 사용)
@@ -54,11 +56,11 @@ export const ALL_DASHBOARD_BLOCKS = [
   },
   {
     key: PANEL_KEYS.ABNORMALITY_4M,
-    label: "4M 변동점 & 이상통합 관제",
+    label: "4M 정식등록대장 & 이상통합 관제",
     category: "품질/4M",
     badge: "🛡️ 4M",
     icon: "ShieldCheck",
-    description: "4M 변동점 상신/승인 및 CAPA 이상발생 현황",
+    description: "4M 변동점 상신/승인, 4M 정식등록대장 및 CAPA 이상발생 현황",
     color: "from-indigo-600 to-purple-600"
   },
   {
@@ -150,6 +152,24 @@ export const ALL_DASHBOARD_BLOCKS = [
     icon: "ShieldAlert",
     description: "중대재해 안전수칙 및 무재해 일수 안내",
     color: "from-rose-500 to-orange-600"
+  },
+  {
+    key: PANEL_KEYS.INCOMING_INSPECTION,
+    label: "원·부자재 수입검사 입고관리",
+    category: "품질/수입검사",
+    badge: "🔬 수입검사",
+    icon: "ClipboardCheck",
+    description: "원자재·부자재 2트랙 입고대장 및 15개사 선별 수입검사 관리",
+    color: "from-emerald-600 to-teal-700"
+  },
+  {
+    key: PANEL_KEYS.LUX_INSPECTION,
+    label: "조도측정일보 (월 1회)",
+    category: "안전/품질",
+    badge: "💡 조도측정",
+    icon: "Lightbulb",
+    description: "월 1회 정기 조도 측정, 1~16번 위치 관리 및 산업안전 기준 판정",
+    color: "from-amber-500 to-yellow-600"
   }
 ];
 
@@ -180,189 +200,12 @@ export const DEFAULT_INTERNAL_MANAGER_PANELS = [
   PANEL_KEYS.WORK_LOGS
 ];
 
-// 관리자(ID 또는 이름)별 맞춤 패널 기본 설정표 (초기 공장 기본값: 각 관리자별 전담 공정/업무 패널을 최상단에 우선 배치)
+// 관리자(ID 또는 이름)별 맞춤 패널 기본 설정표 (초기 공장 기본값: 요청하신 공식 프로필 명세와 100% 일치)
 export const MANAGER_PANEL_CONFIG = {
-  // ⭐ [품질총괄: 이창엽 책임 - 부적합경보 & 4M 변동점 & 일일품질]
-  "sam_cy": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.ABNORMALITY_4M,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "이창엽": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.ABNORMALITY_4M,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // ⚙️ [압출총괄: 설유철 책임 - 압출 부적합경보 & 실시간 압출작업일보 & 주간 비가동내역]
-  "sam_yc": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.SEOL_EXTRUSION_REPORT,
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "설유철": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.SEOL_EXTRUSION_REPORT,
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // ⚙️ [가공총괄: 윤경수 책임 - 가공 부적합경보 & 실시간 가공작업일보(HR/JA/NX5a) & 일일품질]
-  "sam_ks": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "윤경수": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // ⚙️ [가공담당: 양인나 선임 - 가공 부적합경보 & 실시간 가공작업일보]
-  "sam_in": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "양인나": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // ⚙️ [가공담당: 유동길 선임 - 실시간 가공작업일보]
-  "sam_dg": [
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "유동길": [
-    PANEL_KEYS.MACHINING_WORK_REPORT,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // 🔧 [설비보전: 전재율 책임 - 압출동 주간 비가동내역 & 설비보전]
-  "sam_jy": [
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "전재율": [
-    PANEL_KEYS.EXTRUSION_DOWNTIME,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // 🔬 [품질기사: 이상기 기사 - 일일품질 요약 & 4M 변동점 대장]
-  "sam_sg": [
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.ABNORMALITY_4M,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "이상기": [
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.ABNORMALITY_4M,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // 👥 [근태담당: 조인주 선임 - 근태현황 및 5개사 관리 & 연차/일정]
-  "sam_ij": [
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "조인주": [
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // 👑 [삼랑진공장 총괄: 이명재 이사 - 매출매입분석 & 근태현황 & 일일품질 & 업무일지 결재]
-  "sam_mj": [
-    PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.WORK_LOGS,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE
-  ],
-  "이명재": [
-    PANEL_KEYS.SALES_PURCHASE,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.WORK_LOGS,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE
-  ],
-
-  // 👑 [한림공장 총괄: 김동욱 책임 - 조영 부적합경보 & 한림 근태 & 일일품질 & 업무일지 결재]
-  "hal_dw": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.WORK_LOGS,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE
-  ],
-  "김동욱": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.ATTENDANCE,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.WORK_LOGS,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE
-  ],
-
-  // ⚙️ [한림 가공담당: 오상민 선임 - 조영 부적합경보 & 일일품질 요약]
-  "hal_sm": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-  "오상민": [
-    PANEL_KEYS.QUALITY_DEFECT_ALERT_BAR,
-    PANEL_KEYS.QUALITY_SUMMARY,
-    PANEL_KEYS.COMMON_SCHEDULE,
-    PANEL_KEYS.CALENDAR_SCHEDULE,
-    PANEL_KEYS.WORK_LOGS
-  ],
-
-  // 👑 [본사 경영진: 권태형 대표이사 - 매출매입 & 근태 & 품질 & 결재]
+  // ==========================================
+  // 1. 본사 최고경영진 (ADMIN)
+  // ==========================================
+  // 👑 권태형 대표이사 (admin_kwon)
   "admin_kwon": [
     PANEL_KEYS.SALES_PURCHASE,
     PANEL_KEYS.ATTENDANCE,
@@ -380,7 +223,7 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.CALENDAR_SCHEDULE
   ],
 
-  // 👑 [본사 경영진: 최미영 전무 - 매출매입 & 근태 & 품질 & 결재]
+  // 👑 최미영 전무 (admin_choi)
   "admin_choi": [
     PANEL_KEYS.SALES_PURCHASE,
     PANEL_KEYS.ATTENDANCE,
@@ -398,7 +241,184 @@ export const MANAGER_PANEL_CONFIG = {
     PANEL_KEYS.CALENDAR_SCHEDULE
   ],
 
-  // 🛡️ [한림공장 TEST 관리자 - 공통일정 & 캘린더 & 텔레그램 & 양식빌더]
+  // ==========================================
+  // 2. 삼랑진공장 관리자 (가공동 / 압출동 / 품질 / 설비)
+  // ==========================================
+  // 👑 이명재 이사 (삼랑진공장 총괄)
+  "sam_mj": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "이명재": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SALES_PURCHASE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 🏭 설유철 책임 (삼랑진공장 압출 총괄)
+  "sam_yc": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SEOL_EXTRUSION_REPORT,
+    PANEL_KEYS.EXTRUSION_DOWNTIME,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "설유철": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.SEOL_EXTRUSION_REPORT,
+    PANEL_KEYS.EXTRUSION_DOWNTIME,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // ⚙️ 윤경수 책임 (삼랑진공장 가공 총괄)
+  "sam_ks": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "윤경수": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 🔬 이창엽 책임 (삼랑진공장 품질관리 총괄)
+  "sam_cy": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "이창엽": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 🔧 전재율 책임 (삼랑진공장 설비보전 총괄)
+  "sam_jy": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.EXTRUSION_DOWNTIME,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "전재율": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.EXTRUSION_DOWNTIME,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 📋 양인나 선임 (삼랑진공장 가공 관리)
+  "sam_in": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "양인나": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 📋 유동길 선임 (삼랑진공장 가공 관리)
+  "sam_dg": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "유동길": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.MACHINING_WORK_REPORT,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 🔬 이상기 기사 (삼랑진공장 품질 관리)
+  "sam_sg": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "이상기": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.ABNORMALITY_4M,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // 👥 조인주 선임 (삼랑진공장 근태 관리)
+  "sam_ij": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "조인주": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // ==========================================
+  // 3. 한림공장 관리자 (가공 / 협력업체)
+  // ==========================================
+  // 👑 김동욱 책임 (한림공장 총괄)
+  "hal_dw": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "김동욱": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.ATTENDANCE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // ⚙️ 오상민 선임 (한림공장 가공 관리)
+  "hal_sm": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+  "오상민": [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    PANEL_KEYS.QUALITY_SUMMARY,
+    PANEL_KEYS.WORK_LOGS
+  ],
+
+  // ==========================================
+  // 4. 관제 및 테스트 계정
+  // ==========================================
+  // 🛡️ TEST 계정 (hal_test)
   "hal_test": [
     PANEL_KEYS.COMMON_SCHEDULE,
     PANEL_KEYS.CALENDAR_SCHEDULE,
@@ -420,35 +440,70 @@ export const PANEL_CONFIG_VERSION = "20261029_v16_purge_incoming";
  * 특정 사용자의 활성 대시보드 패널 목록 조회
  * (1순위: TEST 뱃지에서 저장된 Firestore/로컬 커스텀 레이아웃 -> 2순위: 시스템 기본 설정표)
  */
+/**
+ * 특정 사용자의 활성 대시보드 패널 목록 조회
+ * ⭐ [요청반영] admin, TEST, 권태형, 최미영을 제외한 모든 일반 관리자는
+ *     사내공통일정패널(COMMON_SCHEDULE)과 관리자캘린더센터(CALENDAR_SCHEDULE)가 무조건 최상단(1번, 2번) 고정입니다.
+ */
 export const getPanelsForUser = (profile) => {
   if (!profile) return DEFAULT_INTERNAL_MANAGER_PANELS;
-  const id = profile.id;
-  const name = profile.name;
+  const id = profile.id || "";
+  const name = profile.name || "";
 
-  // 1. 저장된 커스텀 레이아웃 우선 확인 (Firestore 및 로컬스토리지 동기화 값)
+  // 1. 제외 대상: admin, TEST, 권태형, 최미영 -> 자유 구성 유지
+  const isFreeLayoutUser =
+    id === "admin_main" ||
+    id === "admin_kwon" ||
+    id === "admin_choi" ||
+    id === "hal_test" ||
+    id === "TEST" ||
+    name === "admin" ||
+    name === "TEST" ||
+    name === "권태형" ||
+    name === "최미영" ||
+    profile.role === "ADMIN";
+
+  // 2. 저장된 커스텀 레이아웃 우선 확인 (Firestore 및 로컬스토리지 동기화 값)
+  let rawPanels = null;
   if (id) {
     const customById = getCustomLayoutForManager(id);
     if (customById && Array.isArray(customById) && customById.length > 0) {
-      return customById.filter((key) => key !== "incoming_inspection");
+      rawPanels = customById.filter((key) => key !== "incoming_inspection");
     }
   }
-  if (name) {
+  if (!rawPanels && name) {
     const customByName = getCustomLayoutForManager(name);
     if (customByName && Array.isArray(customByName) && customByName.length > 0) {
-      return customByName.filter((key) => key !== "incoming_inspection");
+      rawPanels = customByName.filter((key) => key !== "incoming_inspection");
     }
   }
 
-  // 2. 관리자(ID 또는 이름)별 맞춤 패널 초기 설정표 매핑
-  if (id && MANAGER_PANEL_CONFIG[id]) {
-    return MANAGER_PANEL_CONFIG[id];
-  }
-  if (name && MANAGER_PANEL_CONFIG[name]) {
-    return MANAGER_PANEL_CONFIG[name];
+  // 3. 관리자(ID 또는 이름)별 맞춤 패널 초기 설정표 매핑
+  if (!rawPanels) {
+    if (id && MANAGER_PANEL_CONFIG[id]) {
+      rawPanels = [...MANAGER_PANEL_CONFIG[id]];
+    } else if (name && MANAGER_PANEL_CONFIG[name]) {
+      rawPanels = [...MANAGER_PANEL_CONFIG[name]];
+    } else {
+      rawPanels = [...DEFAULT_INTERNAL_MANAGER_PANELS];
+    }
   }
 
-  // 3. 기본 사내 관리자 레이아웃
-  return DEFAULT_INTERNAL_MANAGER_PANELS;
+  // 제외 대상(최고경영진/ADMIN/TEST)은 그대로 반환
+  if (isFreeLayoutUser) {
+    return rawPanels;
+  }
+
+  // 4. 일반 관리자: 사내공통일정패널과 관리자캘린더센터를 무조건 최상단(1번, 2번)에 고정
+  const withoutTopSchedules = rawPanels.filter(
+    (k) => k !== PANEL_KEYS.COMMON_SCHEDULE && k !== PANEL_KEYS.CALENDAR_SCHEDULE
+  );
+
+  return [
+    PANEL_KEYS.COMMON_SCHEDULE,
+    PANEL_KEYS.CALENDAR_SCHEDULE,
+    ...withoutTopSchedules
+  ];
 };
 
 /**

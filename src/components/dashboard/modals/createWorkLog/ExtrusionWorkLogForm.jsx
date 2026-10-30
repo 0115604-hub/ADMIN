@@ -2,7 +2,8 @@ import {
   Wrench,
   CheckCircle2,
   Camera,
-  Save
+  Save,
+  AlertTriangle
 } from "lucide-react";
 import { DEFECT_TYPE_GROUPS } from "../../../../hooks/dashboard/useWorkLogCrud";
 

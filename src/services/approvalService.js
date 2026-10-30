@@ -6,7 +6,7 @@ import {
   deleteDoc,
   onSnapshot
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 
 export const COLLECTION_NAME = "approval_documents";
 export const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -14,14 +14,20 @@ export const LOCAL_STORAGE_KEY = "official_electronic_approval_documents_v10";
 
 // Standard approval managers
 export const APPROVAL_MANAGERS = {
-  CEO: { name: "권태형", title: "대표이사" },
-  DIRECTOR: { name: "이명재", title: "이사" },
+  CEO: [
+    { name: "권태형", title: "대표이사" },
+    { name: "최미영", title: "전무" }
+  ],
+  DIRECTORS: [
+    { name: "이명재", title: "이사" },
+    { name: "최미영", title: "전무" }
+  ],
   LEADS: [
-    { name: "설유철", title: "책임", plant: "삼랑진공장" },
-    { name: "윤경수", title: "책임", plant: "삼랑진공장" },
-    { name: "이창엽", title: "책임", plant: "삼랑진공장" },
-    { name: "전재율", title: "책임", plant: "삼랑진공장" },
-    { name: "김동욱", title: "책임", plant: "한림공장" }
+    { name: "설유철", title: "책임", plant: "삼랑진공장", process: "압출동 관리" },
+    { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리" },
+    { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리" },
+    { name: "전재율", title: "책임", plant: "삼랑진공장", process: "설비보전" },
+    { name: "김동욱", title: "책임", plant: "한림공장", process: "한림 총괄" }
   ]
 };
 
@@ -139,23 +145,16 @@ export function normalizeApprovalDoc(d) {
   const is4M = isFourMApprovalDoc(d);
   const isOvertime = isOvertimeApprovalDoc(d);
 
-  // Guarantee valid steps array
+  // Guarantee valid steps array via createSimpleApprovalSteps
   let steps = Array.isArray(d.steps) && d.steps.length > 0 ? d.steps : null;
   if (!steps) {
-    if (is4M) {
-      steps = [
-        { role: "담당", name: d.drafter || "이창엽", title: "책임", status: "APPROVED", date: d.createdAt || "", comment: "4M 기안 상신" },
-        { role: "검토", name: "이명재", title: "이사", status: "PENDING", date: "", comment: "" },
-        { role: "승인", name: "권태형", title: "대표이사", status: "WAITING", date: "", comment: "" }
-      ];
-    } else {
-      steps = [
-        { role: "담당", name: d.drafter || "기안자", title: d.drafterTitle || "선임", status: "APPROVED", date: d.createdAt || "", comment: "기안 상신" },
-        { role: "책임", name: d.leadName || (d.plant === "한림공장" ? "김동욱" : "윤경수"), title: "책임", status: "PENDING", date: "", comment: "" },
-        { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-        { role: "대표", name: "권태형", title: "대표이사", status: "WAITING", date: "", comment: "" }
-      ];
-    }
+    steps = createSimpleApprovalSteps({
+      type: is4M ? "FOUR_M" : isOvertime ? "OVERTIME" : (d.category || d.type || "GENERAL"),
+      plant: d.plant,
+      drafter: d.drafter,
+      drafterTitle: d.drafterTitle,
+      leadName: d.leadName
+    });
   }
 
   // Pure step status computation
@@ -260,24 +259,10 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
     return true;
   }
 
-  // 3-2. 이명재 이사 (삼랑진공장 총괄): 삼랑진공장 4M 문서이거나, 삼랑진공장 서류의 이사/검토 단계
+  // 3-2. 이명재 이사: 이사/검토 단계 결재 대기
   const isDirector = userName === "이명재" || userTitle.includes("이사");
-  if (isDirector) {
-    const isSamrangjin = doc.plant === "삼랑진공장" || !doc.plant;
-    const is4M = isFourMApprovalDoc(doc);
-    const isDirectorStep = activeStep.role === "이사" || activeStep.role === "검토";
-    if (isSamrangjin && (is4M || isDirectorStep)) {
-      return true;
-    }
-  }
-
-  // 3-3. 공정 책임자 (activeStep.role === "책임")
-  if (activeStep.role === "책임") {
-    const userPlant = currentProfile?.plant || "";
-    const docPlant = doc.plant || "";
-    if (docPlant && userPlant && docPlant === userPlant) {
-      return true;
-    }
+  if (isDirector && (activeStep.role === "이사" || activeStep.role === "검토")) {
+    return true;
   }
 
   return false;
@@ -336,14 +321,7 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
     }
   }
 
-  // 4. 책임 단계 (공장 일치 시 승인)
-  if (stepRole === "책임") {
-    const userPlant = currentProfile?.plant || "";
-    const docPlant = docItem.plant || "";
-    if (docPlant && userPlant && docPlant === userPlant) {
-      return { canApprove: true, stepIndex: activeStepIdx, stepRole, approverName: userName };
-    }
-  }
+  return { canApprove: false, reason: `현재 단계 [${activeStep.name || stepRole}] 결재자만 승인할 수 있습니다.` };
 
   return { canApprove: false, reason: `[${stepRole}] ${activeStep.name || "지정 결재자"} 결재 권한이 필요합니다.` };
 }
@@ -356,7 +334,7 @@ export function getLocalApprovalDocs() {
     return inMemoryDocs;
   }
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY) || localStorage.getItem("oryuk_approval_documents_v9_master");
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -364,6 +342,11 @@ export function getLocalApprovalDocs() {
     inMemoryDocs = parsed
       .filter((d) => d && d.id && !deletedIds.has(d.id))
       .map(normalizeApprovalDoc);
+    if (!localStorage.getItem(LOCAL_STORAGE_KEY) && inMemoryDocs.length > 0) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inMemoryDocs));
+      } catch (e) {}
+    }
     return inMemoryDocs;
   } catch (e) {
     return [];
@@ -556,7 +539,7 @@ export async function approveDocumentStep(docId, stepIndex, approverName, commen
     rejectReason: ""
   });
 
-  return await saveApprovalDocument(updatedDoc);
+  return await saveApprovalDocument(updatedDoc, { isStepAction: true });
 }
 
 export async function holdDocumentStep(docId, stepIndex, holderName, holdReason) {
@@ -593,7 +576,7 @@ export async function holdDocumentStep(docId, stepIndex, holderName, holdReason)
     holdReason: holdReason || "검토 필요로 인한 보류"
   });
 
-  return await saveApprovalDocument(updatedDoc);
+  return await saveApprovalDocument(updatedDoc, { isStepAction: true });
 }
 
 export async function rejectDocumentStep(docId, stepIndex, rejectorName, rejectReason) {
@@ -630,7 +613,7 @@ export async function rejectDocumentStep(docId, stepIndex, rejectorName, rejectR
     rejectReason: rejectReason || "반려"
   });
 
-  return await saveApprovalDocument(updatedDoc);
+  return await saveApprovalDocument(updatedDoc, { isStepAction: true });
 }
 
 // ----------------------------------------------------
@@ -663,12 +646,17 @@ export function getAutoApprovalSteps(
 }
 
 // ----------------------------------------------------
-// 10. Overtime Reports Synchronization
+// 10. Overtime Reports Synchronization (간결한 직결 모듈)
 // ----------------------------------------------------
+export async function syncSingleOvertimeReportToApprovalBox(report) {
+  // 특근보고서 자동 덮어쓰기 영구 차단 (결재선 롤백 방지: 전자결재 문서는 결재함을 통해서만 변경됨)
+  return null;
+}
+
 export async function syncAllOvertimeReportsToApprovalBox() {
   return [];
 }
 
-export async function syncPlantOvertimeToApprovalBox(plant, workDate) {
+export async function syncPlantOvertimeToApprovalBox() {
   return [];
 }

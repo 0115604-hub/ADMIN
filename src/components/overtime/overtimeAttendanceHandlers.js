@@ -373,6 +373,32 @@ export const approveCompanyDayAttendance = async ({
   saveCompanyDayApprovalStatus(optimisticLedger, selectedMonth || "2026-10", cleanComp, d, statusData).catch((err) => {
     console.error(err);
   });
+
+  // ⭐ 주말/특근 최종 승인 시 전자결재함 문서 상태도 즉시 APPROVED(최종 승인)로 동기화
+  const ymParts = (selectedMonth || "2026-10").split("-");
+  const yStr = ymParts[0] || "2026";
+  const mStr = String(parseInt(ymParts[1] || "10", 10)).padStart(2, "0");
+  const dStr = String(parseInt(d, 10)).padStart(2, "0");
+  const workDateStr = `${yStr}-${mStr}-${dStr}`;
+
+  syncPlantOvertimeToApprovalBox({
+    plant: getPlantForCompany(cleanComp),
+    company: cleanComp,
+    workDate: workDateStr,
+    status: "APPROVED",
+    reports: [
+      {
+        company: cleanComp,
+        workDate: workDateStr,
+        status: "APPROVED",
+        approvalStatus: "APPROVED",
+        author: currentStatus.submittedBy || currentProfile?.name || "조인주",
+        attendedWorkers: currentStatus.attendedCount || 0,
+        totalHours: currentStatus.totalHours || 0,
+        cost: (currentStatus.totalHours || 0) * 15000
+      }
+    ]
+  }).catch((err) => console.warn("Sync approved status to approval box warning:", err));
 };
 
 // Unlock Company Day Attendance

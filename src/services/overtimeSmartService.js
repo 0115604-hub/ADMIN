@@ -10,7 +10,15 @@ export * from "./overtime/overtimeSyncService.js";
 
 // Legacy default export for full backward compatibility
 import { getLocalSmartOvertimeData, subscribeSmartOvertimeData, saveSmartOvertimeData } from "./overtime/overtimeSyncService.js";
-import { exportSmartOvertimeToExcel, importSmartOvertimeFromExcel } from "./overtime/overtimeExcelService.js";
+export const exportSmartOvertimeToExcel = async (...args) => {
+  const mod = await import("./overtime/overtimeExcelService.js");
+  return mod.exportSmartOvertimeToExcel(...args);
+};
+
+export const importSmartOvertimeFromExcel = async (...args) => {
+  const mod = await import("./overtime/overtimeExcelService.js");
+  return mod.importSmartOvertimeFromExcel(...args);
+};
 
 export default {
   getLocalSmartOvertimeData,

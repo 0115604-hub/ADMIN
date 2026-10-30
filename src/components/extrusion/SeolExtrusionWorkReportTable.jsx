@@ -12,7 +12,9 @@ import {
   Download,
   Settings,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   subscribeToExtrusionReports,
@@ -65,6 +67,8 @@ export const SeolExtrusionWorkReportTable = ({
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [orderModalInput, setOrderModalInput] = useState("");
   const [assignToast, setAssignToast] = useState("");
+  const [incidentPage, setIncidentPage] = useState(1);
+  const INCIDENTS_PER_PAGE = 8;
 
   useEffect(() => {
     let isMounted = true;
@@ -238,6 +242,14 @@ export const SeolExtrusionWorkReportTable = ({
       quality: extrusionIncidents.filter((i) => i.registrationType === "CHANGE_POINT").length
     };
   }, [extrusionIncidents]);
+
+  // 8개 단위 페이지네이션 계산
+  const totalIncidentPages = Math.max(1, Math.ceil(extrusionIncidents.length / INCIDENTS_PER_PAGE));
+  const currentPage = Math.min(incidentPage, totalIncidentPages);
+  const paginatedIncidents = useMemo(() => {
+    const startIndex = (currentPage - 1) * INCIDENTS_PER_PAGE;
+    return extrusionIncidents.slice(startIndex, startIndex + INCIDENTS_PER_PAGE);
+  }, [extrusionIncidents, currentPage]);
 
   const capaModalState = useCapaActionModalState({
     managerName: currentWorkerName || "설유철 책임",
@@ -531,7 +543,7 @@ export const SeolExtrusionWorkReportTable = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {extrusionIncidents.map((inc) => {
+            {paginatedIncidents.map((inc) => {
               const isUnsorted = !inc.registrationType || inc.registrationType === "UNREGISTERED";
               const isInternal = inc.registrationType === "INTERNAL";
               const isQuality = inc.registrationType === "CHANGE_POINT";
@@ -632,6 +644,58 @@ export const SeolExtrusionWorkReportTable = ({
                 </div>
               );
             })}
+
+            {/* 8개 단위 페이지네이션 바 */}
+            {totalIncidentPages > 1 && (
+              <div className="flex items-center justify-between pt-2 border-t border-amber-200 dark:border-amber-900/50 text-xs">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  전체 {extrusionIncidents.length}건 중 {Math.min(extrusionIncidents.length, (currentPage - 1) * INCIDENTS_PER_PAGE + 1)}-{Math.min(extrusionIncidents.length, currentPage * INCIDENTS_PER_PAGE)}건 (페이지 {currentPage} / {totalIncidentPages})
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setIncidentPage((p) => Math.max(1, p - 1))}
+                    className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="이전 페이지"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  </button>
+
+                  {Array.from({ length: totalIncidentPages }, (_, i) => i + 1)
+                    .filter((p) => Math.abs(p - currentPage) <= 2 || p === 1 || p === totalIncidentPages)
+                    .map((p, idx, arr) => {
+                      const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {showEllipsis && <span className="px-1 text-slate-400">…</span>}
+                          <button
+                            type="button"
+                            onClick={() => setIncidentPage(p)}
+                            className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-black transition ${
+                              currentPage === p
+                                ? "bg-amber-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalIncidentPages}
+                    onClick={() => setIncidentPage((p) => Math.min(totalIncidentPages, p + 1))}
+                    className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="다음 페이지"
+                  >
+                    <ChevronRight className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

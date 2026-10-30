@@ -102,6 +102,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           handleApproveCompanyDayAttendance={state.handleApproveCompanyDayAttendance}
           handleSubmitCompanyDayAttendance={state.handleSubmitCompanyDayAttendance}
           isSaving={state.isSaving}
+          currentProfile={state.currentProfile}
+          isAdmin={state.isAdmin}
           filteredAttendanceWorkers={state.filteredAttendanceWorkers}
           handleSetAllFilteredWorkersSameAsPrevDay={state.handleSetAllFilteredWorkersSameAsPrevDay}
           handleSetAllFilteredWorkersRegular={state.handleSetAllFilteredWorkersRegular}

@@ -297,7 +297,6 @@ export const subscribeOvertimeReports = (callback) => {
         }
         const normalizedList = remoteReports.map(normalizeOvertimeReport);
         saveLocalOvertimeReports(normalizedList);
-        syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Background auto-sync overtime reports to approval box error:", e));
         if (callback) callback(normalizedList);
       },
       (error) => {

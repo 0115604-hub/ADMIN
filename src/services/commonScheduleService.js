@@ -272,7 +272,10 @@ export const getLocalCommonSchedules = () => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        return parsed;
+        // 💡 만료되었거나 완료(isCompleted/isArchived)된 공통일정이 초기 화면에 깜빡이지 않도록 선제 필터링
+        return parsed.filter(
+          (s) => s && s.isCompleted !== true && s.isArchived !== true && !isScheduleExpired(s)
+        );
       }
     }
   } catch (e) {

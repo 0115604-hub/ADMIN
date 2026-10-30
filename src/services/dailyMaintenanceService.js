@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
-import { sanitizeExtrusionRows, sortExtrusionWeeks } from "../utils/extrusionFileParser";
+import { sanitizeExtrusionRows, sortExtrusionWeeks } from "../utils/extrusionSanitizerUtils";
 
 const MAINTENANCE_STATUS_KEY = "oryuk_daily_maintenance_status_v1";
 const MAINTENANCE_LAST_DATE_KEY = "oryuk_daily_maintenance_last_date_v1";
@@ -296,7 +296,7 @@ const createDailySnapshot = async (todayStr) => {
   try {
     // Collect snapshot of main collections
     const extrusionRaw = localStorage.getItem("factory_extrusion_downtime_user_uploaded_v5");
-    const approvalsRaw = localStorage.getItem("oryuk_approval_documents_v9_master");
+    const approvalsRaw = localStorage.getItem("official_electronic_approval_documents_v10") || localStorage.getItem("oryuk_approval_documents_v9_master");
     const workLogsRaw = localStorage.getItem("factory_daily_work_logs_v17_pure_sync");
     const overtimeRaw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
     const qualityRaw = localStorage.getItem("factory_daily_quality_records_v4_exact");

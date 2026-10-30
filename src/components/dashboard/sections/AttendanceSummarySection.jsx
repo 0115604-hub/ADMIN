@@ -5,9 +5,12 @@ import { cleanTitleWithoutEmoji } from "../../../config/panelThemeConfig";
 export const AttendanceSummarySection = ({
   todayFormattedLabel,
   unwrittenCompanies = [],
+  filteredUnwrittenCompanies,
   onNavigateTab,
   companyOverviewStats = [],
+  filteredCompanyOverviewStats,
   pendingApprovalCards = [],
+  filteredPendingApprovalCards,
   pushModalHistory,
   setSelectedOvertimeReportForModal,
   formatKoreanWorkDate,
@@ -15,6 +18,10 @@ export const AttendanceSummarySection = ({
   isInlineEditing = false,
   onUpdateDraft = null
 }) => {
+  const effectiveUnwrittenCompanies = filteredUnwrittenCompanies || unwrittenCompanies || [];
+  const effectiveCompanyOverviewStats = filteredCompanyOverviewStats || companyOverviewStats || [];
+  const effectivePendingApprovalCards = filteredPendingApprovalCards || pendingApprovalCards || [];
+
   const rawTitle = customSettings?.customTitle !== undefined ? customSettings.customTitle : "근태현황 및 5개사 관리";
   const titleValue = cleanTitleWithoutEmoji(rawTitle) || "근태현황 및 5개사 관리";
   return (
@@ -77,13 +84,13 @@ export const AttendanceSummarySection = ({
             )
           )}
           {/* ⭐ 미작성 업체 표기 배지 (통합 완료 뱃지 제거, 미작성 개별사만 안내) */}
-          {unwrittenCompanies.length > 0 && (
+          {effectiveUnwrittenCompanies.length > 0 && (
             <span
               className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 flex items-center gap-1"
               title="당일 근태대장 미작성 협력사 목록입니다."
             >
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping shrink-0" />
-              <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
+              <span>미작성: {effectiveUnwrittenCompanies.map((c) => c.shortName).join(", ")} (작성전)</span>
             </span>
           )}
         </div>
@@ -122,7 +129,7 @@ export const AttendanceSummarySection = ({
 
       {/* 5 Independent Companies Today Overview Cards (오륙, 유성, 조영, 한울, 부림텍) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
-        {companyOverviewStats.map((comp) => (
+        {effectiveCompanyOverviewStats.map((comp) => (
           <div
             key={comp.name}
             onClick={() => {
@@ -224,9 +231,9 @@ export const AttendanceSummarySection = ({
       </div>
 
       {/* ⭐ 공장별/문서별 미결재 특근보고서 뱃지 */}
-      {pendingApprovalCards.length > 0 && (
+      {effectivePendingApprovalCards.length > 0 && (
         <div className="flex flex-wrap items-center gap-2.5 pt-1.5">
-          {pendingApprovalCards.map((report) => {
+          {effectivePendingApprovalCards.map((report) => {
             const isHal = report.isHallim || report.plant === "한림공장";
             const plantBadgeBg = isHal
               ? "bg-emerald-600 hover:bg-emerald-500 text-white"
