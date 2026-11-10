@@ -11,7 +11,8 @@ import {
   Layers,
   Database,
   Table,
-  FileSearch
+  FileSearch,
+  Maximize2
 } from "lucide-react";
 import {
   saveCustomLegoBlock,
@@ -157,6 +158,8 @@ export const LegoBlockCollectionModal = ({
   // Column drag-and-drop reordering state
   const [draggedColIdx, setDraggedColIdx] = useState(null);
   const [dragOverColIdx, setDragOverColIdx] = useState(null);
+  // Large modal preview for block
+  const [previewBlock, setPreviewBlock] = useState(null);
 
   if (!isOpen) return null;
 
@@ -866,12 +869,20 @@ export const LegoBlockCollectionModal = ({
                             </h5>
 
                             {item.imgFile && (
-                              <div className="bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[120px] max-h-[140px] overflow-hidden mb-2">
+                              <div
+                                onClick={() => setPreviewBlock(item)}
+                                className="group/img relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[120px] max-h-[140px] overflow-hidden mb-2 cursor-pointer border border-transparent hover:border-amber-400 transition"
+                                title="클릭하여 큰 창으로 상세 보기"
+                              >
                                 <img
                                   src={item.imgFile}
                                   alt={item.title}
-                                  className="max-h-32 max-w-full object-contain"
+                                  className="max-h-32 max-w-full object-contain group-hover/img:scale-105 transition-transform"
                                 />
+                                <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-1.5 text-white font-black text-xs transition-opacity backdrop-blur-[1px]">
+                                  <Maximize2 className="w-4 h-4 text-amber-300" />
+                                  <span>크게 보기</span>
+                                </div>
                               </div>
                             )}
 
@@ -947,12 +958,20 @@ export const LegoBlockCollectionModal = ({
                           <div className="text-xs font-black text-white mb-1.5 truncate">
                             {item.title}
                           </div>
-                          <div className="bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[135px]">
+                          <div
+                            onClick={() => setPreviewBlock(item)}
+                            className="group/stdimg relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[135px] cursor-pointer border border-transparent hover:border-cyan-400 transition"
+                            title="클릭하여 큰 창으로 상세 보기"
+                          >
                             <img
                               src={item.imgFile}
                               alt={item.title}
-                              className="max-h-36 max-w-full object-contain"
+                              className="max-h-36 max-w-full object-contain group-hover/stdimg:scale-105 transition-transform"
                             />
+                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/stdimg:opacity-100 flex items-center justify-center gap-1.5 text-white font-black text-xs transition-opacity rounded-xl backdrop-blur-[1px]">
+                              <Maximize2 className="w-4 h-4 text-cyan-300" />
+                              <span>크게 보기</span>
+                            </div>
                           </div>
                         </div>
                         <p className="text-[10.5px] text-slate-400 mt-1 leading-snug">
@@ -967,6 +986,128 @@ export const LegoBlockCollectionModal = ({
           )}
         </div>
       </div>
+
+      {/* ================================================================= */}
+      {/* 🔍 LARGE PREVIEW MODAL (블록 큰창 팝업) */}
+      {/* ================================================================= */}
+      {previewBlock && (
+        <div
+          onClick={() => setPreviewBlock(null)}
+          className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border-2 border-amber-400/80 rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-white animate-scaleUp"
+          >
+            {/* Header */}
+            <div className="px-5 py-3.5 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="px-3 py-1 rounded-xl text-xs font-black bg-amber-400 text-slate-950 shadow-md">
+                  {previewBlock.badge || "블록 원본 상세"}
+                </span>
+                <h3 className="text-sm sm:text-base font-black text-white">
+                  {previewBlock.title || previewBlock.label}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {onToggleBlock && (previewBlock.key || previewBlock.id || previewBlock.blockKey) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bKey = previewBlock.key || previewBlock.id || previewBlock.blockKey;
+                      onToggleBlock(bKey);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-1.5 ${
+                      activeBlocks?.[previewBlock.key || previewBlock.id || previewBlock.blockKey]
+                        ? "bg-emerald-500 text-slate-950 shadow-emerald-500/30 shadow-md"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 shadow-md"
+                    }`}
+                  >
+                    {activeBlocks?.[previewBlock.key || previewBlock.id || previewBlock.blockKey]
+                      ? "✓ 양식에 조립됨 (ON)"
+                      : "+ 양식에 조립하기"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPreviewBlock(null)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition cursor-pointer"
+                  title="닫기"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Image Preview Container */}
+              {previewBlock.imgFile && (
+                <div className="bg-white p-3 rounded-2xl flex items-center justify-center border-2 border-slate-700 shadow-inner overflow-auto min-h-[300px] max-h-[60vh]">
+                  <img
+                    src={previewBlock.imgFile}
+                    alt={previewBlock.title}
+                    className="max-w-full max-h-full object-contain mx-auto"
+                  />
+                </div>
+              )}
+
+              {/* Information & Table Details (if available) */}
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <p className="font-bold">
+                    📝 {previewBlock.desc || "블록 원본 이미지 및 표 구조 상세"}
+                  </p>
+                  {previewBlock.columns && previewBlock.rows && (
+                    <span className="text-cyan-300 font-black shrink-0">
+                      📊 디지털 표: {previewBlock.columns.length}열 × {previewBlock.rows.length}행
+                    </span>
+                  )}
+                </div>
+
+                {previewBlock.columns && previewBlock.rows && previewBlock.columns.length > 0 && (
+                  <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950">
+                    <table className="w-full border-collapse text-xs text-center">
+                      <thead>
+                        <tr className="bg-indigo-950/80 border-b border-slate-800">
+                          {previewBlock.columns.map((c, i) => (
+                            <th key={i} className="p-2 border-r border-slate-800 text-amber-300 font-black">
+                              {c}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewBlock.rows.map((r, rIdx) => (
+                          <tr key={rIdx} className="border-b border-slate-800/80 hover:bg-slate-900/50">
+                            {previewBlock.columns.map((_, cIdx) => (
+                              <td key={cIdx} className="p-2 border-r border-slate-800/80 text-slate-200">
+                                {r[cIdx] || "-"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>💡 ESC를 누르거나 바깥 어두운 영역을 클릭해도 닫힙니다.</span>
+              <button
+                type="button"
+                onClick={() => setPreviewBlock(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

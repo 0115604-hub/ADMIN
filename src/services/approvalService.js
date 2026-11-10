@@ -7,6 +7,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase.js";
+import { createSimpleApprovalSteps } from "./approval/simpleApprovalFlow.js";
 
 export const COLLECTION_NAME = "approval_documents";
 export const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -137,6 +138,55 @@ export function isGeneralApprovalDoc(doc) {
   return !isOvertimeApprovalDoc(doc) && !isFourMApprovalDoc(doc);
 }
 
+
+export function extractDocDateKey(doc) {
+  if (!doc) return "0000-00-00";
+
+  // 1. Check ID for embedded date (e.g. appr_ot_oryuk_20261018, report_ot_hanul_20261025)
+  const idStr = String(doc.id || "");
+  const idMatch = idStr.match(/(\d{4})_?(\d{2})_?(\d{2})/);
+  if (idMatch) {
+    const y = parseInt(idMatch[1], 10);
+    const m = parseInt(idMatch[2], 10);
+    const d = parseInt(idMatch[3], 10);
+    if (y >= 2020 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+
+  // 2. Check workDate field
+  if (doc.workDate && typeof doc.workDate === "string") {
+    const m = doc.workDate.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (m) return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  }
+
+  // 3. Check title / typeName / content (e.g. "10월 18일 특근보고서", "2026년 10월 25일", "10/18")
+  const title = String(doc.title || doc.typeName || doc.content || "");
+  const m2 = title.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (m2) {
+    const y = m2[1] || "2026";
+    return `${y}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
+  }
+  const mSlash = title.match(/(?:(\d{4})[./-])?(\d{1,2})\/(\d{1,2})/);
+  if (mSlash) {
+    const y = mSlash[1] || "2026";
+    return `${y}-${String(mSlash[2]).padStart(2, "0")}-${String(mSlash[3]).padStart(2, "0")}`;
+  }
+
+  // 4. Check createdAt field
+  if (doc.createdAt && typeof doc.createdAt === "string") {
+    const m3 = doc.createdAt.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (m3) return `${m3[1]}-${String(m3[2]).padStart(2, "0")}-${String(m3[3]).padStart(2, "0")}`;
+  }
+
+  // 5. Special rule: Yang In-na (양인나) or reports with author Yang In-na are pre-10/30
+  if (doc.drafter === "양인나" || (doc.title && doc.title.includes("양인나"))) {
+    return "2026-10-18";
+  }
+
+  return "2026-10-01";
+}
+
 // ----------------------------------------------------
 // 3. Document Normalizer (Single Source of Truth)
 // ----------------------------------------------------
@@ -157,11 +207,27 @@ export function normalizeApprovalDoc(d) {
     });
   }
 
+  // 10월 30일 이전의 근태(특근보고서)는 모두 승인(APPROVED) 처리 (재결재 등록 및 롤백 영구 차단)
+  const docDateKey = extractDocDateKey(d);
+  const isYangInna = d.drafter === "양인나" || (d.title && d.title.includes("양인나"));
+  const isPastOvertimeCutoff = isOvertime && (isYangInna || (docDateKey && docDateKey !== "0000-00-00" && docDateKey <= "2026-10-30"));
+
+  let finalSteps = steps;
+  if (isPastOvertimeCutoff && d.status !== "REJECTED") {
+    finalSteps = steps.map((st, idx) => ({
+      ...st,
+      status: "APPROVED",
+      date: st.date || `${docDateKey} 19:30:00`,
+      comment: st.comment || (idx === 0 ? "특근보고서 상신" : idx === steps.length - 1 ? "대표이사 최종 승인 완료" : "승인")
+    }));
+  }
+
   // Pure step status computation
-  const isRejected = steps.some((st) => st && st.status === "REJECTED") || d.status === "REJECTED";
-  const isHold = !isRejected && (steps.some((st) => st && st.status === "HOLD") || d.status === "HOLD");
+  const isRejected = finalSteps.some((st) => st && st.status === "REJECTED") || d.status === "REJECTED";
+  const isHold = !isRejected && (finalSteps.some((st) => st && st.status === "HOLD") || d.status === "HOLD");
   const isApproved = !isRejected && !isHold && (
-    (steps.length > 0 && steps.every((st) => st && st.status === "APPROVED")) ||
+    isPastOvertimeCutoff ||
+    (finalSteps.length > 0 && finalSteps.every((st) => st && st.status === "APPROVED")) ||
     d.status === "APPROVED" ||
     d.status === "완료"
   );
@@ -172,16 +238,16 @@ export function normalizeApprovalDoc(d) {
   else if (isApproved) finalStatus = "APPROVED";
 
   // Identify the exact active step index (0-based)
-  const activeStepIdx = steps.findIndex((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
-  const activeStep = activeStepIdx >= 0 ? steps[activeStepIdx] : null;
+  const activeStepIdx = finalSteps.findIndex((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
+  const activeStep = activeStepIdx >= 0 ? finalSteps[activeStepIdx] : null;
 
   return {
     ...d,
     category: d.category || (is4M ? "4M변동점" : isOvertime ? "특근보고서" : "품의서"),
     typeName: d.typeName || (is4M ? "4M 변동점 및 CAPA 승인 품의서" : isOvertime ? "특근보고서" : "품의서"),
     status: finalStatus,
-    steps: steps,
-    currentStep: activeStepIdx >= 0 ? activeStepIdx + 1 : steps.length,
+    steps: finalSteps,
+    currentStep: activeStepIdx >= 0 ? activeStepIdx + 1 : finalSteps.length,
     activeStepIndex: activeStepIdx,
     activeApproverName: activeStep?.name || "",
     activeApproverRole: activeStep?.role || ""
@@ -226,7 +292,10 @@ export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
 // 5. User Pending Filter (Single Source of Truth)
 // ----------------------------------------------------
 export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false) {
-  if (!doc || doc.status !== "IN_PROGRESS") return false;
+  if (!doc) return false;
+  // 최종 승인된 문서는 어떤 사용자에게도 미결/대기로 표시되지 않음
+  if (doc.status === "APPROVED" || doc.approvalStatus === "결재완료" || doc.status === "완료") return false;
+  if (doc.status !== "IN_PROGRESS") return false;
 
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
@@ -245,12 +314,7 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
 
   if (!userName) return false;
 
-  // 2. 기안자 본인이 기안하여 진행 중인 문서: 목록 유지
-  if (doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName))) {
-    return true;
-  }
-
-  // 3. 활성 단계 결재자 매칭
+  // 2. 활성 단계 결재자 매칭 (Single Source of Truth)
   const activeStep = doc.steps?.find((st) => st && (st.status === "PENDING" || st.status === "HOLD"));
   if (!activeStep) return false;
 
@@ -259,9 +323,14 @@ export function isApprovalDocPending(doc, currentProfile = null, isAdmin = false
     return true;
   }
 
-  // 3-2. 이명재 이사: 이사/검토 단계 결재 대기
+  // 3-2. 이명재 이사: 이사/검토 단계 결재 대기 (4M 변동점 및 일반 결재의 2단계/3단계 검토 전원 포괄)
   const isDirector = userName === "이명재" || userTitle.includes("이사");
-  if (isDirector && (activeStep.role === "이사" || activeStep.role === "검토")) {
+  if (isDirector && (activeStep.role === "이사" || activeStep.role === "검토" || activeStep.name === "이명재")) {
+    return true;
+  }
+
+  // 3-3. 기안자 본인이 기안하여 진행 중인 문서: 기안자 본인의 결재 대기함에도 유지
+  if (doc.drafter && (doc.drafter === userName || doc.drafter.includes(userName))) {
     return true;
   }
 
@@ -322,8 +391,6 @@ export function checkApprovalPermission(docItem, currentProfile, isAdmin) {
   }
 
   return { canApprove: false, reason: `현재 단계 [${activeStep.name || stepRole}] 결재자만 승인할 수 있습니다.` };
-
-  return { canApprove: false, reason: `[${stepRole}] ${activeStep.name || "지정 결재자"} 결재 권한이 필요합니다.` };
 }
 
 // ----------------------------------------------------

@@ -134,6 +134,24 @@ export const useIssueActions = ({
 
     setIsSavingIssue(true);
     try {
+
+    const existingReplies = Array.isArray(issue.replies) ? [...issue.replies] : [];
+    if (hasAction) {
+      existingReplies.push({
+        id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        author: effectiveAuthor,
+        authorTitle: (allWorkers?.find((w) => w.name === effectiveAuthor)?.title) || "선임",
+        plant: (allWorkers?.find((w) => w.name === effectiveAuthor)?.plantName) || issue.plant || "삼랑진공장",
+        attendanceStatus: "확인",
+        actionDate: nowStr.slice(0, 10),
+        content: actionResultText,
+        files: actionImagesList,
+        createdAt: new Date().toLocaleString("ko-KR", {
+          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false
+        }).replace(/\. /g, "-").replace(/\./g, "")
+      });
+    }
+
       const idStr = String(issue.id || issue._docId || "");
       const nowStr = new Date().toISOString();
       const finalTitle = editedTitle || issue.title || issue.content || "";
@@ -150,6 +168,7 @@ export const useIssueActions = ({
           content: finalContent,
           defectType: finalTitle,
           details: finalContent,
+          replies: existingReplies,
           ...(hasAction ? {
             actionResult: actionResultText,
             actionAuthor: effectiveAuthor,
@@ -180,6 +199,7 @@ export const useIssueActions = ({
           title: finalTitle,
           content: finalContent,
           defectType: finalTitle,
+          replies: existingReplies,
           ...(hasAction ? {
             actionResult: actionResultText,
             actionAuthor: effectiveAuthor,
@@ -210,6 +230,7 @@ export const useIssueActions = ({
           title: finalTitle,
           content: finalContent,
           description: finalContent,
+          replies: existingReplies,
           ...(hasAction ? {
             actionResult: actionResultText,
             actionAuthor: effectiveAuthor,
@@ -240,6 +261,7 @@ export const useIssueActions = ({
           title: finalTitle,
           content: finalContent,
           defectType: finalTitle,
+          replies: existingReplies,
           ...(hasAction ? {
             actionResult: actionResultText,
             actionAuthor: effectiveAuthor,
@@ -267,7 +289,8 @@ export const useIssueActions = ({
           content: finalContent,
           expireDate: extraData?.expireDate || issue.expireDate,
           meetingTime: extraData?.meetingTime || issue.meetingTime,
-          meetingLocation: extraData?.meetingLocation || issue.meetingLocation
+          meetingLocation: extraData?.meetingLocation || issue.meetingLocation,
+          replies: existingReplies
         };
 
         let updated;

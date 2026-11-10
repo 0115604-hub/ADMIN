@@ -98,7 +98,13 @@ export const ElectronicApprovalView = ({
   }); // ALL, PENDING, COMPANY_IN_PROGRESS, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlant, setSelectedPlant] = useState(() => {
-    if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
+    const isCompanyWideManager = isAdmin ||
+      currentProfile?.role === "ADMIN" ||
+      currentProfile?.name === "권태형" ||
+      currentProfile?.name === "최미영" ||
+      currentProfile?.name === "이명재" ||
+      currentProfile?.name === "이창엽";
+    if (isCompanyWideManager) {
       return "ALL";
     }
     return currentProfile?.plant || "ALL";
@@ -106,7 +112,13 @@ export const ElectronicApprovalView = ({
 
   // 사용자 전환(Admin <-> 공장총괄) 시 공장 선택 필터 자동 동기화
   useEffect(() => {
-    if (isAdmin || currentProfile?.role === "ADMIN" || currentProfile?.name === "권태형" || currentProfile?.name === "최미영") {
+    const isCompanyWideManager = isAdmin ||
+      currentProfile?.role === "ADMIN" ||
+      currentProfile?.name === "권태형" ||
+      currentProfile?.name === "최미영" ||
+      currentProfile?.name === "이명재" ||
+      currentProfile?.name === "이창엽";
+    if (isCompanyWideManager) {
       setSelectedPlant("ALL");
     } else if (currentProfile?.plant && (currentProfile.plant === "삼랑진공장" || currentProfile.plant === "한림공장")) {
       setSelectedPlant(currentProfile.plant);
@@ -349,7 +361,9 @@ export const ElectronicApprovalView = ({
   const stats = useMemo(() => {
     const plantScoped = categoryScopedDocs.filter((doc) => {
       if (!doc) return false;
-      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+      const is4M = isFourMApprovalDoc(doc);
+      const isMyDraft = isApprovalDocMyDraft(doc, currentProfile, isAdmin);
+      if (!is4M && !isMyDraft && selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
         return false;
       }
       return true;
@@ -390,8 +404,10 @@ export const ElectronicApprovalView = ({
     const list = categoryScopedDocs.filter((doc) => {
       if (!doc) return false;
 
-      // 1. Plant filter
-      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+      // 1. Plant filter (4M 변동점 품의서는 전사 공통 품질문서이므로 공장 필터 무관 전체 표시, 기안자 본인 문서도 100% 표시)
+      const is4M = isFourMApprovalDoc(doc);
+      const isMyDraft = isApprovalDocMyDraft(doc, currentProfile, isAdmin);
+      if (!is4M && !isMyDraft && selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
         return false;
       }
 

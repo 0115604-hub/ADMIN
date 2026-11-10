@@ -1454,7 +1454,8 @@ export const WorkerPinModal = ({
         actionResult: item.actionResult || item.actionGuide || "",
         author: item.author || item.registeredBy || "",
         date: item.date || (item.createdAt ? String(item.createdAt).slice(0, 10) : todayKst),
-        images: Array.isArray(item.images) ? item.images : []
+        images: Array.isArray(item.images) ? item.images : [],
+        replies: Array.isArray(item.replies) ? item.replies : []
       });
     });
 
@@ -1483,7 +1484,8 @@ export const WorkerPinModal = ({
         actionResult: ext.actionResult || "",
         author: ext.author || "",
         date: ext.date || (ext.createdAt ? String(ext.createdAt).slice(0, 10) : todayKst),
-        images: allImgs
+        images: allImgs,
+        replies: Array.isArray(ext.replies) ? ext.replies : []
       });
     });
 
@@ -2302,9 +2304,39 @@ export const WorkerPinModal = ({
                                         })}
                                       </div>
                                     )}
-                                    {item.actionResult && (
+                                    {item.actionResult && (!Array.isArray(item.replies) || item.replies.length === 0 || item.replies[item.replies.length - 1]?.content !== item.actionResult) && (
                                       <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
                                         ↳ 🟢 <b>[조치사항]</b> {typeof item.actionResult === "string" ? item.actionResult : String(item.actionResult || "")}
+                                      </div>
+                                    )}
+
+                                    {/* 💬 관리자 진행상황 & 의견 내역 타임라인 누적 표시 */}
+                                    {Array.isArray(item.replies) && item.replies.length > 0 && (
+                                      <div className="mt-1 space-y-1 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                                        <div className="flex items-center justify-between text-[10px] font-black text-blue-900 dark:text-blue-300">
+                                          <span>💬 관리자 진행상황 & 의견 ({item.replies.length}건)</span>
+                                          <span className="text-[9px] text-slate-400 font-mono">누적</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                          {[...item.replies].reverse().slice(0, 3).map((rep, rIdx) => (
+                                            <div
+                                              key={rep.id || rIdx}
+                                              className="p-1.5 rounded-lg bg-blue-50/70 dark:bg-slate-800/80 border border-blue-200/60 dark:border-blue-900/40 text-[10.5px] space-y-0.5"
+                                            >
+                                              <div className="flex items-center justify-between text-[9.5px]">
+                                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                                  👤 {rep.author || "관리자"} {rep.authorTitle || ""}
+                                                </span>
+                                                <span className="text-slate-400 font-mono text-[9px]">
+                                                  {rep.actionDate || rep.createdAt || ""}
+                                                </span>
+                                              </div>
+                                              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-tight">
+                                                {rep.content}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     )}
                                   </div>

@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Calendar,
@@ -6,8 +7,10 @@ import {
   Send,
   Zap,
   Copy,
-  CheckCheck
+  CheckCheck,
+  Lock
 } from "lucide-react";
+import { isAuthorizedAttendanceWriter } from "./overtimeAttendanceHandlers.js";
 
 export const OvertimeDailyInputTab = ({
   selectedDay,
@@ -37,8 +40,21 @@ export const OvertimeDailyInputTab = ({
   handleUpdateWorkerDayAttendance,
   handleCustomOtHours
 }) => {
+  const canWriteAttendance = isAuthorizedAttendanceWriter(currentProfile, isAdmin);
+
   return (
     <div className="space-y-4">
+      {/* 권한 안내 배너 (작성 권한이 없는 경우) */}
+      {!canWriteAttendance && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center gap-3 text-amber-800 dark:text-amber-200 text-xs sm:text-sm font-bold shadow-xs">
+          <Lock className="w-5 h-5 text-amber-500 shrink-0" />
+          <div className="flex-1">
+            <span className="font-black text-amber-600 dark:text-amber-400 mr-1.5">[조회 전용 모드]</span>
+            근태 작성 및 수정 권한은 <span className="underline font-black text-amber-700 dark:text-amber-300">조인주, 오상민, 유성대표, 부림텍대표, 한울대표</span>에게만 부여되어 있습니다.
+          </div>
+        </div>
+      )}
+
       {/* ⭐ Top Control Filter & Date Selector Bar */}
       <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 border-2 border-slate-700 shadow-xl text-white">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -122,12 +138,12 @@ export const OvertimeDailyInputTab = ({
             </div>
           </div>
 
-          {/* Right Group: 평일 작성자 전결 / 특근 5개사 개별 상신 바 */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Right Group: Approval / Complete Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
             {(() => {
               const currentComp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
               const approvalKey = `${cleanCompanyName(currentComp)}_${selectedDay}`;
-              const approvalInfo = smartData?.companyApprovalStatus?.[approvalKey] || { status: "DRAFT" };
+              const approvalInfo = smartData?.companyApprovalStatus?.[approvalKey] || {};
               const isApproved = approvalInfo.status === "APPROVED";
               const isSubmitted = approvalInfo.status === "SUBMITTED";
               const isWkDay = isWeekendDay(selectedDay);
@@ -139,19 +155,21 @@ export const OvertimeDailyInputTab = ({
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       <span>
                         {isWkDay
-                          ? `✅ 특근 최종 승인 마감 (${approvalInfo.approvedBy || "대표이사"})`
-                          : `✅ 평일 전결 완료 (${approvalInfo.approvedBy || "작성자 전결"})`}
+                          ? `✅ [${currentComp}] ${currentMonthNum}/${selectedDay} 특근 승인 완료 (마감)`
+                          : `✅ [${currentComp}] ${currentMonthNum}/${selectedDay} 평일 근태 완료 (작성자 전결)`}
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleUnlockCompanyDayAttendance}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-black text-xs border border-slate-600 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
-                      title="마감을 해제하고 작성 중(DRAFT) 상태로 되돌립니다."
-                    >
-                      <span>🔓 마감 해제</span>
-                    </button>
+                    {canWriteAttendance && (
+                      <button
+                        type="button"
+                        onClick={handleUnlockCompanyDayAttendance}
+                        disabled={isSaving}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-black text-xs border border-slate-600 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                        title="마감을 해제하고 작성 중(DRAFT) 상태로 되돌립니다."
+                      >
+                        <span>🔓 마감 해제</span>
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -175,20 +193,31 @@ export const OvertimeDailyInputTab = ({
                         <span>✅ 최종 승인</span>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={handleUnlockCompanyDayAttendance}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs border border-slate-700 transition-all cursor-pointer"
-                      title="상신을 취소하고 수정을 계속합니다."
-                    >
-                      <span>↩️ 취소</span>
-                    </button>
+                    {canWriteAttendance && (
+                      <button
+                        type="button"
+                        onClick={handleUnlockCompanyDayAttendance}
+                        disabled={isSaving}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs border border-slate-700 transition-all cursor-pointer"
+                        title="상신을 취소하고 수정을 계속합니다."
+                      >
+                        <span>↩️ 취소</span>
+                      </button>
+                    )}
                   </div>
                 );
               }
 
               // DRAFT: 작성 중
+              if (!canWriteAttendance) {
+                return (
+                  <span className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-bold border border-slate-700 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>작성 권한자 전용</span>
+                  </span>
+                );
+              }
+
               return (
                 <button
                   type="button"
@@ -245,31 +274,33 @@ export const OvertimeDailyInputTab = ({
               return null;
             })()}
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              type="button"
-              onClick={handleSetAllFilteredWorkersSameAsPrevDay}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-indigo-500"
-              title={`직전 평일과 동일한 근태를 ${currentMonthNum}월 ${selectedDay}일에 일괄 적용합니다`}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>📋 전일과동일</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSetAllFilteredWorkersRegular}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ${
-                isWeekendDay(selectedDay)
-                  ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500"
-                  : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500"
-              }`}
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              <span>
-                {isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 출근전체선택"}
-              </span>
-            </button>
-          </div>
+          {canWriteAttendance && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSetAllFilteredWorkersSameAsPrevDay}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-indigo-500"
+                title={`직전 평일과 동일한 근태를 ${currentMonthNum}월 ${selectedDay}일에 일괄 적용합니다`}
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>📋 전일과동일</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSetAllFilteredWorkersRegular}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ${
+                  isWeekendDay(selectedDay)
+                    ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500"
+                }`}
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>
+                  {isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 출근전체선택"}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {filteredAttendanceWorkers.length === 0 ? (
@@ -355,7 +386,9 @@ export const OvertimeDailyInputTab = ({
                                     /* 평일: 🟢 출근 / 🌴 연차 / ❌ 결근 / 미선택 */
                                     <button
                                       type="button"
+                                      disabled={!canWriteAttendance}
                                       onClick={() => {
+                                        if (!canWriteAttendance) return;
                                         let next = "정시";
                                         if (strVal === "정시" || strVal === "🟢" || strVal === "17" || strVal === "출근" || ot > 0 || strVal.includes("잔업") || strVal === "19" || strVal === "21" || strVal === "22") {
                                           next = "연차";
@@ -368,7 +401,9 @@ export const OvertimeDailyInputTab = ({
                                         }
                                         handleUpdateWorkerDayAttendance(worker, next);
                                       }}
-                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                        canWriteAttendance ? "cursor-pointer" : "cursor-default opacity-85"
+                                      } ${
                                         (strVal === "정시" || strVal === "🟢" || strVal === "17" || strVal === "출근" || ot > 0 || strVal.includes("잔업") || strVal === "19" || strVal === "21" || strVal === "22")
                                           ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400"
                                           : (strVal === "연차" || strVal.includes("연차"))
@@ -390,11 +425,15 @@ export const OvertimeDailyInputTab = ({
                                     /* 주말/공휴일: 🌙 특근 토글 */
                                     <button
                                       type="button"
+                                      disabled={!canWriteAttendance}
                                       onClick={() => {
+                                        if (!canWriteAttendance) return;
                                         const isSpecial = strVal === "특근" || strVal === "주말특근" || strVal.includes("특근");
                                         handleUpdateWorkerDayAttendance(worker, isSpecial ? "" : "특근");
                                       }}
-                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                        canWriteAttendance ? "cursor-pointer" : "cursor-default opacity-85"
+                                      } ${
                                         (strVal === "특근" || strVal === "주말특근" || strVal.includes("특근"))
                                           ? "bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-400"
                                           : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700"
@@ -408,50 +447,39 @@ export const OvertimeDailyInputTab = ({
                                   <div className="inline-flex rounded-lg shadow-xs">
                                     <button
                                       type="button"
+                                      disabled={!canWriteAttendance}
                                       onClick={() => {
+                                        if (!canWriteAttendance) return;
                                         let next = "19";
                                         if (strVal === "19" || strVal === "19시") next = "21";
                                         else if (strVal === "21" || strVal === "21시") next = "22";
                                         else if (strVal === "22" || strVal === "22시" || ot > 0) next = isWk ? "특근" : "정시";
                                         handleUpdateWorkerDayAttendance(worker, next);
                                       }}
-                                      className={`px-2.5 py-1 rounded-l-lg text-xs font-bold transition-all cursor-pointer ${
+                                      className={`px-2.5 py-1 rounded-l-lg text-xs font-bold transition-all ${
+                                        canWriteAttendance ? "cursor-pointer" : "cursor-default opacity-85"
+                                      } ${
                                         ot > 0 || strVal.includes("잔업") || strVal === "19" || strVal === "21" || strVal === "22"
                                           ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400"
-                                          : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 border-r-0"
-                                      }`}
-                                    >
-                                      ⚡ {ot > 0 ? `+${ot}H` : "잔업"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCustomOtHours(worker)}
-                                      title="잔업 시간 직접 입력"
-                                      className={`px-1.5 py-1 rounded-r-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                        ot > 0 || strVal.includes("잔업") || strVal === "19" || strVal === "21" || strVal === "22"
-                                          ? "bg-amber-700 hover:bg-amber-800 text-white border-l border-amber-500"
                                           : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700"
                                       }`}
+                                      title={canWriteAttendance ? "클릭 시 잔업 시간(19시 → 21시 → 22시 → 정시) 순환" : ""}
                                     >
-                                      ⏱️
+                                      {ot > 0 ? `⚡ +${ot}H` : "⚡ 잔업"}
                                     </button>
-                                  </div>
 
-                                  {/* 🌌 야간 토글 */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const isNight = strVal === "야간" || strVal.includes("야간");
-                                      handleUpdateWorkerDayAttendance(worker, isNight ? (isWk ? "" : "정시") : "야간");
-                                    }}
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                      (strVal === "야간" || strVal.includes("야간"))
-                                        ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400"
-                                        : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
-                                    }`}
-                                  >
-                                    🌌 야간
-                                  </button>
+                                    {/* ⏱️ 직접 입력 */}
+                                    {canWriteAttendance && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCustomOtHours(worker)}
+                                        className="px-1.5 py-1 rounded-r-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-t border-r border-b border-slate-700 transition-colors cursor-pointer"
+                                        title="인정시간(H) 직접 입력"
+                                      >
+                                        ⏱️
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                             </tr>

@@ -128,8 +128,8 @@ export const IssueActionModal = ({
     );
     if (!hasActionResult) {
       alert(
-        isOpenIssue
-          ? "진행상황 및 의견 내용을 입력해 주세요."
+        isOpenIssue || isQualityAlert
+          ? (isQualityAlert ? "조치결과 및 추가의견 내용을 입력해 주세요." : "진행상황 및 의견 내용을 입력해 주세요.")
           : isMeetingAction
           ? "회의 결과 내용을 입력해 주세요."
           : "조치결과 내용 또는 조치 후 사진을 등록해 주세요."
@@ -328,8 +328,8 @@ export const IssueActionModal = ({
                 </div>
               )}
 
-              {/* 💬 오픈이슈 관리자 진행상황 & 의견 타임라인 누적 목록 */}
-              {isOpenIssue && Array.isArray(issue.replies) && issue.replies.length > 0 && (
+              {/* 💬 관리자 진행상황 & 의견/조치결과 타임라인 누적 목록 (오픈이슈 & 부적합경보 수평전개) */}
+              {(isOpenIssue || isQualityAlert) && Array.isArray(issue.replies) && issue.replies.length > 0 && (
                 <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between text-[11px] font-black text-blue-900 dark:text-blue-300">
                     <span className="flex items-center gap-1">
@@ -472,10 +472,10 @@ export const IssueActionModal = ({
             <div className="flex items-center justify-between border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2">
               <div className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-200 font-black text-xs sm:text-sm">
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-                  {isOpenIssue ? "💬" : "✓"}
+                  {(isOpenIssue || isQualityAlert) ? "💬" : "✓"}
                 </span>
                 <span>
-                  {isOpenIssue
+                  {(isOpenIssue || isQualityAlert)
                     ? "진행상황 & 의견입력"
                     : isMeetingAction
                     ? "회의결과 및 결정사항 입력"
@@ -483,7 +483,7 @@ export const IssueActionModal = ({
                 </span>
               </div>
               <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400 bg-white/80 dark:bg-slate-900/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
-                {isOpenIssue
+                {(isOpenIssue || isQualityAlert)
                   ? "관리자 다중 의견/진행상황 누적 기록"
                   : "조치완료 시 첫 화면에서 완료 종결"}
               </span>
@@ -493,7 +493,7 @@ export const IssueActionModal = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="font-bold text-slate-700 dark:text-slate-300">
-                  {isOpenIssue ? "작성자 / 보고 관리자" : isMeetingAction ? "작성자 / 보고자" : "조치자"}
+                  {(isOpenIssue || isQualityAlert) ? "작성자 / 보고 관리자" : isMeetingAction ? "작성자 / 보고자" : "조치자"}
                 </label>
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                   (기본값 자동지정 • 직접 변경 가능)
@@ -550,13 +550,13 @@ export const IssueActionModal = ({
             {/* 결과 상세 내용 */}
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                {isOpenIssue ? "진행상황 & 의견 내용" : isMeetingAction ? "회의 결과 및 결정 사항" : "조치결과 내용 (1~2줄 요약)"}
+                {(isOpenIssue || isQualityAlert) ? "진행상황 & 의견 내용" : isMeetingAction ? "회의 결과 및 결정 사항" : "조치결과 내용 (1~2줄 요약)"}
               </label>
               <textarea
                 rows="3"
                 placeholder={
-                  isOpenIssue
-                    ? "예: 압출 3호기 금형 클리닝 완료 후 시생산 대기 중 (공영국 반장 확인 완료)"
+                  (isOpenIssue || isQualityAlert)
+                    ? "추가 진행상황 또는 변경사항 발생이 오픈이슈에 추가해서 기록바랍니다."
                     : isMeetingAction
                     ? "예: 1. 품질 개선 프로세스 표준화 방안 확정\n2. 담당자별 후속 조치 업무 분장 완료"
                     : "예: 센서 커넥터 재체결 및 롤러 속도 보정 완료. 정상 치수 복귀 확인."
@@ -573,7 +573,7 @@ export const IssueActionModal = ({
                 <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                   <Camera className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>
-                    {isOpenIssue
+                    {(isOpenIssue || isQualityAlert)
                       ? "진행상황 현장 사진 첨부 (선택)"
                       : isMeetingAction
                       ? "회의록/결과 사진 첨부 (선택)"
@@ -723,7 +723,7 @@ export const IssueActionModal = ({
                 className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
                   isSaving ? "opacity-60 cursor-not-allowed" : ""
                 } ${
-                  isOpenIssue
+                  (isOpenIssue || isQualityAlert)
                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25 ring-2 ring-blue-400/40"
                     : isMeetingAction
                     ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
@@ -732,7 +732,7 @@ export const IssueActionModal = ({
               >
                 {isSaving ? (
                   <span className="inline-block animate-spin mr-0.5">⏳</span>
-                ) : isOpenIssue ? (
+                ) : (isOpenIssue || isQualityAlert) ? (
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 ) : (
                   <Check className="w-3.5 h-3.5" />
@@ -740,7 +740,7 @@ export const IssueActionModal = ({
                 <span>
                   {isSaving
                     ? "저장 중..."
-                    : isOpenIssue
+                    : (isOpenIssue || isQualityAlert)
                     ? "➕ 진행상황/의견 추가등록"
                     : isMeetingAction
                     ? "회의결과 저장 및 종결"

@@ -484,6 +484,7 @@ export const useOvertimeStatusState = () => {
       currentMonthNum,
       selectedMonth,
       currentProfile,
+      isAdmin,
       setSmartData,
       setHasUnsavedChanges,
       triggerToast
@@ -495,7 +496,10 @@ export const useOvertimeStatusState = () => {
       setIsDayUnlockedForEdit,
       worker,
       selectedDay,
-      onUpdateAttendance: handleUpdateWorkerDayAttendance
+      currentProfile,
+      isAdmin,
+      onUpdateAttendance: handleUpdateWorkerDayAttendance,
+      triggerToast
     });
 
   const handleSubmitCompanyDayAttendance = () =>
@@ -504,6 +508,7 @@ export const useOvertimeStatusState = () => {
       selectedDay,
       isWeekendDay,
       currentProfile,
+      isAdmin,
       effectiveMatrix,
       smartData,
       currentYear,

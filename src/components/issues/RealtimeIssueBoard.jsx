@@ -382,14 +382,14 @@ export const RealtimeIssueBoard = ({
                           ? "text-purple-800 dark:text-purple-300"
                           : "text-blue-800 dark:text-blue-300"
                       }`}>
-                        {isQualityAlert || item.isResolved ? (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        ) : isMeeting ? (
+                        {isQualityAlert ? (
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        ) : item.isResolved || isMeeting ? (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         ) : (
                           <MessageSquare className="w-3.5 h-3.5" />
                         )}
-                        <span>{isQualityAlert ? "조치결과" : isMeeting ? "회의 결과 및 결정 사항" : item.isResolved ? "조치완료 결과" : "등록 의견"}</span>
+                        <span>{isQualityAlert ? (hasReplies ? "관리자 진행상황 & 의견 내역" : "조치결과") : isMeeting ? "회의 결과 및 결정 사항" : item.isResolved ? "조치완료 결과" : "등록 의견"}</span>
                       </span>
 
                       {hasReplies && (

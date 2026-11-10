@@ -1,3 +1,4 @@
+
 import {
   cleanCompanyName,
   cleanWorkerNameOnly,
@@ -18,6 +19,37 @@ import {
   computeFillAllFilteredWorkersRegular
 } from "./overtimeAttendanceActions.js";
 
+// ⭐ 근태 작성/수정 허용 사용자 검증 (조인주, 오상민, 유성대표, 부림텍대표, 한울대표, 최고관리자)
+export const isAuthorizedAttendanceWriter = (profile, isAdmin = false) => {
+  if (isAdmin) return true;
+  const role = profile?.role;
+  const name = String(profile?.name || "").trim();
+  const id = String(profile?.id || "").trim();
+  const comp = String(profile?.company || "").trim();
+
+  // 최고 관리자
+  if (role === "ADMIN" || role === "CEO" || id === "admin_kwon" || id === "admin_choi" || name === "권태형" || name === "최미영") {
+    return true;
+  }
+
+  // 1. 조인주 (삼랑진공장 오륙 근태관리 선임)
+  if (name === "조인주" || id === "sam_ij") return true;
+
+  // 2. 오상민 (한림공장 가공동 관리 선임)
+  if (name === "오상민" || id === "hal_sm") return true;
+
+  // 3. 유성 대표 (유성 대표이사)
+  if (name === "유성" || comp === "유성" || id === "sam_ys") return true;
+
+  // 4. 부림텍 대표 (부림텍 대표이사)
+  if (name === "부림텍" || comp === "부림텍" || id === "hal_br") return true;
+
+  // 5. 한울 대표 (한울 대표이사)
+  if (name === "한울" || comp === "한울" || id === "hal_hu") return true;
+
+  return false;
+};
+
 // 1-Click Update Worker Attendance for Selected Day
 export const updateWorkerDayAttendance = async ({
   isDayLocked,
@@ -31,10 +63,17 @@ export const updateWorkerDayAttendance = async ({
   currentMonthNum,
   selectedMonth,
   currentProfile,
+  isAdmin,
   setSmartData,
   setHasUnsavedChanges,
   triggerToast
 }) => {
+  // 권한 체크
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    triggerToast("⚠️ 근태 작성 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
+    return;
+  }
+
   if (isDayLocked) {
     setIsDayUnlockedForEdit(true);
   }
@@ -100,38 +139,45 @@ export const updateWorkerDayAttendance = async ({
   }).catch((err) => console.warn("근태 백그라운드 저장 경고:", err));
 };
 
-// Custom Overtime Hours Direct Prompt
+// Prompt Custom OT Hours
 export const promptCustomOtHours = ({
   isDayLocked,
   setIsDayUnlockedForEdit,
   worker,
   selectedDay,
-  onUpdateAttendance
+  currentProfile,
+  isAdmin,
+  onUpdateAttendance,
+  triggerToast
 }) => {
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    if (triggerToast) triggerToast("⚠️ 근태 작성 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
+    return;
+  }
   if (isDayLocked) {
     setIsDayUnlockedForEdit(true);
   }
-  const currentVal = (worker.daily && (worker.daily[selectedDay] !== undefined ? worker.daily[selectedDay] : worker.daily[String(selectedDay)])) ?? "";
-  const currentHours = calculateWorkerDailyHours(currentVal).weekdayOt || 2;
-  const input = window.prompt(`⏱️ ${worker.name}님의 ${selectedDay}일 잔업 시간을 입력하세요.\n(시간 단위 숫자, 예: 1.5, 2, 3, 4, 5):`, currentHours);
+  const cleanWorkerName = worker.name ? worker.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
+  const curVal = (worker.daily && (worker.daily[selectedDay] !== undefined ? worker.daily[selectedDay] : worker.daily[String(selectedDay)])) ?? "";
+  const input = window.prompt(
+    `[${cleanWorkerName}] ${selectedDay}일 잔업/특근 인정시간(H)을 직접 입력하세요:\n\n예: 2, 2.5, 4, 8, 11 (또는 19시, 21시)`,
+    curVal || "2.5"
+  );
   if (input !== null) {
-    const parsed = parseFloat(input);
-    if (!isNaN(parsed) && parsed >= 0) {
-      if (parsed === 0) {
-        onUpdateAttendance(worker, "정시");
-      } else {
-        onUpdateAttendance(worker, `잔업(+${parsed}H)`);
-      }
+    const trimmed = input.trim();
+    if (trimmed) {
+      onUpdateAttendance(worker, trimmed);
     }
   }
 };
 
-// Submit Company Day Attendance (Weekday: auto-approve / Weekend: create special report)
+// Submit Company Day Attendance (평일: 작성자전결 마감 / 주말: 개별 특근보고서 상신)
 export const submitCompanyDayAttendance = async ({
   selectedCompanyFilter,
   selectedDay,
   isWeekendDay,
   currentProfile,
+  isAdmin,
   effectiveMatrix,
   smartData,
   currentYear,
@@ -145,6 +191,11 @@ export const submitCompanyDayAttendance = async ({
   setLegacyReports,
   getDayLabel
 }) => {
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    triggerToast("⚠️ 근태 작성 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
+    return;
+  }
+
   const comp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
   const cleanComp = cleanCompanyName(comp);
   const d = selectedDay || 1;
@@ -163,10 +214,9 @@ export const submitCompanyDayAttendance = async ({
   let autoFilledCount = 0;
   if (!isWk) {
     updatedMatrix.forEach((w) => {
-      const wComp = cleanCompanyName(w.company);
-      if (wComp === cleanComp) {
-        const curVal = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? "";
-        const strVal = String(curVal || "").trim();
+      if (cleanCompanyName(w.company) === cleanComp) {
+        if (!w.daily) w.daily = {};
+        const strVal = String((w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)]) || "").trim();
         if (!strVal || strVal === "미입력" || strVal === "undefined" || strVal === "null") {
           w.daily[d] = "🟢";
           w.daily[String(d)] = "🟢";
@@ -319,16 +369,14 @@ export const submitCompanyDayAttendance = async ({
     syncPlantOvertimeToApprovalBox({
       plant,
       company: cleanComp,
-      workDate: workDateStr,
-      matrix: updatedMatrix,
-      reports: nextReports
+      workDate: workDateStr
     })
   ]).catch((err) => {
-    console.error("특근보고서 백그라운드 저장 경고:", err);
+    console.error("특근보고서 상신 에러:", err);
   });
 };
 
-// Approve Company Day Attendance
+// Approve Company Day Attendance (최종 승인)
 export const approveCompanyDayAttendance = async ({
   selectedCompanyFilter,
   selectedDay,
@@ -344,13 +392,14 @@ export const approveCompanyDayAttendance = async ({
   const cleanComp = cleanCompanyName(comp);
   const d = selectedDay || 1;
   const approvalKey = `${cleanComp}_${d}`;
+  const existing = smartData?.companyApprovalStatus?.[approvalKey] || {};
+  const nowTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
-  const currentStatus = smartData?.companyApprovalStatus?.[approvalKey] || {};
   const statusData = {
-    ...currentStatus,
+    ...existing,
     status: "APPROVED",
-    approvedBy: currentProfile?.name || "권태형 대표",
-    approvedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+    approvedBy: currentProfile?.name || "권태형 대표이사",
+    approvedAt: nowTime
   };
 
   const optimisticLedger = {
@@ -368,37 +417,9 @@ export const approveCompanyDayAttendance = async ({
 
   setSmartData(optimisticLedger);
   setIsDayUnlockedForEdit(false);
-  triggerToast(`🎉 [${cleanComp}] ${currentMonthNum}월 ${d}일 근태가 최종 승인(마감)되었습니다!`);
+  triggerToast(`🎉 [${cleanComp}] ${currentMonthNum}월 ${d}일 근태가 최종 승인(마감)되었습니다.`);
 
-  saveCompanyDayApprovalStatus(optimisticLedger, selectedMonth || "2026-10", cleanComp, d, statusData).catch((err) => {
-    console.error(err);
-  });
-
-  // ⭐ 주말/특근 최종 승인 시 전자결재함 문서 상태도 즉시 APPROVED(최종 승인)로 동기화
-  const ymParts = (selectedMonth || "2026-10").split("-");
-  const yStr = ymParts[0] || "2026";
-  const mStr = String(parseInt(ymParts[1] || "10", 10)).padStart(2, "0");
-  const dStr = String(parseInt(d, 10)).padStart(2, "0");
-  const workDateStr = `${yStr}-${mStr}-${dStr}`;
-
-  syncPlantOvertimeToApprovalBox({
-    plant: getPlantForCompany(cleanComp),
-    company: cleanComp,
-    workDate: workDateStr,
-    status: "APPROVED",
-    reports: [
-      {
-        company: cleanComp,
-        workDate: workDateStr,
-        status: "APPROVED",
-        approvalStatus: "APPROVED",
-        author: currentStatus.submittedBy || currentProfile?.name || "조인주",
-        attendedWorkers: currentStatus.attendedCount || 0,
-        totalHours: currentStatus.totalHours || 0,
-        cost: (currentStatus.totalHours || 0) * 15000
-      }
-    ]
-  }).catch((err) => console.warn("Sync approved status to approval box warning:", err));
+  await saveCompanyDayApprovalStatus(optimisticLedger, selectedMonth || "2026-10", cleanComp, d, statusData, { skipEventDispatch: true });
 };
 
 // Unlock Company Day Attendance
@@ -414,59 +435,50 @@ export const unlockCompanyDayAttendance = async ({
   setHasUnsavedChanges,
   triggerToast,
   selectedMonth,
-  currentProfile
+  currentProfile,
+  isAdmin
 }) => {
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    triggerToast("⚠️ 근태 해제/수정 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
+    return;
+  }
+
   const comp = selectedCompanyFilter === "전체" ? "오륙" : selectedCompanyFilter;
   const cleanComp = cleanCompanyName(comp);
   const d = selectedDay || 1;
   const approvalKey = `${cleanComp}_${d}`;
 
-  const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
-    ? [...effectiveMatrix]
-    : (smartData?.attendanceMatrix || []);
-
-  const updatedMatrix = currentMatrix.map((w) => {
-    if (cleanCompanyName(w.company) !== cleanComp) return w;
-    const newDaily = { ...(w.daily || {}) };
-    delete newDaily[d];
-    delete newDaily[String(d)];
-    return {
-      ...w,
-      daily: newDaily
-    };
-  });
-
-  const updatedApprovalStatus = { ...(smartData?.companyApprovalStatus || {}) };
-  delete updatedApprovalStatus[approvalKey];
-
   const optimisticLedger = {
     ...smartData,
-    year: currentYear,
-    month: currentMonthNum,
-    attendanceMatrix: updatedMatrix,
-    companyApprovalStatus: updatedApprovalStatus
+    companyApprovalStatus: {
+      ...(smartData?.companyApprovalStatus || {}),
+      [approvalKey]: {
+        company: cleanComp,
+        day: Number(d),
+        status: "DRAFT",
+        unlockedBy: currentProfile?.name || "관리자",
+        unlockedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        updatedAt: new Date().toISOString()
+      }
+    }
   };
 
   setSmartData(optimisticLedger);
   setIsDayUnlockedForEdit(true);
-  setHasUnsavedChanges(false);
-  triggerToast(`🔓 [${cleanComp}] ${currentMonthNum}월 ${d}일 마감이 해제되고 근태가 초기화(작성전)되었습니다.`);
+  setHasUnsavedChanges(true);
+  triggerToast(`🔓 [${cleanComp}] ${currentMonthNum}월 ${d}일 마감이 해제되었습니다. 수정 후 다시 등록하세요.`);
 
-  saveSmartOvertimeData(optimisticLedger, selectedMonth || "2026-10", {
-    targetCompany: cleanComp,
-    targetDay: d,
-    clearedDay: d,
-    auditMeta: {
-      operator: currentProfile?.name || "관리자",
-      source: "UNLOCK_AND_CLEAR_DAY",
-      reason: `${cleanComp} Day ${d} 마감 해제 및 당일 근태 초기화`
-    }
-  }).catch((err) => {
-    console.error(err);
-  });
+  await saveCompanyDayApprovalStatus(
+    optimisticLedger,
+    selectedMonth || "2026-10",
+    cleanComp,
+    d,
+    { status: "DRAFT" },
+    { skipEventDispatch: true }
+  );
 };
 
-// Copy Previous Day Attendance
+// Copy Prev Day Attendance
 export const copyAllFilteredWorkersSameAsPrevDay = async ({
   isDayLocked,
   setIsDayUnlockedForEdit,
@@ -487,20 +499,21 @@ export const copyAllFilteredWorkersSameAsPrevDay = async ({
   triggerToast,
   selectedMonth,
   currentProfile,
+  isAdmin,
   getDayLabel
 }) => {
-  if (isDayLocked) {
-    setIsDayUnlockedForEdit(true);
-  }
-  if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
-
-  if (isWeekendDay(selectedDay)) {
-    triggerToast(`⚠️ 달력기준 특근일(${currentMonthNum}월 ${selectedDay}일 ${getDayLabel(selectedDay)}요일 - 주말/공휴일)은 '전일과동일' 적용 대상에서 제외됩니다.`);
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    triggerToast("⚠️ 근태 작성 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
     return;
   }
 
-  const res = computeCopyPrevDayAttendance({
+  if (isDayLocked) {
+    setIsDayUnlockedForEdit(true);
+  }
+
+  const { updatedMatrix, copiedCount, sourceDateLabel } = computeCopyPrevDayAttendance({
     filteredAttendanceWorkers,
+    isWeekendDay,
     selectedDay,
     currentMonthNum,
     currentYear,
@@ -510,11 +523,14 @@ export const copyAllFilteredWorkersSameAsPrevDay = async ({
     smartData,
     prevMonthData,
     prevYear,
-    prevMonthNum
+    prevMonthNum,
+    getDayLabel
   });
 
-  if (!res) return;
-  const { updatedMatrix, appliedCount, sourceDayLabel, sourceMonthLabel, targetSourceDay } = res;
+  if (copiedCount === 0) {
+    triggerToast("복사할 대상 작업자가 없거나 직전 평일 근태가 존재하지 않습니다.");
+    return;
+  }
 
   const newLedger = {
     ...smartData,
@@ -525,49 +541,63 @@ export const copyAllFilteredWorkersSameAsPrevDay = async ({
 
   setSmartData(newLedger);
   setHasUnsavedChanges(true);
-  triggerToast(`📋 [${selectedCompanyFilter === "전체" ? "전사" : selectedCompanyFilter}] ${sourceMonthLabel} ${targetSourceDay}일(${sourceDayLabel}) 근태가 당일(${currentMonthNum}월 ${selectedDay}일)로 복사되었습니다. (${appliedCount}명)`);
-  await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
-    targetCompany: selectedCompanyFilter,
+  triggerToast(`📋 [${sourceDateLabel}] 근태가 [${selectedCompanyFilter === "전체" ? "전체" : selectedCompanyFilter}] ${copiedCount}명에게 복사되었습니다.`);
+
+  saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+    targetCompany: selectedCompanyFilter === "전체" ? undefined : selectedCompanyFilter,
     targetDay: selectedDay,
+    skipEventDispatch: true,
     auditMeta: {
       operator: currentProfile?.name || "현장관리자",
       source: "COPY_PREV_DAY",
-      reason: `${selectedCompanyFilter} Day ${selectedDay}에 ${sourceMonthLabel} ${targetSourceDay}일 근태 복사 (${appliedCount}명)`
+      reason: `Day ${selectedDay}에 ${sourceDateLabel} 근태 일괄 복사 (${copiedCount}명)`
     }
-  });
+  }).catch((err) => console.warn("일괄 복사 저장 경고:", err));
 };
 
-// Fill Regular Hours
+// Fill All Filtered Workers Regular
 export const fillAllFilteredWorkersRegular = async ({
   isDayLocked,
   setIsDayUnlockedForEdit,
   filteredAttendanceWorkers,
   isWeekendDay,
   selectedDay,
+  currentMonthNum,
+  currentYear,
+  selectedCompanyFilter,
   effectiveMatrix,
   smartData,
-  currentYear,
-  currentMonthNum,
   setSmartData,
   setHasUnsavedChanges,
   triggerToast,
   selectedMonth,
   currentProfile,
-  selectedCompanyFilter = "전체"
+  isAdmin
 }) => {
+  if (!isAuthorizedAttendanceWriter(currentProfile, isAdmin)) {
+    triggerToast("⚠️ 근태 작성 권한이 없습니다. (조인주, 오상민, 유성대표, 부림텍대표, 한울대표만 가능)");
+    return;
+  }
+
   if (isDayLocked) {
     setIsDayUnlockedForEdit(true);
   }
-  if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
 
-  const isWk = isWeekendDay(selectedDay);
-  const { updatedMatrix, updatedCount } = computeFillAllFilteredWorkersRegular({
+  const { updatedMatrix, updatedCount, defaultCode } = computeFillAllFilteredWorkersRegular({
     filteredAttendanceWorkers,
+    isWeekendDay,
     selectedDay,
-    isWeekend: isWk,
+    currentMonthNum,
+    currentYear,
+    selectedCompanyFilter,
     effectiveMatrix,
     smartData
   });
+
+  if (updatedCount === 0) {
+    triggerToast("반영할 작업자가 없습니다.");
+    return;
+  }
 
   const newLedger = {
     ...smartData,
@@ -578,38 +608,47 @@ export const fillAllFilteredWorkersRegular = async ({
 
   setSmartData(newLedger);
   setHasUnsavedChanges(true);
-  triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다. (결근/연차 인원 보존)`);
-  await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
-    targetCompany: selectedCompanyFilter,
+  triggerToast(`⚡ [${selectedCompanyFilter === "전체" ? "전체" : selectedCompanyFilter}] 작업자 ${updatedCount}명 근태가 [${defaultCode}]로 일괄 적용되었습니다.`);
+
+  saveSmartOvertimeData(newLedger, selectedMonth || "2026-10", {
+    targetCompany: selectedCompanyFilter === "전체" ? undefined : selectedCompanyFilter,
     targetDay: selectedDay,
+    skipEventDispatch: true,
     auditMeta: {
       operator: currentProfile?.name || "현장관리자",
-      source: "BULK_SET_ALL_REGULAR",
-      reason: `${currentMonthNum}월 ${selectedDay}일 전체 인원 정시 채우기 (${updatedCount}명)`
+      source: "FILL_REGULAR_ALL",
+      reason: `Day ${selectedDay} [${defaultCode}] 일괄 적용 (${updatedCount}명)`
     }
-  });
+  }).catch((err) => console.warn("일괄 출근 저장 경고:", err));
 };
 
-// Excel Export
-export const exportExcelAttendance = ({
-  matrixViewMonth,
-  selectedMonth,
+// Export Excel Attendance
+export const exportExcelAttendance = async ({
   smartData,
-  prevYearMonth,
-  prevMonthData,
-  matrixCustomMonthData,
+  currentYear,
+  currentMonthNum,
+  selectedMonth,
+  selectedCompanyFilter,
+  daysInMonth,
+  getKoreanHolidayInfo,
+  getDayLabel,
   triggerToast
 }) => {
   try {
-    const isCurrent = matrixViewMonth === (selectedMonth || "2026-10");
-    const targetData = isCurrent
-      ? smartData
-      : matrixViewMonth === (prevYearMonth || "2026-09")
-      ? (prevMonthData || getLocalSmartOvertimeData(prevYearMonth || "2026-09"))
-      : (matrixCustomMonthData || getLocalSmartOvertimeData(matrixViewMonth));
-    const filename = exportSmartOvertimeToExcel(targetData);
-    triggerToast(`📥 엑셀 다운로드 완료 (${filename})`);
+    triggerToast("📊 엑셀 내보내기 파일을 생성 중입니다...");
+    await exportSmartOvertimeToExcel({
+      matrix: smartData?.attendanceMatrix || [],
+      year: currentYear,
+      month: currentMonthNum,
+      selectedMonth,
+      filterCompany: selectedCompanyFilter === "전체" ? "" : selectedCompanyFilter,
+      daysInMonth,
+      getKoreanHolidayInfo,
+      getDayLabel
+    });
+    triggerToast("✅ 엑셀 파일이 성공적으로 다운로드되었습니다.");
   } catch (err) {
-    alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
+    console.error("Excel export error:", err);
+    triggerToast("❌ 엑셀 내보내기 중 오류가 발생했습니다.");
   }
 };
