@@ -828,11 +828,13 @@ export const LegoBlockCollectionModal = ({
                       return (
                         <div
                           key={bKey}
-                          className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2.5 ${
+                          onClick={() => setPreviewBlock(item)}
+                          className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2.5 cursor-pointer ${
                             isActive
-                              ? "bg-indigo-950/60 border-amber-400 shadow-lg shadow-amber-500/10"
-                              : "bg-slate-950 border-slate-800 hover:border-slate-700"
+                              ? "bg-indigo-950/60 border-amber-400 shadow-lg shadow-amber-500/10 hover:border-amber-300"
+                              : "bg-slate-950 border-slate-800 hover:border-indigo-500/60 hover:bg-slate-900/60"
                           }`}
+                          title="블록 카드를 클릭하면 큰 창으로 상세 보기 및 양식 조립이 가능합니다"
                         >
                           <div>
                             <div className="flex items-center justify-between gap-1 pb-2 border-b border-slate-800 mb-2">
@@ -843,7 +845,10 @@ export const LegoBlockCollectionModal = ({
                                 {onToggleBlock && (
                                   <button
                                     type="button"
-                                    onClick={() => onToggleBlock(bKey)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleBlock(bKey);
+                                    }}
                                     className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer transition ${
                                       isActive
                                         ? "bg-emerald-500 text-slate-950"
@@ -855,7 +860,10 @@ export const LegoBlockCollectionModal = ({
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteCustom(item)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCustom(item);
+                                  }}
                                   className="p-1 rounded-lg bg-slate-900 hover:bg-rose-600 text-slate-400 hover:text-white cursor-pointer"
                                   title="커스텀 블록 삭제"
                                 >
@@ -870,9 +878,7 @@ export const LegoBlockCollectionModal = ({
 
                             {item.imgFile && (
                               <div
-                                onClick={() => setPreviewBlock(item)}
-                                className="group/img relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[120px] max-h-[140px] overflow-hidden mb-2 cursor-pointer border border-transparent hover:border-amber-400 transition"
-                                title="클릭하여 큰 창으로 상세 보기"
+                                className="group/img relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[120px] max-h-[140px] overflow-hidden mb-2 border border-slate-200"
                               >
                                 <img
                                   src={item.imgFile}
@@ -923,11 +929,13 @@ export const LegoBlockCollectionModal = ({
                     return (
                       <div
                         key={item.id}
-                        className={`p-3 rounded-2xl border transition-all flex flex-col justify-between gap-2 ${
+                        onClick={() => setPreviewBlock(item)}
+                        className={`p-3 rounded-2xl border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
                           isActive
-                            ? "bg-indigo-950/50 border-cyan-400/70 shadow-md"
-                            : "bg-slate-950 border-slate-800"
+                            ? "bg-indigo-950/50 border-cyan-400/70 shadow-md hover:border-cyan-300"
+                            : "bg-slate-950 border-slate-800 hover:border-cyan-500/60 hover:bg-slate-900/60"
                         }`}
+                        title="블록 카드를 클릭하면 큰 창으로 상세 보기 및 양식 조립이 가능합니다"
                       >
                         <div>
                           <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-800 mb-2">
@@ -937,7 +945,10 @@ export const LegoBlockCollectionModal = ({
                             {onToggleBlock && item.blockKey && (
                               <button
                                 type="button"
-                                onClick={() => onToggleBlock(item.blockKey)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleBlock(item.blockKey);
+                                }}
                                 className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer transition flex items-center gap-1 ${
                                   isActive
                                     ? "bg-cyan-400 text-slate-950"
@@ -959,9 +970,7 @@ export const LegoBlockCollectionModal = ({
                             {item.title}
                           </div>
                           <div
-                            onClick={() => setPreviewBlock(item)}
-                            className="group/stdimg relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[135px] cursor-pointer border border-transparent hover:border-cyan-400 transition"
-                            title="클릭하여 큰 창으로 상세 보기"
+                            className="group/stdimg relative bg-white p-1.5 rounded-xl flex items-center justify-center min-h-[135px] border border-slate-200"
                           >
                             <img
                               src={item.imgFile}
