@@ -140,6 +140,7 @@ export const LegoBlockCollectionModal = ({
   isOpen,
   onClose,
   standardBlocks = [],
+  references = [],
   customBlocks = [],
   activeBlocks = {},
   onToggleBlock,
@@ -147,6 +148,7 @@ export const LegoBlockCollectionModal = ({
   onShowToast,
   initialTab = "ALL" // 'ALL' | 'UPLOAD'
 }) => {
+  const resolvedStandardBlocks = standardBlocks.length > 0 ? standardBlocks : references;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -163,7 +165,7 @@ export const LegoBlockCollectionModal = ({
 
   if (!isOpen) return null;
 
-  const totalBlockCount = standardBlocks.length + customBlocks.length;
+  const totalBlockCount = resolvedStandardBlocks.length + customBlocks.length;
 
   const handleFileSelect = async (file) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -351,7 +353,7 @@ export const LegoBlockCollectionModal = ({
                   🧱 레고 블록모음 & 블록사진 AI 분석·저장 센터
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-slate-950 shadow-xs">
-                  총 {totalBlockCount}종 (표준 {standardBlocks.length} + 사진분석 {customBlocks.length})
+                  총 {totalBlockCount}종 (표준 {resolvedStandardBlocks.length} + 사진분석 {customBlocks.length})
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
                   <Database className="w-3 h-3" />
@@ -915,7 +917,7 @@ export const LegoBlockCollectionModal = ({
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-cyan-400 text-slate-950">
-                      기본 표준블록 ({standardBlocks.length}종)
+                      기본 표준블록 ({resolvedStandardBlocks.length}종)
                     </span>
                     <h4 className="text-sm font-black text-white">
                       🧱 '레고 양식.xlsx' 17대 표준 실물 블록 컬렉션
@@ -924,7 +926,7 @@ export const LegoBlockCollectionModal = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  {standardBlocks.map((item, idx) => {
+                  {resolvedStandardBlocks.map((item, idx) => {
                     const isActive = Boolean(activeBlocks?.[item.blockKey]);
                     return (
                       <div

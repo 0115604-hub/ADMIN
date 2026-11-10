@@ -178,11 +178,12 @@ export const LegoWorkReportBuilder = ({
       <LegoBlockCollectionModal
         isOpen={state.showPhotoRefModal}
         onClose={() => state.setShowPhotoRefModal(false)}
-        references={LEGO_IMAGE_REFERENCES}
+        standardBlocks={LEGO_IMAGE_REFERENCES}
         customBlocks={state.customBlocks}
-        activeTab={state.photoModalTab}
-        setActiveTab={state.setPhotoModalTab}
-        onSaveCustomBlock={saveCustomLegoBlock}
+        activeBlocks={state.currentReport?.activeBlocks || {}}
+        onToggleBlock={(bKey) => state.handleToggleBlock(bKey)}
+        initialTab={state.photoModalTab}
+        onCustomBlockSaved={saveCustomLegoBlock}
         onShowToast={state.showToast}
       />
 
